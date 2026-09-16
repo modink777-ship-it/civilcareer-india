@@ -589,6 +589,140 @@ function materialEditor(m={}){
 
 // ── AI import ──
 async function importJobLink(){
+  const url = $('importJobUrl').value.trim();
+  const text = $('importJobText').value.trim();
+
+  if (!url && !text) {
+    return setImportStatus(
+      'importJobStatus',
+      'Paste a URL, text, or both.',
+      'error'
+    );
+  }
+
+  const btn = $('importJobBtn');
+  btn.disabled = true;
+  btn.textContent = 'Extracting…';
+
+  setImportStatus(
+    'importJobStatus',
+    'Analyzing vacancy…'
+  );
+
+  try {
+    const data = await api('/api/extract', {
+      method: 'POST',
+      key: adminKey,
+      body: JSON.stringify({ url, text })
+    });
+
+    // IMPORTANT:
+    // extract.js returns { extracted: {...}, source: "groq" }
+    const ai = data.extracted || {};
+
+    // Convert AI response into the fields expected
+    // by the CivilCareer job editor.
+    const x = {
+      role: ai.role || '',
+      company: ai.company || '',
+      location: ai.location || '',
+      state: ai.state || '',
+      country: ai.country || '',
+      description: ai.description || '',
+      qualification: ai.qualification || '',
+      skills: ai.skills || '',
+      experience_level: ai.experience_level || '',
+      salary: ai.salary || '',
+      vacancy_count: ai.vacancy_count || '',
+      deadline: ai.deadline || '',
+      employment_type: ai.employment_type || '',
+      sector: ai.sector || 'Private',
+
+      source_url: ai.source_url || url || '',
+      application_url: ai.apply_url || '',
+      application_email: ai.application_email || '',
+
+      recruitment_authority:
+        ai.recruitment_authority || '',
+
+      posted_date:
+        (ai.posted_date || '').slice(0, 10),
+
+      last_verified:
+        new Date().toISOString().slice(0, 10),
+
+      status: 'Active'
+    };
+
+    // Make sure date fields contain only YYYY-MM-DD.
+    x.deadline = (x.deadline || '').slice(0, 10);
+
+    // --------------------------------------------------
+    // Detect application emails from pasted vacancy text
+    // --------------------------------------------------
+
+    const emailSource = text + ' ' + (url || '');
+
+    const emails = [
+      ...new Set(
+        emailSource.match(
+          /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
+        ) || []
+      )
+    ];
+
+    const sel = $('detectedEmailSelect');
+
+    sel.innerHTML = emails.length
+      ? emails.map(email =>
+          `<option value="${esc(email)}">${esc(email)}</option>`
+        ).join('')
+      : '<option value="">No email detected</option>';
+
+    // If AI found an application email, use it.
+    if (x.application_email) {
+      $('importApplicationEmail').value =
+        x.application_email;
+    }
+    // Otherwise use the first detected email.
+    else if (emails.length) {
+      $('importApplicationEmail').value =
+        emails[0];
+
+      x.application_email = emails[0];
+    }
+
+    // Keep the detected email available for
+    // the "Use selected" button.
+    if (!x.application_email && emails.length) {
+      x.application_email = emails[0];
+    }
+
+    setImportStatus(
+      'importJobStatus',
+      data.warning ||
+        `Extraction complete using ${data.source || 'AI'}. Verify every field.`,
+      'success'
+    );
+
+    // Open the editor with the extracted data.
+    jobEditor(x);
+
+  } catch (err) {
+    console.error('Job extraction failed:', err);
+
+    setImportStatus(
+      'importJobStatus',
+      err.message,
+      'error'
+    );
+
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Extract & fill fields';
+  }
+}
+  {
   const url=$('importJobUrl').value.trim(),text=$('importJobText').value.trim();
   if(!url&&!text)return importStatus('importJobStatus','Paste a URL, text, or both.','error');
   const btn=$('importJobBtn');btn.disabled=true;btn.textContent='Extracting…';
