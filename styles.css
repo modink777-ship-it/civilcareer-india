@@ -752,3 +752,57 @@ nav a[data-count]::after{
 [data-page="home"] .stats-bar{
   margin-top:0!important;
 }
+
+/* ── Profile Overlay (For You modal) ────────────────────── */
+.profile-overlay{
+  display:none;
+  position:fixed!important;
+  top:0!important;left:0!important;right:0!important;bottom:0!important;
+  background:rgba(0,0,0,0.6)!important;
+  z-index:9999!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:1rem!important;
+}
+.profile-overlay .profile-modal-inner{
+  background:#fff!important;
+  border-radius:20px!important;
+  padding:1.5rem!important;
+  max-width:500px!important;
+  width:100%!important;
+  max-height:90vh!important;
+  overflow-y:auto!important;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3)!important;
+}
+
+/* ── Fix page-hero text cut on inner pages ───────────────── */
+[data-page]:not([data-page="home"]) .page-hero,
+.page-hero:not(.home-hero){
+  width:100%!important;
+  margin-left:0!important;
+  margin-right:0!important;
+  left:0!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  overflow:visible!important;
+}
+[data-page]:not([data-page="home"]) .page-hero .container,
+.page-hero .container{
+  padding-left:max(1.25rem,env(safe-area-inset-left))!important;
+  padding-right:max(1.25rem,env(safe-area-inset-right))!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+}
+
+/* ── Material file upload button ─────────────────────────── */
+.upload-area{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.35rem}
+.upload-btn{
+  display:inline-flex!important;align-items:center!important;gap:.4rem!important;
+  background:#ecfdf5!important;color:#065f46!important;
+  border:1.5px solid #10b981!important;border-radius:8px!important;
+  padding:8px 14px!important;font-size:.82rem!important;font-weight:700!important;
+  cursor:pointer!important;white-space:nowrap!important;transition:background .2s!important;
+}
+.upload-btn:hover{background:#d1fae5!important}
+input[type="file"]#matFileInput{display:none!important}
+.file-chosen{font-size:.78rem;color:#5a6478;flex:1}
