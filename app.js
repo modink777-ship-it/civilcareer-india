@@ -427,7 +427,7 @@ function openProfileSetup(){
 
     <div id="ptab-basics" class="ptab-content">
       <label>Your name<input id="pName" value="${esc(prof.name||'')}" placeholder="e.g. Modin Kumar"></label>
-      <label>Current role<input id="pRole" value="${esc(prof.current_role||'')}" placeholder="e.g. Planning Engineer"></label>
+      <label>Current role<input id="pRole" value="${esc(prof.job_title||'')}" placeholder="e.g. Planning Engineer"></label>
       <label>Years of experience<input id="pExp" type="number" value="${prof.experience_years||''}" placeholder="e.g. 5"></label>
       <label>Education<input id="pEdu" value="${esc(prof.education||'')}" placeholder="e.g. B.E. Civil Engineering"></label>
       <label>Your skills (comma separated)<textarea id="pSkills" placeholder="Primavera P6, AutoCAD, MS Project, BIM, Revit">${esc(prof.skills||'')}</textarea></label>
@@ -470,7 +470,7 @@ function saveProfile(){
   userProfile={
     ...userProfile,
     name:$('pName')?.value||'',
-    current_role:$('pRole')?.value||'',
+    job_title:$('pRole')?.value||'',
     experience_years:parseFloat($('pExp')?.value)||null,
     education:$('pEdu')?.value||'',
     skills:$('pSkills')?.value||''
