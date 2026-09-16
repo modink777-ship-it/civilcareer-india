@@ -1116,3 +1116,196 @@ async function importJobLink(){
      btn.textContent='✨ Import & Extract';
    }
  }
+       source_url:ai.source_url||url||'',
+       last_verified:new Date().toISOString().slice(0,10),
+       status:'Active'
+     };
+
+     // HTML date inputs require YYYY-MM-DD.
+     x.application_start=(x.application_start||'').slice(0,10);
+     x.deadline=(x.deadline||'').slice(0,10);
+
+     const mode=
+       data.source==='groq'
+         ?'Groq AI extraction complete.'
+         :data.mode==='ai'
+           ?'AI-assisted extraction complete.'
+           :data.mode==='structured'
+             ?'Public page data extracted.'
+             :'Vacancy data organized.';
+
+     importStatus(
+       'importJobStatus',
+       data.warning||`${mode} Verify every field before saving.`,
+       'success'
+     );
+
+     jobEditor(x);
+   }catch(err){
+     console.error('CivilCareer job extraction failed:',err);
+     importStatus(
+       'importJobStatus',
+       err.message||'AI extraction failed.',
+       'error'
+     );
+   }finally{
+     btn.disabled=false;
+     btn.textContent='Extract & fill fields';
+   }
+ }
+
+ async function pdfText(file){
+   if(!window.pdfjsLib)throw Error('The PDF reader did not load. Refresh the page and try again.');
+   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+   const bytes=new Uint8Array(await file.arrayBuffer()),doc=await window.pdfjsLib.getDocument({data:bytes}).promise;
+   let text='';
+   for(let pageNo=1;pageNo<=Math.min(doc.numPages,160);pageNo++){
+     const page=await doc.getPage(pageNo),content=await page.getTextContent();
+     text+=content.items.map(x=>x.str).join(' ')+'\n';
+   }
+   if(text.replace(/\s/g,'').length<100&&window.Tesseract){
+     importStatus('importExamStatus','Scanned PDF detected. Running OCR — this may take 30–60 seconds…');
+     let ocrText='';
+     for(let pageNo=1;pageNo<=Math.min(doc.numPages,10);pageNo++){
+       const page=await doc.getPage(pageNo),vp=page.getViewport({scale:2});
+       const canvas=document.createElement('canvas');
+       canvas.width=vp.width;
+       canvas.height=vp.height;
+       await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+       const result=await Tesseract.recognize(canvas,'eng');
+       ocrText+=result.data.text+'\n';
+     }
+     return ocrText;
+   }
+   return text;
+ }
+
+ async function importExamPdf(){
+   const file=$('importExamPdf').files[0];
+   if(!file)return importStatus('importExamStatus','Select an official PDF first.','error');
+   if(file.size>20*1024*1024)return importStatus('importExamStatus','Please use a PDF smaller than 20 MB.','error');
+   const btn=$('importExamBtn');
+   btn.disabled=true;
+   btn.textContent='Reading…';
+   importStatus('importExamStatus','Extracting text from the PDF…');
+   try{
+     const text=await pdfText(file);
+     importStatus('importExamStatus','Organizing notification fields…');
+     const data=await api('/api/exam-extract',{
+       method:'POST',
+       key:adminKey,
+       body:JSON.stringify({text})
+     });
+     const x=data.exam||{};
+     x.last_verified=new Date().toISOString().slice(0,10);
+     importStatus('importExamStatus',data.warning||'Extraction complete. Verify every field.','success');
+     examEditor(x);
+   }catch(err){
+     importStatus('importExamStatus',err.message,'error');
+   }finally{
+     btn.disabled=false;
+     btn.textContent='Read PDF';
+   }
+ }
+
+ function jobEditor(j={}){
+   const catOptions=ROLE_HEADS.map(h=>`<option value="${h.id}" ${classifyJob(j)===h.id?'selected':''}>${h.icon} ${h.label}</option>`).join('');
+   $('editorTitle').textContent=j.id?'Edit opportunity':'Add opportunity';
+   $('editorBody').innerHTML=`<form class="panel-form" id="jobEdit"><div class="field-grid">
+     <label>Type<select name="sector"><option ${j.sector==='Private'?'selected':''}>Private</option><option ${j.sector==='Government'?'selected':''}>Government</option><option ${j.sector==='Public Sector'?'selected':''}>Public Sector</option></select></label>
+     <label>Role category<select name="role_category">${catOptions}</select></label>
+     <label>Job title<input name="role" value="${val(j.role)}" placeholder="e.g. Senior Planning Engineer"></label>
+     <label>Company / organization<input name="company" value="${val(j.company)}"></label>
+     <label>Recruitment authority<input name="recruitment_authority" value="${val(j.recruitment_authority)}" placeholder="e.g. KPSC, NHAI"></label>
+     <label>Location<input name="location" value="${val(j.location)}"></label>
+     <label>State<input name="state" value="${val(j.state||'Karnataka')}"></label>
+     <label>Department / civil discipline<input name="discipline" value="${val(j.discipline)}"></label>
+     <label>Qualification<input name="qualification" value="${val(j.qualification)}"></label>
+     <label>Experience<input name="experience_level" value="${val(j.experience_level)}" placeholder="e.g. 3-5 years"></label>
+     <label>Employment type<input name="employment_type" value="${val(j.employment_type)}" placeholder="Full-time / Contract"></label>
+     <label>Salary (text)<input name="salary" value="${val(j.salary)}" placeholder="e.g. ₹8-12 LPA"></label>
+     <label>Min salary (₹)<input type="number" name="salary_min" value="${val(j.salary_min)}" placeholder="e.g. 800000"></label>
+     <label>Max salary (₹)<input type="number" name="salary_max" value="${val(j.salary_max)}" placeholder="e.g. 1200000"></label>
+     <label>Vacancy count<input type="number" name="vacancy_count" value="${val(j.vacancy_count)}"></label>
+     <label>Application starts<input type="date" name="application_start" value="${val(j.application_start)}"></label>
+     <label>Application deadline<input type="date" name="deadline" value="${val(j.deadline)}"></label>
+     <label>Age limit<input name="age_limit" value="${val(j.age_limit)}"></label>
+     <label>Application fee<input name="application_fee" value="${val(j.application_fee)}"></label>
+     <label>Status<select name="status"><option value="Active" ${(j.status||'Active')==='Active'?'selected':''}>Active</option><option value="Draft" ${j.status==='Draft'?'selected':''}>Draft</option><option value="Closed" ${j.status==='Closed'?'selected':''}>Closed</option><option value="Expired" ${j.status==='Expired'?'selected':''}>Expired</option></select></label>
+     <label>Last verified<input type="date" name="last_verified" value="${val(j.last_verified||new Date().toISOString().slice(0,10))}"></label>
+     <label class="check"><input type="checkbox" name="featured" ${j.featured?'checked':''}> Featured</label>
+     <label class="wide">Description<textarea name="description">${val(j.description)}</textarea></label>
+     <label class="wide">Skills<input name="skills" value="${val(j.skills)}" placeholder="e.g. Primavera P6, AutoCAD, MS Project"></label>
+     <label class="wide">Application method<input name="application_method" value="${val(j.application_method)}"></label>
+     <label class="wide">Apply link (direct application URL)<input type="url" name="apply_url" value="${val(j.apply_url)}" placeholder="https://company.com/apply"></label>
+     <label class="wide">Official source URL (for reference)<input type="url" name="source_url" value="${val(j.source_url)}" placeholder="https://..."></label>
+     <button class="btn primary wide">Save opportunity</button>
+   </div><div class="form-status"></div></form>`;
+   openEditor();
+   $('jobEdit').onsubmit=async e=>{
+     e.preventDefault();
+     const d=formObject(e.target);
+     d.featured=e.target.featured.checked;
+     d.published=true;
+     if(!d.status)d.status='Active';
+     if(j.id)d.id=j.id;
+     try{
+       await api('/api/jobs',{method:j.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});
+       if(j._submission)await api('/api/employer-submissions',{method:'PATCH',key:adminKey,body:JSON.stringify({id:j._submission,status:'Approved'})});
+       if(!j.id){
+         try{
+           const tgRes=await api('/api/telegram',{method:'POST',key:adminKey,body:JSON.stringify({job:d})});
+           toast('✅ Job saved and posted to Telegram!');
+         }catch(tgErr){
+           toast('✅ Job saved. Telegram error: '+tgErr.message);
+           console.error('Telegram error:',tgErr);
+         }
+       }else{
+         toast('Opportunity updated.');
+       }
+       await loadData();
+       loadAdmin();
+     }catch(err){
+       toast(err.message);
+     }
+   }
+ }
+
+ function openEditor(){
+   $('editorDialog').showModal();
+ }
+
+ translate();
+ navigate(pathRoute[location.pathname]||'home',false);
+ loadData();
+
+ const adminFooterLink=document.querySelector('.admin-footer-link');
+ if(adminFooterLink){
+   const storedKey=sessionStorage.getItem('cc_admin');
+   if(!storedKey)adminFooterLink.style.display='none';
+ }
+
+ const searchBtn=document.querySelector('[data-action="search"],#searchBtn,.search-btn,button[aria-label="Search"]');
+ if(searchBtn)searchBtn.onclick=()=>{
+   const q=document.querySelector('#globalQuery,#searchQuery,input[name="q"]');
+   if(q){
+     q.focus();
+     q.select();
+   }
+   const overlay=document.querySelector('#searchOverlay,.search-overlay');
+   if(overlay)overlay.hidden=!overlay.hidden;
+ };
+
+ $$('.org-tile[data-route]').forEach(a=>a.onclick=e=>{
+   e.preventDefault();
+   navigate(a.dataset.route);
+ });
+
+ if("serviceWorker" in navigator){
+   window.addEventListener("load",()=>{
+     navigator.serviceWorker
+       .register("/service-worker.js")
+       .then(()=>console.log("SW registered"))
+       .catch(err=>console.error("SW error:",err));
+   });
+ }
