@@ -665,3 +665,27 @@ nav a[data-count]::after{
 
 /* Match card */
 .match-card{position:relative}
+
+/* ── Fix stats bar + search button overlap ───────────────── */
+.stats-bar{
+  position:relative!important;
+  z-index:1!important;
+}
+.search-wrap,.container.search-wrap{
+  position:relative!important;
+  z-index:2!important;
+  margin-top:0!important;
+  padding-top:1.5rem!important;
+  padding-bottom:1.5rem!important;
+  clear:both!important;
+}
+.smart-search{
+  position:relative!important;
+  transform:none!important;
+  top:auto!important;
+  margin-top:0!important;
+}
+/* Ensure stats and search stack vertically with no overlap */
+.stats-bar + *{
+  margin-top:0!important;
+}
