@@ -417,46 +417,51 @@ function trackJob(jobId,action,btn){
 
 // ── Profile Setup Modal ──────────────────────────────────────────────
 function openProfileSetup(){
+  let modal=$('profileModal');
+  if(!modal){
+    modal=document.createElement('dialog');
+    modal.id='profileModal';
+    modal.className='profile-modal-dialog';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.close();});
+  }
   const prefs=userPrefs,prof=userProfile;
-  $('editorTitle').textContent='Your Job Profile';
-  $('editorBody').innerHTML=`<div class="profile-setup">
+  modal.innerHTML=`<div class="profile-modal-inner">
+    <div class="profile-modal-header">
+      <h2>🎯 Your Job Profile</h2>
+      <button class="profile-close" onclick="document.getElementById('profileModal').close()">✕</button>
+    </div>
     <div class="profile-tabs">
       <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
-      <button class="ptab" onclick="showPTab('prefs',this)">🎯 Job Preferences</button>
+      <button class="ptab" onclick="showPTab('prefs',this)">🎯 Preferences</button>
     </div>
-
     <div id="ptab-basics" class="ptab-content">
       <label>Your name<input id="pName" value="${esc(prof.name||'')}" placeholder="e.g. Modin Kumar"></label>
-      <label>Current role<input id="pRole" value="${esc(prof.job_title||'')}" placeholder="e.g. Planning Engineer"></label>
+      <label>Current role<input id="pJobTitle" value="${esc(prof.job_title||'')}" placeholder="e.g. Planning Engineer"></label>
       <label>Years of experience<input id="pExp" type="number" value="${prof.experience_years||''}" placeholder="e.g. 5"></label>
       <label>Education<input id="pEdu" value="${esc(prof.education||'')}" placeholder="e.g. B.E. Civil Engineering"></label>
-      <label>Your skills (comma separated)<textarea id="pSkills" placeholder="Primavera P6, AutoCAD, MS Project, BIM, Revit">${esc(prof.skills||'')}</textarea></label>
+      <label>Your skills (comma separated)<textarea id="pSkills" placeholder="Primavera P6, AutoCAD, MS Project">${esc(prof.skills||'')}</textarea></label>
     </div>
-
     <div id="ptab-prefs" class="ptab-content" style="display:none">
-      <label>Target job roles (comma separated)<input id="pTargetRoles" value="${esc(prefs.target_roles||'')}" placeholder="Planning Engineer, Project Controls Engineer"></label>
-      <label>Skills I want to match<input id="pSkillsWanted" value="${esc(prefs.skills_wanted||'')}" placeholder="Primavera, AutoCAD, MS Project"></label>
-      <label>Preferred locations (comma separated)<input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Bengaluru, Hyderabad, Gulf"></label>
+      <label>Target job roles<input id="pTargetRoles" value="${esc(prefs.target_roles||'')}" placeholder="Planning Engineer, Site Engineer"></label>
+      <label>Skills to match<input id="pSkillsWanted" value="${esc(prefs.skills_wanted||'')}" placeholder="Primavera, AutoCAD, MS Project"></label>
+      <label>Preferred locations<input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Bengaluru, Hyderabad, Gulf"></label>
       <label>Experience range (years)
         <div style="display:flex;gap:.5rem">
-          <input id="pExpMin" type="number" value="${prefs.experience_min||''}" placeholder="Min (e.g. 2)">
-          <input id="pExpMax" type="number" value="${prefs.experience_max||''}" placeholder="Max (e.g. 8)">
+          <input id="pExpMin" type="number" value="${prefs.experience_min||''}" placeholder="Min" style="flex:1">
+          <input id="pExpMax" type="number" value="${prefs.experience_max||''}" placeholder="Max" style="flex:1">
         </div>
       </label>
-      <label>Minimum salary (₹/year)<input id="pSalMin" type="number" value="${prefs.salary_min||''}" placeholder="e.g. 500000"></label>
-      <label>Job sector
-        <select id="pSector">
-          <option ${(prefs.sectors||'Both')==='Both'?'selected':''}>Both</option>
-          <option ${prefs.sectors==='Private'?'selected':''}>Private</option>
-          <option ${prefs.sectors==='Government'?'selected':''}>Government</option>
-        </select>
-      </label>
-      <label>Keywords to exclude<input id="pExclude" value="${esc(prefs.keywords_exclude||'')}" placeholder="e.g. intern, fresher"></label>
+      <label>Min salary (₹/year)<input id="pSalMin" type="number" value="${prefs.salary_min||''}" placeholder="e.g. 500000"></label>
+      <label>Sector<select id="pSector">
+        <option ${(prefs.sectors||'Both')==='Both'?'selected':''}>Both</option>
+        <option ${prefs.sectors==='Private'?'selected':''}>Private</option>
+        <option ${prefs.sectors==='Government'?'selected':''}>Government</option>
+      </select></label>
     </div>
-
-    <button class="btn primary wide" onclick="saveProfile()">Save Profile & Find Matches</button>
+    <button class="btn primary wide" style="margin-top:1rem;width:100%" onclick="saveProfile()">💾 Save & Find Matches</button>
   </div>`;
-  openEditor();
+  modal.showModal();
 }
 
 function showPTab(tab,btn){
