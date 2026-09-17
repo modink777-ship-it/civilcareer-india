@@ -412,9 +412,6 @@ async function doLogin(){
 
   if(!k)return;
 
-  const errBox=$('loginError');
-  errBox.style.display='none';
-
   try{
 
     await api('/api/jobs',{key:k});
@@ -423,16 +420,14 @@ async function doLogin(){
 
     sessionStorage.setItem('cc_admin',k);
 
-    await showDashboard();
+    showDashboard();
 
   }catch(e){
 
-    errBox.style.display='block';
-    errBox.textContent=e.message.includes('Supabase server configuration')
-      ? 'Admin backend configuration is missing on Vercel. Check SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and OWNER_KEY.'
-      : e.message.includes('Invalid owner key')
-        ? 'Incorrect owner key. Check the OWNER_KEY value in Vercel → Settings → Environment Variables.'
-        : e.message || 'Admin login failed.';
+    $('loginError').style.display='block';
+
+    $('loginError').textContent=
+      'Incorrect key. Try again.';
   }
 }
 
@@ -467,47 +462,73 @@ async function showDashboard(){
 
 async function loadAll(){
 
-  const requests=[
-    ['jobs',api('/api/jobs',{key:adminKey})],
-    ['analytics',api('/api/analytics',{key:adminKey})],
-    ['employer',api('/api/employer-submissions',{key:adminKey})],
-    ['resources',api('/api/resource-submissions',{key:adminKey})],
-    ['reports',api('/api/reports',{key:adminKey})],
-    ['exams',api('/api/exams',{key:adminKey})],
-    ['materials',api('/api/materials',{key:adminKey})]
-  ];
+  try{
 
-  const results=await Promise.allSettled(requests.map(x=>x[1]));
-  const get=(name)=>{
-    const i=requests.findIndex(x=>x[0]===name);
-    const r=results[i];
-    return r&&r.status==='fulfilled'?r.value:null;
-  };
+    const [
+      j,
+      a,
+      es,
+      rs,
+      re
+    ]=await Promise.all([
 
-  const errors=results
-    .map((r,i)=>r.status==='rejected'?`${requests[i][0]}: ${r.reason?.message||'failed'}`:'')
-    .filter(Boolean);
+      api('/api/jobs',{key:adminKey}),
 
-  const j=get('jobs');
-  jobs=j?.jobs||[];
-  exams=get('exams')?.exams||[];
-  materials=get('materials')?.materials||[];
+      api('/api/analytics',{key:adminKey}),
 
-  const an=get('analytics')?.analytics||{};
-  const employer=get('employer')?.submissions||[];
-  const resources=get('resources')?.submissions||[];
-  const reports=get('reports')?.reports||[];
+      api('/api/employer-submissions',{
+        key:adminKey
+      }),
 
-  renderMetrics(an,reports);
-  renderAnalytics(an);
-  loadAdminJobs();
-  loadAdminExams();
-  loadAdminMaterials();
-  renderSubmissions(employer,resources);
-  renderReports(reports);
+      api('/api/resource-submissions',{
+        key:adminKey
+      }),
 
-  if(errors.length){
-    toast(`Dashboard loaded with warnings: ${errors.join(' | ')}`);
+      api('/api/reports',{
+        key:adminKey
+      })
+
+    ]);
+
+    jobs=j.jobs||[];
+
+    exams=
+      (await api('/api/exams',{
+        key:adminKey
+      })).exams||[];
+
+    materials=
+      (await api('/api/materials',{
+        key:adminKey
+      })).materials||[];
+
+    const an=a.analytics||{};
+
+    renderMetrics(
+      an,
+      re.reports||[]
+    );
+
+    renderAnalytics(an);
+
+    loadAdminJobs();
+
+    loadAdminExams();
+
+    loadAdminMaterials();
+
+    renderSubmissions(
+      es.submissions||[],
+      rs.submissions||[]
+    );
+
+    renderReports(
+      re.reports||[]
+    );
+
+  }catch(e){
+
+    toast(e.message);
   }
 }
 
@@ -2280,14 +2301,7 @@ window.addEventListener(
 
       adminKey=saved;
 
-      showDashboard().catch(e=>{
-        sessionStorage.removeItem('cc_admin');
-        adminKey='';
-        $('loginWrap').style.display='flex';
-        $('dashboard').style.display='none';
-        $('loginError').style.display='block';
-        $('loginError').textContent=e.message||'Admin session expired. Please sign in again.';
-      });
+      showDashboard();
       setTimeout(refreshDiscoverySources,250);
     }
   }
