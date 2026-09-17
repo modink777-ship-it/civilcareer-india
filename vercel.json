@@ -6,6 +6,10 @@
   },
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/civil-engineer-jobs-in-bengaluru",
       "destination": "/index.html"
     },

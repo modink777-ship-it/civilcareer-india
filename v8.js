@@ -192,12 +192,13 @@ renderAdminLists = function(emp, res, reports) {
 
 
 /* National portal SEO + crawlable content enhancements */
-function ccSeoMeta({title,description,type='website',image='',published='',modified='',breadcrumbs=[]}={}){
+function ccSeoMeta({title,description,type='website',image='',published='',modified='',breadcrumbs=[],robots='index,follow'}={}){
   const base='https://civilcareer-india-two.vercel.app';
-  const canonical=base+location.pathname+location.search;
+  const canonical=base+location.pathname;
   document.title=title||'CivilCareer';
   const set=(sel,attr,val)=>{let el=document.querySelector(sel);if(!el){el=document.createElement('meta');if(sel.includes('property=')){el.setAttribute('property',attr)}else{el.setAttribute('name',attr)}document.head.appendChild(el)}else{el.setAttribute(attr,val)}};
   let desc=document.querySelector('meta[name="description"]'); if(!desc){desc=document.createElement('meta');desc.name='description';document.head.appendChild(desc)} desc.content=description||'';
+  let robotsMeta=document.querySelector('meta[name="robots"]'); if(!robotsMeta){robotsMeta=document.createElement('meta');robotsMeta.name='robots';document.head.appendChild(robotsMeta)} robotsMeta.content=robots||'index,follow';
   let can=document.querySelector('link[rel="canonical"]');if(!can){can=document.createElement('link');can.rel='canonical';document.head.appendChild(can)}can.href=canonical;
   const og=(name,val)=>{let el=document.querySelector(`meta[property="${name}"]`);if(!el){el=document.createElement('meta');el.setAttribute('property',name);document.head.appendChild(el)}el.content=val||''};
   og('og:title',title||'CivilCareer');og('og:description',description||'');og('og:url',canonical);og('og:type',type);if(image)og('og:image',image);
@@ -243,7 +244,7 @@ openJob=function(j,push=true){
   const location=jobLocs(j).join(', ')||j.location_display||j.location||'';
   const description=short(String(j.description||`${j.role||'Civil engineering opportunity'} at ${j.company||'an employer'}. ${location}`),300);
   window.__ccJobSeo={company:j.company||j.recruitment_authority||'Employer',companyUrl:j.company_url||j.company_website||'',location,employmentType:j.employment_type||'',validThrough:j.deadline||j.expires_at||''};
-  ccSeoMeta({title,description,type:'JobPosting',published:pubDate(j),modified:j.updated_at||j.last_verified||pubDate(j),breadcrumbs:[{name:'Home',path:'/'},{name:govJob(j)?'Government Jobs':'Civil Jobs',path:govJob(j)?'/government-jobs':'/private-jobs'},{name:j.role||'Job',path:jobPath(j)}]});
+  ccSeoMeta({title,description,type:closed?'Article':'JobPosting',published:pubDate(j),modified:j.updated_at||j.last_verified||pubDate(j),robots:closed?'noindex,follow':'index,follow',breadcrumbs:[{name:'Home',path:'/'},{name:govJob(j)?'Government Jobs':'Civil Jobs',path:govJob(j)?'/government-jobs':'/private-jobs'},{name:j.role||'Job',path:jobPath(j)}]});
   return result;
 };
 function govJob(j){return ['Government','Public Sector'].includes(j.sector)}
