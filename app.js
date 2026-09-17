@@ -652,7 +652,7 @@ async function discoverJobs(){
   try{
     const data=await api('/api/discovery',{method:'POST',key:adminKey,body:JSON.stringify({q,location,type,limit:20})});
     renderDiscoveryResults(data.results||[]);
-    discoveryStatus(`${Number(data.count||0)} web leads found${data.sources?` · Google ${data.sources.google||0} · DuckDuckGo ${data.sources.duckduckgo||0} · News ${data.sources.google_news||0}`:''}. Click Create draft & review to fetch and fill the job editor.`,'show');
+    discoveryStatus(`${Number(data.count||0)} web leads found${data.sources?` · Google ${data.sources.google||0} · Bing ${data.sources.bing||0} · Duck ${data.sources.duckduckgo||0} · Yahoo ${data.sources.yahoo||0} · News ${data.sources.google_news||0} · Free news ${data.sources.jobicy||0}`:''}. Click Create draft & review to fetch and fill the job editor.`,'show');
   }catch(e){
     renderDiscoveryResults([]);
     discoveryStatus(e.message||'Web discovery failed.','error');
