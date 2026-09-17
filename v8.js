@@ -190,6 +190,80 @@ renderAdminLists = function(emp, res, reports) {
   });
 };
 
+
+/* National portal SEO + crawlable content enhancements */
+function ccSeoMeta({title,description,type='website',image='',published='',modified='',breadcrumbs=[]}={}){
+  const base='https://civilcareer-india-two.vercel.app';
+  const canonical=base+location.pathname+location.search;
+  document.title=title||'CivilCareer';
+  const set=(sel,attr,val)=>{let el=document.querySelector(sel);if(!el){el=document.createElement('meta');if(sel.includes('property=')){el.setAttribute('property',attr)}else{el.setAttribute('name',attr)}document.head.appendChild(el)}else{el.setAttribute(attr,val)}};
+  let desc=document.querySelector('meta[name="description"]'); if(!desc){desc=document.createElement('meta');desc.name='description';document.head.appendChild(desc)} desc.content=description||'';
+  let can=document.querySelector('link[rel="canonical"]');if(!can){can=document.createElement('link');can.rel='canonical';document.head.appendChild(can)}can.href=canonical;
+  const og=(name,val)=>{let el=document.querySelector(`meta[property="${name}"]`);if(!el){el=document.createElement('meta');el.setAttribute('property',name);document.head.appendChild(el)}el.content=val||''};
+  og('og:title',title||'CivilCareer');og('og:description',description||'');og('og:url',canonical);og('og:type',type);if(image)og('og:image',image);
+  const tw=(name,val)=>{let el=document.querySelector(`meta[name="${name}"]`);if(!el){el=document.createElement('meta');el.name=name;document.head.appendChild(el)}el.content=val||''};tw('twitter:title',title||'CivilCareer');tw('twitter:description',description||'');if(image)tw('twitter:image',image);
+  let old=document.getElementById('cc-dynamic-jsonld');if(old)old.remove();
+  const graph=[];
+  if(breadcrumbs.length){graph.push({'@context':'https://schema.org','@type':'BreadcrumbList','itemListElement':breadcrumbs.map((b,i)=>({'@type':'ListItem','position':i+1,'name':b.name,'item':base+b.path}))})}
+  if(type==='JobPosting'){
+    const data=window.__ccJobSeo||{};
+    graph.push(Object.assign({'@context':'https://schema.org','@type':'JobPosting','title':title,'description':description,'url':canonical,'datePosted':published||undefined,'dateModified':modified||published||undefined,'hiringOrganization':{'@type':'Organization','name':data.company||'Employer','sameAs':data.companyUrl||undefined},'jobLocation':data.location?{'@type':'Place','address':{'@type':'PostalAddress','addressLocality':data.location}}:undefined,'employmentType':data.employmentType||undefined},data.validThrough?{'validThrough':data.validThrough}:{}));
+  } else if(type==='Article'){
+    graph.push({'@context':'https://schema.org','@type':'Article','headline':title,'description':description,'url':canonical,'datePublished':published||undefined,'dateModified':modified||published||undefined,'publisher':{'@type':'Organization','name':'CivilCareer','url':base}});
+  }
+  if(graph.length){const sc=document.createElement('script');sc.type='application/ld+json';sc.id='cc-dynamic-jsonld';sc.textContent=JSON.stringify(graph.length===1?graph[0]:{'@context':'https://schema.org','@graph':graph});document.head.appendChild(sc)}
+}
+
+const oldJobCardV8=jobCard;
+jobCard=function(j,gov=false){
+  const html=oldJobCardV8(j,gov);
+  const path=jobPath(j);
+  return html.replace(`<button data-job="${j.id}">View Details</button>`,`<a class="detail-link" href="${esc(path)}" data-dynamic-route="true">View Details</a>`);
+};
+
+const oldExamCardV8=examCard;
+examCard=function(x){
+  const html=oldExamCardV8(x);
+  const title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en;
+  const slug=x.slug||String(x.code||title||'exam').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return html.replace(`<button data-exam="${x.id}">View Complete Details</button>`,`<a class="detail-link" href="/exams/${esc(slug)}" data-dynamic-route="true">View Complete Details</a>`);
+};
+
+const oldMaterialCardV8=materialCard;
+materialCard=function(m){
+  const html=oldMaterialCardV8(m);
+  const path=materialPath(m);
+  return html.replace(`<button data-material-id="${m.id}">Preview</button>`,`<a class="detail-link" href="${esc(path)}" data-dynamic-route="true">Preview</a>`);
+};
+
+const oldOpenJobSeo=openJob;
+openJob=function(j,push=true){
+  const result=oldOpenJobSeo(j,push);
+  const title=`${j.role||'Civil Engineering Job'} | CivilCareer`;
+  const location=jobLocs(j).join(', ')||j.location_display||j.location||'';
+  const description=short(String(j.description||`${j.role||'Civil engineering opportunity'} at ${j.company||'an employer'}. ${location}`),300);
+  window.__ccJobSeo={company:j.company||j.recruitment_authority||'Employer',companyUrl:j.company_url||j.company_website||'',location,employmentType:j.employment_type||'',validThrough:j.deadline||j.expires_at||''};
+  ccSeoMeta({title,description,type:'JobPosting',published:pubDate(j),modified:j.updated_at||j.last_verified||pubDate(j),breadcrumbs:[{name:'Home',path:'/'},{name:govJob(j)?'Government Jobs':'Civil Jobs',path:govJob(j)?'/government-jobs':'/private-jobs'},{name:j.role||'Job',path:jobPath(j)}]});
+  return result;
+};
+function govJob(j){return ['Government','Public Sector'].includes(j.sector)}
+
+const oldOpenExamSeo=openExam;
+openExam=function(x,push=true){
+  const result=oldOpenExamSeo(x,push);
+  const title0=lang==='kn'&&x.title_kn?x.title_kn:x.title_en||x.code||'Government Exam';
+  ccSeoMeta({title:`${title0} | CivilCareer`,description:short(String(x.overview||x.eligibility_en||`Government recruitment exam information for ${title0}.`),300),type:'Article',published:x.created_at||x.published_at||'',modified:x.updated_at||x.last_verified||x.created_at||'',breadcrumbs:[{name:'Home',path:'/'},{name:'Government Exams',path:'/exams'},{name:title0,path:`/exams/${x.slug||String(x.code||title0).toLowerCase().replace(/[^a-z0-9]+/g,'-')}`} ]});
+  return result;
+};
+
+const oldOpenMaterialSeo=openMaterialDedicated;
+openMaterialDedicated=function(m,push=true){
+  const result=oldOpenMaterialSeo(m,push);
+  const title0=lang==='kn'&&m.title_kn?m.title_kn:(m.title_en||m.title||'Study resource');
+  ccSeoMeta({title:`${title0} | CivilCareer`,description:short(String(m.description_en||m.description||`Free study material on ${m.category||'civil engineering and competitive exams'}.`),300),type:'Article',published:m.created_at||'',modified:m.updated_at||m.created_at||'',breadcrumbs:[{name:'Home',path:'/'},{name:'Study Materials',path:'/study-materials'},{name:title0,path:materialPath(m)}]});
+  return result;
+};
+
 async function routeV8() {
   const p=location.pathname;
   if(p.startsWith('/jobs/')){
