@@ -1,5 +1,5 @@
 // CivilCareer India — PWA Service Worker
-const CACHE_NAME = "civilcareer-2-0-wow-v2";
+const CACHE_NAME = "civilcareer-original-theme-repair-v2";
 
 const STATIC_ASSETS = [
   "/",

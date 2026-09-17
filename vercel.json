@@ -647,7 +647,7 @@
     },
     {
       "source": "/admin",
-      "destination": "/index.html"
+      "destination": "/admin.html"
     }
   ],
   "headers": [
