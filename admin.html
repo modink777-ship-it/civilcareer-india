@@ -121,6 +121,25 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   .field-grid label.wide{grid-column:auto}
   .email-detection{grid-template-columns:1fr}
 }
+
+.discovery-controls{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;margin-bottom:14px}
+.discovery-grid{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+.discovery-grid label{display:flex;flex-direction:column;gap:6px;color:#94a3b8;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.discovery-grid input,.discovery-grid select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font:inherit;text-transform:none;letter-spacing:normal}
+.discovery-note{color:#6a8aaa;font-size:.76rem;line-height:1.5;margin-top:10px}
+.discovery-status{display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:.8rem}
+.discovery-status.show{display:block;background:rgba(5,150,105,.12);color:#6ee7b7;border:1px solid rgba(5,150,105,.25)}
+.discovery-status.error{background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.discovery-results{display:grid;gap:9px}
+.discovery-result{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:14px 16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.discovery-result h4{font-size:.9rem;color:#fff;margin:0 0 5px;line-height:1.35}
+.discovery-result p{font-size:.74rem;color:#6a8aaa;margin:0 0 5px;line-height:1.45}
+.discovery-result a{font-size:.7rem;color:#c9973c;word-break:break-all}
+.discovery-actions{display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.discovery-score{display:inline-block;font-size:.65rem;color:#6ee7b7;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);padding:3px 6px;border-radius:999px;margin-left:5px}
+@media(max-width:850px){.discovery-grid{grid-template-columns:1fr 1fr}.discovery-grid .wide{grid-column:1/-1}.discovery-result{align-items:flex-start;flex-direction:column}.discovery-actions{width:100%}}
+@media(max-width:560px){.discovery-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 
@@ -161,6 +180,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 <div class="tabs" id="tabs">
   <button class="active" data-tab="analytics">Analytics</button>
   <button data-tab="jobs">Jobs</button>
+  <button data-tab="discovery">Discovery</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
@@ -241,6 +261,36 @@ Show expired
 <p style="color:#6a8aaa;font-size:.85rem">Loading jobs…</p>
 </div>
 
+
+</div>
+
+<div class="panel" id="panel-discovery">
+  <div class="discovery-controls">
+    <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Live web job discovery</p>
+    <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Find fresh civil-engineering vacancies from the web</h3>
+    <p class="discovery-note" style="margin-top:0">Searches public web results through free server-side readers. Nothing is published automatically. Use <b>Extract & review</b> to fetch the original page and run the AI extraction chain.</p>
+    <div class="discovery-grid" style="margin-top:14px">
+      <label class="wide">Search query
+        <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
+      </label>
+      <label>Location
+        <input id="discoveryLocation" placeholder="Bengaluru / Mumbai / India">
+      </label>
+      <label>Type
+        <select id="discoveryType">
+          <option value="all">All jobs</option>
+          <option value="private">Private</option>
+          <option value="government">Government</option>
+          <option value="mnc">MNC / large employers</option>
+        </select>
+      </label>
+      <button class="btn-gold" id="discoverySearchBtn" type="button">Search web</button>
+    </div>
+    <div class="discovery-status" id="discoveryStatus"></div>
+  </div>
+  <div id="discoveryResults" class="discovery-results">
+    <div class="dash-card"><p style="color:#6a8aaa;font-size:.82rem">Run a web search to discover fresh job leads.</p></div>
+  </div>
 </div>
 
 <div class="panel" id="panel-exams">
@@ -2198,6 +2248,84 @@ async function importExamPdf(){
   }
 }
 
+
+/* WEB DISCOVERY */
+function discoveryStatus(message,type='show'){
+  const el=$('discoveryStatus');
+  el.className=`discovery-status ${type}`;
+  el.textContent=message||'';
+}
+
+function renderDiscoveryResults(results){
+  const root=$('discoveryResults');
+  if(!results.length){
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No useful web results were returned. Try a broader query or another location.</p></div>';
+    return;
+  }
+  root.innerHTML=results.map((r,i)=>`
+    <article class="discovery-result">
+      <div style="min-width:0">
+        <h4>${esc(r.title||'Untitled vacancy')} <span class="discovery-score">Match ${Number(r.score||0)}</span></h4>
+        <p>${esc(r.snippet||'Web result — open the source to verify the vacancy details.')}</p>
+        <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>
+      </div>
+      <div class="discovery-actions">
+        <button class="btn-gold" type="button" onclick="discoverExtract(${i})">Extract & review</button>
+        <a class="btn-ghost" style="text-decoration:none" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a>
+      </div>
+    </article>`).join('');
+  window._discoveryResults=results;
+}
+
+async function discoverJobs(){
+  const btn=$('discoverySearchBtn');
+  const q=$('discoveryQuery').value.trim()||'civil engineering jobs India';
+  const location=$('discoveryLocation').value.trim();
+  const type=$('discoveryType').value;
+  btn.disabled=true;
+  const old=btn.textContent; btn.textContent='Searching…';
+  discoveryStatus('Searching public web sources…','show');
+  try{
+    const data=await api('/api/discovery',{
+      method:'POST',
+      key:adminKey,
+      body:JSON.stringify({q,location,type,limit:20})
+    });
+    renderDiscoveryResults(data.results||[]);
+    discoveryStatus(`${Number(data.count||0)} web leads found. Open the original source and verify before publishing.` ,'show');
+  }catch(e){
+    renderDiscoveryResults([]);
+    discoveryStatus(e.message||'Web discovery failed.','error');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
+
+async function discoverExtract(index){
+  const item=(window._discoveryResults||[])[index];
+  if(!item?.url)return;
+  discoveryStatus('Fetching the original vacancy page and extracting structured fields…','show');
+  try{
+    const data=await api('/api/extract',{
+      method:'POST',
+      key:adminKey,
+      body:JSON.stringify({url:item.url,text:''})
+    });
+    const x={...(data.extracted||data.job||{})};
+    x.source_url=x.source_url||item.url;
+    x.status='Active';
+    x.last_verified=new Date().toISOString().slice(0,10);
+    discoveryStatus(data.warning||`Extraction complete using ${data.source||'free AI/local fallback'}. Verify every field before saving.` ,'show');
+    jobEditor(x);
+  }catch(e){
+    discoveryStatus(`Could not extract this page: ${e.message}. You can still open the source and paste the vacancy text into the Jobs importer.`,'error');
+  }
+}
+
+$('discoverySearchBtn').onclick=discoverJobs;
+$('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+$('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+
 /* TABS */
 
 document
@@ -2222,6 +2350,10 @@ document
 
       $('panel-'+b.dataset.tab)
         .classList.add('active');
+      if(b.dataset.tab==='discovery' && !window._discoveryLoaded){
+        window._discoveryLoaded=true;
+        discoverJobs();
+      }
     };
   });
 
