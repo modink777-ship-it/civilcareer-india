@@ -22,3 +22,8 @@ Jina Reader basic usage is currently free without an API key, with a published b
 3. Publish only after checking the original source.
 4. For a single URL: Admin → Jobs → paste URL → Extract & fill fields.
 5. If a site blocks both direct fetch and the reader, paste the vacancy text; the extractor still organizes the fields.
+
+
+## Final Discovery Engine v1
+
+The discovery architecture was replaced with a multi-source engine using official/public sources, public search feeds, optional Groq/Gemini enrichment, duplicate detection, review-first drafts, source health, LinkedIn/Naukri external search shortcuts, and a scheduled GitHub Actions collector. LinkedIn/Naukri are not scraped without an authorized API/feed.
