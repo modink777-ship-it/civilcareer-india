@@ -4,8 +4,6 @@ const CACHE_NAME = "civilcareer-v4";
 const STATIC_ASSETS = [
   "/",
   "/private-jobs",
-  "/for-you",
-  "/admin",
   "/government-jobs",
   "/exams",
   "/study-materials",
