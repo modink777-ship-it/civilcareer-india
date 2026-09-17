@@ -1,5 +1,5 @@
 // CivilCareer India — PWA Service Worker
-const CACHE_NAME = "civilcareer-v8-web-discovery-mobile-fixed";
+const CACHE_NAME = "civilcareer-v9-discovery-drafts-expiry";
 
 const STATIC_ASSETS = [
   "/",
@@ -12,6 +12,8 @@ const STATIC_ASSETS = [
   "/styles.css",
   "/styles-patch.css",
   "/app.js",
+  "/discovery-v9.js",
+  "/visual-backgrounds.js",
   "/v8.js"
 ];
 

@@ -1037,3 +1037,61 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
   #mainNav.open a.route{width:100%!important;box-sizing:border-box!important;overflow:hidden!important;text-overflow:ellipsis!important}
 }
 @media (min-width:761px) and (max-width:1050px){#mainNav.open{top:calc(34px + 70px + 8px)!important}}
+
+/* ── Discovery review queue ── */
+.discovery-draft-queue{
+  margin:18px 0 22px;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fafc;
+}
+.discovery-queue-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:12px;
+}
+.discovery-queue-head h3{margin:2px 0 5px}
+.discovery-queue-head p:not(.eyebrow){margin:0;color:#64748b;font-size:12px}
+.discovery-draft-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:14px;
+  align-items:center;
+  padding:13px 0;
+  border-top:1px solid var(--line);
+}
+.discovery-draft-row strong{display:block;color:var(--navy);font-size:14px}
+.discovery-draft-row span,.discovery-draft-row small{display:block;color:#64748b;font-size:11px;margin-top:3px}
+.discovery-draft-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:720px}
+.discovery-duplicate{
+  margin-top:8px;
+  padding:8px 10px;
+  border-radius:7px;
+  background:#fff7ed;
+  color:#9a3412;
+  font-size:11px;
+  border:1px solid #fed7aa;
+}
+.admin-discovery-result.is-duplicate{border-left:3px solid #f59e0b}
+.empty-state.compact{padding:14px}
+
+/* Admin tabs remain usable on narrow screens without becoming a vertical wall. */
+.admin-tabs{
+  scrollbar-width:thin;
+  -webkit-overflow-scrolling:touch;
+}
+.admin-tabs button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:600px){
+  .discovery-queue-head{display:block}
+  .discovery-queue-head .btn{margin-top:10px;width:100%}
+  .discovery-draft-row{grid-template-columns:1fr}
+  .discovery-draft-row .mini-actions{width:100%}
+  .discovery-draft-row .mini-actions button{flex:1;min-height:40px}
+  .discovery-draft-row small{max-width:100%}
+  .admin-discovery-grid{grid-template-columns:1fr!important}
+  .admin-discovery-actions{flex-wrap:wrap}
+  .admin-discovery-actions .btn{min-height:42px}
+}

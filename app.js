@@ -569,7 +569,7 @@ async function loadAdmin(){
     const empSubs  = es.status==='fulfilled'?es.value.submissions||[]:[];
     const resSubs  = rs.status==='fulfilled'?rs.value.submissions||[]:[];
     const reports  = re.status==='fulfilled'?re.value.reports||[]:[];
-    renderAdminLists(empSubs,resSubs,reports);
+    renderAdminLists(empSubs,resSubs,reports); renderDiscoveryDrafts();
 
   }catch(err){
     if($('adminLoginStatus')){
@@ -592,6 +592,39 @@ function discoveryStatus(message,type='show'){
   el.className=`form-status ${type}`;
   el.textContent=message||'';
 }
+function normDiscovery(v){
+  return String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function discoveryDuplicate(item){
+  const iu=normDiscovery(item?.url).replace(/\/$/,'');
+  const it=normDiscovery(item?.title);
+  return jobs.find(j=>{
+    const ju=normDiscovery(j.source_url||j.apply_url).replace(/\/$/,'');
+    if(iu && ju && (iu===ju || iu.includes(ju) || ju.includes(iu))) return true;
+    const jt=normDiscovery(`${j.role||''} ${j.company||''} ${j.location||''}`);
+    return it && jt && (jt.includes(it) || it.includes(it.split(' ').slice(0,5).join(' ')));
+  }) || null;
+}
+function renderDiscoveryDrafts(){
+  const root=$('discoveryDrafts'); if(!root)return;
+  const drafts=(jobs||[]).filter(j=>!j.published || String(j.status||'').toLowerCase()==='draft')
+    .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  if(!drafts.length){
+    root.innerHTML='<div class="empty-state compact"><p>No unpublished drafts are waiting for review.</p></div>';
+    return;
+  }
+  root.innerHTML=drafts.slice(0,40).map(j=>`<article class="discovery-draft-row">
+    <div><strong>${esc(j.role||'Untitled civil vacancy')}</strong><span>${esc([j.company,j.location,j.sector].filter(Boolean).join(' · ')||'Details need review')}</span>
+    <small>${j.source_url?`Source: ${esc(j.source_url)}`:'No source URL recorded'}</small></div>
+    <div class="mini-actions"><button data-review-draft="${esc(j.id)}">Review</button><button data-publish-draft="${esc(j.id)}">Publish</button></div>
+  </article>`).join('');
+  $$('#discoveryDrafts [data-review-draft]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.reviewDraft))));
+  $$('#discoveryDrafts [data-publish-draft]').forEach(b=>b.onclick=async()=>{
+    const j=jobs.find(x=>String(x.id)===String(b.dataset.publishDraft)); if(!j)return;
+    if(!confirm('Publish this draft after verifying the original vacancy?'))return;
+    try{await api('/api/jobs',{method:'PATCH',key:adminKey,body:JSON.stringify({id:j.id,published:true,status:'Active',last_verified:new Date().toISOString().slice(0,10)})});toast('Draft published.');await loadData();await loadAdmin();}catch(e){toast(e.message)}
+  });
+}
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!root)return;
@@ -600,7 +633,11 @@ function renderDiscoveryResults(results){
     return;
   }
   window._ccDiscoveryResults=results;
-  root.innerHTML=results.map((r,i)=>`<article class="admin-discovery-result"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button><a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('');
+  root.innerHTML=results.map((r,i)=>{
+    const duplicate=discoveryDuplicate(r);
+    return `<article class="admin-discovery-result ${duplicate?'is-duplicate':''}"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>${duplicate?`<div class="discovery-duplicate">Already in CivilCareer: ${esc(duplicate.role||'existing job')} — review instead of creating another copy.</div>`:''}</div><div class="admin-discovery-actions">${duplicate?`<button class="btn secondary" type="button" data-discovery-existing="${esc(duplicate.id)}">Review existing</button>`:`<button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button>`}<a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`;
+  }).join('');
+  $$('#discoveryResults [data-discovery-existing]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.discoveryExisting))));
   $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
 async function discoverJobs(){
@@ -629,9 +666,11 @@ async function discoverExtract(index){
     const data=await api('/api/extract',{method:'POST',key:adminKey,body:JSON.stringify({url:item.url,text:''})});
     const x={...(data.extracted||data.job||{})};
     x.source_url=x.source_url||item.url;
-    x.status='Active';
+    x.status='Draft';
+    x.published=false;
+    x._discoveryDraft=true;
     x.last_verified=new Date().toISOString().slice(0,10);
-    discoveryStatus(data.warning||`Extraction complete using ${data.source||'free AI/local fallback'}. Verify every field before saving.`,'show');
+    discoveryStatus(data.warning||`Draft extracted using ${data.source||'free AI/local fallback'}. Verify the original vacancy before publishing.`,'show');
     jobEditor(x);
   }catch(e){
     discoveryStatus(`Could not extract this page: ${e.message}. Open the source and paste the vacancy text into the Jobs importer.`,'error');
@@ -644,6 +683,8 @@ function initDiscovery(){
   btn.onclick=discoverJobs;
   $('discoveryQuery')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}});
   $('discoveryLocation')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}});
+  $('refreshDiscoveryDrafts')?.addEventListener('click',async()=>{await loadData();await loadAdmin();});
+  renderDiscoveryDrafts();
 }
 
 function bars(rows,labelKey,valueKey){const max=Math.max(1,...rows.map(x=>Number(x[valueKey]||0)));return rows.length?rows.map(x=>`<div class="bar-row"><span>${esc(x[labelKey])}</span><div class="bar"><i style="width:${Math.max(3,Number(x[valueKey]||0)/max*100)}%"></i></div><b>${Number(x[valueKey]||0)}</b></div>`).join(''):'<p>No analytics data collected yet.</p>'}function renderAnalytics(a){$('analyticsPanel').innerHTML=`<div class="dash-card"><h3>Page views — last 7 days</h3>${bars(a.daily||[],'view_date','views')}</div><div class="dash-card"><h3>Devices</h3>${bars(a.devices||[],'device','visits')}</div><div class="dash-card"><h3>Top pages</h3>${bars(a.top_pages||[],'path','views')}</div><div class="dash-card"><h3>Traffic sources</h3>${bars(a.traffic_sources||[],'source','visits')}</div><div class="dash-card"><h3>Countries</h3>${bars(a.countries||[],'country','visits')}</div><div class="dash-card"><h3>Search activity</h3><p><strong>${Number(a.searches_month||0).toLocaleString('en-IN')}</strong> searches this month. Raw search terms are not stored for privacy.</p></div>`}
@@ -679,7 +720,7 @@ async function pdfText(file){
 async function importExamPdf(){const file=$('importExamPdf').files[0];if(!file)return importStatus('importExamStatus','Select an official PDF first.','error');if(file.size>20*1024*1024)return importStatus('importExamStatus','Please use a PDF smaller than 20 MB.','error');const btn=$('importExamBtn');btn.disabled=true;btn.textContent='Reading…';importStatus('importExamStatus','Extracting text from the PDF…');try{const text=await pdfText(file);importStatus('importExamStatus','Organizing notification fields…');const data=await api('/api/exam-extract',{method:'POST',key:adminKey,body:JSON.stringify({text})});const x=data.exam||{};x.last_verified=new Date().toISOString().slice(0,10);importStatus('importExamStatus',data.warning||'Extraction complete. Verify every field.','success');examEditor(x)}catch(err){importStatus('importExamStatus',err.message,'error')}finally{btn.disabled=false;btn.textContent='Read PDF'}}
 function jobEditor(j={}){
   const catOptions=ROLE_HEADS.map(h=>`<option value="${h.id}" ${classifyJob(j)===h.id?'selected':''}>${h.icon} ${h.label}</option>`).join('');
-  $('editorTitle').textContent=j.id?'Edit opportunity':'Add opportunity';
+  $('editorTitle').textContent=j._discoveryDraft?'Review web discovery draft':(j.id?'Edit opportunity':'Add opportunity');
   $('editorBody').innerHTML=`<form class="panel-form" id="jobEdit"><div class="field-grid">
     <label>Type<select name="sector"><option ${j.sector==='Private'?'selected':''}>Private</option><option ${j.sector==='Government'?'selected':''}>Government</option><option ${j.sector==='Public Sector'?'selected':''}>Public Sector</option></select></label>
     <label>Role category<select name="role_category">${catOptions}</select></label>
@@ -715,21 +756,23 @@ function jobEditor(j={}){
     e.preventDefault();
     const d=formObject(e.target);
     d.featured=e.target.featured.checked;
-    d.published=true;
-    if(!d.status)d.status='Active';
+    if(!d.status)d.status=j._discoveryDraft?'Draft':'Active';
+    d.published=j._discoveryDraft ? d.status==='Active' : true;
     if(j.id)d.id=j.id;
     try{
       await api('/api/jobs',{method:j.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});
       if(j._submission)await api('/api/employer-submissions',{method:'PATCH',key:adminKey,body:JSON.stringify({id:j._submission,status:'Approved'})});
-      // Auto-post to Telegram for NEW jobs only (not edits)
-      if(!j.id){
+      // Auto-post only genuinely published NEW jobs. Discovery drafts never alert users.
+      if(!j.id && d.published){
         try{
-          const tgRes=await api('/api/telegram',{method:'POST',key:adminKey,body:JSON.stringify({job:d})});
+          await api('/api/telegram',{method:'POST',key:adminKey,body:JSON.stringify({job:d})});
           toast('✅ Job saved and posted to Telegram!');
         }catch(tgErr){
           toast('✅ Job saved. Telegram error: '+tgErr.message);
           console.error('Telegram error:',tgErr);
         }
+      } else if(!j.id){
+        toast('Draft saved. Review it before publishing.');
       } else {
         toast('Opportunity updated.');
       }
