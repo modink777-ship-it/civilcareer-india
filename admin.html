@@ -388,11 +388,9 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    throw Error(
-      data.error ||
-      data.details ||
-      `Request failed (${r.status})`
-    );
+    const msg = data.error || `Request failed (${r.status})`;
+    const detail = data.details ? ` — ${data.details}` : '';
+    throw Error(msg + detail);
   }
 
   return data;
