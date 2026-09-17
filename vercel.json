@@ -626,40 +626,12 @@
       "destination": "/index.html"
     },
     {
-      "source": "/exam-guides",
-      "destination": "/exam-guides.html"
+      "source": "/job-alerts",
+      "destination": "/job-alerts.html"
     },
     {
-      "source": "/exam-guides/civil-engineering-exam-preparation-roadmap",
-      "destination": "/guides/exam-civil-engineering-exam-preparation-roadmap.html"
-    },
-    {
-      "source": "/exam-guides/civil-engineering-technical-subjects-checklist",
-      "destination": "/guides/exam-civil-engineering-technical-subjects-checklist.html"
-    },
-    {
-      "source": "/exam-guides/civil-engineering-aptitude-preparation-guide",
-      "destination": "/guides/exam-civil-engineering-aptitude-preparation-guide.html"
-    },
-    {
-      "source": "/exam-guides/civil-engineering-previous-paper-strategy",
-      "destination": "/guides/exam-civil-engineering-previous-paper-strategy.html"
-    },
-    {
-      "source": "/exam-guides/civil-engineering-exam-revision-plan",
-      "destination": "/guides/exam-civil-engineering-exam-revision-plan.html"
-    },
-    {
-      "source": "/exam-guides/government-recruitment-eligibility-checklist",
-      "destination": "/guides/exam-government-recruitment-eligibility-checklist.html"
-    },
-    {
-      "source": "/exam-guides/civil-engineering-exam-document-checklist",
-      "destination": "/guides/exam-civil-engineering-exam-document-checklist.html"
-    },
-    {
-      "source": "/exam-guides/verify-government-job-notification",
-      "destination": "/guides/exam-verify-government-job-notification.html"
+      "source": "/career-tools",
+      "destination": "/career-tools.html"
     },
     {
       "source": "/jobs/:slug",
