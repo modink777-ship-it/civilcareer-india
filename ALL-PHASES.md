@@ -18,3 +18,7 @@ Unsplash states that its standard images are free for most commercial uses witho
 
 ## New public route
 `/career-hub` is the new Civil Engineer Career Command Center.
+
+
+## Career Hub status
+Temporarily hidden from public navigation and routing. Feature code remains preserved for future relaunch.

@@ -72,6 +72,13 @@
       img('photo-1772300164438-f73307d3b645'),
       img('photo-1777919393730-463e2c0b7f4c')
     ],
+    careerhub:[
+      img('photo-1773643331861-96242b012c3f'),
+      img('photo-1777919393730-463e2c0b7f4c'),
+      img('photo-1781613977789-6453baf7cfe8'),
+      img('photo-1772300164438-f73307d3b645'),
+      img('photo-1768677903496-becc4be07258')
+    ],
     admin:[
       img('photo-1781613977789-6453baf7cfe8'),
       img('photo-1768677903496-becc4be07258'),
@@ -91,6 +98,7 @@
     about:['RESIDENTIAL','CONCRETE','INDUSTRIAL / EPC'],
     search:['PROJECT DELIVERY','RESIDENTIAL','REINFORCEMENT'],
     report:['STEEL WORK','COMMERCIAL','CONCRETE'],
+    careerhub:['RESIDENTIAL','CONCRETE & REINFORCEMENT','INDUSTRIAL / EPC','COMMERCIAL','STEEL & STRUCTURAL'],
     admin:['INDUSTRIAL / EPC','REINFORCEMENT','PROJECT DELIVERY']
   };
 
@@ -101,7 +109,7 @@
   function targets(){
     const active=document.querySelector('.page.active');
     if(!active)return [];
-    const hero=active.querySelector('.hero');
+    const hero=active.querySelector('.hero, .careerhub-hero');
     const pageHero=active.querySelector('.page-hero');
     if(hero||pageHero)return [hero,pageHero].filter(Boolean);
     let visual=active.querySelector(':scope > .cc-page-visual');
@@ -126,7 +134,7 @@
   }
   function routeNow(){
     const p=location.pathname.replace(/\/$/,'')||'/';
-    return ({'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin'})[p]||'home';
+    return ({'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin','/career-hub':'careerhub'})[p]||'home';
   }
   function setImage(route,position,imageIndex){
     const el=layers.get(position); if(!el)return;
@@ -180,8 +188,10 @@
   }
   const observer=new MutationObserver(()=>{requestAnimationFrame(refresh)});
   function init(){
-    observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
     refresh();
+    setTimeout(refresh,120);
+    setTimeout(refresh,600);
     window.addEventListener('popstate',refresh);
     document.addEventListener('click',()=>setTimeout(refresh,80),true);
   }

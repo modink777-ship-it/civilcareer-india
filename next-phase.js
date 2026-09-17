@@ -4,6 +4,8 @@
  */
 (function(){
   'use strict';
+  // Career Hub temporarily hidden by product decision; kept in code for a future relaunch.
+  const CAREER_HUB_ENABLED=false;
   const q=s=>document.querySelector(s), qa=s=>[...document.querySelectorAll(s)];
   const esc2=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const getJobs=()=>{try{return Array.isArray(jobs)?jobs:[]}catch{return []}};
@@ -49,7 +51,7 @@
     if(id==='health'){const b=q('#runHealth');if(b&&!b.dataset.wired){b.dataset.wired='1';b.addEventListener('click',runHealth)}}
   }
   async function runHealth(){const out=q('#healthOut');if(!out)return;out.innerHTML='Running…';const checks=[['Jobs API','/api/jobs'],['Discovery API','/api/discovery'],['Alerts API','/api/alerts'],['Analytics API','/api/analytics']];const rows=[];for(const [name,url] of checks){try{const r=await fetch(url,{headers:{'x-owner-key':adminKey}});rows.push(`<div class="health-row"><b>${name}</b><span class="${r.ok?'health-ok':'health-bad'}">${r.status} ${r.ok?'OK':'CHECK'}</span></div>`)}catch(e){rows.push(`<div class="health-row"><b>${name}</b><span class="health-bad">NETWORK ERROR</span></div>`)}}out.innerHTML=rows.join('')}
-  function boot(){addPage();addNav();addAdmin();if(typeof pathRoute==='object'){pathRoute['/career-hub']='careerhub';routePath['careerhub']='/career-hub';metas.careerhub=['Civil Engineer Career Hub | CivilCareer','Personalized civil engineering jobs, skills, exams, interview preparation and free career resources.']}qa('[data-route="careerhub"]').forEach(a=>{if(a.dataset.nextWired)return;a.dataset.nextWired='1';a.addEventListener('click',e=>{e.preventDefault();if(typeof navigate==='function')navigate('careerhub')})});if(location.pathname==='/career-hub'&&typeof navigate==='function')navigate('careerhub',false);initHub();qa('#adminTabs [data-admin]').forEach(()=>{});}
+  function boot(){if(!CAREER_HUB_ENABLED){document.querySelectorAll('[data-page=\"careerhub\"],[data-route=\"careerhub\"]').forEach(el=>el.remove());return;}addPage();addNav();addAdmin();if(typeof pathRoute==='object'){pathRoute['/career-hub']='careerhub';routePath['careerhub']='/career-hub';metas.careerhub=['Civil Engineer Career Hub | CivilCareer','Personalized civil engineering jobs, skills, exams, interview preparation and free career resources.']}qa('[data-route="careerhub"]').forEach(a=>{if(a.dataset.nextWired)return;a.dataset.nextWired='1';a.addEventListener('click',e=>{e.preventDefault();if(typeof navigate==='function')navigate('careerhub')})});if(location.pathname==='/career-hub'&&typeof navigate==='function')navigate('careerhub',false);initHub();qa('#adminTabs [data-admin]').forEach(()=>{});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
   window.CivilCareerNextPhase={renderHub,loadAdminPanel,runHealth};
 })();
