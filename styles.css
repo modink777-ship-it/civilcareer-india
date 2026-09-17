@@ -982,3 +982,8 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .admin-tabs{scrollbar-width:thin;overflow-x:auto}
 .admin-tabs button[data-admin="discovery"]{background:#ecfdf5;color:#047857;border-color:#a7f3d0;font-weight:850}
 .admin-tabs button[data-admin="discovery"].active{background:#059669;color:#fff;border-color:#059669}
+
+/* FINAL RELEASE HARDENING */
+.page[data-page="foryou"] .page-hero .foryou-profile-btn { background:#10b981 !important; background-color:#10b981 !important; color:#fff !important; border-color:#10b981 !important; opacity:1 !important; }
+.page[data-page="foryou"] .page-hero .foryou-profile-btn:hover { background:#059669 !important; background-color:#059669 !important; color:#fff !important; }
+.discovery-source-note{margin:14px 0 4px;padding:12px 14px;border:1px solid #d8e6df;border-radius:10px;background:#f7fcfa;color:#536174;font-size:13px;line-height:1.55}.discovery-source-note b{color:#0f766e}

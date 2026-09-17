@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CivilCareer Admin</title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/styles.css?v=cc-final-6-14-15-16">
 
 <style>
 body{background:#0b1f3a;min-height:100vh;display:flex;flex-direction:column}
@@ -161,6 +161,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 <div class="tabs" id="tabs">
   <button class="active" data-tab="analytics">Analytics</button>
   <button data-tab="jobs">Jobs</button>
+  <button data-tab="discovery">🛰 Discovery</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
@@ -173,7 +174,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   </div>
 </div>
 
-<div class="panel" id="panel-discovery"><div class="discovery-admin-card"><p style="color:#0f766e;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em">Free public-source discovery</p><h2>🛰️ Fetch jobs for review</h2><p>Fetch available civil-engineering vacancies from configured public sources. Every result stays Pending Review / Draft until you publish it.</p><button class="btn-gold discovery-fetch-btn" id="standaloneDiscoveryBtn">Fetch new jobs now</button><div id="standaloneDiscoveryStatus" class="import-status"></div></div></div>
+<div class="panel" id="panel-discovery"><div class="discovery-admin-card"><p style="color:#0f766e;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em">Free public-source discovery</p><h2>🛰️ Fetch jobs for review</h2><p>Fetch available civil-engineering vacancies from configured public sources. Every result stays Pending Review / Draft until you publish it.</p><div class="discovery-source-note"><b>Current free sources:</b> Indeed India RSS (civil, site, quantity surveying, planning, structural) and Google News RSS (civil jobs, Bengaluru civil jobs, government civil recruitment, Karnataka civil recruitment).</div><button class="btn-gold discovery-fetch-btn" id="standaloneDiscoveryBtn">Fetch new jobs now</button><div id="standaloneDiscoveryStatus" class="import-status"></div></div></div>
 
 <div class="panel" id="panel-jobs">
 
@@ -2229,7 +2230,7 @@ document
 
 /* AUTO LOGIN */
 
-async function runStandaloneDiscovery(){const b=document.getElementById('standaloneDiscoveryBtn'),s=document.getElementById('standaloneDiscoveryStatus');if(!b)return;b.disabled=true;b.textContent='Fetching…';s.textContent='Checking public sources…';try{const d=await api('/api/discover',{method:'POST',key:adminKey,body:JSON.stringify({})});s.textContent=d.message||'Discovery complete. Open Jobs to review drafts.';s.className='import-status show success';if(typeof loadData==='function')await loadData();if(typeof loadAdmin==='function')await loadAdmin();}catch(e){s.textContent=e.message;s.className='import-status show error'}finally{b.disabled=false;b.textContent='Fetch new jobs now'}}
+async function runStandaloneDiscovery(){const b=document.getElementById('standaloneDiscoveryBtn'),s=document.getElementById('standaloneDiscoveryStatus');if(!b)return;b.disabled=true;b.textContent='Fetching…';s.textContent='Checking public sources…';try{const d=await api('/api/jobs',{method:'POST',key:adminKey,body:JSON.stringify({action:'discover'})});s.textContent=d.message||'Discovery complete. Open Jobs to review drafts.';s.className='import-status show success';if(typeof loadData==='function')await loadData();if(typeof loadAdmin==='function')await loadAdmin();}catch(e){s.textContent=e.message;s.className='import-status show error'}finally{b.disabled=false;b.textContent='Fetch new jobs now'}}
 
 window.addEventListener(
   'DOMContentLoaded',
