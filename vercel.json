@@ -582,6 +582,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/jobs/:slug",
+      "destination": "/api/job-page?slug=:slug"
+    },
+    {
       "source": "/jobs/:path*",
       "destination": "/api/job/:path*"
     },
