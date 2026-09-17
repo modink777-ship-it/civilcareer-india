@@ -931,57 +931,12 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 @media(max-width:800px){.landing-layout{grid-template-columns:1fr}.landing-side{grid-template-columns:1fr 1fr}.landing-side .landing-panel:first-child{grid-column:1/-1}}
 @media(max-width:520px){.landing-side{grid-template-columns:1fr}.landing-hero .hero-actions{flex-direction:column;align-items:stretch}.landing-hero .btn{text-align:center}}
 
-
-/* ═══════════════════════════════════════════════════════════
-   CIVILCAREER PHOTO ENHANCEMENT — preserves the existing theme
-   Visuals are used to explain the civil-engineering work, not
-   replace the existing layout or navigation.
-═══════════════════════════════════════════════════════════ */
-.hero-photo-wrap{position:relative;margin:-4px -4px 22px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.16);background:#0b1f3a;box-shadow:0 14px 34px rgba(0,0,0,.18)}
-.hero-photo{display:block;width:100%;height:185px;object-fit:cover;filter:saturate(.98) contrast(1.02);transition:transform .45s ease}
-.hero-panel:hover .hero-photo{transform:scale(1.035)}
-.hero-photo-wrap:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 42%,rgba(5,15,30,.72) 100%);pointer-events:none}
-.hero-photo-tag{position:absolute;z-index:2;left:13px;bottom:12px;color:#fff;background:rgba(7,21,46,.72);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 9px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(6px)}
-
-.field-showcase{padding:62px 0 70px;background:#fff;border-top:1px solid #e7edf3;border-bottom:1px solid #e7edf3}
-.field-showcase .section-head{margin-bottom:24px}
-.field-intro{max-width:430px;margin:0;color:#64748b;font-size:14px;line-height:1.65}
-.field-grid{display:grid;grid-template-columns:1.25fr .75fr .75fr;grid-template-rows:230px 180px;gap:13px}
-.field-card{position:relative;display:block;overflow:hidden;border-radius:15px;border:1px solid #dfe6ef;background:#dbe4ec;min-height:180px;text-decoration:none;box-shadow:0 4px 18px rgba(15,23,42,.06)}
-.field-card-large{grid-row:1 / span 2}
-.field-card img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .5s ease,filter .35s ease}
-.field-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,18,34,.02) 20%,rgba(7,18,34,.78) 100%);transition:.3s ease}
-.field-card:hover img{transform:scale(1.045);filter:saturate(1.05)}
-.field-card:hover:after{background:linear-gradient(180deg,rgba(7,18,34,.06) 15%,rgba(7,18,34,.84) 100%)}
-.field-overlay{position:absolute;z-index:2;left:18px;right:18px;bottom:16px;color:#fff}
-.field-overlay b{display:block;font-size:17px;line-height:1.2}
-.field-overlay small{display:block;margin-top:5px;color:rgba(255,255,255,.78);font-size:11px}
-
-.page-photo-strip{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;margin-top:25px;margin-bottom:12px;padding:0!important;border:1px solid #dfe6ef;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 7px 24px rgba(15,23,42,.06)}
-.page-photo-strip.reverse{grid-template-columns:.85fr 1.15fr}
-.page-photo-strip.reverse img{order:2}
-.page-photo-strip img{width:100%;height:235px;object-fit:cover;display:block}
-.page-photo-strip>div{padding:26px 30px}
-.page-photo-strip h2{font-size:25px;margin:0 0 9px;color:#0b1f3a}
-.page-photo-strip p{margin:0;color:#64748b;font-size:14px;line-height:1.65}
-.page-photo-strip.compact img{height:190px}
-.page-photo-strip.compact>div{padding:22px 28px}
-
-@media(max-width:900px){
-  .field-grid{grid-template-columns:1fr 1fr;grid-template-rows:250px 180px}
-  .field-card-large{grid-column:1/-1;grid-row:auto}
-  .field-intro{max-width:none}
-  .page-photo-strip,.page-photo-strip.reverse{grid-template-columns:1fr}
-  .page-photo-strip.reverse img{order:0}
-}
-@media(max-width:600px){
-  .hero-photo-wrap{margin:-3px -3px 18px}
-  .hero-photo{height:165px}
-  .field-showcase{padding:48px 0 54px}
-  .field-grid{grid-template-columns:1fr;grid-template-rows:220px 185px 185px 185px}
-  .field-card-large{grid-column:auto;grid-row:auto}
-  .field-overlay b{font-size:16px}
-  .page-photo-strip img,.page-photo-strip.compact img{height:180px}
-  .page-photo-strip>div,.page-photo-strip.compact>div{padding:21px}
-  .page-photo-strip h2{font-size:22px}
-}
+/* CivilCareer Civil-Engineering identity enhancement — additive only */
+.civil-visuals{padding:72px 0 24px;background:#fff;border-top:1px solid #e8edf3;border-bottom:1px solid #e8edf3}.visual-lead{max-width:720px;color:#64748b;font-size:1.03rem;margin:10px 0 28px}.civil-photo-grid{display:grid;grid-template-columns:1.25fr .9fr .9fr;grid-template-rows:220px 220px;gap:12px}.civil-photo-card{position:relative;overflow:hidden;border-radius:16px;min-height:180px;background:#123;text-decoration:none;background-size:cover;background-position:center;display:flex;align-items:flex-end;box-shadow:0 12px 28px rgba(15,23,42,.08)}.civil-photo-card:first-child{grid-row:span 2}.photo-site{background-image:url('https://images.unsplash.com/photo-1763665814710-b0067b823603?auto=format&fit=crop&w=1400&q=82')}.photo-structure{background-image:url('https://images.unsplash.com/photo-1773050832107-90cda3a03603?auto=format&fit=crop&w=1000&q=82')}.photo-infra{background-image:url('https://images.unsplash.com/photo-1769284022654-66c6b07dae78?auto=format&fit=crop&w=1000&q=82')}.photo-water{background-image:url('https://images.unsplash.com/photo-1763665814778-82543e6be5e8?auto=format&fit=crop&w=1000&q=82')}.civil-photo-card .photo-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,21,46,.05) 20%,rgba(7,21,46,.82) 100%);transition:.2s}.civil-photo-card>div{position:relative;z-index:1;padding:20px;color:#fff}.civil-photo-card small{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#b8d8f5;font-weight:800}.civil-photo-card strong{display:block;font-size:25px;line-height:1.1;margin:5px 0}.civil-photo-card span:not(.photo-overlay){display:block;font-size:12px;color:#d7e2ed}.civil-photo-card:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(15,23,42,.15)}.civil-photo-card:hover .photo-overlay{background:linear-gradient(180deg,rgba(7,21,46,.02) 10%,rgba(7,21,46,.9) 100%)}.quick-card:nth-child(4){border-top:3px solid #1769e0}.quick-card:nth-child(5){border-top:3px solid #0b9f6e}.hero{background-image:linear-gradient(90deg,rgba(7,21,46,.94) 0%,rgba(7,21,46,.78) 48%,rgba(7,21,46,.38) 100%),url('https://images.unsplash.com/photo-1773050832107-90cda3a03603?auto=format&fit=crop&w=2000&q=84')!important;background-size:cover!important;background-position:center 48%!important}.hero-lines{opacity:.16}.hero-panel{backdrop-filter:blur(5px)}
+@media(max-width:900px){.civil-photo-grid{grid-template-columns:1fr 1fr;grid-template-rows:220px 220px}.civil-photo-card:first-child{grid-row:auto;grid-column:1/-1}}
+@media(max-width:600px){.civil-visuals{padding:54px 0 18px}.civil-photo-grid{grid-template-columns:1fr;grid-template-rows:repeat(4,210px)}.civil-photo-card:first-child{grid-column:auto}.civil-photo-card strong{font-size:22px}}
+/* Contextual construction photography on key CivilCareer pages — keeps the existing page layout */
+[data-page="private"] .page-hero{background-image:linear-gradient(90deg,rgba(7,21,46,.92),rgba(7,21,46,.66)),url('https://images.unsplash.com/photo-1763665814710-b0067b823603?auto=format&fit=crop&w=1800&q=82');background-size:cover;background-position:center 42%;border-radius:0 0 18px 18px}
+[data-page="government"] .page-hero{background-image:linear-gradient(90deg,rgba(7,21,46,.93),rgba(7,21,46,.62)),url('https://images.unsplash.com/photo-1769284022654-66c6b07dae78?auto=format&fit=crop&w=1800&q=82');background-size:cover;background-position:center 48%;border-radius:0 0 18px 18px}
+[data-page="exams"] .page-hero{background-image:linear-gradient(90deg,rgba(7,21,46,.94),rgba(7,21,46,.68)),url('https://images.unsplash.com/photo-1773050832107-90cda3a03603?auto=format&fit=crop&w=1800&q=82');background-size:cover;background-position:center 46%;border-radius:0 0 18px 18px}
+[data-page="materials"] .page-hero{background-image:linear-gradient(90deg,rgba(7,21,46,.94),rgba(7,21,46,.66)),url('https://images.unsplash.com/photo-1763665814778-82543e6be5e8?auto=format&fit=crop&w=1800&q=82');background-size:cover;background-position:center 45%;border-radius:0 0 18px 18px}
