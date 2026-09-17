@@ -818,6 +818,7 @@ if(searchBtn)searchBtn.onclick=()=>{
 // Wire featured org tiles
 $$('.org-tile[data-route]').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});
 if ("serviceWorker" in navigator) {
+  window.addEventListener("load",()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}));
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/service-worker.js")
