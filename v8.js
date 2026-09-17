@@ -268,15 +268,23 @@ async function routeV8() {
   const p=location.pathname;
   if(p.startsWith('/jobs/')){
     const slug=decodeURIComponent(p.slice('/jobs/'.length));
-    let j=jobs.find(x=>x.slug===slug);
-    if(!j){try{j=(await api('/api/jobs?slug='+encodeURIComponent(slug))).job}catch{}}
+    let j=jobs.find(x=>x.slug===slug || jobPath(x).split('/').pop()===slug);
+    if(!j){
+      try{j=(await api('/api/jobs?slug='+encodeURIComponent(slug))).job}catch{}
+    }
+    // Older jobs may not have a stored slug. Our generated URLs end with the
+    // database id, so use that as a durable fallback for existing links.
+    if(!j){
+      const last=slug.split('-').pop();
+      if(last) { try{j=(await api('/api/jobs?id='+encodeURIComponent(last))).job}catch{} }
+    }
     if(j)return openJob(j,false);
     $('jobDetailPage').innerHTML='<article class="dedicated-card"><h1>Job not found</h1><p>This opportunity may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/private-jobs" class="route" data-route="private">Browse active jobs</a></div></article>';
     return activateDynamic('jobDetail',p,false);
   }
   if(p.startsWith('/exams/')){
     const slug=decodeURIComponent(p.slice('/exams/'.length));
-    let x=exams.find(e=>(e.slug||String(e.code||e.title_en).toLowerCase().replace(/[^a-z0-9]+/g,'-'))===slug);
+    let x=exams.find(e=>(e.slug||String(e.code||e.title_en).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''))===slug);
     if(!x){try{x=(await api('/api/exams?slug='+encodeURIComponent(slug))).exam}catch{}}
     if(x)return openExam(x,false);
     $('examDetailPage').innerHTML='<article class="dedicated-card"><h1>Exam not found</h1><p>This recruitment page may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/exams" class="route" data-route="exams">Browse exams</a></div></article>';
@@ -293,6 +301,16 @@ async function routeV8() {
 }
 
 openMaterial=function(m,push=true){return openMaterialDedicated(m,push)};
+
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-dynamic-route]');
+  if(!a || e.defaultPrevented || e.button!==0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target==='_blank') return;
+  const href=a.getAttribute('href');
+  if(!href || !href.startsWith('/')) return;
+  e.preventDefault();
+  history.pushState({},'',href);
+  routeV8();
+});
 
 onpopstate = routeV8;
 setTimeout(() => {
