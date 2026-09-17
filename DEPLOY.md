@@ -22,7 +22,7 @@ This build implements the final master specification as a focused Phase 1 MVP. I
 1. In Supabase SQL Editor, run all of `supabase-v7.sql` once.
 2. Replace the GitHub repository contents with this package while preserving the existing environment variables.
 3. Verify Vercel has `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `OWNER_KEY` for Production.
-4. Optional AI exam extraction: add `GEMINI_API_KEY`. Never expose it in GitHub or screenshots.
+4. For resilient AI job extraction, keep `OWNER_KEY` and add any free-capable provider keys you have: `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` (free router only), and/or `HF_TOKEN`. The importer tries configured providers in order and falls back automatically. Never expose keys in GitHub or screenshots. See `AI-EXTRACTION-FALLBACKS.md`.
 5. Vercel deploys automatically after the commit.
 
 ## Admin

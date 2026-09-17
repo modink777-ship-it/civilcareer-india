@@ -1788,7 +1788,7 @@ async function importJobLink(){
 
   setImportStatus(
     'importJobStatus',
-    'Analyzing vacancy with Groq AI…'
+    'Analyzing vacancy with the free AI fallback chain…'
   );
 
   try{
@@ -1982,7 +1982,7 @@ async function importJobLink(){
 
       `Extraction complete using ${
         data.source||'AI'
-      }. Verify every field before saving.`,
+      }. Verify every field before saving.${data.warning?' '+data.warning:''}`,
 
       'success'
     );
