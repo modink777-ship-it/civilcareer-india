@@ -993,3 +993,47 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .cc-page-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,18,36,.72),rgba(255,255,255,.98) 92%);z-index:2}
 .form-page,.article-page,.admin-page{position:relative;z-index:3}
 @media(max-width:760px){.cc-page-visual{height:260px}.cc-page-visual .cc-bg-layer.is-active{opacity:.18!important}}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE NAV + DISCOVERY RELIABILITY POLISH
+   The mobile navigation is a compact two-column panel instead of
+   a tall single vertical stack that covers the hero.
+═══════════════════════════════════════════════════════════════ */
+@media (max-width:1050px){
+  .site-header{z-index:80!important}
+  #mainNav{z-index:90!important;box-sizing:border-box!important}
+  #mainNav.open{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;align-items:stretch!important;max-height:calc(100vh - 132px)!important;overflow-y:auto!important;overflow-x:hidden!important;padding:10px!important}
+  #mainNav.open a.route{display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:44px!important;padding:10px 12px!important;font-size:.82rem!important;border:1px solid #e5eaf0!important;background:#f9fbfd!important;border-radius:9px!important;white-space:normal!important;line-height:1.2!important}
+  #mainNav.open a.route:hover,#mainNav.open a.route.active{background:#eef7f4!important;border-color:#a8dfcb!important;color:#0b1f3a!important}
+}
+@media (max-width:520px){
+  #mainNav.open{left:10px!important;right:10px!important;top:104px!important;grid-template-columns:1fr 1fr!important}
+  #mainNav.open a.route{min-height:42px!important;font-size:.76rem!important;padding:9px 10px!important}
+  .menu-btn{min-width:40px!important;width:40px!important}
+}
+
+/* Discovery admin controls/results stay usable on narrow screens. */
+.admin-discovery-grid{display:grid;grid-template-columns:1.6fr 1fr .8fr auto;gap:10px;align-items:end}
+.admin-discovery-grid label{display:block;font-size:12px;font-weight:750;color:var(--navy)}
+.admin-discovery-grid input,.admin-discovery-grid select{width:100%;margin-top:5px;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff;color:var(--ink)}
+.admin-discovery-result{display:grid;grid-template-columns:1fr auto;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.admin-discovery-result h4{margin:0;color:var(--navy);font-size:15px}
+.admin-discovery-result p{margin:7px 0;color:var(--muted);font-size:12px;line-height:1.55}
+.source-url{font-size:11px;color:var(--blue);word-break:break-all}
+.admin-discovery-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.admin-discovery-score{display:inline-flex;margin-left:6px;padding:2px 7px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:10px;vertical-align:middle}
+@media(max-width:760px){
+  .admin-discovery-grid{grid-template-columns:1fr}
+  .admin-discovery-grid .btn{width:100%}
+  .admin-discovery-result{grid-template-columns:1fr}
+  .admin-discovery-actions{justify-content:stretch}
+  .admin-discovery-actions .btn{flex:1;min-width:130px}
+}
+
+/* Final mobile navigation containment: never let nav links stack into a long overlay. */
+@media (max-width:1050px){
+  .nav{position:relative!important}
+  #mainNav.open{position:fixed!important;display:grid!important;grid-template-columns:1fr 1fr!important;right:10px!important;left:10px!important;top:calc(34px + 64px + 6px)!important;width:auto!important;flex:none!important;max-width:calc(100vw - 20px)!important;max-height:calc(100vh - 120px)!important;overflow:auto!important;z-index:200!important}
+  #mainNav.open a.route{width:100%!important;box-sizing:border-box!important;overflow:hidden!important;text-overflow:ellipsis!important}
+}
+@media (min-width:761px) and (max-width:1050px){#mainNav.open{top:calc(34px + 70px + 8px)!important}}

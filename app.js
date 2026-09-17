@@ -600,7 +600,7 @@ function renderDiscoveryResults(results){
     return;
   }
   window._ccDiscoveryResults=results;
-  root.innerHTML=results.map((r,i)=>`<article class="admin-discovery-result"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${i}">Extract & review</button><a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('');
+  root.innerHTML=results.map((r,i)=>`<article class="admin-discovery-result"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button><a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('');
   $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
 async function discoverJobs(){
@@ -615,7 +615,7 @@ async function discoverJobs(){
   try{
     const data=await api('/api/discovery',{method:'POST',key:adminKey,body:JSON.stringify({q,location,type,limit:20})});
     renderDiscoveryResults(data.results||[]);
-    discoveryStatus(`${Number(data.count||0)} web leads found. Verify the original vacancy before saving or publishing.`,'show');
+    discoveryStatus(`${Number(data.count||0)} web leads found${data.sources?` · Google ${data.sources.google||0} · DuckDuckGo ${data.sources.duckduckgo||0} · News ${data.sources.google_news||0}`:''}. Click Create draft & review to fetch and fill the job editor.`,'show');
   }catch(e){
     renderDiscoveryResults([]);
     discoveryStatus(e.message||'Web discovery failed.','error');
@@ -624,7 +624,7 @@ async function discoverJobs(){
 async function discoverExtract(index){
   const item=(window._ccDiscoveryResults||[])[index];
   if(!item?.url)return;
-  discoveryStatus('Fetching the original vacancy page and extracting structured fields…','show');
+  discoveryStatus('Fetching the original vacancy page, then building a reviewable draft…','show');
   try{
     const data=await api('/api/extract',{method:'POST',key:adminKey,body:JSON.stringify({url:item.url,text:''})});
     const x={...(data.extracted||data.job||{})};
@@ -756,7 +756,7 @@ if($('govScopeChips'))$$('#govScopeChips button').forEach(b=>b.onclick=()=>{$$('
 
 // Edu chips for private jobs
 if($('privEduChips')){$$('#privEduChips button').forEach(b=>b.onclick=()=>{$$('#privEduChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});}$$('#examChips button').forEach(b=>b.onclick=()=>{$$('#examChips button').forEach(x=>x.classList.toggle('active',x===b));renderExams(b.dataset.code)});$$('.material-tabs button').forEach(b=>b.onclick=()=>{$$('.material-tabs button').forEach(x=>x.classList.toggle('active',x===b));renderMaterials(b.dataset.material)});
-wireForm('employerForm','/api/employer-submissions');wireForm('resourceForm','/api/resource-submissions',d=>({...d,permission_confirmed:document.querySelector('#resourceForm [name="permission_confirmed"]').checked}));wireForm('reportForm','/api/reports');$('adminLogin').onclick=async()=>{adminKey=$('adminKey').value;sessionStorage.setItem('cc_admin',adminKey);await showAdmin()};$('adminLogout').onclick=()=>{sessionStorage.removeItem('cc_admin');adminKey='';showAdmin()};$$('#adminTabs button').forEach(b=>b.onclick=()=>{$$('#adminTabs button').forEach(x=>x.classList.toggle('active',x===b));$$('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===b.dataset.admin));if(b.dataset.admin==='discovery'){initDiscovery();if(!window._ccDiscoveryLoaded){window._ccDiscoveryLoaded=true;discoverJobs()}}});$('addJob').onclick=()=>jobEditor();$('addExam').onclick=()=>examEditor();$('addMaterial').onclick=()=>materialEditor();$('importJobBtn').onclick=importJobLink;$('importJobUrl').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();importJobLink()}};$('importExamBtn').onclick=importExamPdf;$('clearJobImport').onclick=()=>{$('importJobUrl').value='';$('importJobText').value='';$('importJobStatus').className='form-status';$('importJobStatus').textContent=''};
+wireForm('employerForm','/api/employer-submissions');wireForm('resourceForm','/api/resource-submissions',d=>({...d,permission_confirmed:document.querySelector('#resourceForm [name="permission_confirmed"]').checked}));wireForm('reportForm','/api/reports');$('adminLogin').onclick=async()=>{adminKey=$('adminKey').value;sessionStorage.setItem('cc_admin',adminKey);await showAdmin()};$('adminLogout').onclick=()=>{sessionStorage.removeItem('cc_admin');adminKey='';showAdmin()};$$('#adminTabs button').forEach(b=>b.onclick=()=>{$$('#adminTabs button').forEach(x=>x.classList.toggle('active',x===b));$$('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===b.dataset.admin));if(b.dataset.admin==='discovery'){initDiscovery()}});$('addJob').onclick=()=>jobEditor();$('addExam').onclick=()=>examEditor();$('addMaterial').onclick=()=>materialEditor();$('importJobBtn').onclick=importJobLink;$('importJobUrl').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();importJobLink()}};$('importExamBtn').onclick=importExamPdf;$('clearJobImport').onclick=()=>{$('importJobUrl').value='';$('importJobText').value='';$('importJobStatus').className='form-status';$('importJobStatus').textContent=''};
 translate();navigate(pathRoute[location.pathname]||'home',false);loadData();
 // Hide admin link from public
 const adminFooterLink=document.querySelector('.admin-footer-link');
