@@ -20,6 +20,14 @@ renderGovernment=function(){let a=jobs.filter(j=>['Government','Public Sector'].
 jobCard=function(j,gov=false){const closed=!active(j),loc=jobLocs(j).join(' · ')||j.location_display||j.location;return`<article class="job-card"><div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date">${ago(pubDate(j))}</span></div><h3>${esc(j.role)}</h3><div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div><div class="card-meta"><span>${esc(loc||'Location in source')}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p class="card-copy">${esc(short(j.description||'Verify details at the original source.'))}</p><div class="card-actions"><button data-job="${j.id}">View Details</button></div></article>`}
 function activateDynamic(name,path,push=true){route=name;$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));if(push)history.pushState({},'',path);scrollTo(0,0)}
 function jobPath(j){return`/jobs/${j.slug||String(j.role||'job').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+j.id}`}
+function materialPath(m){return`/study-materials/${String(m.slug||m.title_en||'resource').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)}-${m.id}`}
+function openMaterialDedicated(m,push=true){
+  if(!m)return;
+  const title=lang==='kn'&&m.title_kn?m.title_kn:(m.title_en||m.title||'Study resource');
+  const url=m.file_url||m.pdf_url||m.preview_url||'';
+  $('materialDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">Study material · ${esc(m.category||'Civil Engineering')}</div><h1>${esc(title)}</h1>${m.author?`<p class="detail-lead">By ${esc(m.author)}</p>`:''}<div class="detail-grid"><div class="detail"><b>Category</b>${esc(m.category||'Study resource')}</div>${m.subject?`<div class="detail"><b>Subject / Topic</b>${esc(m.subject)}</div>`:''}${m.page_count?`<div class="detail"><b>Pages</b>${esc(m.page_count)}</div>`:''}<div class="detail full"><b>Description</b>${richText(m.description_en||m.description||'Open the resource to review its contents.')}</div></div><div class="card-actions">${url?`<a href="${esc(url)}" target="_blank" rel="noopener">OPEN RESOURCE ↗</a>`:''}${m.preview_url&&m.preview_url!==url?`<a href="${esc(m.preview_url)}" target="_blank" rel="noopener">Preview ↗</a>`:''}</div><div class="callout">Only use materials shared by their owner or with appropriate permission.</div></article>`;
+  activateDynamic('materialDetail',materialPath(m),push);document.title=`${title} | CivilCareer`;
+}
 openJob=function(j,push=true){if(!j)return;const closed=!active(j),email=!j.application_email_private&&j.application_email,loc=jobLocs(j).join(' · ')||j.location_display||j.location;$('jobDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">${closed?'Expired opportunity':'Verified opportunity'} · ${ago(pubDate(j))}</div><h1>${esc(j.role)}</h1><p class="detail-lead">${esc(j.company||'Organization')} · ${esc(loc||'Location in source')}</p>${closed?'<div class="expired-banner">This opportunity has expired and is retained for transparency. Do not treat it as open.</div>':''}<div class="detail-grid"><div class="detail"><b>Qualifications</b>${esc(jobQuals(j).join(' · ')||'Check source')}</div><div class="detail"><b>Experience</b>${esc(jobExps(j).join(' · ')||'Not stated')}</div><div class="detail"><b>Employment</b>${esc(jobTypes(j).join(' · ')||'Not stated')}</div><div class="detail"><b>Published</b>${date(String(pubDate(j)).slice(0,10))}</div><div class="detail full"><b>Description</b>${richText(j.description)}</div>${j.responsibilities?`<div class="detail full"><b>Responsibilities</b>${richText(j.responsibilities)}</div>`:''}${j.skills?`<div class="detail full"><b>Skills</b>${richText(j.skills)}</div>`:''}</div>${email?`<div class="email-apply"><b>Apply via Email</b><span>${esc(email)}</span><button data-copy-email="${esc(email)}">Copy email</button><a href="mailto:${esc(email)}">Email Application</a></div>`:''}<div class="card-actions"><a href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a><a href="${esc(j.source_url)}" target="_blank" rel="noopener">View original source ↗</a></div><div class="callout">Always verify the job, deadline and application instructions at the original source. Never pay for a job.</div></article>`;activateDynamic('jobDetail',jobPath(j),push);document.title=`${j.role} — ${j.company||'CivilCareer'}`;$$('[data-copy-email]').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copyEmail).then(()=>toast('Email copied.')))}
 openExam=function(x,push=true){if(!x)return;const title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('examDetailPage').innerHTML=`<article class="dedicated-card exam-detail-page"><div class="detail-kicker">${closed?'Application Closed':esc(x.status||'Active')} · Last verified ${date(x.last_verified)}</div><h1>${esc(title)}</h1><p class="detail-lead">${esc(x.authority||'Authority in notification')}</p>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Quick Information</h3><div class="exam-overview"><div><b>Authority</b>${esc(x.authority||'Check source')}</div><div><b>Vacancies</b>${esc(x.vacancy_count||'Not stated')}</div><div><b>Qualification</b>${richText(x.eligibility_en)}</div><div><b>Application fee</b>${richText(x.application_fee)}</div></div></section>${examSection('Important Dates',x.important_dates_details)}${examSection('Eligibility',x.eligibility_en)}${examSection('Vacancies',x.vacancy_breakdown)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('Application Process',x.how_to_apply)}<section class="exam-detail-section"><h3>Official Links</h3><div class="card-actions">${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank">Official Website ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank">Official Notification ↗</a>`:''}${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank">Apply Online ↗</a>`:''}</div></section><div class="callout">Always verify dates, eligibility and application instructions in the official notification before applying.</div></article>`;const p=`/exams/${x.slug||String(x.code||title).toLowerCase().replace(/[^a-z0-9]+/g,'-')}`;activateDynamic('examDetail',p,push);document.title=`${title} | CivilCareer`}
 function scanEmails(){const found=emailList($('importJobText').value),sel=$('detectedEmailSelect'),manual=$('importApplicationEmail');sel.innerHTML=found.length?found.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join(''):'<option value="">No valid email detected</option>';if(found.length&&!manual.value)manual.value=found[0]}
@@ -183,24 +191,34 @@ renderAdminLists = function(emp, res, reports) {
 };
 
 async function routeV8() {
-  const p = location.pathname;
-  if (p.startsWith('/jobs/')) {
-    const slug = p.split('/').pop();
-    let j = jobs.find(x => x.slug === slug);
-    if (!j) {
-      try {
-        j = (await api('/api/jobs?slug=' + encodeURIComponent(slug))).job;
-      } catch {}
-    }
-    if (j) return openJob(j, false);
+  const p=location.pathname;
+  if(p.startsWith('/jobs/')){
+    const slug=decodeURIComponent(p.slice('/jobs/'.length));
+    let j=jobs.find(x=>x.slug===slug);
+    if(!j){try{j=(await api('/api/jobs?slug='+encodeURIComponent(slug))).job}catch{}}
+    if(j)return openJob(j,false);
+    $('jobDetailPage').innerHTML='<article class="dedicated-card"><h1>Job not found</h1><p>This opportunity may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/private-jobs" class="route" data-route="private">Browse active jobs</a></div></article>';
+    return activateDynamic('jobDetail',p,false);
   }
-  if (p.startsWith('/exams/')) {
-    const slug = p.split('/').pop();
-    const x = exams.find(e => (e.slug || String(e.code || e.title_en).toLowerCase().replace(/[^a-z0-9]+/g, '-')) === slug);
-    if (x) return openExam(x, false);
+  if(p.startsWith('/exams/')){
+    const slug=decodeURIComponent(p.slice('/exams/'.length));
+    let x=exams.find(e=>(e.slug||String(e.code||e.title_en).toLowerCase().replace(/[^a-z0-9]+/g,'-'))===slug);
+    if(!x){try{x=(await api('/api/exams?slug='+encodeURIComponent(slug))).exam}catch{}}
+    if(x)return openExam(x,false);
+    $('examDetailPage').innerHTML='<article class="dedicated-card"><h1>Exam not found</h1><p>This recruitment page may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/exams" class="route" data-route="exams">Browse exams</a></div></article>';
+    return activateDynamic('examDetail',p,false);
   }
-  navigate(pathRoute[p] || 'home', false);
+  if(p.startsWith('/study-materials/')){
+    const slug=decodeURIComponent(p.slice('/study-materials/'.length));
+    const m=materials.find(x=>materialPath(x).split('/').pop()===slug || `${String(x.title_en||x.title||'resource').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)}-${x.id}`===slug);
+    if(m)return openMaterialDedicated(m,false);
+    $('materialDetailPage').innerHTML='<article class="dedicated-card"><h1>Resource not found</h1><p>This study resource may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/study-materials" class="route" data-route="materials">Browse study materials</a></div></article>';
+    return activateDynamic('materialDetail',p,false);
+  }
+  navigate(pathRoute[p]||'home',false);
 }
+
+openMaterial=function(m,push=true){return openMaterialDedicated(m,push)};
 
 onpopstate = routeV8;
 setTimeout(() => {

@@ -41,3 +41,9 @@ alter table public.job_role_master enable row level security;
 alter table public.qualification_master enable row level security;
 update public.jobs set posted_at=coalesce(posted_at,created_at,now()), published_at=coalesce(published_at,created_at,now()), location_display=coalesce(location_display,location), role_normalized=coalesce(role_normalized,role), verification_status=case when last_verified is not null then 'Verified' else verification_status end, last_verified_at=coalesce(last_verified_at,last_verified::timestamptz), qualifications=case when jsonb_array_length(qualifications)=0 and qualification is not null then jsonb_build_array(qualification) else qualifications end, experience_ranges=case when jsonb_array_length(experience_ranges)=0 and experience_level is not null then jsonb_build_array(experience_level) else experience_ranges end, employment_types=case when jsonb_array_length(employment_types)=0 and employment_type is not null then jsonb_build_array(employment_type) else employment_types end, application_email=coalesce(application_email,case when contact_info ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$' then contact_info else null end) where posted_at is null or published_at is null or location_display is null or role_normalized is null;
 update public.jobs set expires_at=case when sector in ('Government','Public Sector') and deadline is not null then (deadline::timestamptz + interval '1 day') else coalesce(expires_at,published_at + interval '30 days') end where expires_at is null;
+
+-- Optional stable slugs for indexable exam/resource URLs. Runtime also derives slugs for existing rows.
+alter table public.exams add column if not exists slug text;
+alter table public.materials add column if not exists slug text;
+create index if not exists exams_slug_idx on public.exams(slug);
+create index if not exists materials_slug_idx on public.materials(slug);
