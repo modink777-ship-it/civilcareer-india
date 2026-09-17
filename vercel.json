@@ -578,60 +578,12 @@
       "destination": "/index.html"
     },
     {
-      "source": "/career-guides",
-      "destination": "/career-guides.html"
-    },
-    {
-      "source": "/career-guides/civil-engineer-career-india",
-      "destination": "/guides/civil-engineer-career-india.html"
-    },
-    {
-      "source": "/career-guides/civil-engineer-salary-india",
-      "destination": "/guides/civil-engineer-salary-india.html"
-    },
-    {
-      "source": "/career-guides/site-engineer-career-guide",
-      "destination": "/guides/site-engineer-career-guide.html"
-    },
-    {
-      "source": "/career-guides/quantity-surveyor-career-guide",
-      "destination": "/guides/quantity-surveyor-career-guide.html"
-    },
-    {
-      "source": "/career-guides/planning-engineer-career-guide",
-      "destination": "/guides/planning-engineer-career-guide.html"
-    },
-    {
-      "source": "/career-guides/bim-engineer-career-guide",
-      "destination": "/guides/bim-engineer-career-guide.html"
-    },
-    {
-      "source": "/career-guides/qa-qc-civil-engineer-guide",
-      "destination": "/guides/qa-qc-civil-engineer-guide.html"
-    },
-    {
-      "source": "/career-guides/civil-engineering-interview-questions",
-      "destination": "/guides/civil-engineering-interview-questions.html"
-    },
-    {
-      "source": "/career-guides/karnataka-government-civil-jobs-guide",
-      "destination": "/guides/karnataka-government-civil-jobs-guide.html"
-    },
-    {
-      "source": "/career-guides/civil-engineering-job-application-checklist",
-      "destination": "/guides/civil-engineering-job-application-checklist.html"
-    },
-    {
       "source": "/exams/:path*",
       "destination": "/index.html"
     },
     {
       "source": "/job-alerts",
       "destination": "/job-alerts.html"
-    },
-    {
-      "source": "/career-tools",
-      "destination": "/career-tools.html"
     },
     {
       "source": "/jobs/:slug",
