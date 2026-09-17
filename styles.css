@@ -937,10 +937,10 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
    Preserve original theme; enhance only.
    ========================================================== */
 .hero{
-  background-image:linear-gradient(90deg,rgba(7,22,43,.93) 0%,rgba(7,22,43,.78) 48%,rgba(7,22,43,.40) 100%),url("https://images.unsplash.com/photo-1773050832107-90cda3a03603?auto=format&fit=crop&w=2200&q=82")!important;
+  background-image:linear-gradient(90deg,rgba(7,22,43,.93) 0%,rgba(7,22,43,.78) 48%,rgba(7,22,43,.40) 100%),url("https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Kauri_side%2C_Chenab_Bridge_in_2016_2.jpg?width=2200")!important;
   background-size:cover!important;background-position:center!important;color:#fff;
 }
-.hero-lines{opacity:.12!important}
+.hero{background-position:center 48%!important}.hero-lines{opacity:.12!important}
 .hero .eyebrow{color:#62dfb1!important}.hero h1,.hero h2{color:#fff!important}.hero .lead{color:#e1eaf4!important}.hero .scope{color:#d8e3ee!important}
 .hero-panel{background:rgba(255,255,255,.10)!important;border:1px solid rgba(255,255,255,.24)!important;border-left:3px solid #27c58a!important;backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(0,0,0,.18)!important}.hero-panel blockquote,.hero-panel p{color:#fff!important}.hero-panel .panel-label{color:#67e0b5!important}
 .hero .btn.secondary{background:rgba(255,255,255,.10)!important;color:#fff!important;border-color:rgba(255,255,255,.48)!important}.hero .btn.secondary:hover{background:rgba(255,255,255,.18)!important}
@@ -966,3 +966,30 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 [data-page="materials"] .material-tabs button{font-weight:700}
 @media(max-width:900px){.private-market-strip{grid-template-columns:1fr 1fr}.page-hero{padding-left:24px!important;padding-right:24px!important}.hero-grid{grid-template-columns:1fr}.hero-panel{margin-top:20px}}
 @media(max-width:600px){.private-market-strip{grid-template-columns:1fr}.page-hero{padding-top:48px!important;padding-bottom:42px!important}.page-hero h1{font-size:2.35rem!important}.private-scope-chips,.gov-scope-chips{overflow:auto;flex-wrap:nowrap;padding-bottom:4px}.private-scope-chips button,.gov-scope-chips button{white-space:nowrap}.hero{background-position:62% center!important}.hero-grid{padding:55px 0 65px!important}}
+
+/* ═══════════════════════════════════════════════════════════════
+   CINEMATIC CIVIL-ENGINEERING PHOTO ROTATORS
+   Visual-only background layers; content remains above them.
+═══════════════════════════════════════════════════════════════ */
+.hero,.page-hero{isolation:isolate;background-image:none!important;position:relative;overflow:hidden}
+.cc-bg-layer{position:absolute;inset:0;z-index:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transform:scale(1.035);transition:opacity 1.35s ease,transform 7s ease;pointer-events:none}
+.cc-bg-layer.is-active{opacity:1;transform:scale(1)}
+.hero .hero-lines{z-index:1}
+.hero .hero-grid{z-index:3}
+.hero:after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(5,18,36,.94) 0%,rgba(7,24,46,.82) 42%,rgba(7,24,46,.55) 72%,rgba(7,24,46,.38) 100%),linear-gradient(0deg,rgba(5,18,36,.72),rgba(5,18,36,.08) 48%,rgba(5,18,36,.45));}
+.hero-lines{opacity:.16!important}
+.hero .eyebrow{color:#55ddb0!important}.hero h1{color:#fff!important}.hero .lead{color:#e1eaf3!important}.hero .scope{color:#dce8f3!important}.hero .scope i{background:#55ddb0!important}
+.hero-panel{background:rgba(22,42,66,.62)!important;border:1px solid rgba(255,255,255,.22)!important;border-left:3px solid #10b981!important;backdrop-filter:blur(12px);box-shadow:0 22px 60px rgba(0,0,0,.22)!important}.hero-panel blockquote,.hero-panel p{color:#fff!important}.panel-label{color:#55ddb0!important}.hero-mini-stats span{color:#c8d5e2!important}.hero-mini-stats b{color:#fff!important}
+.page-hero:before{z-index:1!important;background:linear-gradient(90deg,rgba(5,18,36,.93) 0%,rgba(7,24,46,.76) 52%,rgba(7,24,46,.48) 100%)!important}
+.page-hero>*{position:relative;z-index:3!important}
+.page-hero .cc-bg-label,.hero .cc-bg-label{position:absolute!important;left:24px;bottom:18px;z-index:4!important;color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
+@media(max-width:760px){.hero:after{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68)),linear-gradient(0deg,rgba(5,18,36,.76),rgba(5,18,36,.1))}.page-hero:before{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68))!important}.cc-bg-layer{background-position:center}.page-hero .cc-bg-label,.hero .cc-bg-label{left:16px;bottom:12px}}
+@media(prefers-reduced-motion:reduce){.cc-bg-layer{transition:none!important;transform:none!important}}
+
+/* Background visual for utility/form/article pages without a dedicated hero. */
+.page{position:relative;overflow:hidden}
+.cc-page-visual{position:absolute!important;left:0;right:0;top:0;height:330px;z-index:0!important;overflow:hidden;pointer-events:none;background:#0b1f3a}
+.cc-page-visual .cc-bg-layer{opacity:0!important}.cc-page-visual .cc-bg-layer.is-active{opacity:.24!important}
+.cc-page-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,18,36,.72),rgba(255,255,255,.98) 92%);z-index:2}
+.form-page,.article-page,.admin-page{position:relative;z-index:3}
+@media(max-width:760px){.cc-page-visual{height:260px}.cc-page-visual .cc-bg-layer.is-active{opacity:.18!important}}
