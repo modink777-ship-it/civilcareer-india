@@ -218,3 +218,76 @@
 
   setTimeout(()=>{installSearchPanel();updateSavedCount();},250);
 })();
+
+/* CivilCareer National SEO landing pages — zero-cost, data-driven discovery */
+const CC_SEO_LOCATIONS={
+  bengaluru:{name:'Bengaluru',state:'Karnataka',slug:'bengaluru'},
+  mumbai:{name:'Mumbai',state:'Maharashtra',slug:'mumbai'},
+  delhi:{name:'Delhi',state:'Delhi',slug:'delhi'},
+  hyderabad:{name:'Hyderabad',state:'Telangana',slug:'hyderabad'},
+  chennai:{name:'Chennai',state:'Tamil Nadu',slug:'chennai'},
+  pune:{name:'Pune',state:'Maharashtra',slug:'pune'},
+  ahmedabad:{name:'Ahmedabad',state:'Gujarat',slug:'ahmedabad'},
+  kolkata:{name:'Kolkata',state:'West Bengal',slug:'kolkata'},
+  kochi:{name:'Kochi',state:'Kerala',slug:'kochi'},
+  noida:{name:'Noida',state:'Uttar Pradesh',slug:'noida'},
+  gurugram:{name:'Gurugram',state:'Haryana',slug:'gurugram'},
+  jaipur:{name:'Jaipur',state:'Rajasthan',slug:'jaipur'}
+};
+const CC_SEO_ROLES={
+  'civil-engineer':{name:'Civil Engineer',terms:['civil engineer','civil engineering']},
+  'site-engineer':{name:'Site Engineer',terms:['site engineer','site engineering']},
+  'quantity-surveyor':{name:'Quantity Surveyor',terms:['quantity surveyor','qs','quantity surveying']},
+  'planning-engineer':{name:'Planning Engineer',terms:['planning engineer','planning']},
+  'structural-engineer':{name:'Structural Engineer',terms:['structural engineer','structural']},
+  'bim-engineer':{name:'BIM Engineer',terms:['bim engineer','bim','building information modeling']},
+  'qa-qc-engineer':{name:'QA/QC Engineer',terms:['qa/qc','qa qc','quality engineer','quality control']},
+  'estimation-engineer':{name:'Estimation Engineer',terms:['estimation engineer','estimation','estimator']},
+  'project-engineer':{name:'Project Engineer',terms:['project engineer','project engineering']},
+  'junior-engineer':{name:'Junior Engineer',terms:['junior engineer','je']}
+};
+function ccSlugify(v){return String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}
+function ccLandingFromPath(path){
+  const p=String(path||'').replace(/\/+$/,'');
+  let m=p.match(/^\/civil-engineer-jobs-in-([a-z0-9-]+)$/);if(m){const loc=Object.values(CC_SEO_LOCATIONS).find(x=>x.slug===m[1]);if(loc)return{kind:'location',location:loc,slug:p.slice(1)}}
+  m=p.match(/^\/(.+)-jobs-in-([a-z0-9-]+)$/);if(m){const role=CC_SEO_ROLES[m[1]];const loc=Object.values(CC_SEO_LOCATIONS).find(x=>x.slug===m[2]);if(role&&loc)return{kind:'role-location',role,location:loc,slug:p.slice(1)}}
+  m=p.match(/^\/([a-z0-9-]+)-jobs$/);if(m&&CC_SEO_ROLES[m[1]])return{kind:'role',role:CC_SEO_ROLES[m[1]],slug:p.slice(1)};
+  return null;
+}
+function ccLandingJobs(role,location){
+  const rows=jobs.filter(j=>active(j)&&!['Government','Public Sector'].includes(j.sector));
+  const rt=role?role.terms.map(norm):[];
+  const lt=location?[location.name,location.state].map(norm):[];
+  return rows.map(j=>{
+    const text=norm([j.role,j.description,j.skills,j.qualifications,j.location,j.location_display,j.city,j.state,j.locations].flat().join(' '));
+    const placeText=norm([j.location,j.location_display,j.city,j.state,j.locations].flat().join(' '));
+    let score=0;
+    if(role&&rt.some(t=>text.includes(t)))score+=50;
+    if(location&&lt.some(t=>placeText.includes(t)))score+=45;
+    if(j.featured)score+=3;
+    return{j,score,roleHit:!role||rt.some(t=>text.includes(t)),locationHit:!location||lt.some(t=>placeText.includes(t))};
+  }).filter(x=>x.roleHit&&x.locationHit).sort((a,b)=>b.score-a.score||new Date(pubDate(b.j))-new Date(pubDate(a.j))).slice(0,12).map(x=>x.j);
+}
+
+function ccLandingMeta(data){
+  const base='https://civilcareer-india-two.vercel.app';
+  const canonical=base+location.pathname;
+  const title=data.title;const description=data.description;
+  document.title=title;
+  const setMeta=(sel,attr,val)=>{let el=document.querySelector(sel);if(!el){el=document.createElement('meta');el.setAttribute(attr==='content'?'name':'property',attr==='content'?'description':attr);document.head.appendChild(el)}el.content=val};
+  let d=document.querySelector('meta[name="description"]');if(!d){d=document.createElement('meta');d.name='description';document.head.appendChild(d)}d.content=description;
+  let c=document.querySelector('link[rel="canonical"]');if(!c){c=document.createElement('link');c.rel='canonical';document.head.appendChild(c)}c.href=canonical;
+  [['og:title',title],['og:description',description],['og:url',canonical],['og:type','website']].forEach(([k,v])=>{let e=document.querySelector(`meta[property="${k}"]`);if(!e){e=document.createElement('meta');e.setAttribute('property',k);document.head.appendChild(e)}e.content=v});
+  let old=document.getElementById('cc-dynamic-jsonld');if(old)old.remove();const sc=document.createElement('script');sc.type='application/ld+json';sc.id='cc-dynamic-jsonld';sc.textContent=JSON.stringify({'@context':'https://schema.org','@type':'CollectionPage','name':title,'description':description,'url':canonical,'isPartOf':{'@type':'WebSite','name':'CivilCareer','url':base}});document.head.appendChild(sc);
+}
+function renderNationalLanding(data){
+  let page=document.querySelector('[data-page="nationalLanding"]');
+  if(!page){page=document.createElement('section');page.className='page';page.dataset.page='nationalLanding';page.innerHTML='<div id="nationalLandingRoot"></div>';document.querySelector('main').appendChild(page)}
+  const root=$('nationalLandingRoot');const role=data.role,loc=data.location;const title=role&&loc?`${role.name} Jobs in ${loc.name}`:role?`${role.name} Jobs in India`: `Civil Engineering Jobs in ${loc.name}`;
+  const desc=role&&loc?`Find ${role.name.toLowerCase()} opportunities in ${loc.name}, ${loc.state}. Browse active listings on CivilCareer and verify every application at the original source.`:role?`Find ${role.name.toLowerCase()} opportunities across India. Browse active listings on CivilCareer and verify every application at the original source.`:`Find civil engineering jobs in ${loc.name}, ${loc.state}. Browse active opportunities and verify every application at the original source.`;
+  ccLandingMeta({title:`${title} | CivilCareer`,description:desc});
+  const matches=ccLandingJobs(role,loc);const altLocations=Object.values(CC_SEO_LOCATIONS).filter(x=>!loc||x.slug!==loc.slug).slice(0,8);const altRoles=Object.values(CC_SEO_ROLES).filter(x=>!role||x.name!==role.name).slice(0,8);
+  root.innerHTML=`<div class="national-landing"><div class="container"><div class="landing-breadcrumb"><a href="/" data-dynamic-route="true">Home</a><span>›</span><a href="/private-jobs" data-dynamic-route="true">Civil Jobs</a><span>›</span><strong>${esc(title)}</strong></div><div class="landing-hero"><p class="eyebrow">India civil engineering careers</p><h1>${esc(title)}</h1><p>${esc(desc)}</p><div class="hero-actions"><a class="btn primary" href="/private-jobs" data-dynamic-route="true">Browse all civil jobs</a><a class="btn secondary" href="/search?q=${encodeURIComponent(role?role.name:'Civil Engineer')}${loc?`&location=${encodeURIComponent(loc.name)}`:''}" data-dynamic-route="true">Search matching jobs</a></div></div><div class="landing-layout"><main><div class="section-head"><div><p class="eyebrow">Current listings</p><h2>${matches.length?`${matches.length} matching opportunities`: 'No matching opportunities right now'}</h2></div></div><div class="cards list">${matches.length?matches.map(j=>enhancedJobCard(j,false)).join(''):empty('No matching jobs right now','Try the broader civil jobs search or check back as new opportunities are published.')}</div></main><aside class="landing-side"><div class="landing-panel"><b>Apply safely</b><p>Use the original employer or official source linked on each listing. CivilCareer does not charge candidates to apply.</p></div><div class="landing-panel"><b>Popular roles</b><div class="landing-links">${altRoles.map(r=>`<a href="/${r===CC_SEO_ROLES['civil-engineer']?'civil-engineer':ccSlugify(r.name)}-jobs" data-dynamic-route="true">${esc(r.name)}</a>`).join('')}</div></div><div class="landing-panel"><b>Popular locations</b><div class="landing-links">${altLocations.map(l=>`<a href="/${role?ccSlugify(role.name):'civil-engineer'}-jobs-in-${l.slug}" data-dynamic-route="true">${esc(l.name)}</a>`).join('')}</div></div></aside></div></div></div>`;
+  bindCards();
+}
+async function routeNationalLanding(){const data=ccLandingFromPath(location.pathname);if(!data)return false;renderNationalLanding(data);document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page==='nationalLanding'));return true;}

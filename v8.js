@@ -265,6 +265,7 @@ openMaterialDedicated=function(m,push=true){
 };
 
 async function routeV8() {
+  if(await routeNationalLanding()) return;
   const p=location.pathname;
   if(p.startsWith('/jobs/')){
     const slug=decodeURIComponent(p.slice('/jobs/'.length));
