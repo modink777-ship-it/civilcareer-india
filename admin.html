@@ -388,9 +388,11 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    const msg = data.error || `Request failed (${r.status})`;
-    const detail = data.details ? ` — ${data.details}` : '';
-    throw Error(msg + detail);
+    throw Error(
+      data.error ||
+      data.details ||
+      `Request failed (${r.status})`
+    );
   }
 
   return data;
@@ -2281,7 +2283,7 @@ async function runStandaloneDiscovery(){
     const d=await api('/api/jobs',{method:'POST',key:adminKey,body:JSON.stringify({action:'discover'})});
     if(s){s.textContent=d.message||'Discovery complete.';s.className='discovery-status success';}
     discoverySources=d.feeds||d.sources||[];renderDiscoverySources(discoverySources);
-    if(sum)sum.innerHTML=`<div><b>${Number(d.added||0)}</b><span>new drafts</span></div><div><b>${Number(d.duplicates||0)}</b><span>duplicates skipped</span></div><div><b>${Number(d.source_candidates||0)}</b><span>candidates found</span></div><div><b>${Number((d.failedFeeds||[]).length)}</b><span>sources failed</span></div>${d.saveErrors?.length?`<div class="discovery-save-errors"><b>Save errors</b><pre>${esc(JSON.stringify(d.saveErrors,null,2))}</pre></div>`:''}`;
+    if(sum)sum.innerHTML=`<div><b>${Number(d.added||0)}</b><span>new drafts</span></div><div><b>${Number(d.duplicates||0)}</b><span>duplicates skipped</span></div><div><b>${Number(d.source_candidates||0)}</b><span>candidates found</span></div><div><b>${Number((d.failedFeeds||[]).length)}</b><span>sources failed</span></div>${d.saveErrors?.length?`<p class="error-text">Some records could not be saved. Open Jobs and review the error details if needed.</p>`:''}`;
     if(typeof loadAdminJobs==='function'){await loadAdminJobs();}
   }catch(e){if(s){s.textContent=e.message;s.className='discovery-status error';}if(sum)sum.innerHTML='<p class="error-text">Discovery stopped before saving new jobs.</p>';}
   finally{b.disabled=false;b.textContent='🛰 Fetch new jobs now';}
@@ -2321,7 +2323,7 @@ window.addEventListener(
 .external-search-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.external-search-card{display:block;padding:14px;border:1px solid #d8e3ec;border-radius:11px;color:#0b5fa5;text-decoration:none;font-weight:800;background:#f8fbff}.external-search-card:hover{border-color:#10b981;background:#ecfdf5;color:#047857}
 .ai-stack{margin-top:15px;padding:14px;border-radius:11px;background:#0b1f3a;color:#fff}.ai-stack b{display:block}.ai-stack span{display:block;color:#8ff0cb;margin-top:5px;font-size:12px;font-weight:800}.ai-stack small{display:block;color:#b8c6d5;margin-top:6px;line-height:1.5}
 .review-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.review-steps div{padding:14px;border-radius:11px;background:#f7fafc;border:1px solid #e4ebf1}.review-steps b{display:block;color:#0b1f3a}.review-steps span{display:block;margin-top:5px;color:#64748b;font-size:11px;line-height:1.45}.admin-source-line{font-size:11px!important;color:#71839a!important}.admin-source-line a{color:#0b5fa5;text-decoration:none}
-.discovery-save-errors{grid-column:1/-1;padding:12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}.discovery-save-errors pre{white-space:pre-wrap;overflow:auto;font-size:11px;margin:8px 0 0}@media(max-width:900px){.discovery-grid{grid-template-columns:1fr}.discovery-summary-box{grid-template-columns:1fr 1fr}.review-steps{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.discovery-grid{grid-template-columns:1fr}.discovery-summary-box{grid-template-columns:1fr 1fr}.review-steps{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.discovery-summary-box,.review-steps,.external-search-grid{grid-template-columns:1fr}.discovery-workflow b{display:none}.source-row{align-items:flex-start}.source-health{font-size:9px}}
 </style>
 

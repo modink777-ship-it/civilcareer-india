@@ -594,6 +594,22 @@
       "destination": "/index.html"
     },
     {
+      "source": "/mnc-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/psu-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/fresher-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/internships",
+      "destination": "/index.html"
+    },
+    {
       "source": "/private-jobs",
       "destination": "/index.html"
     },

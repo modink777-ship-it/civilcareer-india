@@ -987,3 +987,19 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .page[data-page="foryou"] .page-hero .foryou-profile-btn { background:#10b981 !important; background-color:#10b981 !important; color:#fff !important; border-color:#10b981 !important; opacity:1 !important; }
 .page[data-page="foryou"] .page-hero .foryou-profile-btn:hover { background:#059669 !important; background-color:#059669 !important; color:#fff !important; }
 .discovery-source-note{margin:14px 0 4px;padding:12px 14px;border:1px solid #d8e6df;border-radius:10px;background:#f7fcfa;color:#536174;font-size:13px;line-height:1.55}.discovery-source-note b{color:#0f766e}
+
+/* ===== CivilCareer 2.0 final visual system ===== */
+:root{--cc-green:#0f8f68;--cc-green-dark:#0a7253;--cc-blue:#165ea8;--cc-gold:#b9852f}
+.site-header{border-bottom-color:#d9e5e1}
+.logo span{color:var(--cc-green)!important}
+.nav a.active,.nav a:hover{color:var(--cc-green)!important;background:#edf8f4!important}
+.btn.primary{background:var(--cc-green)!important;color:#fff!important;border-color:var(--cc-green)!important}
+.btn.primary:hover{background:var(--cc-green-dark)!important}
+.page[data-page="foryou"] .foryou-profile-btn,.page[data-page="foryou"] .page-hero .foryou-profile-btn,.foryou-empty .btn.primary,.profile-overlay .btn.primary,.profile-modal-inner .btn.primary{background:var(--cc-green)!important;color:#fff!important;border-color:var(--cc-green)!important}
+.page[data-page="foryou"] .foryou-profile-btn:hover{background:var(--cc-green-dark)!important}
+.portal-highlights .highlight-item:hover{border-color:#9bcdbd;box-shadow:0 10px 28px rgba(15,143,104,.10)}
+.quick-card:hover{border-color:#9bcdbd}
+.pill.verified{background:#e6f6ef;color:#087453}
+.collection-toolbar{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:30px 0 10px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:#f8fbfa}
+.collection-toolbar strong{color:var(--navy);font-size:18px}.toolbar-note{margin:4px 0 0;color:var(--muted);font-size:12px}
+@media(max-width:800px){.collection-toolbar{align-items:flex-start;flex-direction:column}.collection-toolbar .btn{width:100%}}
