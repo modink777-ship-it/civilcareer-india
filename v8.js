@@ -6,8 +6,27 @@ const CC_TYPES=['Full-time','Part-time','Contract','Internship','Apprenticeship'
 const CC_LOC={India:{Karnataka:['Bengaluru','Mysuru','Mangaluru','Hubballi','Belagavi','Shivamogga','Tumakuru','Hassan','Ballari'],Maharashtra:['Mumbai','Pune','Nagpur'],Telangana:['Hyderabad'],'Tamil Nadu':['Chennai','Coimbatore'],Kerala:['Kochi','Thiruvananthapuram'],'Andhra Pradesh':['Visakhapatnam','Vijayawada'],Delhi:['New Delhi'],Gujarat:['Ahmedabad','Surat']},UAE:{Dubai:['Dubai'],'Abu Dhabi':['Abu Dhabi'],Sharjah:['Sharjah']},'Saudi Arabia':{Riyadh:['Riyadh'],Makkah:['Jeddah']},Qatar:{Doha:['Doha']},Kuwait:{Kuwait:['Kuwait City']},Oman:{Muscat:['Muscat']},Bahrain:{Capital:['Manama']},Other:{Other:['Other']}};
 const arr=(v,f='')=>Array.isArray(v)?v:(v?String(v).split(',').map(x=>x.trim()).filter(Boolean):(f?[f]:[]));
 const pubDate=j=>j.published_at||j.posted_at||j.created_at||j.posted_date||'';
+function timeAgo(v){
+  if(!v)return'';
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return'';
+  const diff=Math.max(0,Date.now()-d.getTime());
+  const minutes=Math.floor(diff/60000);
+  if(minutes<1)return'Just now';
+  if(minutes<60)return`${minutes} min${minutes===1?'ute':''} ago`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return`${hours} hr${hours===1?'':'s'} ago`;
+  const days=Math.floor(hours/24);
+  if(days<7)return`${days} day${days===1?'':'s'} ago`;
+  const weeks=Math.floor(days/7);
+  if(weeks<5)return`${weeks} wk${weeks===1?'':'s'} ago`;
+  const months=Math.floor(days/30);
+  if(months<12)return`${months} mo${months===1?'':'s'} ago`;
+  const years=Math.floor(days/365);
+  return`${years} yr${years===1?'':'s'} ago`;
+}
 const active=j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date());
-function ago(v){if(!v)return'';const d=Math.max(0,Math.floor((Date.now()-new Date(v))/86400000));return d===0?'Posted today':d===1?'Posted yesterday':`Posted ${d} days ago`}
+function ago(v){const x=timeAgo(v);return x?`Posted ${x}`:''}
 function emailList(t){return[...new Set((String(t||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}/gi)||[]).filter(e=>/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,63}$/.test(e)))]}
 function setOpts(id,vals,label){const el=$(id),keep=el.value,counts={};vals.filter(Boolean).forEach(v=>counts[v]=(counts[v]||0)+1);el.innerHTML=`<option value="">${label}</option>`+Object.keys(counts).sort().map(v=>`<option value="${esc(v)}">${esc(v)} (${counts[v]})</option>`).join('');if([...el.options].some(o=>o.value===keep))el.value=keep}
 function jobLocs(j){return arr(j.locations,j.location_display||j.location)}function jobQuals(j){return arr(j.qualifications,j.qualification)}function jobExps(j){return arr(j.experience_ranges,j.experience_level)}function jobTypes(j){return arr(j.employment_types,j.employment_type)}

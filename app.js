@@ -50,6 +50,24 @@ function toast(msg){const x=$('toast');x.textContent=msg;x.classList.add('show')
 function navigate(next,push=true){route=next in routePath?next:'home';$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===route));$$('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===route));$('mainNav').classList.remove('open');$('menuBtn').setAttribute('aria-expanded','false');if(push&&location.pathname!==routePath[route])history.pushState({},'',routePath[route]);setMeta();scrollTo({top:0,behavior:'smooth'});if(route==='private')renderPrivate();if(route==='government')renderGovernment();if(route==='exams')renderExams();if(route==='materials')renderMaterials();if(route==='foryou')renderForYou();if(route==='admin')showAdmin();translate();track()}
 const metas={home:['CivilCareer — Civil Engineering Careers & Karnataka Government Jobs','Civil engineering jobs across India and beyond, Karnataka government jobs, exams and trusted resources.'],private:['Civil Engineering Jobs | CivilCareer','Private-sector civil engineering jobs across Karnataka, India, Gulf and international markets.'],government:['Karnataka Government Jobs | CivilCareer','Government recruitment across Karnataka departments, organizations and qualifications.'],exams:['Karnataka Government Exams | CivilCareer','KPSC, KAS, FDA, SDA, KARTET, GPSTR, HSTR, AE and JE examination updates.'],materials:['Free Civil Engineering & Exam Study Materials | CivilCareer','Free organized civil engineering and Karnataka competitive-exam resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, Karnataka government recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
 function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString(lang==='kn'?'kn-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
+function timeAgo(v){
+  if(!v)return'';
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return'';
+  const diff=Math.max(0,Date.now()-d.getTime()),minutes=Math.floor(diff/60000);
+  if(minutes<1)return'Just now';
+  if(minutes<60)return`${minutes} min${minutes===1?'ute':''} ago`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return`${hours} hr${hours===1?'':'s'} ago`;
+  const days=Math.floor(hours/24);
+  if(days<7)return`${days} day${days===1?'':'s'} ago`;
+  const weeks=Math.floor(days/7);
+  if(weeks<5)return`${weeks} wk${weeks===1?'':'s'} ago`;
+  const months=Math.floor(days/30);
+  if(months<12)return`${months} mo${months===1?'':'s'} ago`;
+  const years=Math.floor(days/365);
+  return`${years} yr${years===1?'':'s'} ago`;
+}
 function jobCard(j,gov=false){
   const closed=isClosed(j),verified=j.last_verified&&!closed,saved=getSaved().has(j.id);
   const isNew=j.created_at&&(new Date()-new Date(j.created_at))<3*86400000;
@@ -429,7 +447,7 @@ function openProfileSetup(){
   overlay.innerHTML=`<div class="profile-modal-inner">
     <div class="profile-modal-header">
       <h2>🎯 Your Job Profile</h2>
-      <button class="profile-close" onclick="document.getElementById('profileModal').close()">✕</button>
+      <button class="profile-close" type="button" onclick="closeProfileModal()">✕</button>
     </div>
     <div class="profile-tabs">
       <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
@@ -527,7 +545,7 @@ function saveProfile(){
     keywords_exclude:$('pExclude')?.value||''
   };
   saveProfileLocal();
-  $('editorDialog').close();
+  closeProfileModal();
   toast('Profile saved! Finding your matches…');
   navigate('foryou');
   renderForYou();

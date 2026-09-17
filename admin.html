@@ -114,6 +114,24 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:10px 22px;border-radius:10px;font-size:.88rem;font-weight:600;opacity:0;transition:all .25s;z-index:9999;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.1)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* Free discovery controls */
+.discovery-box{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  background:linear-gradient(135deg,rgba(201,151,60,.10),rgba(255,255,255,.03));
+  border:1px solid rgba(201,151,60,.28);
+  border-radius:14px;
+  padding:15px 16px;
+  margin-bottom:14px;
+}
+.discovery-box strong{color:#fff;font-size:.9rem}
+.discovery-box p{margin:4px 0 0;color:#6a8aaa;font-size:.76rem;line-height:1.5}
+.discovery-status{grid-column:1/-1;color:#94a3b8;font-size:.76rem;min-height:1em}
+.post-age-admin{display:inline-flex;margin-left:8px;color:#6a8aaa;font-size:.7rem;font-weight:600}
+.source-note-admin{display:block;color:#5e7894;font-size:.7rem;margin-top:4px;max-width:760px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-review-note{color:#f0c978;font-size:.7rem;font-weight:700;margin-left:7px}
 @media(max-width:600px){
   .admin-body{padding:1rem}
   .admin-header{padding:12px 16px}
@@ -178,12 +196,12 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 <div class="import-box">
 
 <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
-AI-assisted job importer
+Job importer
 </p>
 
 <h3>Import from a link or pasted vacancy text</h3>
 
-<p>Paste the vacancy URL, job description, or both. AI extracts the fields. You review everything before saving.</p>
+<p>Paste a vacancy URL, job description, or both. The importer first reads structured job data and can use free AI when configured. You review everything before publishing.</p>
 
 <label>
 Vacancy URL
@@ -227,6 +245,15 @@ Application email
 AI never publishes automatically. Verify every field before saving.
 </p>
 
+</div>
+
+<div class="discovery-box">
+  <div>
+    <strong>🛰️ Free job discovery</strong>
+    <p>Fetch new civil-engineering jobs from the configured public RSS sources. New results are added as <b>Drafts</b> only — nothing is published automatically.</p>
+  </div>
+  <button class="btn-gold" id="fetchJobsBtn" onclick="fetchNewJobs()">Fetch new jobs now</button>
+  <div class="discovery-status" id="discoveryStatus"></div>
 </div>
 
 <div class="admin-actions">
@@ -324,6 +351,26 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({
 }[c]));
 
 const val=v=>esc(v||'');
+
+function timeAgoAdmin(value){
+  if(!value)return '';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return '';
+  const diff=Math.max(0,Date.now()-d.getTime());
+  const minutes=Math.floor(diff/60000);
+  if(minutes<1)return 'Just now';
+  if(minutes<60)return `${minutes} min${minutes===1?'ute':''} ago`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return `${hours} hr${hours===1?'':'s'} ago`;
+  const days=Math.floor(hours/24);
+  if(days<7)return `${days} day${days===1?'':'s'} ago`;
+  const weeks=Math.floor(days/7);
+  if(weeks<5)return `${weeks} wk${weeks===1?'':'s'} ago`;
+  const months=Math.floor(days/30);
+  if(months<12)return `${months} mo${months===1?'':'s'} ago`;
+  const years=Math.floor(days/365);
+  return `${years} yr${years===1?'':'s'} ago`;
+}
 
 function toast(msg){
   const t=$('toast');
@@ -653,7 +700,11 @@ function loadAdminJobs(){
             ${esc(j.sector||'Private')}
             ·
             ${esc(j.location||'')}
+            ${timeAgoAdmin(j.published_at||j.posted_at||j.created_at)
+              ?`<span class="post-age-admin">• ${timeAgoAdmin(j.published_at||j.posted_at||j.created_at)}</span>`:''}
           </p>
+          ${j.source_url?`<span class="source-note-admin">${esc(j.source_url)}</span>`:''}
+          ${!j.published?'<span class="draft-review-note">Review before publishing</span>':''}
 
         </div>
 
@@ -1762,6 +1813,34 @@ Save Material
 /* =====================================================
    AI JOB IMPORT — FINAL VERSION
    ===================================================== */
+
+async function fetchNewJobs(){
+  const btn=$('fetchJobsBtn'), statusEl=$('discoveryStatus');
+  if(!btn||!statusEl)return;
+  btn.disabled=true;
+  btn.textContent='Fetching…';
+  statusEl.textContent='Checking configured free job sources and removing duplicates…';
+  try{
+    const data=await api('/api/discover',{method:'POST',key:adminKey,body:JSON.stringify({})});
+    statusEl.textContent=`✓ ${Number(data.added||0)} new draft jobs added. Nothing was published automatically.`;
+    toast(`${Number(data.added||0)} new draft job${Number(data.added||0)===1?'':'s'} added.`);
+    const fresh=await api('/api/jobs',{key:adminKey});
+    jobs=fresh.jobs||jobs;
+    loadAdminJobs();
+    // Refresh dashboard counts/analytics without forcing a page reload.
+    try{
+      const an=await api('/api/analytics',{key:adminKey});
+      renderMetrics(an.analytics||{},[]);
+      renderAnalytics(an.analytics||{});
+    }catch{}
+  }catch(err){
+    statusEl.textContent='Discovery failed: '+err.message;
+    statusEl.style.color='#fca5a5';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Fetch new jobs now';
+  }
+}
 
 async function importJobLink(){
 
