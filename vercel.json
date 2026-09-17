@@ -583,7 +583,7 @@
     },
     {
       "source": "/jobs/:path*",
-      "destination": "/index.html"
+      "destination": "/api/job-page?slug=:path*"
     },
     {
       "source": "/for-you",
