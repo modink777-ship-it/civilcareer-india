@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CivilCareer Admin</title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="/styles.css?v=cc-discovery-final-v1">
+<link rel="stylesheet" href="/styles.css">
 
 <style>
 body{background:#0b1f3a;min-height:100vh;display:flex;flex-direction:column}
@@ -121,7 +121,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   .field-grid label.wide{grid-column:auto}
   .email-detection{grid-template-columns:1fr}
 }
-<style>.discovery-admin-card{padding:24px;border:1px solid #dbe5ee;border-radius:16px;background:linear-gradient(135deg,#f8fffc,#fff);box-shadow:0 12px 30px rgba(11,31,58,.06)}.discovery-fetch-btn{margin-top:12px!important;min-height:46px!important;padding:0 20px!important}</style>
+</style>
 </head>
 
 <body>
@@ -161,7 +161,6 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 <div class="tabs" id="tabs">
   <button class="active" data-tab="analytics">Analytics</button>
   <button data-tab="jobs">Jobs</button>
-  <button data-tab="discovery">🛰 Discovery</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
@@ -172,42 +171,6 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <div class="analytics-grid" id="analyticsPanel">
     <div class="dash-card"><p style="color:#6a8aaa;font-size:.85rem">Loading analytics…</p></div>
   </div>
-</div>
-
-<div class="panel" id="panel-discovery">
-  <div class="discovery-admin-card">
-    <div class="discovery-kicker">FREE PUBLIC-SOURCE DISCOVERY ENGINE</div>
-    <h2>🛰️ Find jobs for review</h2>
-    <p class="discovery-lead">CivilCareer checks configured public feeds and official recruitment pages, normalizes civil-engineering vacancies, removes duplicates, optionally enriches them with configured free AI providers, and places everything into your review queue.</p>
-    <div class="discovery-workflow"><span>1. Fetch</span><b>→</b><span>2. Extract</span><b>→</b><span>3. De-duplicate</span><b>→</b><span>4. Review</span><b>→</b><span>5. Publish</span></div>
-    <div class="discovery-admin-actions">
-      <button class="btn-gold discovery-fetch-btn" id="standaloneDiscoveryBtn">🛰 Fetch new jobs now</button>
-      <button class="btn-ghost" id="refreshDiscoverySourcesBtn">↻ Refresh source health</button>
-      <span id="standaloneDiscoveryStatus" class="discovery-status"></span>
-    </div>
-    <div id="discoverySummary" class="discovery-summary-box"></div>
-  </div>
-
-  <div class="discovery-grid">
-    <section class="discovery-panel-card">
-      <div class="discovery-panel-head"><div><p class="discovery-kicker">SOURCE MANAGER</p><h3>Where CivilCareer searches</h3></div><span class="discovery-count" id="discoverySourceCount">Loading…</span></div>
-      <div id="discoverySources"><p class="muted">Loading sources…</p></div>
-    </section>
-    <section class="discovery-panel-card">
-      <div class="discovery-panel-head"><div><p class="discovery-kicker">EXTERNAL SEARCH</p><h3>LinkedIn & Naukri</h3></div></div>
-      <p class="muted">CivilCareer does not scrape these protected platforms. These shortcuts open their job searches directly. If you later obtain an authorized feed/API, it can be added as a source.</p>
-      <div class="external-search-grid">
-        <a class="external-search-card" href="https://www.linkedin.com/jobs/search/?keywords=civil%20engineer%20India" target="_blank" rel="noopener">LinkedIn Civil Jobs ↗</a>
-        <a class="external-search-card" href="https://www.naukri.com/civil-engineer-jobs" target="_blank" rel="noopener">Naukri Civil Jobs ↗</a>
-      </div>
-      <div class="ai-stack"><b>AI enrichment</b><span>Groq → Gemini → local rules</span><small>AI never publishes automatically. If no API key is configured, discovery still works with deterministic extraction.</small></div>
-    </section>
-  </div>
-
-  <section class="discovery-panel-card" style="margin-top:18px">
-    <div class="discovery-panel-head"><div><p class="discovery-kicker">REVIEW QUEUE</p><h3>What happens next?</h3></div></div>
-    <div class="review-steps"><div><b>Pending Review</b><span>Every discovery starts unpublished.</span></div><div><b>Edit</b><span>Correct title, company, dates, salary and links.</span></div><div><b>Publish</b><span>Publication time starts when you publish.</span></div><div><b>Reject</b><span>Discard duplicates, expired or suspicious listings.</span></div></div>
-  </section>
 </div>
 
 <div class="panel" id="panel-jobs">
@@ -348,7 +311,7 @@ Notification reader
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-let adminKey='',jobs=[],exams=[],materials=[],discoverySources=[];
+let adminKey='',jobs=[],exams=[],materials=[];
 
 const $=id=>document.getElementById(id);
 
@@ -644,12 +607,11 @@ function loadAdminJobs(){
   const showExpired=
     $('showExpiredAdmin').checked;
 
-  const list=(showExpired ? jobs : jobs.filter(j=>j.status!=='Expired')).slice().sort((a,b)=>{
-    const ar=!a.published || a.status==='Pending Review' ? 0 : 1;
-    const br=!b.published || b.status==='Pending Review' ? 0 : 1;
-    if(ar!==br)return ar-br;
-    return new Date(b.published_at||b.created_at||0)-new Date(a.published_at||a.created_at||0);
-  });
+  const list=showExpired
+    ?jobs
+    :jobs.filter(
+      j=>j.status!=='Expired'
+    );
 
   $('adminJobs').innerHTML=
 
@@ -692,7 +654,6 @@ function loadAdminJobs(){
             ·
             ${esc(j.location||'')}
           </p>
-          ${j.source_url?`<p class="admin-source-line">Source: <a href="${esc(j.source_url)}" target="_blank" rel="noopener">original ↗</a>${j.verification_status?` · ${esc(j.verification_status)}`:''}</p>`:''}
 
         </div>
 
@@ -700,7 +661,7 @@ function loadAdminJobs(){
 
           <button
             onclick="jobEditor(jobs.find(x=>x.id==='${j.id}'))">
-            ${j.published?'Edit':'Review draft'}
+            Edit
           </button>
 
           <button
@@ -1863,7 +1824,7 @@ async function importJobLink(){
       data.job
     */
 
-    const ai=data.extracted||data.job||{};
+    const ai=data.extracted||{};
 
     if(!Object.keys(ai).length){
 
@@ -2266,30 +2227,6 @@ document
 
 /* AUTO LOGIN */
 
-function renderDiscoverySources(feeds){
-  const root=document.getElementById('discoverySources'),count=document.getElementById('discoverySourceCount');
-  if(!root)return;
-  const list=feeds||discoverySources||[]; if(count)count.textContent=`${list.length} configured`;
-  root.innerHTML=list.map(s=>{const ok=s.error?'error':(s.items!=null?'ok':'idle');const label=s.error?'Failed':s.items!=null?`${s.items} candidates`:'Ready';return `<div class="source-row"><div><strong>${esc(s.name)}</strong><span>${esc(s.category||'Public source')} · ${esc(s.trust||'Public')}</span><small>${esc(s.note||'')}</small></div><div class="source-health ${ok}">${label}</div></div>`}).join('')||'<p class="muted">No sources configured.</p>';
-}
-async function refreshDiscoverySources(){
-  try{const d=await api('/api/jobs',{key:adminKey,body:JSON.stringify({action:'discoverySources'})});discoverySources=d.sources||[];renderDiscoverySources(discoverySources);}
-  catch(e){const r=document.getElementById('discoverySources');if(r)r.innerHTML=`<p class="error-text">${esc(e.message)}</p>`}
-}
-async function runStandaloneDiscovery(){
-  const b=document.getElementById('standaloneDiscoveryBtn'),s=document.getElementById('standaloneDiscoveryStatus'),sum=document.getElementById('discoverySummary');
-  if(!b)return; b.disabled=true;b.textContent='Fetching…'; if(s){s.textContent='Checking public sources…';s.className='discovery-status loading';}
-  try{
-    const d=await api('/api/jobs',{method:'POST',key:adminKey,body:JSON.stringify({action:'discover'})});
-    if(s){s.textContent=d.message||'Discovery complete.';s.className='discovery-status success';}
-    discoverySources=d.feeds||d.sources||[];renderDiscoverySources(discoverySources);
-    if(sum)sum.innerHTML=`<div><b>${Number(d.added||0)}</b><span>new drafts</span></div><div><b>${Number(d.duplicates||0)}</b><span>duplicates skipped</span></div><div><b>${Number(d.source_candidates||0)}</b><span>candidates found</span></div><div><b>${Number((d.failedFeeds||[]).length)}</b><span>sources failed</span></div>${d.saveErrors?.length?`<p class="error-text">Some records could not be saved. Open Jobs and review the error details if needed.</p>`:''}`;
-    if(typeof loadAdminJobs==='function'){await loadAdminJobs();}
-  }catch(e){if(s){s.textContent=e.message;s.className='discovery-status error';}if(sum)sum.innerHTML='<p class="error-text">Discovery stopped before saving new jobs.</p>';}
-  finally{b.disabled=false;b.textContent='🛰 Fetch new jobs now';}
-}
-
-
 window.addEventListener(
   'DOMContentLoaded',
   ()=>{
@@ -2302,29 +2239,10 @@ window.addEventListener(
       adminKey=saved;
 
       showDashboard();
-      setTimeout(refreshDiscoverySources,250);
     }
   }
 );
 </script>
 
 </body>
-
-<style>
-/* CivilCareer Discovery final UI */
-.discovery-kicker{color:#059669;font-size:.72rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase;margin:0 0 6px}
-.discovery-lead{max-width:980px;color:#4b6380;line-height:1.65}
-.discovery-workflow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0 4px}
-.discovery-workflow span{padding:7px 10px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:800}.discovery-workflow b{color:#94a3b8}
-.discovery-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px;margin-top:18px}
-.discovery-panel-card{padding:22px;border:1px solid #dbe5ee;border-radius:16px;background:#fff;box-shadow:0 10px 28px rgba(11,31,58,.05)}
-.discovery-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}.discovery-panel-head h3{margin:0;color:#0b1f3a;font-size:21px}.discovery-count{padding:6px 9px;border-radius:999px;background:#f1f5f9;color:#52667d;font-size:11px;font-weight:800}
-.discovery-summary-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.discovery-summary-box>div{padding:13px;border:1px solid #e1e9ef;border-radius:11px;background:#f8fbfd}.discovery-summary-box b{display:block;color:#0f766e;font-size:22px}.discovery-summary-box span{font-size:11px;color:#64748b}.source-row{display:flex;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid #edf2f6}.source-row:last-child{border-bottom:0}.source-row strong{display:block;color:#18324f;font-size:13px}.source-row span,.source-row small{display:block;color:#71839a;font-size:11px;margin-top:3px}.source-health{white-space:nowrap;height:max-content;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:850}.source-health.ok{background:#ecfdf5;color:#047857}.source-health.error{background:#fff1f2;color:#be123c}.source-health.idle{background:#f1f5f9;color:#64748b}
-.external-search-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.external-search-card{display:block;padding:14px;border:1px solid #d8e3ec;border-radius:11px;color:#0b5fa5;text-decoration:none;font-weight:800;background:#f8fbff}.external-search-card:hover{border-color:#10b981;background:#ecfdf5;color:#047857}
-.ai-stack{margin-top:15px;padding:14px;border-radius:11px;background:#0b1f3a;color:#fff}.ai-stack b{display:block}.ai-stack span{display:block;color:#8ff0cb;margin-top:5px;font-size:12px;font-weight:800}.ai-stack small{display:block;color:#b8c6d5;margin-top:6px;line-height:1.5}
-.review-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.review-steps div{padding:14px;border-radius:11px;background:#f7fafc;border:1px solid #e4ebf1}.review-steps b{display:block;color:#0b1f3a}.review-steps span{display:block;margin-top:5px;color:#64748b;font-size:11px;line-height:1.45}.admin-source-line{font-size:11px!important;color:#71839a!important}.admin-source-line a{color:#0b5fa5;text-decoration:none}
-@media(max-width:900px){.discovery-grid{grid-template-columns:1fr}.discovery-summary-box{grid-template-columns:1fr 1fr}.review-steps{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.discovery-summary-box,.review-steps,.external-search-grid{grid-template-columns:1fr}.discovery-workflow b{display:none}.source-row{align-items:flex-start}.source-health{font-size:9px}}
-</style>
-
 </html>

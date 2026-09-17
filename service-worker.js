@@ -1,5 +1,5 @@
 // CivilCareer India — PWA Service Worker
-const CACHE_NAME = "civilcareer-final-discovery-engine-v1";
+const CACHE_NAME = "civilcareer-v-photo-enhance-2026-09";
 
 const STATIC_ASSETS = [
   "/",
@@ -78,16 +78,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML: network first so a new deployment is visible immediately.
+  // HTML: stale cached page first, refresh cache in background.
   event.respondWith(
-    fetch(request)
-      .then((response) => {
+    caches.match(request).then((cached) => {
+      const fresh = fetch(request).then((response) => {
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
-      })
-      .catch(() => caches.match(request))
+      });
+      return cached || fresh;
+    })
   );
 });
