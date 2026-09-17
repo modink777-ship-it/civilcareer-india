@@ -115,6 +115,18 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* Free discovery controls */
+
+.discovery-page-head{background:linear-gradient(135deg,#0f2847,#123b56);border:1px solid rgba(16,185,129,.18);border-radius:16px;padding:22px;margin-bottom:14px}
+.discovery-page-head h2{color:#fff;margin:0 0 6px;font-size:1.25rem}
+.discovery-page-head p{color:#a8bbd1;margin:0;line-height:1.6;font-size:.82rem}
+.import-kicker{color:#10b981!important;font-size:.68rem!important;font-weight:800!important;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px!important}
+.discovery-box-large{padding:20px!important;background:linear-gradient(135deg,rgba(16,185,129,.10),rgba(15,40,71,.85))!important;border-color:rgba(16,185,129,.30)!important}
+.discovery-box-large .btn-gold{background:#10b981!important;color:#06251d!important}
+.discovery-how{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 20px}
+.discovery-how div{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px}
+.discovery-how b{display:block;color:#fff;font-size:.82rem;margin-bottom:4px}
+.discovery-how span{display:block;color:#6a8aaa;font-size:.72rem;line-height:1.45}
+@media(max-width:700px){.discovery-how{grid-template-columns:1fr 1fr}}
 .discovery-box{
   display:grid;
   grid-template-columns:1fr auto;
@@ -179,6 +191,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 <div class="tabs" id="tabs">
   <button class="active" data-tab="analytics">Analytics</button>
   <button data-tab="jobs">Jobs</button>
+  <button data-tab="discovery">🛰 Discovery</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
@@ -247,15 +260,6 @@ AI never publishes automatically. Verify every field before saving.
 
 </div>
 
-<div class="discovery-box">
-  <div>
-    <strong>🛰️ Free job discovery</strong>
-    <p>Fetch new civil-engineering jobs from the configured public RSS sources. New results are added as <b>Drafts</b> only — nothing is published automatically.</p>
-  </div>
-  <button class="btn-gold" id="fetchJobsBtn" onclick="fetchNewJobs()">Fetch new jobs now</button>
-  <div class="discovery-status" id="discoveryStatus"></div>
-</div>
-
 <div class="admin-actions">
 <button class="btn-ghost" onclick="jobEditor()">+ Add manually</button>
 <label class="check">
@@ -268,6 +272,30 @@ Show expired
 <p style="color:#6a8aaa;font-size:.85rem">Loading jobs…</p>
 </div>
 
+</div>
+
+<div class="panel" id="panel-discovery">
+  <div class="discovery-page-head">
+    <p class="import-kicker">AUTOMATED JOB DISCOVERY</p>
+    <h2>🛰️ Free Job Discovery</h2>
+    <p>Fetch jobs from CivilCareer's configured public sources. Every new result enters <b>Pending Review / Draft</b>. Nothing is published automatically.</p>
+  </div>
+
+  <div class="discovery-box discovery-box-large">
+    <div>
+      <strong>Fetch new jobs now</strong>
+      <p>Duplicate source links and matching role/company/location records are skipped. You review every draft before publishing.</p>
+    </div>
+    <button class="btn-gold" id="fetchJobsBtn" onclick="fetchNewJobs()">Fetch new jobs now</button>
+    <div class="discovery-status" id="discoveryStatus"></div>
+  </div>
+
+  <div class="discovery-how">
+    <div><b>1. Fetch</b><span>Read configured public feeds</span></div>
+    <div><b>2. Filter</b><span>Remove duplicates</span></div>
+    <div><b>3. Review</b><span>Edit and verify details</span></div>
+    <div><b>4. Publish</b><span>You decide what goes live</span></div>
+  </div>
 </div>
 
 <div class="panel" id="panel-exams">
@@ -1867,7 +1895,7 @@ async function importJobLink(){
 
   setImportStatus(
     'importJobStatus',
-    'Analyzing vacancy with Groq AI…'
+    text ? 'Reading and organizing vacancy data…' : 'Reading the public vacancy page…'
   );
 
   try{
@@ -1903,12 +1931,11 @@ async function importJobLink(){
       data.job
     */
 
-    const ai=data.extracted||{};
+    const ai=data.job||data.extracted||{};
 
     if(!Object.keys(ai).length){
-
       throw new Error(
-        'AI returned no extracted fields.'
+        data.warning||'No job fields could be extracted. Paste the vacancy text and try again.'
       );
     }
 
@@ -2059,9 +2086,7 @@ async function importJobLink(){
     setImportStatus(
       'importJobStatus',
 
-      `Extraction complete using ${
-        data.source||'AI'
-      }. Verify every field before saving.`,
+      `Extraction complete using ${data.mode||'the built-in extractor'}. Verify every field before saving.`,
 
       'success'
     );

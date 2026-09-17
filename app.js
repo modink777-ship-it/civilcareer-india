@@ -82,7 +82,7 @@ function jobCard(j,gov=false){
       ${daysLeft!==null&&daysLeft<=7?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}
     </div>
     <h3>${esc(j.role||'Opportunity')}</h3>
-    <div class="organization">${esc(j.company||'Organization')}${j.created_at?'<span class="post-age">'+timeAgo(j.created_at)+'</span>':''}</div>
+    <div class="organization">${esc(j.company||'Organization')}${(j.published_at||j.posted_at||j.created_at)?'<span class="post-age">'+timeAgo(j.published_at||j.posted_at||j.created_at)+'</span>':''}</div>
     ${(j.salary||SALARY_HINTS[classifyJob(j)])?`<div class="salary-badge">💰 ${esc(j.salary||SALARY_HINTS[classifyJob(j)])}</div>`:''}
     ${j.vacancy_count?`<span class="vacancy-badge">📋 ${esc(j.vacancy_count)} Posts</span>`:''}
     <div class="card-meta">
