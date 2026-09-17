@@ -630,6 +630,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/career-hub",
+      "destination": "/index.html"
+    },
+    {
       "source": "/admin",
       "destination": "/index.html"
     }
