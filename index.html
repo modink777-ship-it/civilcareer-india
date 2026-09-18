@@ -176,5 +176,78 @@
   </div>
 </div>
 <footer><div class="container footer-grid"><div><a class="logo route" href="/" data-route="home">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div><div><b>Explore</b><a class="route" href="/for-you" data-route="foryou">🎯 For You</a><a class="route" href="/private-jobs" data-route="private">Private Jobs</a><a class="route" href="/government-jobs" data-route="government">Government Civil Jobs</a><a class="route" href="/exams" data-route="exams">Civil Engineering Exams</a><a class="route" href="/study-materials" data-route="materials">Study Materials</a></div><div><b>Contribute</b><a class="route" href="/post-a-job" data-route="post">Post a Job</a><a class="route" href="/submit-resource" data-route="resource">Submit Resource</a><a class="route" href="/report" data-route="report">Report Content</a></div><div><b>Company</b><a class="route" href="/about" data-route="about">About</a><a href="mailto:modin7174@gmail.com">Contact</a><a href="/legal.html">Terms · Privacy · Disclaimer</a><a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">Job Scam Safety</a><a class="route admin-footer-link" href="/admin" data-route="admin">Admin</a></div></div><div class="container footer-bottom"><p>CivilCareer is an independent information directory. It is not an employer, recruitment agency, government organization or examination authority. Always verify important information with the original official source.</p><span>© 2026 CivilCareer. All rights reserved.</span></div></footer>
+
+<div id="ccMobileDrawer" class="cc-mobile-drawer" aria-hidden="true">
+  <div class="cc-mobile-drawer-grid">
+    <a class="route" href="/for-you" data-route="foryou">🎯 For You</a>
+    <a class="route" href="/private-jobs" data-route="private">Private Jobs</a>
+    <a class="route" href="/government-jobs" data-route="government">Govt Civil Jobs</a>
+    <a class="route" href="/exams" data-route="exams">Exams</a>
+    <a class="route" href="/study-materials" data-route="materials">Study Materials</a>
+    <a class="route" href="/post-a-job" data-route="post">Post a Job</a>
+    <a class="route" href="/submit-resource" data-route="resource">Submit Resource</a>
+  </div>
+</div>
+<style id="cc-mobile-nav-structural-final">
+@media (max-width:1050px){
+  #mainNav{display:none!important;visibility:hidden!important;position:static!important;width:0!important;height:0!important;overflow:hidden!important}
+  .cc-mobile-drawer{display:none!important;position:fixed!important;top:96px!important;left:12px!important;right:12px!important;max-height:calc(100dvh - 112px)!important;overflow-y:auto!important;padding:10px!important;background:#fff!important;border:1px solid #d7e0e9!important;border-radius:16px!important;box-shadow:0 18px 50px rgba(8,31,56,.28)!important;z-index:2147483647!important;box-sizing:border-box!important}
+  .cc-mobile-drawer.is-open{display:block!important}
+  .cc-mobile-drawer-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important}
+  .cc-mobile-drawer a.route{display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;min-width:0!important;width:auto!important;min-height:48px!important;height:auto!important;margin:0!important;padding:10px 8px!important;border:1px solid #e1e8ee!important;border-radius:10px!important;background:#f8fafc!important;color:#0b1f3a!important;text-align:center!important;font-size:14px!important;font-weight:700!important;line-height:1.2!important;white-space:normal!important;text-decoration:none!important}
+  .cc-mobile-drawer a.route.active{background:#edf8f4!important;border-color:#a7ddca!important}
+  .cc-mobile-drawer a.route:hover{background:#edf8f4!important}
+}
+@media (max-width:380px){
+  .cc-mobile-drawer{left:8px!important;right:8px!important;top:88px!important;padding:8px!important}
+  .cc-mobile-drawer-grid{gap:6px!important}
+  .cc-mobile-drawer a.route{min-height:44px!important;font-size:13px!important;padding:8px 5px!important}
+}
+@media (min-width:1051px){.cc-mobile-drawer{display:none!important}}
+</style>
+<script id="cc-mobile-nav-controller">
+(function(){
+  function initMobileDrawer(){
+    var btn=document.getElementById('menuBtn');
+    var drawer=document.getElementById('ccMobileDrawer');
+    if(!btn || !drawer) return;
+    function close(){
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('aria-hidden','true');
+      btn.setAttribute('aria-expanded','false');
+    }
+    function open(){
+      drawer.classList.add('is-open');
+      drawer.setAttribute('aria-hidden','false');
+      btn.setAttribute('aria-expanded','true');
+    }
+    btn.onclick=function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(drawer.classList.contains('is-open')) close(); else open();
+    };
+    drawer.querySelectorAll('a.route').forEach(function(a){
+      a.addEventListener('click',function(e){
+        e.preventDefault();
+        var r=a.getAttribute('data-route');
+        close();
+        if(typeof window.navigate==='function') window.navigate(r);
+        else window.location.href=a.getAttribute('href');
+      }, true);
+    });
+    document.addEventListener('click',function(e){
+      if(!drawer.classList.contains('is-open')) return;
+      if(drawer.contains(e.target) || btn.contains(e.target)) return;
+      close();
+    });
+    window.addEventListener('resize',function(){
+      if(window.innerWidth>1050) close();
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initMobileDrawer);
+  else initMobileDrawer();
+})();
+</script>
+
 <div class="toast" id="toast" role="status"></div><dialog id="detailDialog"><div class="dialog-head"><h2 id="detailTitle">Details</h2><button data-close>×</button></div><div class="dialog-body" id="detailBody"></div></dialog><dialog id="editorDialog"><div class="dialog-head"><h2 id="editorTitle">Content editor</h2><button data-close>×</button></div><div class="dialog-body" id="editorBody"></div></dialog>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script src="/app.js?v=20260918-131"></script><script src="/v8.js?v=20260918-131"></script><script src="/discovery-v9.js?v=20260918-131"></script><script src="/visual-backgrounds.js?v=20260918-131"></script><script src="/next-phase.js?v=20260918-131"></script></body></html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script src="/app.js?v=20260918-200"></script><script src="/v8.js?v=20260918-200"></script><script src="/discovery-v9.js?v=20260918-200"></script><script src="/visual-backgrounds.js?v=20260918-200"></script><script src="/next-phase.js?v=20260918-200"></script></body></html>
