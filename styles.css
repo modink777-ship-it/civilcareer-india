@@ -1227,3 +1227,139 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
     font-size:.78rem!important;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAREER HUB STYLES  (merged from styles-next-phase.css)
+   — hub pages, alerts widget, tracker, toolkit panels —
+═══════════════════════════════════════════════════════════════ */
+/* CivilCareer all-phase product layer */
+.careerhub-hero{padding:84px 0 64px;background:linear-gradient(120deg,rgba(8,28,54,.94),rgba(8,55,62,.84)),url('https://images.unsplash.com/photo-1774199429316-be828fee4485?auto=format&fit=crop&w=2200&q=82') center/cover;color:#fff}.careerhub-hero h1{font-size:clamp(42px,6vw,76px);max-width:900px;margin:10px 0 18px}.careerhub-hero p:not(.eyebrow){max-width:780px;font-size:19px;line-height:1.7;color:#e8f4f5}.careerhub-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}.careerhub-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-top:28px;padding-bottom:70px}.hub-panel{background:#fff;border:1px solid #dbe5ed;border-radius:20px;padding:26px;box-shadow:0 12px 35px rgba(9,31,58,.06)}.hub-panel.wide{grid-column:1/-1}.hub-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.hub-form-grid label{display:grid;gap:7px;font-weight:700;color:#13243b}.hub-form-grid input,.hub-form-grid select,.hub-alert-form input,.hub-alert-form select{border:1px solid #ccd9e5;border-radius:12px;padding:13px;background:#fff;font:inherit}.match-row{display:flex;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid #e7edf2}.match-row div{display:grid;gap:5px}.match-row span,.track-grid span,.toolkit-grid span{color:#69788b;font-size:13px}.match-row strong{color:#09a879}.track-grid,.toolkit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.track-grid>div,.toolkit-grid>div{padding:14px;border:1px solid #dce6ee;border-radius:14px;background:#f9fbfc;display:grid;gap:6px}.hub-alert-form{display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:10px}.next-admin{padding:20px 0}.health-row{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid #e7edf2}.health-ok{color:#07895f;font-weight:800}.health-bad{color:#c0392b;font-weight:800}.admin-tabs{overflow-x:auto;white-space:nowrap}.admin-tabs button{flex:0 0 auto}.careerhub-hero .eyebrow{color:#59e1ba}
+@media(max-width:760px){.careerhub-grid{grid-template-columns:1fr;padding-top:18px}.hub-panel.wide{grid-column:auto}.hub-form-grid,.track-grid,.toolkit-grid{grid-template-columns:1fr}.hub-alert-form{grid-template-columns:1fr}.careerhub-hero{padding:55px 0 42px}.careerhub-hero h1{font-size:42px}.careerhub-hero p:not(.eyebrow){font-size:16px}.careerhub-actions .btn{width:100%}}
+
+/* Career Hub visual hero: keep the rotating photo inside the actual hero.
+   Prevent the generic utility-page visual from being inserted above it. */
+.careerhub-hero{position:relative!important;overflow:hidden!important;isolation:isolate!important;background-image:none!important}
+.careerhub-hero .cc-bg-layer{z-index:0!important}
+.careerhub-hero:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(5,18,36,.93),rgba(7,24,46,.76) 52%,rgba(7,24,46,.46) 100%),linear-gradient(0deg,rgba(5,18,36,.58),rgba(5,18,36,.06) 55%,rgba(5,18,36,.35))}
+.careerhub-hero>.container{position:relative!important;z-index:3!important}
+.careerhub-hero .careerhub-actions .btn.secondary{background:rgba(255,255,255,.10)!important;color:#fff!important;border-color:rgba(255,255,255,.48)!important}
+.careerhub-hero .careerhub-actions .btn.secondary:hover{background:rgba(255,255,255,.18)!important}
+.careerhub-hero .cc-bg-label{position:absolute!important;left:24px;bottom:18px;z-index:4!important;color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
+@media(max-width:760px){.careerhub-hero .cc-bg-label{left:16px;bottom:12px}.careerhub-hero{padding:55px 0 42px!important}}
+
+
+/* Defensive cleanup for Career Hub: its own hero owns the background. */
+[data-page="careerhub"] > .cc-page-visual{display:none!important}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHOTO HERO ACTIVATION — ensures construction photos show
+   on the home hero and on every page-hero section.
+   background-image:none!important clears any static gradient so
+   the .cc-bg-layer elements (added by visual-backgrounds.js) are
+   the only background.  The :after overlay darkens them just
+   enough that text stays readable.
+═══════════════════════════════════════════════════════════════ */
+.hero,.page-hero{
+  background-image:none!important;
+  background-color:#0b1f3a!important; /* dark fallback while photo loads */
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+/* Photo layers created by visual-backgrounds.js */
+.cc-bg-layer{
+  position:absolute!important;inset:0!important;z-index:0!important;
+  background-position:center!important;background-size:cover!important;
+  background-repeat:no-repeat!important;
+  opacity:0!important;
+  transform:scale(1.035)!important;
+  transition:opacity 1.35s ease,transform 7s ease!important;
+  pointer-events:none!important;
+}
+.cc-bg-layer.is-active{opacity:1!important;transform:scale(1)!important;}
+/* Overlay keeps text legible on top of any photo */
+.hero:after{
+  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(5,18,36,.94) 0%,rgba(7,24,46,.80) 45%,rgba(7,24,46,.52) 75%,rgba(7,24,46,.35) 100%),
+    linear-gradient(0deg,rgba(5,18,36,.70),rgba(5,18,36,.06) 50%,rgba(5,18,36,.42));
+}
+.page-hero:before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(5,18,36,.93),rgba(7,24,46,.74) 52%,rgba(7,24,46,.46) 100%);
+}
+/* Content above overlay */
+.hero .hero-lines{z-index:1!important}
+.hero .hero-grid{z-index:3!important}
+.hero .container,.page-hero .container{position:relative!important;z-index:3!important;}
+.page-hero>*:not(.cc-bg-layer):not(.cc-bg-label){position:relative!important;z-index:3!important;}
+/* Labels */
+.page-hero .cc-bg-label,.hero .cc-bg-label{
+  position:absolute!important;left:24px;bottom:18px;z-index:4!important;
+  color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;
+  letter-spacing:.18em;text-transform:uppercase;pointer-events:none;
+}
+@media(max-width:760px){
+  .hero:after{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68)),linear-gradient(0deg,rgba(5,18,36,.76),rgba(5,18,36,.1))}
+  .page-hero:before{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68))!important}
+  .page-hero .cc-bg-label,.hero .cc-bg-label{left:16px;bottom:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .cc-bg-layer{transition:none!important;transform:none!important;}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE NAV — single clean block; replaces all prior conflicts
+   #mainNav.open shows as a 2-column grid panel
+═══════════════════════════════════════════════════════════════ */
+@media(max-width:1050px){
+  .site-header{z-index:80!important}
+  .site-header .container.nav{position:relative!important;overflow:visible!important}
+  #mainNav{
+    display:none;
+    position:fixed!important;
+    top:104px!important;left:10px!important;right:10px!important;
+    width:auto!important;height:auto!important;
+    max-height:calc(100dvh - 120px)!important;
+    box-sizing:border-box!important;
+    flex:none!important;flex-direction:initial!important;
+    align-items:initial!important;
+    z-index:2147483647!important;
+  }
+  #mainNav.open{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    padding:10px!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    background:#fff!important;
+    border:1px solid #d7e0e9!important;
+    border-radius:14px!important;
+    box-shadow:0 18px 50px rgba(8,31,56,.26)!important;
+  }
+  #mainNav.open a.route{
+    display:flex!important;
+    align-items:center!important;justify-content:center!important;
+    min-height:48px!important;height:auto!important;
+    width:auto!important;min-width:0!important;
+    margin:0!important;padding:10px 8px!important;
+    box-sizing:border-box!important;
+    text-align:center!important;white-space:normal!important;
+    line-height:1.2!important;font-size:14px!important;font-weight:700!important;
+    border:1px solid #e1e8ee!important;border-radius:10px!important;
+    background:#f8fafc!important;color:#0b1f3a!important;
+    text-decoration:none!important;
+  }
+  #mainNav.open a.route.active{background:#edf8f4!important;border-color:#a7ddca!important}
+  #mainNav.open a.route:hover{background:#edf8f4!important}
+  .menu-btn{display:block!important}
+  .about-link{display:none!important}
+}
+@media(max-width:380px){
+  #mainNav.open{left:8px!important;right:8px!important;top:96px!important;padding:8px!important}
+  #mainNav.open a.route{min-height:44px!important;font-size:13px!important;padding:8px 6px!important}
+}
+@media(min-width:1051px){
+  #mainNav{display:flex!important}
+}
