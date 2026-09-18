@@ -18,6 +18,3 @@
 
 /* Defensive cleanup for Career Hub: its own hero owns the background. */
 [data-page="careerhub"] > .cc-page-visual{display:none!important}
-
-/* Career Hub temporarily hidden; feature remains in source for a future relaunch. */
-[data-page="careerhub"],[data-route="careerhub"]{display:none!important}

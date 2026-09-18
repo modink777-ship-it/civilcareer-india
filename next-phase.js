@@ -4,8 +4,6 @@
  */
 (function(){
   'use strict';
-  // Career Hub temporarily hidden by product decision; kept in code for a future relaunch.
-  const CAREER_HUB_ENABLED=false;
   const q=s=>document.querySelector(s), qa=s=>[...document.querySelectorAll(s)];
   const esc2=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const getJobs=()=>{try{return Array.isArray(jobs)?jobs:[]}catch{return []}};
@@ -18,10 +16,9 @@
     main.appendChild(sec);
   }
   function addNav(){
-    const nav=q('#mainNav'); if(!nav||nav.querySelector('[data-route="careerhub"]'))return;
-    const a=document.createElement('a'); a.href='/career-hub'; a.dataset.route='careerhub'; a.className='route'; a.textContent='Career Hub'; nav.appendChild(a);
-    const footer=qa('footer a[data-route="materials"]')[0]?.parentElement;
-    if(footer&&!footer.querySelector('[data-route="careerhub"]')){const f=document.createElement('a');f.href='/career-hub';f.dataset.route='careerhub';f.className='route';f.textContent='Career Hub';footer.appendChild(f);}
+    // Career Hub is intentionally hidden from the public navigation for now.
+    // Keep the feature code intact so it can be re-enabled later without data loss.
+    qa('[data-route="careerhub"]').forEach(a=>{a.remove();});
   }
   function addAdmin(){
     const tabs=q('#adminTabs'), dash=q('#adminDashboard'); if(!tabs||!dash||tabs.querySelector('[data-admin="intelligence"]'))return;
@@ -51,7 +48,7 @@
     if(id==='health'){const b=q('#runHealth');if(b&&!b.dataset.wired){b.dataset.wired='1';b.addEventListener('click',runHealth)}}
   }
   async function runHealth(){const out=q('#healthOut');if(!out)return;out.innerHTML='Running…';const checks=[['Jobs API','/api/jobs'],['Discovery API','/api/discovery'],['Alerts API','/api/alerts'],['Analytics API','/api/analytics']];const rows=[];for(const [name,url] of checks){try{const r=await fetch(url,{headers:{'x-owner-key':adminKey}});rows.push(`<div class="health-row"><b>${name}</b><span class="${r.ok?'health-ok':'health-bad'}">${r.status} ${r.ok?'OK':'CHECK'}</span></div>`)}catch(e){rows.push(`<div class="health-row"><b>${name}</b><span class="health-bad">NETWORK ERROR</span></div>`)}}out.innerHTML=rows.join('')}
-  function boot(){if(!CAREER_HUB_ENABLED){document.querySelectorAll('[data-page=\"careerhub\"],[data-route=\"careerhub\"]').forEach(el=>el.remove());return;}addPage();addNav();addAdmin();if(typeof pathRoute==='object'){pathRoute['/career-hub']='careerhub';routePath['careerhub']='/career-hub';metas.careerhub=['Civil Engineer Career Hub | CivilCareer','Personalized civil engineering jobs, skills, exams, interview preparation and free career resources.']}qa('[data-route="careerhub"]').forEach(a=>{if(a.dataset.nextWired)return;a.dataset.nextWired='1';a.addEventListener('click',e=>{e.preventDefault();if(typeof navigate==='function')navigate('careerhub')})});if(location.pathname==='/career-hub'&&typeof navigate==='function')navigate('careerhub',false);initHub();qa('#adminTabs [data-admin]').forEach(()=>{});}
+  function boot(){addPage();addNav();addAdmin();if(typeof pathRoute==='object'){pathRoute['/career-hub']='careerhub';routePath['careerhub']='/career-hub';metas.careerhub=['Civil Engineer Career Hub | CivilCareer','Personalized civil engineering jobs, skills, exams, interview preparation and free career resources.']}qa('[data-route="careerhub"]').forEach(a=>{a.remove()});if(location.pathname==='/career-hub'){if(typeof navigate==='function')navigate('home',false);else location.replace('/');}initHub();qa('#adminTabs [data-admin]').forEach(()=>{});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
   window.CivilCareerNextPhase={renderHub,loadAdminPanel,runHealth};
 })();
