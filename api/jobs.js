@@ -85,6 +85,14 @@ async function getJobBySlug(slug) {
   return rows[0] || null;
 }
 
+
+function isExpired(job) {
+  const value = job.valid_through || job.expires_at || job.deadline;
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time < Date.now();
+}
+
 async function getJobById(id) {
   const response = await supa(
     `jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`
@@ -263,6 +271,8 @@ async function renderJobPage(req, res) {
       '';
 
     const title = `${role} at ${company} | CivilCareer`;
+    const expired = isExpired(job);
+    const robotsDirective = expired ? 'noindex,follow' : 'index,follow';
 
     const description = truncate(
       job.description ||
@@ -310,6 +320,10 @@ async function renderJobPage(req, res) {
       'Cache-Control',
       'public, s-maxage=300, stale-while-revalidate=900'
     );
+    res.setHeader('X-Robots-Tag', robotsDirective);
+    if (postedDate) {
+      res.setHeader('Last-Modified', new Date(postedDate).toUTCString());
+    }
 
     return res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -319,9 +333,10 @@ async function renderJobPage(req, res) {
 
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
-<meta name="robots" content="index,follow">
+<meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
 
+<meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:type" content="website">
@@ -332,6 +347,15 @@ async function renderJobPage(req, res) {
 <meta name="twitter:description" content="${escapeHtml(description)}">
 
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
+<script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {'@type':'ListItem','position':1,'name':'Home','item':SITE_URL},
+    {'@type':'ListItem','position':2,'name':'Civil Engineering Jobs','item':`${SITE_URL}/private-jobs`},
+    {'@type':'ListItem','position':3,'name':role,'item':canonical}
+  ]
+})}</script>
 
 <style>
   :root {
