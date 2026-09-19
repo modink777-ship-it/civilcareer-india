@@ -121,9 +121,33 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
 
   if (req.method === 'GET') {
-    const query = isAdmin(req)
-      ? 'jobs?order=created_at.desc'
-      : 'jobs?published=eq.true&order=created_at.desc';
+    const slug =
+      typeof req.query?.slug === 'string'
+        ? req.query.slug.trim()
+        : '';
+
+    const id =
+      typeof req.query?.id === 'string'
+        ? req.query.id.trim()
+        : '';
+
+    let query;
+
+    if (slug) {
+      query =
+        `jobs?slug=eq.${encodeURIComponent(slug)}` +
+        (isAdmin(req) ? '' : '&published=eq.true') +
+        '&limit=1';
+    } else if (id) {
+      query =
+        `jobs?id=eq.${encodeURIComponent(id)}` +
+        (isAdmin(req) ? '' : '&published=eq.true') +
+        '&limit=1';
+    } else {
+      query = isAdmin(req)
+        ? 'jobs?order=created_at.desc'
+        : 'jobs?published=eq.true&order=created_at.desc';
+    }
 
     try {
       const r = await supa(query);
@@ -138,6 +162,12 @@ module.exports = async function handler(req, res) {
       }
 
       const jobs = await r.json();
+
+      if (slug || id) {
+        return res.status(200).json({
+          job: jobs[0] || null,
+        });
+      }
 
       return res.status(200).json({ jobs });
     } catch (err) {
