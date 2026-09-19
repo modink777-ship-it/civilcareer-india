@@ -670,20 +670,16 @@ function renderDiscoveryResults(results){
 async function discoverJobs(){
   const btn=$('discoverySearchBtn');
   if(!btn)return;
-  const q=$('discoveryQuery').value.trim()||'civil engineering jobs India';
-  const location=$('discoveryLocation').value.trim();
-  const type=$('discoveryType').value;
   btn.disabled=true;
-  const old=btn.textContent; btn.textContent='Searching…';
-  discoveryStatus('Searching public web sources…','show');
+  const old=btn.textContent; btn.textContent='Loading…';
+  discoveryStatus('Automatic discovery runs every 6 hours. Showing the newest unpublished draft leads already collected…','show');
   try{
-    const data=await api('/api/discovery',{method:'POST',key:adminKey,body:JSON.stringify({q,location,type,limit:20})});
-    renderDiscoveryResults(data.results||[]);
-    discoveryStatus(`${Number(data.count||0)} web leads found${data.sources?` · Google ${data.sources.google||0} · Bing ${data.sources.bing||0} · Duck ${data.sources.duckduckgo||0} · Yahoo ${data.sources.yahoo||0} · News ${data.sources.google_news||0} · Free news ${data.sources.jobicy||0}`:''}. Click Create draft & review to fetch and fill the job editor.`,'show');
-  }catch(e){
-    renderDiscoveryResults([]);
-    discoveryStatus(e.message||'Web discovery failed.','error');
-  }finally{btn.disabled=false;btn.textContent=old;}
+    const fresh=(typeof jobs!=='undefined'?jobs:[]).filter(j=>!j.published&&new Date(j.created_at||0).getTime()>=Date.now()-24*60*60*1000);
+    const results=fresh.map(j=>({title:j.role||'Civil engineering vacancy',snippet:[j.company,j.location,j.sector].filter(Boolean).join(' · '),url:j.source_url||'',score:100,id:j.id}));
+    renderDiscoveryResults(results);
+    discoveryStatus(`${results.length} fresh draft lead${results.length===1?'':'s'} found in the last 24 hours. Review before publishing.`,'show');
+  }catch(e){renderDiscoveryResults([]);discoveryStatus(e.message||'Could not load fresh drafts.','error');}
+  finally{btn.disabled=false;btn.textContent=old;}
 }
 async function discoverExtract(index){
   const item=(window._ccDiscoveryResults||[])[index];
