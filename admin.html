@@ -431,8 +431,6 @@ async function doLogin(){
 
     adminKey=k;
 
-    sessionStorage.setItem('cc_admin',k);
-
     showDashboard();
 
   }catch(e){
@@ -452,8 +450,6 @@ $('keyInput').addEventListener(
 );
 
 function signOut(){
-
-  sessionStorage.removeItem('cc_admin');
 
   adminKey='';
 
@@ -2357,23 +2353,7 @@ document
     };
   });
 
-/* AUTO LOGIN */
-
-window.addEventListener(
-  'DOMContentLoaded',
-  ()=>{
-
-    const saved=
-      sessionStorage.getItem('cc_admin');
-
-    if(saved){
-
-      adminKey=saved;
-
-      showDashboard();
-    }
-  }
-);
+/* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
 </script>
 
 </body>
