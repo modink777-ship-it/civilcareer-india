@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /admin.html
 Disallow: /api/
 
 Sitemap: https://civilcareer-india-two.vercel.app/sitemap.xml
-
