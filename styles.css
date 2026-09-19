@@ -1310,45 +1310,63 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MOBILE NAV — single clean block; replaces all prior conflicts
-   #mainNav.open shows as a 2-column grid panel
+   MOBILE NAV — flow layout
+   The open menu expands the header instead of floating over the hero.
+   This prevents the white navigation panel from overlapping hero content.
 ═══════════════════════════════════════════════════════════════ */
 @media(max-width:1050px){
   .site-header{z-index:80!important}
-  .site-header .container.nav{position:relative!important;overflow:visible!important}
+  .site-header .container.nav{
+    position:relative!important;
+    overflow:visible!important;
+    flex-wrap:wrap!important;
+    height:auto!important;
+    min-height:64px!important;
+  }
   #mainNav{
-    display:none;
-    position:fixed!important;
-    top:104px!important;left:10px!important;right:10px!important;
-    width:auto!important;height:auto!important;
-    max-height:calc(100dvh - 120px)!important;
+    display:none!important;
+    position:static!important;
+    order:4!important;
+    flex:0 0 100%!important;
+    width:100%!important;
+    max-height:calc(100dvh - 88px)!important;
     box-sizing:border-box!important;
-    flex:none!important;flex-direction:initial!important;
-    align-items:initial!important;
-    z-index:2147483647!important;
+    margin:0!important;
+    padding:0!important;
   }
   #mainNav.open{
     display:grid!important;
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:8px!important;
-    padding:10px!important;
-    overflow-x:hidden!important;overflow-y:auto!important;
+    padding:10px 0 12px!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
     background:#fff!important;
-    border:1px solid #d7e0e9!important;
-    border-radius:14px!important;
-    box-shadow:0 18px 50px rgba(8,31,56,.26)!important;
+    border:0!important;
+    border-top:1px solid #e5eaf0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
   }
   #mainNav.open a.route{
     display:flex!important;
-    align-items:center!important;justify-content:center!important;
-    min-height:48px!important;height:auto!important;
-    width:auto!important;min-width:0!important;
-    margin:0!important;padding:10px 8px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-height:46px!important;
+    height:auto!important;
+    width:auto!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:10px 8px!important;
     box-sizing:border-box!important;
-    text-align:center!important;white-space:normal!important;
-    line-height:1.2!important;font-size:14px!important;font-weight:700!important;
-    border:1px solid #e1e8ee!important;border-radius:10px!important;
-    background:#f8fafc!important;color:#0b1f3a!important;
+    text-align:center!important;
+    white-space:normal!important;
+    line-height:1.2!important;
+    font-size:14px!important;
+    font-weight:700!important;
+    border:1px solid #e1e8ee!important;
+    border-radius:10px!important;
+    background:#f8fafc!important;
+    color:#0b1f3a!important;
     text-decoration:none!important;
   }
   #mainNav.open a.route.active{background:#edf8f4!important;border-color:#a7ddca!important}
@@ -1357,7 +1375,7 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
   .about-link{display:none!important}
 }
 @media(max-width:380px){
-  #mainNav.open{left:8px!important;right:8px!important;top:96px!important;padding:8px!important}
+  #mainNav.open{grid-template-columns:1fr 1fr!important;gap:7px!important;padding:8px 0 10px!important}
   #mainNav.open a.route{min-height:44px!important;font-size:13px!important;padding:8px 6px!important}
 }
 @media(min-width:1051px){
