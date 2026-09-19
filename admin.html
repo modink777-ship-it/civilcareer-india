@@ -129,7 +129,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .discovery-note{color:#6a8aaa;font-size:.76rem;line-height:1.5;margin-top:10px}
 .discovery-status{display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:.8rem}
 .discovery-status.show{display:block;background:rgba(5,150,105,.12);color:#6ee7b7;border:1px solid rgba(5,150,105,.25)}
-.discovery-status.error{background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.discovery-status.error{display:block;background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
 .discovery-results{display:grid;gap:9px}
 .discovery-result{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:14px 16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
 .discovery-result h4{font-size:.9rem;color:#fff;margin:0 0 5px;line-height:1.35}
@@ -513,11 +513,14 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    throw Error(
+    const err=new Error(
       data.error ||
       data.details ||
       `Request failed (${r.status})`
     );
+    err.status=r.status;
+    err.data=data;
+    throw err;
   }
 
   return data;
@@ -2594,8 +2597,10 @@ async function discoverJobs(){
       'show'
     );
   }catch(e){
+    renderSourceHealth(e.data?.sourceStats||{});
     renderDiscoveryResults([]);
-    discoveryStatus(e.message||'Web discovery failed.','error');
+    const detail=e.data?.details||e.message||'Web discovery failed.';
+    discoveryStatus(`Discovery failed${e.status?` (HTTP ${e.status})`:''}: ${detail}`,'error');
   }finally{
     btn.disabled=false; btn.textContent=old;
   }
