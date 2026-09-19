@@ -50,35 +50,62 @@ function toast(msg){const x=$('toast');x.textContent=msg;x.classList.add('show')
 function navigate(next,push=true){route=next in routePath?next:'home';$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===route));$$('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===route));$('mainNav').classList.remove('open');$('menuBtn').setAttribute('aria-expanded','false');if(push&&location.pathname!==routePath[route])history.pushState({},'',routePath[route]);setMeta();scrollTo({top:0,behavior:'smooth'});if(route==='private')renderPrivate();if(route==='government')renderGovernment();if(route==='exams')renderExams();if(route==='materials')renderMaterials();if(route==='foryou')renderForYou();if(route==='admin')showAdmin();translate();track()}
 const metas={home:["CivilCareer — India's Civil Engineering Career Platform","Civil engineering jobs, civil-focused Central and State government recruitment, MNC careers, competitive examinations and free study resources across India."],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies, Indian MNCs and global engineering firms.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, Karnataka government recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
 function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString(lang==='kn'?'kn-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
+function companyInitials(name){
+  const words=String(name||'Company').trim().split(/\s+/).filter(Boolean);
+  return (words.length===1?words[0].slice(0,2):words.slice(0,2).map(x=>x[0]).join('')).toUpperCase().slice(0,2);
+}
+function companyLogoUrl(j){
+  if(j.logo_url)return j.logo_url;
+  const raw=j.company_website||j.company_url||j.company_domain||'';
+  if(!raw)return '';
+  try{
+    const u=new URL(/^https?:\/\//i.test(raw)?raw:`https://${raw}`);
+    const host=u.hostname.toLowerCase().replace(/^www\./,'');
+    const blocked=['linkedin.com','indeed.com','naukri.com','glassdoor.com','facebook.com','instagram.com','x.com','twitter.com','youtube.com'];
+    if(!host||blocked.some(x=>host===x||host.endsWith('.'+x)))return '';
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+  }catch{return ''}
+}
+function companyLogoMarkup(j){
+  const name=j.company||j.recruitment_authority||'Organization';
+  const initials=companyInitials(name),src=companyLogoUrl(j);
+  return `<div class="company-logo-wrap" aria-label="${esc(name)} logo">${src?`<img class="company-logo-img" src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">`:''}<span class="company-logo-fallback" ${src?'hidden':''}>${esc(initials)}</span></div>`;
+}
 function jobCard(j,gov=false){
   const closed=isClosed(j),verified=j.last_verified&&!closed,saved=getSaved().has(j.id);
   const isNew=j.created_at&&(new Date()-new Date(j.created_at))<3*86400000;
-  const urgClass=closed?'card-closed':daysLeft!==null&&daysLeft<=3?'card-urgent':daysLeft!==null&&daysLeft<=7?'card-soon':'card-fresh';
   const daysLeft=j.deadline&&!closed?Math.ceil((new Date(j.deadline+'T23:59:59')-new Date())/86400000):null;
+  const urgClass=closed?'card-closed':daysLeft!==null&&daysLeft<=3?'card-urgent':daysLeft!==null&&daysLeft<=7?'card-soon':'card-fresh';
   const waText=encodeURIComponent((j.role||'Job')+' at '+(j.company||'Organization')+'\n'+(j.location?j.location+'\n':'')+(j.source_url?'Apply: '+j.source_url:''));
-  return `<article class="job-card ${urgClass}">
-    <div class="card-top">
-      <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Application Closed':j.featured?'Featured':verified?'Verified':gov?'Government':'Civil Engineering'}</span>
-      ${j.deadline?`<span class="verified-date">${closed?'Closed':'Deadline'} ${date(j.deadline)}</span>`:''}
-      ${isNew?'<span class="new-badge">NEW</span>':''}
-      ${daysLeft!==null&&daysLeft<=7?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}
+  const tags=[j.experience_level,j.qualification,j.employment_type].filter(Boolean).slice(0,3);
+  return `<article class="job-card cc-modern-job-card ${urgClass}">
+    <div class="cc-job-head">
+      ${companyLogoMarkup(j)}
+      <div class="cc-job-company">
+        <div class="cc-company-name">${esc(j.company||'Organization')}</div>
+        <div class="cc-job-context">${esc(j.location||j.location_display||'India')} ${j.created_at?`<span>· ${timeAgo(j.created_at)}</span>`:''}</div>
+      </div>
+      <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★':'☆'}</button>
     </div>
-    <h3>${esc(j.role||'Opportunity')}</h3>
-    <div class="organization">${esc(j.company||'Organization')}${j.created_at?'<span class="post-age">'+timeAgo(j.created_at)+'</span>':''}</div>
-    ${(j.salary||SALARY_HINTS[classifyJob(j)])?`<div class="salary-badge">💰 ${esc(j.salary||SALARY_HINTS[classifyJob(j)])}</div>`:''}
-    ${j.vacancy_count?`<span class="vacancy-badge">📋 ${esc(j.vacancy_count)} Posts</span>`:''}
-    <div class="card-meta">
+    <div class="cc-job-title-row">
+      <h3>${esc(j.role||'Opportunity')}</h3>
+      <div class="cc-statuses">
+        <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Application Closed':j.featured?'Featured':verified?'Verified':gov?'Government':'Civil Engineering'}</span>
+        ${isNew?'<span class="new-badge">NEW</span>':''}
+      </div>
+    </div>
+    <div class="cc-job-meta">
       ${j.location?`<span>${esc(j.location)}</span>`:''}
-      ${j.experience_level?`<span>${esc(j.experience_level)}</span>`:''}
-      ${j.qualification?`<span>${esc(j.qualification)}</span>`:''}
       ${j.employment_type?`<span>${esc(j.employment_type)}</span>`:''}
+      ${j.deadline?`<span>${closed?'Closed':'Deadline'} ${date(j.deadline)}</span>`:''}
     </div>
-    <p class="card-copy">${esc(short(j.description||'Check the official source for the latest details.'))}</p>
-    <div class="card-actions">
-      <button data-job="${j.id}">View Details</button>
-      <a class="btn-wa" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener">📲 Share</a>
-      <button class="btn-save ${saved?'saved':''}" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}">${saved?'★':'☆'}</button>
-      ${verified?`<span class="verified-date">Last verified: ${date(j.last_verified)}</span>`:''}
+    ${tags.length?`<div class="cc-job-tags">${tags.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}
+    ${j.salary||SALARY_HINTS[classifyJob(j)]?`<div class="cc-job-salary">${esc(j.salary||SALARY_HINTS[classifyJob(j)])}</div>`:''}
+    <p class="card-copy">${esc(short(j.description||'Check the official source for the latest details.',170))}</p>
+    <div class="cc-job-footer">
+      <button data-job="${j.id}" class="cc-view-btn">View Details</button>
+      <a class="btn-wa cc-share" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" aria-label="Share job">Share</a>
+      ${verified?`<span class="cc-verified-note">Verified ${date(j.last_verified)}</span>`:''}
     </div>
   </article>`
 }

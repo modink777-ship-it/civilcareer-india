@@ -1,0 +1,16 @@
+CivilCareer Phase 6 — Professional Job UI (ONE-GO)
+
+This package is a complete project snapshot. Upload the whole project contents in one commit/deployment.
+
+Changes:
+- Professional job cards inspired by modern job platforms, using CivilCareer's own blue/green palette.
+- Company logo support when a trusted company logo/website field exists, with an initials fallback when it does not.
+- Clear job metadata chips, status badges, Save, Share and View Job actions.
+- Cleaner filter chips and search surface.
+- Responsive/mobile card layout and visible focus/hover states.
+- No new API/serverless functions.
+- No Supabase/database changes.
+- No environment-variable changes.
+- No paid services.
+
+Do not combine this with older Phase 6 ZIPs. This is the complete one-go snapshot.

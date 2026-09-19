@@ -221,7 +221,7 @@ const oldJobCardV8=jobCard;
 jobCard=function(j,gov=false){
   const html=oldJobCardV8(j,gov);
   const path=jobPath(j);
-  return html.replace(`<button data-job="${j.id}">View Details</button>`,`<a class="detail-link" href="${esc(path)}" data-dynamic-route="true">View Details</a>`);
+  return html.replace(`<button data-job="${j.id}">View Details</button>`,`<a class="detail-link" href="${esc(path)}" data-dynamic-route="true">View Job</a>`);
 };
 
 const oldExamCardV8=examCard;
