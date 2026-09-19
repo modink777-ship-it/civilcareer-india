@@ -542,7 +542,7 @@ async function doLogin(){
 
   try{
 
-    await api('/api/jobs',{key:k});
+    await api('/api/jobs?auth=1',{key:k});
 
     adminKey=k;
 
