@@ -636,10 +636,6 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
-    },
-    {
-      "source": "/api/jobs/discovery",
-      "destination": "/api/jobs?discovery=1"
     }
   ],
   "headers": [
@@ -679,7 +675,7 @@
   ],
   "crons": [
     {
-      "path": "/api/jobs/discovery",
+      "path": "/api/jobs?discovery=cron",
       "schedule": "30 0 * * *"
     }
   ]
