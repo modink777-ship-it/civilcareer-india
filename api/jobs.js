@@ -534,841 +534,250 @@ function decodeXml(value) {
     .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 }
-
 function cleanDiscoveryText(value) {
   return decodeXml(value).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
 }
-
 function parseDiscoveryRss(xml) {
   const items=[];
-
   for (const block of String(xml||'').match(/<item>[\s\S]*?<\/item>/gi)||[]) {
-    const get=tag=>{
-      const m=block.match(
-        new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,'i')
-      );
-      return m?cleanDiscoveryText(m[1]):'';
-    };
-
-    const title=get('title');
-    const link=get('link');
-    const description=get('description');
-    const pubDate=get('pubDate');
-    const source=get('source');
-
-    if(title&&link) {
-      items.push({
-        title,
-        link,
-        description,
-        pubDate,
-        source
-      });
-    }
+    const get=tag=>{const m=block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,'i'));return m?cleanDiscoveryText(m[1]):''};
+    const title=get('title'), link=get('link'), description=get('description'), pubDate=get('pubDate'), source=get('source');
+    if(title&&link) items.push({title,link,description,pubDate,source});
   }
-
   return items;
 }
-
-function discoverySourceHost(url){
-  try {
-    return new URL(url).hostname.replace(/^www\./,'');
-  } catch {
-    return '';
-  }
-}
-
-function discoveryNorm(v){
-  return String(v||'')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g,' ')
-    .trim();
-}
-
+function discoverySourceHost(url){try{return new URL(url).hostname.replace(/^www\./,'')}catch{return ''}}
+function discoveryNorm(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
 function discoveryRole(title){
   const t=cleanDiscoveryText(title);
-
-  return t
-    .replace(
-      /\s+(?:-|–|—|at|@|\|)\s+[^|–—-]{2,100}$/i,
-      ''
-    )
-    .trim()||t;
+  return t.replace(/\s+(?:-|–|—|at|@|\|)\s+[^|–—-]{2,100}$/i,'').trim()||t;
 }
-
 function discoveryCompany(title,description){
   const t=cleanDiscoveryText(title);
-
-  let m=t.match(
-    /\s+(?:-|–|—|at|@|\|)\s+([^|–—-]{2,100})$/i
-  );
-
+  let m=t.match(/\s+(?:-|–|—|at|@|\|)\s+([^|–—-]{2,100})$/i);
   if(m)return m[1].trim();
-
-  m=cleanDiscoveryText(description).match(
-    /(?:company|employer)\s*[:\-]\s*([^.|]+)/i
-  );
-
+  m=cleanDiscoveryText(description).match(/(?:company|employer)\s*[:\-]\s*([^.|]+)/i);
   return m?m[1].trim():'';
 }
-
 function discoveryLocation(text,requestedLocation){
-  const hay=discoveryNorm(
-    `${requestedLocation||''} ${text}`
-  );
-
-  for(const city of DISCOVERY_CITY_WORDS) {
-    if(hay.includes(city)) {
-      return city.replace(/\b\w/g,c=>c.toUpperCase());
-    }
-  }
-
-  return /\bindia\b|pan india|all india/.test(hay)
-    ? 'India'
-    : (requestedLocation||'India');
+  const hay=discoveryNorm(`${requestedLocation||''} ${text}`);
+  for(const city of DISCOVERY_CITY_WORDS) if(hay.includes(city)) return city.replace(/\b\w/g,c=>c.toUpperCase());
+  return /\bindia\b|pan india|all india/.test(hay)?'India':(requestedLocation||'India');
 }
-
 function discoverySector(text){
-  return /government|govt|psu|public sector|recruitment|commission|authority|department|board|pwd|nhai|cpwd|railway/
-    .test(discoveryNorm(text))
-    ? 'Government'
-    : 'Private';
+  return /government|govt|psu|public sector|recruitment|commission|authority|department|board|pwd|nhai|cpwd|railway/.test(discoveryNorm(text))?'Government':'Private';
 }
-
 function discoveryIsCivil(title,description){
   const t=discoveryNorm(`${title} ${description}`);
-
-  return DISCOVERY_KEYWORDS.some(
-    k=>t.includes(discoveryNorm(k))
-  ) || /civil construction|civil works|infrastructure/.test(t);
+  return DISCOVERY_KEYWORDS.some(k=>t.includes(discoveryNorm(k))) || /civil construction|civil works|infrastructure/.test(t);
 }
-
 function discoveryQueries(q,location){
-  const base=cleanDiscoveryText(
-    q||'civil engineering jobs'
-  );
-
-  const loc=cleanDiscoveryText(
-    location||'India'
-  );
-
+  const base=cleanDiscoveryText(q||'civil engineering jobs');
+  const loc=cleanDiscoveryText(location||'India');
   const generic=[`${base} ${loc}`];
-
-  for(
-    const role of DISCOVERY_KEYWORDS.slice(0,7)
-  ) {
-    generic.push(`${role} ${loc}`);
-  }
-
-  const siteQueries=DISCOVERY_SITES
-    .slice(0,7)
-    .map(
-      site=>`site:${site} ${base} ${loc}`
-    );
-
-  return [
-    ...generic,
-    ...siteQueries
-  ].slice(0,14);
+  for(const role of DISCOVERY_KEYWORDS.slice(0,7)) generic.push(`${role} ${loc}`);
+  const siteQueries=DISCOVERY_SITES.slice(0,7).map(site=>`site:${site} ${base} ${loc}`);
+  return [...generic,...siteQueries].slice(0,14);
 }
-
 async function fetchText(url,headers={}){
-  const r=await fetch(
-    url,
-    {
-      headers:{
-        'User-Agent':
-          'CivilCareer public vacancy discovery/1.0',
-        'Accept':
-          'application/rss+xml, application/json, text/xml, text/plain;q=0.9, */*'
-      },
-      signal:AbortSignal.timeout(5000),
-      redirect:'follow'
-    }
-  );
-
-  if(!r.ok) {
-    throw new Error(`HTTP ${r.status}`);
-  }
-
+  const r=await fetch(url,{headers:{'User-Agent':'CivilCareer public vacancy discovery/1.0','Accept':'application/rss+xml, application/json, text/xml, text/plain;q=0.9, */*'},signal:AbortSignal.timeout(5000),redirect:'follow'});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.text();
 }
-
 async function discoveryFetchGoogleNews(query){
-  const url=
-    `https://news.google.com/rss/search?q=${
-      encodeURIComponent(`${query} when:1d`)
-    }&hl=en-IN&gl=IN&ceid=IN:en`;
-
-  return parseDiscoveryRss(
-    await fetchText(url)
-  );
+  const url=`https://news.google.com/rss/search?q=${encodeURIComponent(`${query} when:1d`)}&hl=en-IN&gl=IN&ceid=IN:en`;
+  return parseDiscoveryRss(await fetchText(url));
 }
-
 async function discoveryFetchBingNews(query){
-  const url=
-    `https://www.bing.com/news/search?q=${
-      encodeURIComponent(
-        `${query} after:${new Date(
-          Date.now()-86400000
-        ).toISOString().slice(0,10)}`
-      )
-    }&format=rss`;
-
-  return parseDiscoveryRss(
-    await fetchText(url)
-  );
+  const url=`https://www.bing.com/news/search?q=${encodeURIComponent(`${query} after:${new Date(Date.now()-86400000).toISOString().slice(0,10)}`)}&format=rss`;
+  return parseDiscoveryRss(await fetchText(url));
 }
-
 async function discoveryFetchJobicy(query){
-  const tag=(
-    query.match(
-      /civil engineer|site engineer|planning engineer|quantity surveyor|structural engineer|construction engineer|project engineer|bim engineer/i
-    )||['civil']
-  )[0];
-
-  const url=
-    `https://jobicy.com/api/v2/remote-jobs?count=50&tag=${
-      encodeURIComponent(tag)
-    }`;
-
-  const raw=JSON.parse(
-    await fetchText(
-      url,
-      {'Accept':'application/json'}
-    )
-  );
-
+  const tag=(query.match(/civil engineer|site engineer|planning engineer|quantity surveyor|structural engineer|construction engineer|project engineer|bim engineer/i)||['civil'])[0];
+  const url=`https://jobicy.com/api/v2/remote-jobs?count=50&tag=${encodeURIComponent(tag)}`;
+  const raw=JSON.parse(await fetchText(url,{'Accept':'application/json'}));
   return (raw.jobs||[]).map(j=>({
-    title:j.jobTitle||'',
-    link:j.url||'',
-    description:cleanDiscoveryText(
-      j.jobExcerpt||j.jobDescription||''
-    ),
-    pubDate:j.pubDate||'',
-    source:'jobicy.com',
-    company:j.companyName||'',
-    location:j.jobGeo||''
+    title:j.jobTitle||'',link:j.url||'',description:cleanDiscoveryText(j.jobExcerpt||j.jobDescription||''),
+    pubDate:j.pubDate||'',source:'jobicy.com',company:j.companyName||'',location:j.jobGeo||''
   }));
 }
-
 async function discoveryFetchArbeitnow(){
-  const raw=JSON.parse(
-    await fetchText(
-      'https://www.arbeitnow.com/api/job-board-api',
-      {'Accept':'application/json'}
-    )
-  );
-
+  const raw=JSON.parse(await fetchText('https://www.arbeitnow.com/api/job-board-api',{'Accept':'application/json'}));
   return (raw.data||[]).map(j=>({
-    title:j.title||'',
-    link:j.url||'',
-    description:cleanDiscoveryText(
-      j.description||''
-    ),
-    pubDate:j.created_at
-      ? new Date(j.created_at*1000).toISOString()
-      : (j.created_at||''),
-    source:'arbeitnow.com',
-    company:j.company_name||j.company||'',
-    location:j.location||''
+    title:j.title||'',link:j.url||'',description:cleanDiscoveryText(j.description||''),
+    pubDate:j.created_at?new Date(j.created_at*1000).toISOString():(j.created_at||''),
+    source:'arbeitnow.com',company:j.company_name||j.company||'',location:j.location||''
   }));
 }
-
 async function discoveryFetchOnJob(){
-  const raw=JSON.parse(
-    await fetchText(
-      'https://onjob.io/feeds/jobs.json',
-      {'Accept':'application/json'}
-    )
-  );
-
+  const raw=JSON.parse(await fetchText('https://onjob.io/feeds/jobs.json',{'Accept':'application/json'}));
   return (raw.jobs||[]).map(j=>({
-    title:j.title||'',
-    link:j.url||'',
-    description:cleanDiscoveryText(
-      j.descriptionHtml||j.description||''
-    ),
-    pubDate:j.datePosted||'',
-    source:'onjob.io',
-    company:j.company||'',
-    location:j.location||'',
+    title:j.title||'',link:j.url||'',description:cleanDiscoveryText(j.descriptionHtml||j.description||''),
+    pubDate:j.datePosted||'',source:'onjob.io',company:j.company||'',location:j.location||'',
     application_url:j.applyUrl||j.url||''
   }));
 }
-
-function normalizeDiscoveryItem(
-  item,
-  requestedLocation,
-  sourceLabel
-){
-  const title=cleanDiscoveryText(
-    item.title
-  );
-
-  const snippet=cleanDiscoveryText(
-    item.description||item.snippet||''
-  );
-
+function normalizeDiscoveryItem(item,requestedLocation,sourceLabel){
+  const title=cleanDiscoveryText(item.title), snippet=cleanDiscoveryText(item.description||item.snippet||'');
   const url=item.link||item.url||'';
-
-  if(
-    !title||
-    !url||
-    !discoveryIsCivil(title,snippet)
-  ) {
-    return null;
-  }
-
-  const parsed=Date.parse(
-    item.pubDate||item.published_at||''
-  );
-
-  const age=
-    Number.isFinite(parsed)
-      ? Date.now()-parsed
-      : (
-          Number.isFinite(item.ageHours)
-            ? item.ageHours*3600000
-            : null
-        );
-
-  if(
-    age!==null &&
-    (
-      age < -2*3600000 ||
-      age > 48*3600000
-    )
-  ) {
-    return null;
-  }
-
-  const source=
-    sourceLabel||
-    item.source||
-    discoverySourceHost(url)||
-    'Public web';
-
-  return {
-    title,
-    url,
-    snippet:snippet.slice(0,800),
-    pubDate:item.pubDate||'',
-    source,
-    company:item.company||'',
-    location:
-      item.location||
-      requestedLocation||
-      'India',
-    ageHours:
-      age===null
-        ? null
-        : Math.max(
-            0,
-            Math.round(age/3600000)
-          )
-  };
+  if(!title||!url||!discoveryIsCivil(title,snippet)) return null;
+  const parsed=Date.parse(item.pubDate||item.published_at||'');
+  const age=Number.isFinite(parsed)?Date.now()-parsed:(Number.isFinite(item.ageHours)?item.ageHours*3600000:null);
+  if(age!==null && (age < -2*3600000 || age > 48*3600000)) return null;
+  const source=sourceLabel||item.source||discoverySourceHost(url)||'Public web';
+  return {title,url,snippet:snippet.slice(0,800),pubDate:item.pubDate||'',source,company:item.company||'',location:item.location||requestedLocation||'India',ageHours:age===null?null:Math.max(0,Math.round(age/3600000))};
 }
-
-async function runPublicDiscovery({
-  q,
-  location,
-  type
-}={}){
-  const requestedLocation=cleanDiscoveryText(
-    location||'India'
-  );
-
-  const query=cleanDiscoveryText(
-    q||'civil engineering jobs India'
-  );
-
+async function runPublicDiscovery({q,location,type}={}){
+  const requestedLocation=cleanDiscoveryText(location||'India');
+  const query=cleanDiscoveryText(q||'civil engineering jobs India');
   const sourceStats={};
   const all=[];
 
   // Configured providers are independent. A missing key, quota response, or outage
   // is recorded and does not prevent the remaining providers/public feeds from running.
-  const configured=await runConfiguredSources({
-    q:query,
-    location:requestedLocation
-  });
-
-  Object.assign(
-    sourceStats,
-    configured.stats
-  );
-
-  all.push(
-    ...configured.jobs
-  );
+  const configured=await runConfiguredSources({q:query,location:requestedLocation});
+  Object.assign(sourceStats, configured.stats);
+  all.push(...configured.jobs);
 
   // Always keep no-key public sources as the final fallback pool.
   const publicSources=[
-    [
-      'google_news',
-      ()=>discoveryFetchGoogleNews(
-        `${query} ${requestedLocation}`
-      )
-    ],
-    [
-      'bing_news',
-      ()=>discoveryFetchBingNews(
-        `${query} ${requestedLocation}`
-      )
-    ],
-    [
-      'jobicy',
-      ()=>discoveryFetchJobicy(query)
-    ],
-    [
-      'arbeitnow',
-      ()=>discoveryFetchArbeitnow()
-    ],
-    [
-      'onjob',
-      ()=>discoveryFetchOnJob()
-    ]
+    ['google_news', ()=>discoveryFetchGoogleNews(`${query} ${requestedLocation}`)],
+    ['bing_news', ()=>discoveryFetchBingNews(`${query} ${requestedLocation}`)],
+    ['jobicy', ()=>discoveryFetchJobicy(query)],
+    ['arbeitnow', ()=>discoveryFetchArbeitnow()],
+    ['onjob', ()=>discoveryFetchOnJob()]
   ];
-
-  const publicResults=await Promise.allSettled(
-    publicSources.map(([,fn])=>fn())
-  );
-
+  const publicResults=await Promise.allSettled(publicSources.map(([,fn])=>fn()));
   publicResults.forEach((result,i)=>{
     const name=publicSources[i][0];
-
     if(result.status==='fulfilled'){
       const rows=result.value||[];
-
-      sourceStats[name]={
-        name,
-        configured:true,
-        ok:true,
-        items:rows.length,
-        error:null,
-        remaining:null,
-        reset:null
-      };
-
-      all.push(
-        ...rows.map(
-          x=>({...x,_source:name})
-        )
-      );
+      sourceStats[name]={name,configured:true,ok:true,items:rows.length,error:null,remaining:null,reset:null};
+      all.push(...rows.map(x=>({...x,_source:name})));
     }else{
-      sourceStats[name]={
-        name,
-        configured:true,
-        ok:false,
-        items:0,
-        error:String(
-          result.reason?.message||
-          result.reason
-        ),
-        remaining:null,
-        reset:null
-      };
+      sourceStats[name]={name,configured:true,ok:false,items:0,error:String(result.reason?.message||result.reason),remaining:null,reset:null};
     }
   });
 
-  const seen=new Set();
-  const candidates=[];
-  const older=[];
-
+  const seen=new Set(), candidates=[], older=[];
   for(const item of all){
-    const normalized=normalizeDiscoveryItem(
-      item,
-      requestedLocation,
-      item._source||item.source
-    );
-
+    const normalized=normalizeDiscoveryItem(item,requestedLocation,item._source||item.source);
     if(!normalized) continue;
-
-    const age=
-      Number.isFinite(normalized.ageHours)
-        ? normalized.ageHours
-        : null;
-
-    const key=
-      normalized.url.replace(/[?#].*$/,'')+
-      '|'+
-      discoveryNorm(normalized.title);
-
+    const age=Number.isFinite(normalized.ageHours)?normalized.ageHours:null;
+    const key=normalized.url.replace(/[?#].*$/,'')+'|'+discoveryNorm(normalized.title);
     if(seen.has(key)) continue;
-
     seen.add(key);
-
     // A last-24-hours queue should only accept listings with a known posting age.
     // This prevents old undated listings from being silently presented as fresh.
-    if(
-      age===null||
-      age>24
-    ){
-      older.push(normalized);
-      continue;
-    }
-
+    if(age===null || age>24){ older.push(normalized); continue; }
     candidates.push(normalized);
   }
 
-  candidates.sort(
-    (a,b)=>
-      (a.ageHours??999)-
-      (b.ageHours??999)
-  );
-
-  const typeFiltered=candidates.filter(x=>{
-    if(!type||type==='all') return true;
-
-    const sector=discoverySector(
-      `${x.title} ${x.snippet}`
-    );
-
-    if(type==='government')
-      return sector==='Government';
-
-    if(type==='private')
-      return sector==='Private';
-
-    if(type==='mnc'){
-      return /mnc|multinational|large employer|corporation|ltd|limited|pvt|private/i
-        .test(
-          `${x.company} ${x.snippet}`
-        );
-    }
-
+  candidates.sort((a,b)=>(a.ageHours??999)-(b.ageHours??999));
+  const typeFiltered = candidates.filter(x => {
+    if (!type || type === 'all') return true;
+    const sector = discoverySector(`${x.title} ${x.snippet}`);
+    if (type === 'government') return sector === 'Government';
+    if (type === 'private') return sector === 'Private';
+    if (type === 'mnc') return /mnc|multinational|large employer|corporation|ltd|limited|pvt|private/i.test(`${x.company} ${x.snippet}`);
     return true;
   });
-
-  const limited=typeFiltered.slice(
-    0,
-    80
-  );
-
-  /*
-   * IMPORTANT FIX
-   *
-   * Do not use:
-   *
-   * jobs?select=id,source_url,apply_url,role,company,created_at&limit=2000
-   *
-   * The deployed Supabase/PostgREST schema rejected that discovery lookup
-   * with:
-   *
-   * PGRST204:
-   * Could not find the 'limit' column of 'jobs' in the schema cache
-   *
-   * Discovery only needs source_url, role and company for duplicate checking,
-   * so request only those fields that are actually required.
-   */
-  const existingResponse=await supa(
-    'jobs?select=id,source_url,role,company,created_at'
-  );
-
+  const limited=typeFiltered.slice(0,80);
+  const existingResponse=await supa('jobs?select=id,source_url,role,company,created_at');
   if(!existingResponse.ok){
-    const err=new Error(
-      `Supabase job lookup failed: ${existingResponse.status}`
-    );
-
+    const err=new Error(`Supabase job lookup failed: ${existingResponse.status}`);
     err.sourceStats=sourceStats;
     throw err;
   }
-
-  const existingRows=
-    await existingResponse.json();
-
-  const existingUrls=new Set(
-    existingRows
-      .map(
-        r=>
-          String(
-            r.source_url||''
-          )
-          .replace(/[?#].*$/,'')
-      )
-      .filter(Boolean)
-  );
-
-  const existingTitles=new Set(
-    existingRows.map(
-      r=>
-        `${discoveryNorm(r.role)}|${discoveryNorm(r.company)}`
-    )
-  );
-
+  const existingRows=await existingResponse.json();
+  const existingUrls=new Set(existingRows.map(r=>String(r.source_url||'').replace(/[?#].*$/,'')).filter(Boolean));
+  const existingTitles=new Set(existingRows.map(r=>`${discoveryNorm(r.role)}|${discoveryNorm(r.company)}`));
   const now=new Date().toISOString();
-
   const fresh=limited.filter(x=>{
-    const company=
-      x.company||
-      discoveryCompany(
-        x.title,
-        x.snippet
-      );
-
-    const titleKey=
-      `${discoveryNorm(
-        discoveryRole(x.title)
-      )}|${discoveryNorm(company)}`;
-
-    return (
-      !existingUrls.has(
-        x.url.replace(/[?#].*$/,'')
-      ) &&
-      !existingTitles.has(titleKey)
-    );
+    const company=x.company||discoveryCompany(x.title,x.snippet);
+    const titleKey=`${discoveryNorm(discoveryRole(x.title))}|${discoveryNorm(company)}`;
+    return !existingUrls.has(x.url.replace(/[?#].*$/,'')) && !existingTitles.has(titleKey);
   });
-
-  const drafts=fresh
-    .slice(0,40)
-    .map((item,index)=>{
-      const role=
-        discoveryRole(item.title);
-
-      const company=
-        item.company||
-        discoveryCompany(
-          item.title,
-          item.snippet
-        );
-
-      const date=
-        Date.parse(
-          item.pubDate||''
-        );
-
-      const posted=
-        Number.isFinite(date)
-          ? new Date(date).toISOString()
-          : '';
-
-      return {
-        source_url:item.url,
-        role,
-        role_normalized:role,
-        company:company||null,
-
-        location:
-          item.location||
-          discoveryLocation(
-            `${item.title} ${item.snippet}`,
-            requestedLocation
-          ),
-
-        location_display:
-          item.location||
-          discoveryLocation(
-            `${item.title} ${item.snippet}`,
-            requestedLocation
-          ),
-
-        country:'India',
-
-        description:
-          item.snippet||
-          `Fresh vacancy discovered from ${item.source}. Verify the original source before publishing.`,
-
-        sector:
-          discoverySector(
-            `${item.title} ${item.snippet}`
-          ),
-
-        date_posted:
-          posted
-            ? posted.slice(0,10)
-            : null,
-
-        posted_at:
-          posted||null,
-
-        source:
-          `Multi-source discovery — ${item.source}`,
-
-        source_domain:
-          discoverySourceHost(
-            item.url
-          ),
-
-        status:'Draft',
-        published:false,
-        review_state:'Draft',
-        verification_status:'Pending',
-
-        created_at:now,
-        updated_at:now,
-
-        application_url:
-          item.application_url||
-          item.url,
-
-        slug:
-          makeSlug(
-            role,
-            company||'civilcareer',
-            `${Date.now()}-${index}`
-          )
-      };
-    });
-
+  const drafts=fresh.slice(0,40).map((item,index)=>{
+    const role=discoveryRole(item.title), company=item.company||discoveryCompany(item.title,item.snippet);
+    const date=Date.parse(item.pubDate||'');
+    const posted=Number.isFinite(date)?new Date(date).toISOString():'';
+    return {
+      source_url:item.url, role, role_normalized:role, company:company||null,
+      location:item.location||discoveryLocation(`${item.title} ${item.snippet}`,requestedLocation),
+      location_display:item.location||discoveryLocation(`${item.title} ${item.snippet}`,requestedLocation),
+      country:'India', description:item.snippet||`Fresh vacancy discovered from ${item.source}. Verify the original source before publishing.`,
+      sector:discoverySector(`${item.title} ${item.snippet}`), date_posted:posted?posted.slice(0,10):null, posted_at:posted||null,
+      source:`Multi-source discovery — ${item.source}`, source_domain:discoverySourceHost(item.url),
+      status:'Draft', published:false, review_state:'Draft', verification_status:'Pending', created_at:now, updated_at:now,
+      application_url:item.application_url||item.url, slug:makeSlug(role,company||'civilcareer',`${Date.now()}-${index}`)
+    };
+  });
   let inserted=[];
   let persistenceWarning='';
-
   if(drafts.length){
-    let write=await supa(
-      'jobs',
-      {
-        method:'POST',
-        body:JSON.stringify(drafts),
-        headers:{
-          Prefer:'return=representation'
-        }
-      }
-    );
-
+    let write=await supa('jobs',{method:'POST',body:JSON.stringify(drafts),headers:{Prefer:'return=representation'}});
     if(!write.ok){
-      const detail=
-        await write.text();
-
+      const detail=await write.text();
       // Retry with a deliberately conservative payload for deployments that
       // have not yet applied the newest optional discovery columns.
       const minimal=drafts.map(d=>({
-        source_url:d.source_url,
-        role:d.role,
-        role_normalized:d.role_normalized,
-        company:d.company,
-        location:d.location,
-        location_display:d.location_display,
-        country:d.country,
-        description:d.description,
-        date_posted:d.date_posted,
-        source:d.source,
-        published:false,
-        created_at:d.created_at,
-        application_url:d.application_url,
-        slug:d.slug
+        source_url:d.source_url, role:d.role, role_normalized:d.role_normalized,
+        company:d.company, location:d.location, location_display:d.location_display,
+        country:d.country, description:d.description, date_posted:d.date_posted,
+        source:d.source, published:false, created_at:d.created_at,
+        application_url:d.application_url, slug:d.slug
       }));
-
-      write=await supa(
-        'jobs',
-        {
-          method:'POST',
-          body:JSON.stringify(minimal),
-          headers:{
-            Prefer:'return=representation'
-          }
-        }
-      );
-
+      write=await supa('jobs',{method:'POST',body:JSON.stringify(minimal),headers:{Prefer:'return=representation'}});
       if(!write.ok){
-        const detail2=
-          await write.text();
-
-        const err=new Error(
-          `Supabase discovery insert failed: ${
-            detail2.slice(0,700)||
-            detail.slice(0,700)
-          }`
-        );
-
+        const detail2=await write.text();
+        const err=new Error(`Supabase discovery insert failed: ${detail2.slice(0,700) || detail.slice(0,700)}`);
         err.sourceStats=sourceStats;
         throw err;
       }
-
-      persistenceWarning=
-        'Discovery used the compatibility draft schema because some optional job columns are not present in the current database.';
+      persistenceWarning='Discovery used the compatibility draft schema because some optional job columns are not present in the current database.';
     }
-
-    inserted=
-      await write.json();
+    inserted=await write.json();
   }
-
   return {
     count:inserted.length,
-
     drafts:inserted,
-
     results:inserted.map(j=>({
       id:j.id,
       title:j.role,
       company:j.company||'',
-      location:
-        j.location_display||
-        j.location||
-        '',
+      location:j.location_display||j.location||'',
       url:j.source_url,
-      applicationUrl:
-        j.application_url||
-        j.source_url||
-        '',
-      snippet:
-        (j.description||'')
-        .slice(0,400),
+      applicationUrl:j.application_url||j.source_url||'',
+      snippet:(j.description||'').slice(0,400),
       source:j.source||'',
-      sourceDomain:
-        j.source_domain||'',
-      postedAt:
-        j.date_posted||'',
+      sourceDomain:j.source_domain||'',
+      postedAt:j.date_posted||'',
       score:100
     })),
-
     scanned:limited.length,
-
-    candidates:
-      candidates.length,
-
-    typeFilteredCandidates:
-      typeFiltered.length,
-
-    olderCandidates:
-      older.length,
-
-    skippedExisting:
-      Math.max(
-        0,
-        limited.length-fresh.length
-      ),
-
+    candidates:candidates.length,
+    typeFilteredCandidates:typeFiltered.length,
+    olderCandidates:older.length,
+    skippedExisting:Math.max(0,limited.length-fresh.length),
     sourceStats,
-
-    configuredSources:
-      Object.values(sourceStats)
-        .filter(
-          x=>
-            x.configured&&
-            x.name&&
-            ![
-              'google_news',
-              'bing_news',
-              'jobicy',
-              'arbeitnow',
-              'onjob'
-            ].includes(x.name)
-        )
-        .map(x=>x.name),
-
+    configuredSources:Object.values(sourceStats).filter(x=>x.configured && x.name && !['google_news','bing_news','jobicy','arbeitnow','onjob'].includes(x.name)).map(x=>x.name),
     runAt:now,
-
     persistenceWarning,
-
-    note:
-      'Freshness window: 24 hours. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
+    note:'Freshness window: 24 hours. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
-
 function supa(path, opts = {}) {
-  return fetch(
-    `${SUPA}/rest/v1/${path}`,
-    {
-      ...opts,
-      headers: {
-        apikey: KEY,
-        Authorization: `Bearer ${KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-        ...(opts.headers || {}),
-      },
-    }
-  );
+  return fetch(`${SUPA}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      apikey: KEY,
+      Authorization: `Bearer ${KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
 }
 
 function getKey(req) {
@@ -1419,7 +828,6 @@ function cleanArrays(obj) {
     if (typeof obj[field] === 'string') {
       try {
         const parsed = JSON.parse(obj[field]);
-
         if (Array.isArray(parsed)) {
           obj[field] = parsed;
         }
@@ -1433,27 +841,21 @@ function cleanArrays(obj) {
 }
 
 function makeSlug(role, company, id) {
-  const base =
-    `${role || 'job'}-${company || 'company'}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 100);
+  const base = `${role || 'job'}-${company || 'company'}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
 
   return `${base || 'job'}-${id || Date.now()}`;
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader(
-    'Access-Control-Allow-Origin',
-    '*'
-  );
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
     'GET,POST,PATCH,DELETE,OPTIONS'
   );
-
   res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type,x-owner-key'
@@ -1463,10 +865,30 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // Dedicated Admin authentication check.
+  // This must run before the Supabase configuration check so the Admin
+  // login can distinguish an invalid owner key from a database/config error.
+  if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
+    if (!process.env.OWNER_KEY) {
+      return res.status(503).json({
+        ok: false,
+        error: 'Admin authentication is not configured on this deployment',
+      });
+    }
+
+    if (!isAdmin(req)) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Invalid owner key',
+      });
+    }
+
+    return res.status(200).json({ ok: true, authenticated: true });
+  }
+
   if (!SUPA || !KEY) {
     return res.status(500).json({
-      error:
-        'Supabase server configuration is missing',
+      error: 'Supabase server configuration is missing',
     });
   }
 
@@ -1475,52 +897,21 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
 
   if (req.method === 'GET') {
-
     // Vercel Cron invokes GET and identifies itself with this user-agent.
     // Keep the scheduled path separate from the public jobs JSON response.
-    if (
-      String(
-        req.query?.discovery || ''
-      ) === 'cron' &&
-      /vercel-cron\/1\.0/i.test(
-        String(
-          req.headers['user-agent'] || ''
-        )
-      )
-    ) {
+    if (String(req.query?.discovery || '') === 'cron' && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) {
       try {
-        const result =
-          await runPublicDiscovery({
-            q:'civil engineering jobs India',
-            location:'India',
-            type:'all'
-          });
-
-        return res.status(200).json({
-          ok:true,
-          ...result
-        });
-
+        const result = await runPublicDiscovery({q:'civil engineering jobs India',location:'India',type:'all'});
+        return res.status(200).json({ok:true, ...result});
       } catch (err) {
-        return res.status(502).json({
-          ok:false,
-          error:
-            'Scheduled discovery failed',
-          details:err.message
-        });
+        return res.status(502).json({ok:false,error:'Scheduled discovery failed',details:err.message});
       }
     }
-
     // Server-rendered public job page via /jobs/:slug rewrite.
     // Direct /api/jobs?slug=... remains a JSON API unless render=html is supplied.
-    if (
-      String(
-        req.query?.render || ''
-      ) === 'html'
-    ) {
-      return renderJobPage(req,res);
+    if (String(req.query?.render || '') === 'html') {
+      return renderJobPage(req, res);
     }
-
     const slug =
       typeof req.query?.slug === 'string'
         ? req.query.slug.trim()
@@ -1536,65 +927,44 @@ module.exports = async function handler(req, res) {
     if (slug) {
       query =
         `jobs?slug=eq.${encodeURIComponent(slug)}` +
-        (
-          isAdmin(req)
-            ? ''
-            : '&published=eq.true'
-        ) +
+        (isAdmin(req) ? '' : '&published=eq.true') +
         '&limit=1';
-
     } else if (id) {
-
       query =
         `jobs?id=eq.${encodeURIComponent(id)}` +
-        (
-          isAdmin(req)
-            ? ''
-            : '&published=eq.true'
-        ) +
+        (isAdmin(req) ? '' : '&published=eq.true') +
         '&limit=1';
-
     } else {
-
-      query =
-        isAdmin(req)
-          ? 'jobs?order=created_at.desc'
-          : 'jobs?published=eq.true&order=created_at.desc';
+      query = isAdmin(req)
+        ? 'jobs?order=created_at.desc'
+        : 'jobs?published=eq.true&order=created_at.desc';
     }
 
     try {
-      const r=await supa(query);
+      const r = await supa(query);
 
       if (!r.ok) {
-        const detail=
-          await r.text();
+        const detail = await r.text();
 
         return res.status(500).json({
-          error:'Failed to load jobs',
-          details:detail,
+          error: 'Failed to load jobs',
+          details: detail,
         });
       }
 
-      const jobs=
-        await r.json();
+      const jobs = await r.json();
 
       if (slug || id) {
         return res.status(200).json({
-          job:
-            jobs[0] || null,
+          job: jobs[0] || null,
         });
       }
 
-      return res.status(200).json({
-        jobs
-      });
-
+      return res.status(200).json({ jobs });
     } catch (err) {
-
       return res.status(500).json({
-        error:
-          'Failed to load jobs',
-        details:err.message,
+        error: 'Failed to load jobs',
+        details: err.message,
       });
     }
   }
@@ -1605,18 +975,18 @@ module.exports = async function handler(req, res) {
 
   if (!isAdmin(req)) {
     return res.status(401).json({
-      error:'Invalid owner key',
+      error: 'Invalid owner key',
     });
   }
 
-  let body=req.body||{};
+  let body = req.body || {};
 
   if (typeof body === 'string') {
     try {
-      body=JSON.parse(body);
+      body = JSON.parse(body);
     } catch (e) {
       return res.status(400).json({
-        error:'Invalid JSON body',
+        error: 'Invalid JSON body',
       });
     }
   }
@@ -1624,34 +994,19 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
   // PHASE 7 — ADMIN DISCOVERY
   // ────────────────────────────────────────────────────────────────────
-
-  if (
-    req.method === 'POST' &&
-    String(
-      req.query?.discovery || ''
-    ) === '1'
-  ) {
+  if (req.method === 'POST' && String(req.query?.discovery || '') === '1') {
     try {
-
-      const result=
-        await runPublicDiscovery({
-          q:body.q,
-          location:body.location,
-          type:body.type,
-        });
-
-      return res.status(200).json(
-        result
-      );
-
+      const result = await runPublicDiscovery({
+        q: body.q,
+        location: body.location,
+        type: body.type,
+      });
+      return res.status(200).json(result);
     } catch (err) {
-
       return res.status(502).json({
-        error:
-          'Discovery search failed',
-        details:err.message,
-        sourceStats:
-          err.sourceStats || {},
+        error: 'Discovery search failed',
+        details: err.message,
+        sourceStats: err.sourceStats || {},
       });
     }
   }
@@ -1661,85 +1016,57 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
 
   if (req.method === 'POST') {
-
     try {
-
-      const {
-        id,
-        key,
-        ...rest
-      } = body;
+      const { id, key, ...rest } = body;
 
       cleanDates(rest);
       cleanArrays(rest);
 
-      if (
-        typeof rest.published !==
-        'boolean'
-      ) {
-        rest.published = true;
-      }
+      if (typeof rest.published !== 'boolean') {
+  rest.published = true;
+}
 
-      if (!rest.status) {
-        rest.status =
-          rest.published
-            ? 'Active'
-            : 'Pending Review';
-      }
+if (!rest.status) {
+  rest.status = rest.published ? 'Active' : 'Pending Review';
+}
 
       if (!rest.created_at) {
-        rest.created_at =
-          new Date().toISOString();
+        rest.created_at = new Date().toISOString();
       }
 
       // Generate slug if one was not supplied.
       if (!rest.slug) {
-        rest.slug =
-          makeSlug(
-            rest.role,
-            rest.company,
-            Date.now()
-          );
+        rest.slug = makeSlug(
+          rest.role,
+          rest.company,
+          Date.now()
+        );
       }
 
-      const r=
-        await supa(
-          'jobs',
-          {
-            method:'POST',
-            body:
-              JSON.stringify(rest),
-          }
-        );
+      const r = await supa('jobs', {
+        method: 'POST',
+        body: JSON.stringify(rest),
+      });
 
       if (!r.ok) {
-        const detail=
-          await r.text();
+        const detail = await r.text();
 
         return res.status(500).json({
-          error:
-            'Job could not be saved',
-          details:detail,
+          error: 'Job could not be saved',
+          details: detail,
         });
       }
 
-      const data=
-        await r.json();
+      const data = await r.json();
 
       return res.status(201).json({
-        success:true,
-        job:
-          Array.isArray(data)
-            ? data[0]
-            : data,
+        success: true,
+        job: Array.isArray(data) ? data[0] : data,
       });
-
     } catch (err) {
-
       return res.status(500).json({
-        error:
-          'Job could not be saved',
-        details:err.message,
+        error: 'Job could not be saved',
+        details: err.message,
       });
     }
   }
@@ -1749,62 +1076,45 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
 
   if (req.method === 'PATCH') {
-
     try {
-
-      const {
-        id,
-        key,
-        ...rest
-      } = body;
+      const { id, key, ...rest } = body;
 
       if (!id) {
         return res.status(400).json({
-          error:'Missing id',
+          error: 'Missing id',
         });
       }
 
       cleanDates(rest);
       cleanArrays(rest);
 
-      const r=
-        await supa(
-          `jobs?id=eq.${encodeURIComponent(id)}`,
-          {
-            method:'PATCH',
-            body:
-              JSON.stringify(rest),
-          }
-        );
+      const r = await supa(
+        `jobs?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(rest),
+        }
+      );
 
       if (!r.ok) {
-        const detail=
-          await r.text();
+        const detail = await r.text();
 
         return res.status(500).json({
-          error:
-            'Job could not be updated',
-          details:detail,
+          error: 'Job could not be updated',
+          details: detail,
         });
       }
 
-      const data=
-        await r.json();
+      const data = await r.json();
 
       return res.status(200).json({
-        success:true,
-        job:
-          Array.isArray(data)
-            ? data[0]
-            : data,
+        success: true,
+        job: Array.isArray(data) ? data[0] : data,
       });
-
     } catch (err) {
-
       return res.status(500).json({
-        error:
-          'Job could not be updated',
-        details:err.message,
+        error: 'Job could not be updated',
+        details: err.message,
       });
     }
   }
@@ -1814,51 +1124,43 @@ module.exports = async function handler(req, res) {
   // ────────────────────────────────────────────────────────────────────
 
   if (req.method === 'DELETE') {
-
     try {
-
-      const { id }=body;
+      const { id } = body;
 
       if (!id) {
         return res.status(400).json({
-          error:'Missing id',
+          error: 'Missing id',
         });
       }
 
-      const r=
-        await supa(
-          `jobs?id=eq.${encodeURIComponent(id)}`,
-          {
-            method:'DELETE',
-          }
-        );
+      const r = await supa(
+        `jobs?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       if (!r.ok) {
-        const detail=
-          await r.text();
+        const detail = await r.text();
 
         return res.status(500).json({
-          error:
-            'Job could not be deleted',
-          details:detail,
+          error: 'Job could not be deleted',
+          details: detail,
         });
       }
 
       return res.status(200).json({
-        success:true,
+        success: true,
       });
-
     } catch (err) {
-
       return res.status(500).json({
-        error:
-          'Job could not be deleted',
-        details:err.message,
+        error: 'Job could not be deleted',
+        details: err.message,
       });
     }
   }
 
   return res.status(405).json({
-    error:'Method not allowed',
+    error: 'Method not allowed',
   });
 };
