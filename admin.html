@@ -317,7 +317,7 @@ Show expired
   <div class="discovery-controls">
     <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Live web job discovery</p>
     <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Find fresh civil-engineering vacancies from the web</h3>
-    <p class="discovery-note" style="margin-top:0">Searches 9 sources in parallel — 4 optional API providers + 5 no-key public feeds. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
+    <p class="discovery-note" style="margin-top:0">Searches multiple job sources — optional API providers plus no-key public job feeds. A failed/quota-limited provider does not stop the others. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
     <div class="discovery-grid" style="margin-top:14px">
       <label class="wide">Search query
         <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
@@ -2374,14 +2374,15 @@ const SOURCE_LABELS={
   onjob:'OnJob',
   the_muse:'The Muse',
   adzuna:'Adzuna',
-  jobvetta:'Jobvetta'
+  jobvetta:'Jobvetta',
+  job_opportunities_api:'Job Opportunities API (no key)'
 };
 
 function renderSourceHealth(sourceStats){
   const panel=$('sourceHealthPanel');
   const tbody=$('sourceHealthBody');
   if(!sourceStats||!Object.keys(sourceStats).length){panel.classList.remove('show');return;}
-  const ORDER=['google_jobs','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
+  const ORDER=['google_jobs','job_opportunities_api','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
   const allKeys=[...new Set([...ORDER,...Object.keys(sourceStats)])];
   tbody.innerHTML=allKeys.map(key=>{
     const v=sourceStats[key];
@@ -2413,10 +2414,11 @@ function renderDiscoverySummary(data){
   const newDrafts=Number(data.count||0);
   const candidates=Number(data.candidates||0);
   const skipped=Number(data.skippedExisting||0);
+  const filtered=Number(data.typeFilteredCandidates||candidates);
   const older=Number(data.olderCandidates||0);
   el.innerHTML=
     `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added to review queue &nbsp;·&nbsp; `+
-    `<strong>${candidates}</strong> fresh candidates (last 24 h) &nbsp;·&nbsp; `+
+    `<strong>${filtered}</strong> fresh candidates after filters (last 24 h) &nbsp;·&nbsp; `+
     `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;·&nbsp; `+
     `<strong>${older}</strong> older / unknown-date listings not queued`;
   el.classList.add('show');
@@ -2425,7 +2427,7 @@ function renderDiscoverySummary(data){
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!results||!results.length){
-    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No fresh vacancies found in the last 24 hours. Check the Source Status table above for per-source details.</p></div>';
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No verified vacancies with a source posting time inside the last 24 hours were found. Check Source Status above. Older matching jobs are counted separately so a healthy source is not mistaken for a broken search.</p></div>';
     return;
   }
   root.innerHTML=results.map((r,i)=>{
@@ -2570,7 +2572,7 @@ async function discoverJobs(){
   $('sourceHealthPanel').classList.remove('show');
   $('discoverySummary').classList.remove('show');
   $('reviewQueueSection').classList.remove('show');
-  discoveryStatus('Searching sources in parallel…','show');
+  discoveryStatus('Searching multiple job sources…','show');
   try{
     const data=await api('/api/jobs?discovery=1',{
       method:'POST',
