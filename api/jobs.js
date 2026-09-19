@@ -12,6 +12,11 @@ const KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY;
 
+const SITE_URL = (
+  process.env.SITE_URL ||
+  'https://civilcareer-india-two.vercel.app'
+).replace(/\/+$/, '');
+
 
 // Phase 1 server-rendered job page helpers. Kept in jobs.js to stay within Vercel Hobby limits.
 function escapeHtml(value) {
