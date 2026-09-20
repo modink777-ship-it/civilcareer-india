@@ -1193,14 +1193,11 @@ function normalizeDiscoveryItem(
    * requested 24-hour fresh-job window.
    */
   if (
-    age !== null &&
-    (
-      age < -2 * 3600000 ||
-      age > 48 * 3600000
-    )
-  ) {
-    return null;
-  }
+  age !== null &&
+  age < -2 * 3600000
+) {
+  return null;
+}
 
   const source =
     sourceLabel ||
