@@ -1444,7 +1444,7 @@ if (age !== null && age > 7 * 24) {
 }
 
 candidates.push(normalized);
-
+  }
 
   candidates.sort(
     (a, b) =>
