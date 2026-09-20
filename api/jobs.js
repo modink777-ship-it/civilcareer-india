@@ -704,109 +704,79 @@ function discoverySector(text) {
 
 function discoveryIsCivil(title, description) {
   const titleNorm = discoveryNorm(title);
-  const textNorm = discoveryNorm(
-    `${title} ${description}`
-  );
+  const textNorm = discoveryNorm(`${title} ${description}`);
 
+  // Strong civil/construction role signals in the title.
   const civilTitlePatterns = [
-    /\bcivil engineer\b/,
-    /\bcivil engineering\b/,
+    /\bcivil\b/,
     /\bsite engineer\b/,
-    /\bsite engineering\b/,
+    /\bsite supervisor\b/,
     /\bplanning engineer\b/,
-    /\bplanning engineering\b/,
     /\bquantity surveyor\b/,
-    /\bquantity surveying\b/,
     /\bstructural engineer\b/,
-    /\bstructural engineering\b/,
     /\bconstruction engineer\b/,
-    /\bconstruction engineering\b/,
+    /\bconstruction manager\b/,
     /\bproject engineer\b/,
-    /\bproject engineering\b/,
     /\bestimation engineer\b/,
     /\bbilling engineer\b/,
-    /\bqa qc civil\b/,
-    /\bqa qc engineer\b/,
+    /\bqa qc\b/,
     /\bbim engineer\b/,
-    /\bjunior civil engineer\b/,
-    /\bassistant civil engineer\b/,
-    /\bcivil engineering manager\b/,
-    /\bcivil project manager\b/,
-    /\bcivil works\b/,
-    /\bconstruction manager\b/,
-    /\bconstruction project manager\b/,
     /\binfrastructure engineer\b/,
     /\bhighway engineer\b/,
     /\bbridge engineer\b/,
     /\btransportation engineer\b/,
     /\bgeotechnical engineer\b/,
-    /\bgeotechnical engineering\b/,
     /\bwater resources engineer\b/,
     /\birrigation engineer\b/,
     /\bstructural designer\b/,
     /\bcivil designer\b/,
-    /\bcivil supervisor\b/,
-    /\bsite supervisor\b/,
     /\bresident engineer\b/
   ];
 
-  const hasCivilTitle =
-    civilTitlePatterns.some(re => re.test(titleNorm));
+  if (civilTitlePatterns.some(re => re.test(titleNorm))) return true;
 
-  if (hasCivilTitle) {
+  // Some feeds use generic titles such as "Engineer" or "Manager" and put
+  // the civil discipline only in the vacancy description. Accept those when
+  // the description contains a strong civil/construction combination.
+  const civilBodyPatterns = [
+    /\bcivil engineer\b/,
+    /\bcivil engineering\b/,
+    /\bcivil works\b/,
+    /\bcivil construction\b/,
+    /\bconstruction engineering\b/,
+    /\bstructural engineering\b/,
+    /\bhighway engineering\b/,
+    /\bbridge engineering\b/,
+    /\bgeotechnical engineering\b/,
+    /\bquantity surveying\b/,
+    /\bsite engineering\b/,
+    /\bbuilding construction\b/,
+    /\binfrastructure projects?\b.*\b(civil|construction|structural)\b/,
+    /\b(civil|construction|structural)\b.*\b(engineer|engineering|works|projects?)\b/
+  ];
+
+  if (civilBodyPatterns.some(re => re.test(textNorm))) {
     return true;
   }
 
-  /*
-   * Reject common unrelated engineering roles.
-   * These must be checked against the TITLE only.
-   */
+  // Explicitly reject common unrelated engineering titles before the weaker
+  // fallback below is considered.
   const unrelatedTitle = [
-    /\bsoftware engineer\b/,
-    /\bdata engineer\b/,
-    /\bdevops engineer\b/,
-    /\bfrontend engineer\b/,
-    /\bbackend engineer\b/,
-    /\bfull stack\b/,
-    /\bmachine learning\b/,
-    /\bai engineer\b/,
-    /\bml engineer\b/,
-    /\bcloud engineer\b/,
-    /\bnetwork engineer\b/,
-    /\bsecurity engineer\b/,
-    /\bqa engineer\b/,
-    /\btest engineer\b/,
-    /\bautomation engineer\b/,
-    /\bcustomer engineer\b/,
-    /\bsales engineer\b/,
-    /\bsolutions engineer\b/,
-    /\bapplication engineer\b/,
-    /\bproduct engineer\b/,
-    /\bproduct manager\b/,
-    /\bproject manager\b/,
-    /\bengineering manager\b/,
-    /\bengineering lead\b/
+    /\bsoftware engineer\b/, /\bdata engineer\b/, /\bdevops engineer\b/,
+    /\bfrontend engineer\b/, /\bbackend engineer\b/, /\bfull stack\b/,
+    /\bmachine learning\b/, /\bai engineer\b/, /\bml engineer\b/,
+    /\bcloud engineer\b/, /\bnetwork engineer\b/, /\bsecurity engineer\b/,
+    /\bqa engineer\b/, /\btest engineer\b/, /\bautomation engineer\b/,
+    /\bcustomer engineer\b/, /\bsales engineer\b/, /\bsolutions engineer\b/,
+    /\bapplication engineer\b/, /\bproduct engineer\b/, /\bproduct manager\b/,
+    /\bengineering manager\b/, /\bengineering lead\b/
   ];
 
-  if (unrelatedTitle.some(re => re.test(titleNorm))) {
-    return false;
-  }
-
-  /*
-   * Final fallback for title wording such as:
-   * "Engineer - Civil & Infrastructure"
-   * "Civil / Construction Engineer"
-   */
-  return (
-    /\bcivil\b.*\b(engineer|engineering|works|construction)\b/.test(
-      titleNorm
-    ) ||
-    /\b(engineer|engineering)\b.*\b(civil|construction|structural|highway|bridge|geotechnical)\b/.test(
-      titleNorm
-    ) ||
-    /\bquantity surveyor\b/.test(titleNorm) ||
-    /\bsite engineer\b/.test(titleNorm)
-  );
+  return !unrelatedTitle.some(re => re.test(titleNorm)) &&
+    (/\bcivil\b.*\b(engineer|engineering|works|construction)\b/.test(titleNorm) ||
+     /\b(engineer|engineering)\b.*\b(civil|construction|structural|highway|bridge|geotechnical)\b/.test(titleNorm) ||
+     /\bquantity surveyor\b/.test(titleNorm) ||
+     /\bsite engineer\b/.test(titleNorm));
 }
 
 
