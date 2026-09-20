@@ -1426,7 +1426,7 @@ async function runPublicDiscovery({
       continue;
     }
 
-    const age =
+   const age =
   Number.isFinite(
     normalized.ageHours
   )
