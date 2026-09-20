@@ -830,10 +830,10 @@ function discoveryMatchesLocation(item, requestedLocation) {
     item.description || item.snippet || ''
   );
   const source = discoveryNorm(
-  item.source ||
-  item._source ||
-  ''
-);
+    item.source ||
+    item._source ||
+    ''
+  );
 
   if (
     requested === 'india' ||
@@ -841,52 +841,53 @@ function discoveryMatchesLocation(item, requestedLocation) {
   ) {
     const indiaCities =
       DISCOVERY_CITY_WORDS.map(discoveryNorm);
-    const indiaStates = [
-  'andhra pradesh',
-  'arunachal pradesh',
-  'assam',
-  'bihar',
-  'chhattisgarh',
-  'goa',
-  'gujarat',
-  'haryana',
-  'himachal pradesh',
-  'jharkhand',
-  'karnataka',
-  'kerala',
-  'madhya pradesh',
-  'maharashtra',
-  'manipur',
-  'meghalaya',
-  'mizoram',
-  'nagaland',
-  'odisha',
-  'orissa',
-  'punjab',
-  'rajasthan',
-  'sikkim',
-  'tamil nadu',
-  'telangana',
-  'tripura',
-  'uttar pradesh',
-  'uttarakhand',
-  'west bengal',
-  'delhi',
-  'jammu and kashmir',
-  'ladakh',
-  'chandigarh',
-  'puducherry'
-].map(discoveryNorm);
 
-   const indiaSignals = [
-  'india',
-  'indian',
-  'pan india',
-  'all india',
-  'remote india',
-  ...indiaCities,
-  ...indiaStates
-];
+    const indiaStates = [
+      'andhra pradesh',
+      'arunachal pradesh',
+      'assam',
+      'bihar',
+      'chhattisgarh',
+      'goa',
+      'gujarat',
+      'haryana',
+      'himachal pradesh',
+      'jharkhand',
+      'karnataka',
+      'kerala',
+      'madhya pradesh',
+      'maharashtra',
+      'manipur',
+      'meghalaya',
+      'mizoram',
+      'nagaland',
+      'odisha',
+      'orissa',
+      'punjab',
+      'rajasthan',
+      'sikkim',
+      'tamil nadu',
+      'telangana',
+      'tripura',
+      'uttar pradesh',
+      'uttarakhand',
+      'west bengal',
+      'delhi',
+      'jammu and kashmir',
+      'ladakh',
+      'chandigarh',
+      'puducherry'
+    ].map(discoveryNorm);
+
+    const indiaSignals = [
+      'india',
+      'indian',
+      'pan india',
+      'all india',
+      'remote india',
+      ...indiaCities,
+      ...indiaStates
+    ];
 
     const hay =
       `${location} ${title} ${description} ${source}`;
@@ -904,8 +905,9 @@ function discoveryMatchesLocation(item, requestedLocation) {
     });
 
     /*
-     * Explicit foreign locations are rejected even if another part
-     * of the text happens to contain "India".
+     * Explicit foreign locations are always rejected for an India search.
+     * This prevents a news article from being accepted merely because its
+     * search query contained "India".
      */
     const foreignSignals = [
       'germany',
@@ -956,9 +958,24 @@ function discoveryMatchesLocation(item, requestedLocation) {
     }
 
     /*
-     * CRITICAL:
-     * Missing location is NOT assumed to be India.
+     * Google News and Bing News are already queried with the requested
+     * India location. Their article title/description often omits the
+     * word "India", even when the article is an Indian vacancy.
+     *
+     * For these two sources, accept the item when there is no explicit
+     * foreign-location signal. Structured job-board sources remain strict:
+     * they must contain positive India evidence in their own data.
      */
+    const isIndiaNewsSource =
+      source === 'google news' ||
+      source === 'google_news' ||
+      source === 'bing news' ||
+      source === 'bing_news';
+
+    if (isIndiaNewsSource) {
+      return true;
+    }
+
     return hasIndiaSignal;
   }
 
@@ -2284,7 +2301,7 @@ async function runPublicDiscovery({
   'candidates/fresh24hCandidates is a POST-deduplication count — it reflects genuinely new fresh24h drafts saved this run, not the pre-dedup total. ' +
   'totalFresh24hFound/totalBackup30dFound give the pre-dedup source counts for debugging. ' +
   'Results are sorted newest-first; each result carries tier, isFresh24h, ageHours, postedAt (human label), postedAtRaw (stored string), postedAtISO (full timestamp), and dateIsArticleDate (true for Google/Bing News sources). ' +
-  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection, while structured job feeds require positive India location evidence. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
