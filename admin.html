@@ -590,7 +590,7 @@ async function doLogin(){
     $('loginError').style.display='block';
 
     $('loginError').textContent=
-      e.status===401 ? 'Incorrect key. Try again.' : (e.message || 'Admin authentication failed.');
+      e.status===401 ? 'Incorrect owner key.' : (e.status===503 ? 'Admin is not configured on Vercel. Add OWNER_KEY (or ADMIN_KEY) in Project Settings → Environment Variables, then redeploy.' : (e.message || 'Admin authentication failed.'));
   }
 }
 
@@ -625,49 +625,26 @@ async function loadAll(){
 
   try{
 
-    const [
-      j,
-      a,
-      es,
-      rs,
-      re
-    ]=await Promise.all([
-
+    const [j,a,es,rs,re,ex,ma]=await Promise.allSettled([
       api('/api/jobs',{key:adminKey}),
-
       api('/api/analytics',{key:adminKey}),
-
-      api('/api/employer-submissions',{
-        key:adminKey
-      }),
-
-      api('/api/resource-submissions',{
-        key:adminKey
-      }),
-
-      api('/api/reports',{
-        key:adminKey
-      })
-
+      api('/api/employer-submissions',{key:adminKey}),
+      api('/api/resource-submissions',{key:adminKey}),
+      api('/api/reports',{key:adminKey}),
+      api('/api/exams',{key:adminKey}),
+      api('/api/materials',{key:adminKey})
     ]);
 
-    jobs=j.jobs||[];
+    jobs=j.status==='fulfilled' ? (j.value.jobs||[]) : [];
+    exams=ex.status==='fulfilled' ? (ex.value.exams||[]) : [];
+    materials=ma.status==='fulfilled' ? (ma.value.materials||[]) : [];
 
-    exams=
-      (await api('/api/exams',{
-        key:adminKey
-      })).exams||[];
-
-    materials=
-      (await api('/api/materials',{
-        key:adminKey
-      })).materials||[];
-
-    const an=a.analytics||{};
+    const an=a.status==='fulfilled' ? (a.value.analytics||{}) : {};
+    const reports=re.status==='fulfilled' ? (re.value.reports||[]) : [];
 
     renderMetrics(
       an,
-      re.reports||[]
+      reports
     );
 
     renderAnalytics(an);
@@ -679,12 +656,12 @@ async function loadAll(){
     loadAdminMaterials();
 
     renderSubmissions(
-      es.submissions||[],
-      rs.submissions||[]
+      es.status==='fulfilled' ? (es.value.submissions||[]) : [],
+      rs.status==='fulfilled' ? (rs.value.submissions||[]) : []
     );
 
     renderReports(
-      re.reports||[]
+      reports
     );
 
   }catch(e){

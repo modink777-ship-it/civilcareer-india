@@ -50,3 +50,7 @@ Deploy normally with the existing Vercel project. After deployment, verify:
 - GSAP/ScrollTrigger is used only for section entrances and counters.
 - Existing job/resource images continue to use the application's existing lazy-loading behavior.
 - No frontend npm dependency or bundler is introduced.
+
+
+## Current revision
+The roadmap explorer, specialization map, AI career simulator, and private/public opportunity landscape have been removed. The premium layer now focuses on the infrastructure hero, stats, job discovery, saved jobs, alerts, performance, and existing CivilCareer functionality.
