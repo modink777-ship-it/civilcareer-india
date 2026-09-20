@@ -1964,7 +1964,9 @@ candidates.push(normalized);
 
     note:
   'Discovery freshness window: up to 7 days when a reliable posting date is available. Listings without a usable source date are retained for admin review rather than silently discarded. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
-  };
+   };
+}
+
 }
 function supa(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
