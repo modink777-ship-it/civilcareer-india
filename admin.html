@@ -129,7 +129,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .discovery-note{color:#6a8aaa;font-size:.76rem;line-height:1.5;margin-top:10px}
 .discovery-status{display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:.8rem}
 .discovery-status.show{display:block;background:rgba(5,150,105,.12);color:#6ee7b7;border:1px solid rgba(5,150,105,.25)}
-.discovery-status.error{display:block;background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.discovery-status.error{background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
 .discovery-results{display:grid;gap:9px}
 .discovery-result{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:14px 16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
 .discovery-result h4{font-size:.9rem;color:#fff;margin:0 0 5px;line-height:1.35}
@@ -317,7 +317,7 @@ Show expired
   <div class="discovery-controls">
     <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Live web job discovery</p>
     <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Find fresh civil-engineering vacancies from the web</h3>
-    <p class="discovery-note" style="margin-top:0">Searches multiple job sources — optional API providers plus no-key public job feeds. A failed/quota-limited provider does not stop the others. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
+    <p class="discovery-note" style="margin-top:0">Searches 9 sources in parallel — 4 optional API providers + 5 no-key public feeds. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
     <div class="discovery-grid" style="margin-top:14px">
       <label class="wide">Search query
         <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
@@ -336,6 +336,44 @@ Show expired
       <button class="btn-gold" id="discoverySearchBtn" type="button">Search Now</button>
     </div>
     <div class="discovery-status" id="discoveryStatus"></div>
+  </div>
+
+  <!-- Setup guide: shown when no API sources are configured -->
+  <div class="source-health-panel show" id="setupGuidePanel" style="border-color:rgba(201,151,60,.25)">
+    <p class="source-health-title" style="color:#c9973c">🔑 Connect a job source to get results</p>
+    <p style="color:#94a3b8;font-size:.78rem;margin:0 0 10px;line-height:1.6">
+      The free public feeds (Remotive, CareerJet, Findwork) are included but rarely have India civil engineering jobs.
+      For real India-specific results, add at least one API key in
+      <strong style="color:#cbd5e1">Vercel → Project → Settings → Environment Variables</strong>.
+    </p>
+    <table class="source-health-table" style="margin-bottom:6px">
+      <thead><tr><th>Provider</th><th>Cost</th><th>India jobs?</th><th>Env vars to add</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Adzuna</strong> ⭐ Recommended</td>
+          <td style="color:#6ee7b7">Free (1000 req/mo)</td>
+          <td style="color:#6ee7b7">✓ Yes</td>
+          <td style="font-size:.7rem;color:#c9973c"><code>ADZUNA_APP_ID</code> + <code>ADZUNA_APP_KEY</code></td>
+        </tr>
+        <tr>
+          <td>Google Jobs (SerpApi)</td>
+          <td style="color:#fbbf24">Free tier (100/mo)</td>
+          <td style="color:#6ee7b7">✓ Yes</td>
+          <td style="font-size:.7rem;color:#c9973c"><code>SERPAPI_API_KEY</code></td>
+        </tr>
+        <tr>
+          <td>The Muse</td>
+          <td style="color:#6ee7b7">Free (no key needed)</td>
+          <td style="color:#fca5a5">✗ Mostly US/global</td>
+          <td style="font-size:.7rem;color:#4a6a8a">Already enabled</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:.72rem;color:#6a8aaa;margin:0">
+      Register free at
+      <a href="https://developer.adzuna.com" target="_blank" rel="noopener noreferrer" style="color:#c9973c">developer.adzuna.com</a>
+      · Takes 2 minutes · No credit card.
+    </p>
   </div>
 
   <!-- Source Health Panel (populated after search) -->
@@ -513,14 +551,11 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    const err=new Error(
+    throw Error(
       data.error ||
       data.details ||
       `Request failed (${r.status})`
     );
-    err.status=r.status;
-    err.data=data;
-    throw err;
   }
 
   return data;
@@ -542,7 +577,7 @@ async function doLogin(){
 
   try{
 
-    await api('/api/jobs?auth=1',{key:k});
+    await api('/api/jobs',{key:k});
 
     adminKey=k;
 
@@ -2370,22 +2405,19 @@ function discoveryStatus(message,type='show'){
 /* ── Phase 7: source label mapping ── */
 const SOURCE_LABELS={
   google_jobs:'Google Jobs (SerpApi)',
-  google_news:'Google News RSS',
-  bing_news:'Bing News RSS',
-  jobicy:'Jobicy',
-  arbeitnow:'Arbeitnow',
-  onjob:'OnJob',
-  the_muse:'The Muse',
+  the_muse:'The Muse (free)',
   adzuna:'Adzuna',
   jobvetta:'Jobvetta',
-  job_opportunities_api:'Job Opportunities API (no key)'
+  remotive:'Remotive',
+  careerjet:'CareerJet India',
+  findwork:'Findwork.dev'
 };
 
 function renderSourceHealth(sourceStats){
   const panel=$('sourceHealthPanel');
   const tbody=$('sourceHealthBody');
   if(!sourceStats||!Object.keys(sourceStats).length){panel.classList.remove('show');return;}
-  const ORDER=['google_jobs','job_opportunities_api','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
+  const ORDER=['google_jobs','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
   const allKeys=[...new Set([...ORDER,...Object.keys(sourceStats)])];
   tbody.innerHTML=allKeys.map(key=>{
     const v=sourceStats[key];
@@ -2403,10 +2435,12 @@ function renderSourceHealth(sourceStats){
     const errMsg=v.error||'Error';
     const isQuota=/429|quota|rate.limit/i.test(errMsg);
     const isTimeout=/timeout|abort/i.test(errMsg);
-    const statusIcon=isQuota?'🟡 Quota':'🔴 Error';
-    const statusClass=isQuota?'sh-warn':'sh-error';
+    const isBlocked=v.blocked||/403|blocked|forbidden/i.test(errMsg);
+    const statusIcon=isQuota?'🟡 Quota':isBlocked?'🔵 Blocked':'🔴 Error';
+    const statusClass=isQuota?'sh-warn':isBlocked?'':'sh-error';
+    const statusStyle=isBlocked?'color:#60a5fa':'';
     const resetNote=v.reset?` (resets ${v.reset})`:'';
-    return `<tr><td>${esc(label)}</td><td class="${statusClass}">${statusIcon}${resetNote}</td><td>0</td><td style="font-size:.72rem;color:#fca5a5">${esc(errMsg)}</td></tr>`;
+    return `<tr><td>${esc(label)}</td><td class="${statusClass}" style="${statusStyle}">${statusIcon}${resetNote}</td><td>0</td><td style="font-size:.72rem;color:${isBlocked?'#60a5fa':'#fca5a5'}">${esc(isBlocked?'Source blocks server access':errMsg)}</td></tr>`;
   }).join('');
   panel.classList.add('show');
 }
@@ -2417,11 +2451,10 @@ function renderDiscoverySummary(data){
   const newDrafts=Number(data.count||0);
   const candidates=Number(data.candidates||0);
   const skipped=Number(data.skippedExisting||0);
-  const filtered=Number(data.typeFilteredCandidates||candidates);
   const older=Number(data.olderCandidates||0);
   el.innerHTML=
     `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added to review queue &nbsp;·&nbsp; `+
-    `<strong>${filtered}</strong> fresh candidates after filters (last 24 h) &nbsp;·&nbsp; `+
+    `<strong>${candidates}</strong> fresh candidates (last 24 h) &nbsp;·&nbsp; `+
     `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;·&nbsp; `+
     `<strong>${older}</strong> older / unknown-date listings not queued`;
   el.classList.add('show');
@@ -2430,7 +2463,7 @@ function renderDiscoverySummary(data){
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!results||!results.length){
-    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No verified vacancies with a source posting time inside the last 24 hours were found. Check Source Status above. Older matching jobs are counted separately so a healthy source is not mistaken for a broken search.</p></div>';
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No fresh vacancies found in the last 24 hours. Check the Source Status table above for per-source details.</p></div>';
     return;
   }
   root.innerHTML=results.map((r,i)=>{
@@ -2575,7 +2608,8 @@ async function discoverJobs(){
   $('sourceHealthPanel').classList.remove('show');
   $('discoverySummary').classList.remove('show');
   $('reviewQueueSection').classList.remove('show');
-  discoveryStatus('Searching multiple job sources…','show');
+  $('setupGuidePanel').classList.remove('show');
+  discoveryStatus('Searching sources in parallel…','show');
   try{
     const data=await api('/api/jobs?discovery=1',{
       method:'POST',
@@ -2590,17 +2624,22 @@ async function discoverJobs(){
     renderDiscoveryResults(results);
     renderReviewQueue(results);
     const newCount=Number(data.count||0);
+    const totalFound=Object.values(data.sourceStats||{}).reduce((s,v)=>s+(v.ok?Number(v.items||0):0),0);
+    if(newCount===0 && totalFound===0){
+      /* All sources returned zero — show the setup guide again */
+      $('setupGuidePanel').classList.add('show');
+    }
     discoveryStatus(
       newCount>0
         ?`${newCount} new draft${newCount===1?'':'s'} added — review them below before publishing.`
-        :'Search complete. No new jobs were found that are not already in CivilCareer.',
-      'show'
+        :totalFound>0
+          ?`Search complete. ${totalFound} listings found but all were duplicates already in CivilCareer or outside the freshness window.`
+          :'Search complete. No jobs found. See the setup guide above to connect an India job source.',
+      newCount>0?'show':'show'
     );
   }catch(e){
-    renderSourceHealth(e.data?.sourceStats||{});
     renderDiscoveryResults([]);
-    const detail=e.data?.details||e.message||'Web discovery failed.';
-    discoveryStatus(`Discovery failed${e.status?` (HTTP ${e.status})`:''}: ${detail}`,'error');
+    discoveryStatus(e.message||'Web discovery failed.','error');
   }finally{
     btn.disabled=false; btn.textContent=old;
   }
