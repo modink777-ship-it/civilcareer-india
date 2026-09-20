@@ -702,83 +702,139 @@ function discoverySector(text) {
  * This version makes the TITLE the primary civil-engineering test.
  */
 
-function discoveryIsCivil(title, description) {
-  const titleNorm = discoveryNorm(title);
-  const textNorm = discoveryNorm(`${title} ${description}`);
+function discoveryIsCivil(title, description, sourceLabel) {
+  const titleNorm = discoveryNorm(title || '');
+  const textNorm = discoveryNorm(`${title || ''} ${description || ''}`);
+  const sourceNorm = discoveryNorm(sourceLabel || '');
 
-  // Strong civil/construction role signals in the title.
-  const civilTitlePatterns = [
-    /\bcivil\b/,
-    /\bsite engineer\b/,
-    /\bsite supervisor\b/,
-    /\bplanning engineer\b/,
-    /\bquantity surveyor\b/,
-    /\bstructural engineer\b/,
-    /\bconstruction engineer\b/,
-    /\bconstruction manager\b/,
-    /\bproject engineer\b/,
-    /\bestimation engineer\b/,
-    /\bbilling engineer\b/,
-    /\bqa qc\b/,
-    /\bbim engineer\b/,
-    /\binfrastructure engineer\b/,
-    /\bhighway engineer\b/,
-    /\bbridge engineer\b/,
-    /\btransportation engineer\b/,
-    /\bgeotechnical engineer\b/,
-    /\bwater resources engineer\b/,
-    /\birrigation engineer\b/,
-    /\bstructural designer\b/,
-    /\bcivil designer\b/,
-    /\bresident engineer\b/
-  ];
-
-  if (civilTitlePatterns.some(re => re.test(titleNorm))) return true;
-
-  // Some feeds use generic titles such as "Engineer" or "Manager" and put
-  // the civil discipline only in the vacancy description. Accept those when
-  // the description contains a strong civil/construction combination.
-  const civilBodyPatterns = [
+  /*
+   * This is a JOB filter, not a general civil/construction keyword filter.
+   * A result must look like an actual civil/construction vacancy.
+   * Generic news articles and non-technical management roles are rejected.
+   */
+  const strongCivilRolePatterns = [
     /\bcivil engineer\b/,
     /\bcivil engineering\b/,
-    /\bcivil works\b/,
-    /\bcivil construction\b/,
-    /\bconstruction engineering\b/,
+    /\bjunior civil engineer\b/,
+    /\bassistant civil engineer\b/,
+    /\bsenior civil engineer\b/,
+    /\blead civil engineer\b/,
+    /\bprincipal civil engineer\b/,
+    /\bchief civil engineer\b/,
+    /\bcivil engineering manager\b/,
+    /\bcivil project manager\b/,
+    /\bcivil works manager\b/,
+    /\bcivil design engineer\b/,
+    /\bstructural engineer\b/,
     /\bstructural engineering\b/,
-    /\bhighway engineering\b/,
-    /\bbridge engineering\b/,
+    /\bstructural designer\b/,
+    /\bgeotechnical engineer\b/,
     /\bgeotechnical engineering\b/,
-    /\bquantity surveying\b/,
+    /\bhighway engineer\b/,
+    /\bhighways engineer\b/,
+    /\bbridge engineer\b/,
+    /\btransportation engineer\b/,
+    /\btraffic engineer\b/,
+    /\bwater resources engineer\b/,
+    /\bwater resource engineer\b/,
+    /\birrigation engineer\b/,
+    /\benvironmental civil engineer\b/,
+    /\bconstruction engineer\b/,
+    /\bconstruction engineering\b/,
+    /\bconstruction project engineer\b/,
+    /\bsite engineer\b/,
     /\bsite engineering\b/,
-    /\bbuilding construction\b/,
-    /\binfrastructure projects?\b.*\b(civil|construction|structural)\b/,
-    /\b(civil|construction|structural)\b.*\b(engineer|engineering|works|projects?)\b/
+    /\bsite supervisor\b/,
+    /\bcivil supervisor\b/,
+    /\bresident engineer\b/,
+    /\bquantity surveyor\b/,
+    /\bquantity surveying\b/,
+    /\bcivil quantity surveyor\b/,
+    /\bplanning engineer\b/,
+    /\bcivil planning engineer\b/,
+    /\bestimation engineer\b/,
+    /\bcivil estimation engineer\b/,
+    /\bbilling engineer\b/,
+    /\bcivil billing engineer\b/,
+    /\bqa\s*\/?\s*qc\b.*\bcivil\b/,
+    /\bcivil\b.*\bqa\s*\/?\s*qc\b/,
+    /\bbim engineer\b.*\bcivil\b/,
+    /\bcivil\b.*\bbim engineer\b/,
+    /\bcivil designer\b/,
+    /\bcivil drafter\b/,
+    /\bcivil draughtsman\b/,
+    /\bcivil technician\b/,
+    /\bcivil inspector\b/,
+    /\bconstruction inspector\b/
   ];
 
-  if (civilBodyPatterns.some(re => re.test(textNorm))) {
-    return true;
+  const hasStrongCivilTitle =
+    strongCivilRolePatterns.some(re => re.test(titleNorm));
+
+  const isNews =
+    /google[_ ]news|bing[_ ]news|news\.google\.com|bing\.com/.test(
+      sourceNorm
+    );
+
+  if (hasStrongCivilTitle) {
+    /*
+     * Structured job feeds can use a strong role title directly.
+     * News feeds additionally need vacancy/job language, because a
+     * news article mentioning a role is not automatically a vacancy.
+     */
+    if (!isNews) {
+      return true;
+    }
+
+    return /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(
+      textNorm
+    );
   }
 
-  // Explicitly reject common unrelated engineering titles before the weaker
-  // fallback below is considered.
-  const unrelatedTitle = [
-    /\bsoftware engineer\b/, /\bdata engineer\b/, /\bdevops engineer\b/,
-    /\bfrontend engineer\b/, /\bbackend engineer\b/, /\bfull stack\b/,
-    /\bmachine learning\b/, /\bai engineer\b/, /\bml engineer\b/,
-    /\bcloud engineer\b/, /\bnetwork engineer\b/, /\bsecurity engineer\b/,
-    /\bqa engineer\b/, /\btest engineer\b/, /\bautomation engineer\b/,
-    /\bcustomer engineer\b/, /\bsales engineer\b/, /\bsolutions engineer\b/,
-    /\bapplication engineer\b/, /\bproduct engineer\b/, /\bproduct manager\b/,
-    /\bengineering manager\b/, /\bengineering lead\b/
-  ];
+  /*
+   * Generic titles are not accepted merely because their description
+   * contains civil/construction words.
+   */
+  const civilContext =
+    /\b(civil|structural|geotechnical|highway|bridge|transportation|construction)\b/.test(
+      titleNorm
+    );
 
-  return !unrelatedTitle.some(re => re.test(titleNorm)) &&
-    (/\bcivil\b.*\b(engineer|engineering|works|construction)\b/.test(titleNorm) ||
-     /\b(engineer|engineering)\b.*\b(civil|construction|structural|highway|bridge|geotechnical)\b/.test(titleNorm) ||
-     /\bquantity surveyor\b/.test(titleNorm) ||
-     /\bsite engineer\b/.test(titleNorm));
+  const engineeringRole =
+    /\b(engineer|engineering|surveyor|supervisor|inspector|designer|drafter|draughtsman|technician|estimator)\b/.test(
+      titleNorm
+    );
+
+  if (civilContext && engineeringRole) {
+    return !isNews || /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(textNorm);
+  }
+
+  /*
+   * Description-only matching is intentionally narrow.
+   * It requires a specific civil role AND explicit vacancy language.
+   * Generic management/business-development titles are excluded.
+   */
+  const descriptionCivilRole =
+    /\b(civil engineer|site engineer|structural engineer|geotechnical engineer|highway engineer|bridge engineer|transportation engineer|construction engineer|quantity surveyor|planning engineer|civil supervisor|civil designer|civil inspector|civil technician)\b/.test(
+      textNorm
+    );
+
+  const vacancyLanguage =
+    /\b(job|jobs|vacancy|vacancies|hiring|we are hiring|recruitment|recruiting|career|careers|position|opening|openings|apply now|apply|employment)\b/.test(
+      textNorm
+    );
+
+  const nonTechnicalManagementTitle =
+    /\b(vice president|president|chief executive|ceo|cfo|coo|cto|director|marketing|sales|business development|account manager|relationship manager|hr manager|human resources|finance manager|legal counsel|communications manager)\b/.test(
+      titleNorm
+    );
+
+  return (
+    descriptionCivilRole &&
+    vacancyLanguage &&
+    !nonTechnicalManagementTitle
+  );
 }
-
 
 /*
  * Location filtering.
@@ -1280,7 +1336,8 @@ function normalizeDiscoveryItem(
     !url ||
     !discoveryIsCivil(
       title,
-      snippet
+      snippet,
+      sourceLabel || item.source || item._source || ''
     )
   ) {
     return null;
@@ -1532,21 +1589,26 @@ async function runPublicDiscovery({
     ? normalized.ageHours
     : null;
 
-    const key =
-      normalized.url.replace(
-        /[?#].*$/,
-        ''
-      ) +
-      '|' +
-      discoveryNorm(
-        normalized.title
-      );
+    const normalizedUrlKey = normalized.url.replace(/[?#].*$/, '');
+    const titleKey = discoveryNorm(normalized.title);
+    const companyKey = discoveryNorm(
+      normalized.company ||
+      discoveryCompany(normalized.title, normalized.snippet)
+    );
+    const locationKey = discoveryNorm(normalized.location || '');
 
-    if (seen.has(key)) {
+    const urlKey = `url|${normalizedUrlKey}`;
+    const contentKey = `job|${titleKey}|${companyKey}|${locationKey}`;
+
+    if (
+      seen.has(urlKey) ||
+      seen.has(contentKey)
+    ) {
       continue;
     }
 
-    seen.add(key);
+    seen.add(urlKey);
+    seen.add(contentKey);
 
 
     /*
@@ -2271,7 +2333,7 @@ async function runPublicDiscovery({
   'candidates/fresh24hCandidates is a POST-deduplication count — it reflects genuinely new fresh24h drafts saved this run, not the pre-dedup total. ' +
   'totalFresh24hFound/totalBackup30dFound give the pre-dedup source counts for debugging. ' +
   'Results are sorted newest-first; each result carries tier, isFresh24h, ageHours, postedAt (human label), postedAtRaw (stored string), postedAtISO (full timestamp), and dateIsArticleDate (true for Google/Bing News sources). ' +
-  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection, while structured job feeds require positive India location evidence. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection and strict vacancy-role validation; structured job feeds require positive India location evidence. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
