@@ -1188,21 +1188,19 @@ function normalizeDiscoveryItem(
             : null
         );
 
-  /*
-   * Keep the existing 48-hour source validation.
-   *
-   * The later queue logic reduces this to the
-   * requested 24-hour fresh-job window.
-   */
-  if (
-    age !== null &&
-    (
-      age < -2 * 3600000 ||
-      age > 48 * 3600000
-    )
-  ) {
-    return null;
-  }
+ /*
+ * Keep future-dated listings out.
+ *
+ * Older jobs are handled later by runPublicDiscovery().
+ * The discovery queue currently keeps listings up to 7 days old.
+ * Listings without a usable date are also kept for review.
+ */
+if (
+  age !== null &&
+  age < -2 * 3600000
+) {
+  return null;
+}
 
   const source =
     sourceLabel ||
