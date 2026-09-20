@@ -1027,30 +1027,102 @@ async function fetchText(url, headers = {}) {
 }
 
 
-async function discoveryFetchGoogleNews(query) {
-  const url =
-    `https://news.google.com/rss/search?q=` +
-    `${encodeURIComponent(`${query} when:1d`)}` +
-    `&hl=en-IN&gl=IN&ceid=IN:en`;
+function discoverySearchVariants(query) {
+  const base = cleanDiscoveryText(query || 'civil engineering jobs India');
 
-  return parseDiscoveryRss(
-    await fetchText(url)
+  const variants = [
+    base,
+    'civil engineer India',
+    'civil engineering jobs India',
+    'civil site engineer India',
+    'site engineer India',
+    'structural engineer India',
+    'planning engineer India',
+    'quantity surveyor India',
+    'construction engineer India',
+    'project engineer civil India',
+    'estimation engineer India',
+    'billing engineer India',
+    'QA QC civil India',
+    'junior civil engineer India',
+    'assistant civil engineer India',
+    'highway engineer India',
+    'bridge engineer India',
+    'geotechnical engineer India'
+  ];
+
+  return [...new Set(variants)];
+}
+
+function discoveryDedupeRows(rows) {
+  const seen = new Set();
+  const out = [];
+
+  for (const row of rows || []) {
+    const key =
+      String(row.link || row.url || '').replace(/[?#].*$/, '') +
+      '|' +
+      discoveryNorm(row.title || '');
+
+    if (!key || key === '|') continue;
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    out.push(row);
+  }
+
+  return out;
+}
+
+async function discoveryFetchGoogleNews(query) {
+  const queries = discoverySearchVariants(query);
+
+  const results = await Promise.allSettled(
+    queries.map(searchQuery => {
+      const url =
+        `https://news.google.com/rss/search?q=` +
+        `${encodeURIComponent(`${searchQuery} when:1d`)}` +
+        `&hl=en-IN&gl=IN&ceid=IN:en`;
+
+      return fetchText(url).then(parseDiscoveryRss);
+    })
+  );
+
+  return discoveryDedupeRows(
+    results.flatMap(result =>
+      result.status === 'fulfilled'
+        ? result.value || []
+        : []
+    )
   );
 }
 
 
 async function discoveryFetchBingNews(query) {
-  const url =
-    `https://www.bing.com/news/search?q=` +
-    `${encodeURIComponent(
-      `${query} after:${new Date(
-        Date.now() - 86400000
-      ).toISOString().slice(0, 10)}`
-    )}` +
-    `&format=rss`;
+  const queries = discoverySearchVariants(query);
+  const afterDate = new Date(
+    Date.now() - 86400000
+  ).toISOString().slice(0, 10);
 
-  return parseDiscoveryRss(
-    await fetchText(url)
+  const results = await Promise.allSettled(
+    queries.map(searchQuery => {
+      const url =
+        `https://www.bing.com/news/search?q=` +
+        `${encodeURIComponent(
+          `${searchQuery} after:${afterDate}`
+        )}` +
+        `&format=rss`;
+
+      return fetchText(url).then(parseDiscoveryRss);
+    })
+  );
+
+  return discoveryDedupeRows(
+    results.flatMap(result =>
+      result.status === 'fulfilled'
+        ? result.value || []
+        : []
+    )
   );
 }
 
