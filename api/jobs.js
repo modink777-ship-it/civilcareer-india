@@ -347,7 +347,6 @@ async function renderJobPage(req, res) {
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
-
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
 <script type="application/ld+json">${JSON.stringify({
   '@context': 'https://schema.org',
@@ -830,9 +829,7 @@ function discoveryMatchesLocation(item, requestedLocation) {
   const description = discoveryNorm(
     item.description || item.snippet || ''
   );
-  const source = discoveryNorm(
-  item._source || item.source || ''
-);
+  const source = discoveryNorm(item.source || '');
 
   if (
     requested === 'india' ||
@@ -967,6 +964,7 @@ function discoveryQueries(q, location) {
     ...siteQueries
   ].slice(0, 14);
 }
+
 async function fetchText(url, headers = {}) {
   const r = await fetch(url, {
     headers: {
@@ -1048,8 +1046,6 @@ async function discoveryFetchJobicy(query) {
     location: j.jobGeo || ''
   }));
 }
-
-
 async function discoveryFetchArbeitnow() {
   const raw = JSON.parse(
     await fetchText(
@@ -1190,19 +1186,21 @@ function normalizeDiscoveryItem(
             : null
         );
 
- /*
- * Keep future-dated listings out.
- *
- * Older jobs are handled later by runPublicDiscovery().
- * The discovery queue currently keeps listings up to 7 days old.
- * Listings without a usable date are also kept for review.
- */
-if (
-  age !== null &&
-  age < -2 * 3600000
-) {
-  return null;
-}
+  /*
+   * Keep the existing 48-hour source validation.
+   *
+   * The later queue logic reduces this to the
+   * requested 24-hour fresh-job window.
+   */
+  if (
+    age !== null &&
+    (
+      age < -2 * 3600000 ||
+      age > 48 * 3600000
+    )
+  ) {
+    return null;
+  }
 
   const source =
     sourceLabel ||
@@ -1400,6 +1398,8 @@ async function runPublicDiscovery({
       )
         ? normalized.ageHours
         : null;
+            ? normalized.ageHours
+        : null;
 
     const key =
       normalized.url.replace(
@@ -1444,7 +1444,7 @@ if (age !== null && age > 7 * 24) {
 }
 
 candidates.push(normalized);
-  }
+}
 
   candidates.sort(
     (a, b) =>
@@ -1748,7 +1748,7 @@ candidates.push(normalized);
         'jobs',
         {
           method: 'POST',
-          body: JSON.stringify(
+                    body: JSON.stringify(
             drafts
           ),
           headers: {
@@ -1964,10 +1964,9 @@ candidates.push(normalized);
 
     note:
   'Discovery freshness window: up to 7 days when a reliable posting date is available. Listings without a usable source date are retained for admin review rather than silently discarded. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
-   };
+  };
 }
 
-}
 function supa(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
     ...opts,
@@ -2100,7 +2099,7 @@ module.exports = async function handler(req, res) {
         error:
           'Admin authentication is not configured on this deployment',
       });
-    }
+          }
 
     if (!isAdmin(req)) {
       return res.status(401).json({
@@ -2342,15 +2341,9 @@ module.exports = async function handler(req, res) {
         });
 
 
-     res.setHeader(
-  'X-Discovery-Debug',
-  'civilcareer-2026-09-21'
-);
-
-return res.status(200).json({
-  discoveryDebug: true,
-  result
-});
+      return res.status(200).json(
+        result
+      );
 
     } catch (err) {
 
@@ -2455,8 +2448,7 @@ return res.status(200).json({
             ? data[0]
             : data,
       });
-
-    } catch (err) {
+          } catch (err) {
 
       return res.status(500).json({
         error:
