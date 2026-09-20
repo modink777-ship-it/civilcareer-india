@@ -2342,9 +2342,15 @@ module.exports = async function handler(req, res) {
         });
 
 
-      return res.status(200).json(
-        result
-      );
+     res.setHeader(
+  'X-Discovery-Debug',
+  'civilcareer-2026-09-21'
+);
+
+return res.status(200).json({
+  discoveryDebug: true,
+  result
+});
 
     } catch (err) {
 
