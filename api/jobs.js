@@ -707,11 +707,6 @@ function discoveryIsCivil(title, description, sourceLabel) {
   const textNorm = discoveryNorm(`${title || ''} ${description || ''}`);
   const sourceNorm = discoveryNorm(sourceLabel || '');
 
-  /*
-   * This is a JOB filter, not a general civil/construction keyword filter.
-   * A result must look like an actual civil/construction vacancy.
-   * Generic news articles and non-technical management roles are rejected.
-   */
   const strongCivilRolePatterns = [
     /\bcivil engineer\b/,
     /\bcivil engineering\b/,
@@ -768,33 +763,17 @@ function discoveryIsCivil(title, description, sourceLabel) {
     /\bconstruction inspector\b/
   ];
 
-  const hasStrongCivilTitle =
-    strongCivilRolePatterns.some(re => re.test(titleNorm));
-
   const isNews =
-    /google[_ ]news|bing[_ ]news|news\.google\.com|bing\.com/.test(
-      sourceNorm
-    );
+    /google[_ ]news|bing[_ ]news|news\.google\.com|bing\.com/.test(sourceNorm);
 
-  if (hasStrongCivilTitle) {
-    /*
-     * Structured job feeds can use a strong role title directly.
-     * News feeds additionally need vacancy/job language, because a
-     * news article mentioning a role is not automatically a vacancy.
-     */
-    if (!isNews) {
-      return true;
-    }
+  if (strongCivilRolePatterns.some(re => re.test(titleNorm))) {
+    if (!isNews) return true;
 
     return /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(
       textNorm
     );
   }
 
-  /*
-   * Generic titles are not accepted merely because their description
-   * contains civil/construction words.
-   */
   const civilContext =
     /\b(civil|structural|geotechnical|highway|bridge|transportation|construction)\b/.test(
       titleNorm
@@ -806,14 +785,12 @@ function discoveryIsCivil(title, description, sourceLabel) {
     );
 
   if (civilContext && engineeringRole) {
-    return !isNews || /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(textNorm);
+    return !isNews ||
+      /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(
+        textNorm
+      );
   }
 
-  /*
-   * Description-only matching is intentionally narrow.
-   * It requires a specific civil role AND explicit vacancy language.
-   * Generic management/business-development titles are excluded.
-   */
   const descriptionCivilRole =
     /\b(civil engineer|site engineer|structural engineer|geotechnical engineer|highway engineer|bridge engineer|transportation engineer|construction engineer|quantity surveyor|planning engineer|civil supervisor|civil designer|civil inspector|civil technician)\b/.test(
       textNorm
@@ -829,11 +806,9 @@ function discoveryIsCivil(title, description, sourceLabel) {
       titleNorm
     );
 
-  return (
-    descriptionCivilRole &&
+  return descriptionCivilRole &&
     vacancyLanguage &&
-    !nonTechnicalManagementTitle
-  );
+    !nonTechnicalManagementTitle;
 }
 
 /*
@@ -1233,6 +1208,46 @@ async function discoveryFetchArbeitnow() {
 }
 
 
+async function discoveryFetchHopin() {
+  /*
+   * Hopin documents this public endpoint as unauthenticated and read-only.
+   * It returns active job listings; location is filtered locally because
+   * the API's location filter is an exact-match field.
+   */
+  const raw = JSON.parse(
+    await fetchText(
+      'https://api.hopinjobs.com/api/jobs?is_unofficial=false',
+      {
+        Accept: 'application/json'
+      }
+    )
+  );
+
+  return (raw.jobs || []).map(j => ({
+    title: j.title || '',
+    link:
+      j.url ||
+      j.apply_url ||
+      j.application_url ||
+      '',
+    description: cleanDiscoveryText(
+      j.description || ''
+    ),
+    pubDate:
+      j.posted_at ||
+      '',
+    source: 'hopin',
+    company: j.company || '',
+    location: j.location || '',
+    application_url:
+      j.url ||
+      j.apply_url ||
+      j.application_url ||
+      ''
+  }));
+}
+
+
 async function discoveryFetchOnJob() {
   const raw = JSON.parse(
     await fetchText(
@@ -1502,6 +1517,12 @@ async function runPublicDiscovery({
       'onjob',
       () =>
         discoveryFetchOnJob()
+    ],
+
+    [
+      'hopin',
+      () =>
+        discoveryFetchHopin()
     ]
   ];
 
@@ -2333,7 +2354,7 @@ async function runPublicDiscovery({
   'candidates/fresh24hCandidates is a POST-deduplication count — it reflects genuinely new fresh24h drafts saved this run, not the pre-dedup total. ' +
   'totalFresh24hFound/totalBackup30dFound give the pre-dedup source counts for debugging. ' +
   'Results are sorted newest-first; each result carries tier, isFresh24h, ageHours, postedAt (human label), postedAtRaw (stored string), postedAtISO (full timestamp), and dateIsArticleDate (true for Google/Bing News sources). ' +
-  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection and strict vacancy-role validation; structured job feeds require positive India location evidence. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection and strict vacancy-role validation; structured job feeds require positive India location evidence. Hopin is used as an additional unauthenticated India job source. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
