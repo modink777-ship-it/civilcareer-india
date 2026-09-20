@@ -1167,7 +1167,7 @@ function discoveryAgeLabel(ageHours) {
   const minutes = Math.floor(ageHours * 60);
 
   if (minutes < 1) {
-    return 'just now';
+    return 'Just now';
   }
 
   if (minutes < 60) {
@@ -1450,6 +1450,7 @@ async function runPublicDiscovery({
   const seen = new Set();
   const candidates = [];
   const older = [];
+  let unknownDateCount = 0;
 
 
   for (const item of all) {
@@ -1496,6 +1497,7 @@ async function runPublicDiscovery({
      * - >30 days or unknown date = never queued.
      */
     if (age === null) {
+      unknownDateCount++;
       continue;
     }
 
@@ -1507,13 +1509,20 @@ async function runPublicDiscovery({
     candidates.push(normalized);
   }
 
+  /*
+   * Each candidate is tagged with its freshness tier so the tag
+   * survives the type-filter, limit, and deduplication steps below,
+   * letting us report post-dedup counts that are actually accurate.
+   */
   const fresh24h = candidates
     .filter(x => x.ageHours !== null && x.ageHours <= 24)
-    .sort((a, b) => a.ageHours - b.ageHours);
+    .sort((a, b) => a.ageHours - b.ageHours)
+    .map(x => ({ ...x, _tier: 'fresh24h' }));
 
   const backup30d = candidates
     .filter(x => x.ageHours !== null && x.ageHours > 24 && x.ageHours <= 30 * 24)
-    .sort((a, b) => a.ageHours - b.ageHours);
+    .sort((a, b) => a.ageHours - b.ageHours)
+    .map(x => ({ ...x, _tier: 'backup30d' }));
 
   /* Fresh jobs always appear first; older jobs are backup results. */
   const dailyCandidates = [
@@ -1670,6 +1679,45 @@ async function runPublicDiscovery({
       );
     });
 
+
+  /*
+   * Build a tier map from the exact slice that will become drafts.
+   *
+   * WHY THIS MATTERS:
+   * fresh24h.length is a PRE-deduplication count. If 3 fresh jobs were
+   * already in the database, fresh24h.length = 3 but 0 fresh jobs are
+   * actually inserted — only backup30d jobs are new. Reporting
+   * fresh24h.length as "fresh candidates (last 24 h)" is the root cause
+   * of the "3 fresh candidates" count showing alongside old-dated jobs.
+   *
+   * insertedFresh24hCount and insertedBackup30dCount are POST-dedup:
+   * they reflect what was actually newly saved this run.
+   */
+  const draftSlice = newCandidates.slice(0, 40);
+  const candidateTierMap = new Map();
+  let insertedFresh24hCount = 0;
+  let insertedBackup30dCount = 0;
+
+  draftSlice.forEach(item => {
+    const urlKey = item.url.replace(/[?#].*$/, '');
+    const tier = item._tier || 'backup30d';
+    candidateTierMap.set(urlKey, {
+      tier,
+      ageHours: item.ageHours,
+      pubDate: item.pubDate || '',
+      /* true when the source date is a news-article date, not a job-board
+         datePosted field — i.e. the age reflects how old the article is,
+         not necessarily how old the job vacancy is. */
+      isNewsSource: /^(?:google_news|bing_news)$/.test(
+        String(item._source || '')
+      ),
+    });
+    if (tier === 'fresh24h') {
+      insertedFresh24hCount++;
+    } else {
+      insertedBackup30dCount++;
+    }
+  });
 
   /*
    * Convert fresh discoveries into unpublished
@@ -1942,66 +1990,177 @@ async function runPublicDiscovery({
       inserted,
 
     results:
-      inserted.map(j => ({
-        id:
-          j.id,
+      inserted.map(j => {
+        const urlKey =
+          String(j.source_url || '').replace(/[?#].*$/, '');
 
-        title:
-          j.role,
+        const tierInfo =
+          candidateTierMap.get(urlKey) || {
+            tier: 'backup30d',
+            ageHours: null,
+            pubDate: '',
+            isNewsSource: false,
+          };
 
-        company:
-          j.company || '',
+        /*
+         * Prefer the stored posted_at (full ISO timestamp) over the
+         * date-only date_posted so millisecond-level sorting is possible.
+         * Fall back to the raw pubDate recorded at normalization time.
+         */
+        const raw =
+          j.posted_at ||
+          j.date_posted ||
+          tierInfo.pubDate ||
+          '';
 
-        location:
-          j.location_display ||
-          j.location ||
-          '',
+        const parsedMs = Date.parse(raw);
 
-        url:
-          j.source_url,
+        const ageHoursNow =
+          Number.isFinite(parsedMs)
+            ? Math.max(0, (Date.now() - parsedMs) / 3600000)
+            : null;
 
-        applicationUrl:
-          j.application_url ||
-          j.source_url ||
-          '',
+        /*
+         * If the DB row has no usable date (rare — happens when the
+         * minimal fallback schema is used and pubDate was empty),
+         * fall back to the ageHours recorded at normalization time.
+         * This gives a close approximation rather than an empty label.
+         */
+        const ageForLabel =
+          ageHoursNow !== null
+            ? ageHoursNow
+            : tierInfo.ageHours;
 
-        snippet:
-          (j.description || '')
-            .slice(0, 400),
+        return {
+          id: j.id,
 
-        source:
-          j.source || '',
+          title: j.role,
 
-        sourceDomain:
-          j.source_domain || '',
+          company: j.company || '',
 
-        postedAt:
-          (() => {
-            const raw = j.posted_at || j.date_posted || '';
-            const parsed = Date.parse(raw);
-            if (!Number.isFinite(parsed)) return raw;
-            const ageHours = Math.max(0, (Date.now() - parsed) / 3600000);
-            return discoveryAgeLabel(ageHours);
-          })(),
+          location:
+            j.location_display ||
+            j.location ||
+            '',
 
-        postedAtRaw:
-          j.posted_at || j.date_posted || '',
+          url: j.source_url,
 
-        score:
-          100
-      })),
+          applicationUrl:
+            j.application_url ||
+            j.source_url ||
+            '',
+
+          snippet:
+            (j.description || '')
+              .slice(0, 400),
+
+          source: j.source || '',
+
+          sourceDomain: j.source_domain || '',
+
+          /*
+           * 'fresh24h'  = source date is within the last 24 hours.
+           * 'backup30d' = source date is 24 hours–30 days old.
+           * The Admin UI must never label a 'backup30d' item as "fresh".
+           */
+          tier: tierInfo.tier,
+
+          /*
+           * Convenience boolean for simpler frontend conditionals.
+           */
+          isFresh24h: tierInfo.tier === 'fresh24h',
+
+          /*
+           * Floating-point hours since the source date.
+           * A job posted 20 minutes ago has ageHours ≈ 0.33.
+           * null when no date is available.
+           */
+          ageHours: ageHoursNow,
+
+          /*
+           * Human-readable age label computed at response time.
+           * Examples: "Just now", "5 minutes ago", "3 hours ago",
+           * "2 days ago", "1 week ago", "2 months ago".
+           * Empty string when no usable date exists.
+           */
+          postedAt:
+            ageForLabel !== null
+              ? discoveryAgeLabel(ageForLabel)
+              : '',
+
+          /*
+           * Raw date/timestamp string as stored in the database.
+           * Use this when you want to display the literal date.
+           */
+          postedAtRaw: raw,
+
+          /*
+           * Full ISO 8601 timestamp for precise client-side sorting
+           * (newest-first: sort ascending by postedAtISO descending).
+           */
+          postedAtISO:
+            Number.isFinite(parsedMs)
+              ? new Date(parsedMs).toISOString()
+              : '',
+
+          /*
+           * true  → the date is the publication date of a news article
+           *         (Google News / Bing News), NOT the original job posting
+           *         date. The job itself may be older than the article.
+           * false → the date comes from a structured job board (Jobicy,
+           *         Arbeitnow, OnJob, or a configured API) and is the
+           *         actual datePosted field for the vacancy.
+           */
+          dateIsArticleDate: tierInfo.isNewsSource,
+
+          /*
+           * 100 = fresh24h (primary queue), 50 = backup30d.
+           * Lets the UI sort or badge items without re-checking tier.
+           */
+          score: tierInfo.tier === 'fresh24h' ? 100 : 50,
+        };
+      }),
 
     scanned:
       limited.length,
 
+    /*
+     * POST-deduplication freshness counts.
+     *
+     * These count ONLY newly inserted drafts, grouped by tier.
+     * They answer "how many genuinely new jobs did we save right now?"
+     *
+     * The previous value was fresh24h.length (PRE-dedup), which
+     * could show "3 fresh candidates" while the 3 newly inserted
+     * jobs all had dates from 10+ days ago — the 3 truly fresh jobs
+     * already existed in the database and were skipped.
+     */
     candidates:
-      fresh24h.length,
+      insertedFresh24hCount,
 
     fresh24hCandidates:
-      fresh24h.length,
+      insertedFresh24hCount,
 
     backup30dCandidates:
+      insertedBackup30dCount,
+
+    /*
+     * Pre-deduplication totals — how many candidates were found
+     * across all sources before the existing-job filter ran.
+     * Useful for debugging source coverage.
+     */
+    totalFresh24hFound:
+      fresh24h.length,
+
+    totalBackup30dFound:
       backup30d.length,
+
+    /*
+     * Candidates dropped because no usable posting date was present.
+     * These are never queued as drafts.
+     */
+    unknownDateCandidates:
+      unknownDateCount,
 
     typeFilteredCandidates:
       typeFiltered.length,
@@ -2049,7 +2208,11 @@ async function runPublicDiscovery({
     persistenceWarning,
 
     note:
-  'Discovery window: jobs from the last 24 hours are the primary daily queue; jobs from 24 hours up to 30 days are retained as backup results. Listings without a usable source date or older than 30 days are not queued. Results are sorted newest-first and the displayed age updates from minutes to hours, days, weeks, and months. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Discovery window: jobs from the last 24 hours are the primary daily queue (tier=fresh24h); jobs 24 hours–30 days old are backup results (tier=backup30d). Listings without a usable source date or older than 30 days are not queued. ' +
+  'candidates/fresh24hCandidates is a POST-deduplication count — it reflects genuinely new fresh24h drafts saved this run, not the pre-dedup total. ' +
+  'totalFresh24hFound/totalBackup30dFound give the pre-dedup source counts for debugging. ' +
+  'Results are sorted newest-first; each result carries tier, isFresh24h, ageHours, postedAt (human label), postedAtRaw (stored string), postedAtISO (full timestamp), and dateIsArticleDate (true for Google/Bing News sources). ' +
+  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
