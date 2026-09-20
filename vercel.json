@@ -6,10 +6,6 @@
   },
   "rewrites": [
     {
-      "source": "/saved-jobs",
-      "destination": "/index.html"
-    },
-    {
       "source": "/sitemap.xml",
       "destination": "/api/sitemap"
     },
