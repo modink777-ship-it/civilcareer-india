@@ -874,14 +874,15 @@ function discoveryMatchesLocation(item, requestedLocation) {
   'puducherry'
 ].map(discoveryNorm);
 
-    const indiaSignals = [
-      'india',
-      'indian',
-      'pan india',
-      'all india',
-      'remote india',
-      ...indiaCities
-    ];
+   const indiaSignals = [
+  'india',
+  'indian',
+  'pan india',
+  'all india',
+  'remote india',
+  ...indiaCities,
+  ...indiaStates
+];
 
     const hay =
       `${location} ${title} ${description} ${source}`;
