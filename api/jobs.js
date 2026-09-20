@@ -1159,6 +1159,43 @@ async function discoveryFetchOnJob() {
  * 4. Must be recent enough.
  */
 
+function discoveryAgeLabel(ageHours) {
+  if (!Number.isFinite(ageHours) || ageHours < 0) {
+    return '';
+  }
+
+  const minutes = Math.floor(ageHours * 60);
+
+  if (minutes < 1) {
+    return 'just now';
+  }
+
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  if (days < 7) {
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  const weeks = Math.floor(days / 7);
+
+  if (days < 30) {
+    return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+  }
+
+  const months = Math.floor(days / 30);
+  return `${months} month${months === 1 ? '' : 's'} ago`;
+}
+
 function normalizeDiscoveryItem(
   item,
   requestedLocation,
@@ -1263,9 +1300,7 @@ function normalizeDiscoveryItem(
         ? null
         : Math.max(
             0,
-            Math.round(
-              age / 3600000
-            )
+            age / 3600000
           )
   };
 }
@@ -1455,54 +1490,36 @@ async function runPublicDiscovery({
 
 
     /*
-     * A "fresh" queue must have a known posting
-     * age. Undated listings are not silently treated
-     * as new.
+     * Daily discovery window:
+     * - 0–24 hours = primary fresh queue.
+     * - 24 hours–30 days = backup queue.
+     * - >30 days or unknown date = never queued.
      */
-/*
- * Freshness handling:
- *
- * - Keep jobs posted within the last 24 hours as the
- *   primary daily results.
- * - Keep jobs up to 30 days old as the backup pool.
- * - Never present jobs older than 30 days.
- * - Listings without a usable posting date are not
- *   treated as fresh jobs.
- */
+    if (age === null) {
+      continue;
+    }
 
-if (age === null) {
-  continue;
-}
+    if (age > 30 * 24) {
+      older.push(normalized);
+      continue;
+    }
 
-if (age > 30 * 24) {
-  older.push(normalized);
-  continue;
-}
+    candidates.push(normalized);
+  }
 
-candidates.push(normalized);
-}
-  candidates.sort(
-    (a, b) =>
-      (a.ageHours ?? 999) -
-      (b.ageHours ?? 999)
-  );
-const fresh24h = candidates.filter(
-  x =>
-    x.ageHours !== null &&
-    x.ageHours <= 24
-);
+  const fresh24h = candidates
+    .filter(x => x.ageHours !== null && x.ageHours <= 24)
+    .sort((a, b) => a.ageHours - b.ageHours);
 
-const backup30d = candidates.filter(
-  x =>
-    x.ageHours !== null &&
-    x.ageHours > 24 &&
-    x.ageHours <= 30 * 24
-);
+  const backup30d = candidates
+    .filter(x => x.ageHours !== null && x.ageHours > 24 && x.ageHours <= 30 * 24)
+    .sort((a, b) => a.ageHours - b.ageHours);
 
-const dailyCandidates = [
-  ...fresh24h,
-  ...backup30d
-];
+  /* Fresh jobs always appear first; older jobs are backup results. */
+  const dailyCandidates = [
+    ...fresh24h,
+    ...backup30d
+  ];
 
   /*
    * Employment type / sector filter.
@@ -1622,7 +1639,7 @@ const dailyCandidates = [
     new Date().toISOString();
 
 
-  const fresh =
+  const newCandidates =
     limited.filter(x => {
       const company =
         x.company ||
@@ -1659,7 +1676,7 @@ const dailyCandidates = [
    * CivilCareer drafts.
    */
   const drafts =
-    fresh
+    newCandidates
       .slice(0, 40)
       .map(
         (item, index) => {
@@ -1959,7 +1976,16 @@ const dailyCandidates = [
           j.source_domain || '',
 
         postedAt:
-          j.date_posted || '',
+          (() => {
+            const raw = j.posted_at || j.date_posted || '';
+            const parsed = Date.parse(raw);
+            if (!Number.isFinite(parsed)) return raw;
+            const ageHours = Math.max(0, (Date.now() - parsed) / 3600000);
+            return discoveryAgeLabel(ageHours);
+          })(),
+
+        postedAtRaw:
+          j.posted_at || j.date_posted || '',
 
         score:
           100
@@ -1969,7 +1995,13 @@ const dailyCandidates = [
       limited.length,
 
     candidates:
-      candidates.length,
+      fresh24h.length,
+
+    fresh24hCandidates:
+      fresh24h.length,
+
+    backup30dCandidates:
+      backup30d.length,
 
     typeFilteredCandidates:
       typeFiltered.length,
@@ -1977,11 +2009,14 @@ const dailyCandidates = [
     olderCandidates:
       older.length,
 
+    expiredCandidates:
+      older.length,
+
     skippedExisting:
       Math.max(
         0,
         limited.length -
-        fresh.length
+        newCandidates.length
       ),
 
     sourceStats,
@@ -2014,7 +2049,7 @@ const dailyCandidates = [
     persistenceWarning,
 
     note:
-  'Discovery freshness window: up to 7 days when a reliable posting date is available. Listings without a usable source date are retained for admin review rather than silently discarded. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Discovery window: jobs from the last 24 hours are the primary daily queue; jobs from 24 hours up to 30 days are retained as backup results. Listings without a usable source date or older than 30 days are not queued. Results are sorted newest-first and the displayed age updates from minutes to hours, days, weeks, and months. Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
