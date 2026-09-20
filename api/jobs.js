@@ -1393,13 +1393,11 @@ async function runPublicDiscovery({
     }
 
     const age =
-      Number.isFinite(
-        normalized.ageHours
-      )
-        ? normalized.ageHours
-        : null;
-            ? normalized.ageHours
-        : null;
+  Number.isFinite(
+    normalized.ageHours
+  )
+    ? normalized.ageHours
+    : null;
 
     const key =
       normalized.url.replace(
