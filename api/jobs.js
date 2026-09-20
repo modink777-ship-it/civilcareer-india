@@ -1210,20 +1210,27 @@ async function discoveryFetchArbeitnow() {
 
 async function discoveryFetchHopin() {
   /*
-   * Hopin documents this public endpoint as unauthenticated and read-only.
-   * It returns active job listings; location is filtered locally because
-   * the API's location filter is an exact-match field.
+   * Hopin public jobs API.
+   * Do not use exact-match filters here.
+   * Fetch the public job collection and let our own
+   * India + civil + freshness filters decide what qualifies.
    */
   const raw = JSON.parse(
     await fetchText(
-      'https://api.hopinjobs.com/api/jobs?is_unofficial=false',
+      'https://api.hopinjobs.com/api/jobs',
       {
         Accept: 'application/json'
       }
     )
   );
 
-  return (raw.jobs || []).map(j => ({
+  const jobs = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw.jobs)
+      ? raw.jobs
+      : [];
+
+  return jobs.map(j => ({
     title: j.title || '',
     link:
       j.url ||
@@ -1235,10 +1242,17 @@ async function discoveryFetchHopin() {
     ),
     pubDate:
       j.posted_at ||
+      j.created_at ||
+      j.updated_at ||
       '',
     source: 'hopin',
-    company: j.company || '',
-    location: j.location || '',
+    company:
+      j.company ||
+      j.company_name ||
+      '',
+    location:
+      j.location ||
+      '',
     application_url:
       j.url ||
       j.apply_url ||
