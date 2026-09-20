@@ -1459,41 +1459,56 @@ async function runPublicDiscovery({
      * age. Undated listings are not silently treated
      * as new.
      */
-   /*
+/*
  * Freshness handling:
  *
- * We do NOT throw away a civil job merely because the
- * source did not provide a usable posting date.
- *
- * If a source gives a reliable date, use it.
- * If the date is missing, keep the listing for review
- * rather than pretending it is old.
- *
- * Jobs older than 7 days are excluded.
+ * - Keep jobs posted within the last 24 hours as the
+ *   primary daily results.
+ * - Keep jobs up to 30 days old as the backup pool.
+ * - Never present jobs older than 30 days.
+ * - Listings without a usable posting date are not
+ *   treated as fresh jobs.
  */
 
-// Keep jobs when the source does not provide a usable date.
-// Only reject jobs that are definitely older than 7 days.
-if (age !== null && age > 7 * 24) {
+if (age === null) {
+  continue;
+}
+
+if (age > 30 * 24) {
   older.push(normalized);
   continue;
 }
 
 candidates.push(normalized);
 }
-
   candidates.sort(
     (a, b) =>
       (a.ageHours ?? 999) -
       (b.ageHours ?? 999)
   );
+const fresh24h = candidates.filter(
+  x =>
+    x.ageHours !== null &&
+    x.ageHours <= 24
+);
 
+const backup30d = candidates.filter(
+  x =>
+    x.ageHours !== null &&
+    x.ageHours > 24 &&
+    x.ageHours <= 30 * 24
+);
+
+const dailyCandidates = [
+  ...fresh24h,
+  ...backup30d
+];
 
   /*
    * Employment type / sector filter.
    */
   const typeFiltered =
-    candidates.filter(x => {
+  dailyCandidates.filter(x => {
       if (
         !type ||
         type === 'all'
