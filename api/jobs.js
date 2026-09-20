@@ -837,6 +837,42 @@ function discoveryMatchesLocation(item, requestedLocation) {
   ) {
     const indiaCities =
       DISCOVERY_CITY_WORDS.map(discoveryNorm);
+    const indiaStates = [
+  'andhra pradesh',
+  'arunachal pradesh',
+  'assam',
+  'bihar',
+  'chhattisgarh',
+  'goa',
+  'gujarat',
+  'haryana',
+  'himachal pradesh',
+  'jharkhand',
+  'karnataka',
+  'kerala',
+  'madhya pradesh',
+  'maharashtra',
+  'manipur',
+  'meghalaya',
+  'mizoram',
+  'nagaland',
+  'odisha',
+  'orissa',
+  'punjab',
+  'rajasthan',
+  'sikkim',
+  'tamil nadu',
+  'telangana',
+  'tripura',
+  'uttar pradesh',
+  'uttarakhand',
+  'west bengal',
+  'delhi',
+  'jammu and kashmir',
+  'ladakh',
+  'chandigarh',
+  'puducherry'
+].map(discoveryNorm);
 
     const indiaSignals = [
       'india',
