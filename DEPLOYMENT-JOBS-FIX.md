@@ -1,31 +1,21 @@
 # CivilCareer Jobs API production fix
 
-## Root cause found
-Vercel was returning `500` for `GET /api/jobs` before the handler could execute because
-`api/jobs.js` imported `../lib/discovery-sources`, while that file was missing from the
-uploaded deployment package.
+This version makes the configured discovery module optional at runtime.
 
-## Fix included in this package
-- Added `lib/discovery-sources.js` as a dependency-free optional provider module.
-- Made the provider import defensive in `api/jobs.js`, so the normal Jobs API and Admin
-  CRUD cannot crash merely because an optional discovery provider is unavailable.
-- Configured providers run independently; a missing key, HTTP error, timeout, malformed
-  response, or quota response is recorded in discovery `sourceStats` and does not stop
-  other providers.
-- Public jobs, Admin jobs, create, update, delete, authentication, and server-rendered
-  job pages do not require any discovery API key.
+The old top-level import could make the entire `/api/jobs` function crash with
+`FUNCTION_INVOCATION_FAILED` when `lib/discovery-sources.js` was absent from a
+deployment bundle. The normal jobs API and admin authentication must not depend
+on that optional module.
 
-## Required Vercel variables
+## Behavior
+- Public `/api/jobs` loads published jobs from Supabase.
+- `GET /api/jobs?auth=1` checks `OWNER_KEY` without loading discovery.
+- Admin create/update/delete operations do not depend on discovery.
+- Discovery uses configured providers when `lib/discovery-sources.js` exists.
+- If the optional module is absent, discovery reports it as unavailable instead
+  of crashing the entire jobs function.
+
+## Vercel variables expected by api/jobs.js
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY` (or legacy `SUPABASE_SERVICE_KEY`)
 - `OWNER_KEY`
-
-## Optional discovery variables
-- `SERPAPI_API_KEY`
-- `JOBVETTA_API_KEY`
-- `JOBVETTA_API_URL` (optional endpoint override)
-- `ADZUNA_APP_ID`
-- `ADZUNA_APP_KEY`
-- `MUSE_API_KEY`
-
-No secret values are stored in this package.
