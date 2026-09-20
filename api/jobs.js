@@ -1436,10 +1436,9 @@ async function runPublicDiscovery({
  * Jobs older than 7 days are excluded.
  */
 
-if (
-  age !== null &&
-  age > 7 * 24
-) {
+// Keep jobs when the source does not provide a usable date.
+// Only reject jobs that are definitely older than 7 days.
+if (age !== null && age > 7 * 24) {
   older.push(normalized);
   continue;
 }
