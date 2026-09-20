@@ -829,7 +829,11 @@ function discoveryMatchesLocation(item, requestedLocation) {
   const description = discoveryNorm(
     item.description || item.snippet || ''
   );
-  const source = discoveryNorm(   item.source ||   item._source ||   '' );
+  const source = discoveryNorm(
+  item.source ||
+  item._source ||
+  ''
+);
 
   if (
     requested === 'india' ||
