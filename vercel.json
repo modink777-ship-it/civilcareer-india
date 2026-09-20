@@ -675,7 +675,7 @@
   ],
   "crons": [
     {
-      "path": "/api/jobs?discovery=cron",
+      "path": "/api/jobs",
       "schedule": "30 0 * * *"
     }
   ]

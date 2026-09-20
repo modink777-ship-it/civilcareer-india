@@ -140,53 +140,6 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 @media(max-width:850px){.discovery-grid{grid-template-columns:1fr 1fr}.discovery-grid .wide{grid-column:1/-1}.discovery-result{align-items:flex-start;flex-direction:column}.discovery-actions{width:100%}}
 @media(max-width:560px){.discovery-grid{grid-template-columns:1fr}}
 
-/* Phase 7 — Source Health Panel */
-.source-health-panel{background:#0a1c35;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none}
-.source-health-panel.show{display:block}
-.source-health-title{color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
-.source-health-table{width:100%;border-collapse:collapse;font-size:.78rem}
-.source-health-table th{color:#4a6a8a;font-weight:600;text-align:left;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
-.source-health-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;color:#cbd5e1}
-.source-health-table tr:last-child td{border-bottom:none}
-.sh-ok{color:#6ee7b7}.sh-error{color:#fca5a5}.sh-warn{color:#fbbf24}.sh-nc{color:#4a6a8a}
-.discovery-summary{font-size:.78rem;color:#6a8aaa;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:10px;display:none;line-height:1.7}
-.discovery-summary.show{display:block}
-.discovery-summary strong{color:#cbd5e1}
-
-/* Phase 7 — Upgraded result cards */
-.dr-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px}
-.dr-source-badge{font-size:.65rem;padding:2px 8px;border-radius:999px;background:rgba(201,151,60,.12);color:#c9973c;border:1px solid rgba(201,151,60,.25);font-weight:600;white-space:nowrap}
-.dr-date{font-size:.68rem;color:#6a8aaa}
-.dr-date.unknown{color:#4a6a8a;font-style:italic}
-.dr-company{font-size:.78rem;color:#94a3b8;font-weight:600}
-.btn-review{background:rgba(201,151,60,.15);color:#c9973c;border:1px solid rgba(201,151,60,.35);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
-.btn-review:hover{background:rgba(201,151,60,.25)}
-.btn-reject{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
-.btn-reject:hover{background:rgba(220,38,38,.2)}
-.btn-open-src{background:transparent;color:#6a8aaa;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
-.btn-open-src:hover{color:#cbd5e1;border-color:rgba(255,255,255,.2)}
-
-/* Phase 7 — Review Queue */
-.review-queue-section{margin-top:20px;display:none}
-.review-queue-section.show{display:block}
-.review-queue-title{color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;display:flex;align-items:center;gap:8px}
-.review-queue-title .rq-count{background:rgba(201,151,60,.2);color:#c9973c;border-radius:999px;padding:1px 8px;font-size:.68rem}
-.rq-empty{font-size:.8rem;color:#4a6a8a;padding:10px 0}
-
-/* Phase 7 — Review detail modal */
-.review-modal-overlay{display:none;position:fixed;inset:0;background:rgba(5,15,30,.88);z-index:9000;overflow-y:auto;padding:24px 16px}
-.review-modal-overlay.show{display:flex;align-items:flex-start;justify-content:center}
-.review-modal{background:#0f2847;border:1px solid rgba(255,255,255,.12);border-radius:16px;max-width:680px;width:100%;padding:24px;position:relative}
-.review-modal h3{color:#fff;font-size:1.05rem;margin:0 0 4px}
-.review-modal .rm-company{color:#94a3b8;font-size:.85rem;margin:0 0 14px}
-.review-modal .rm-field{margin-bottom:10px}
-.review-modal .rm-label{color:#4a6a8a;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px}
-.review-modal .rm-value{color:#cbd5e1;font-size:.82rem;line-height:1.55}
-.review-modal .rm-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
-.rm-close{position:absolute;top:14px;right:16px;background:transparent;border:none;color:#6a8aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0}
-.rm-close:hover{color:#fff}
-@media(max-width:560px){.review-modal{padding:16px}.review-modal .rm-actions{flex-direction:column}}
-
 </style>
 </head>
 
@@ -312,12 +265,10 @@ Show expired
 </div>
 
 <div class="panel" id="panel-discovery">
-
-  <!-- Search Controls -->
   <div class="discovery-controls">
     <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Live web job discovery</p>
     <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Find fresh civil-engineering vacancies from the web</h3>
-    <p class="discovery-note" style="margin-top:0">Searches 9 sources in parallel — 4 optional API providers + 5 no-key public feeds. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
+    <p class="discovery-note" style="margin-top:0">Searches public indexed results plus free public job APIs. New matches are saved as unpublished drafts. Nothing is published automatically. Verify the original vacancy before publishing.</p>
     <div class="discovery-grid" style="margin-top:14px">
       <label class="wide">Search query
         <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
@@ -333,113 +284,12 @@ Show expired
           <option value="mnc">MNC / large employers</option>
         </select>
       </label>
-      <button class="btn-gold" id="discoverySearchBtn" type="button">Search Now</button>
+      <button class="btn-gold" id="discoverySearchBtn" type="button">Search web</button>
     </div>
     <div class="discovery-status" id="discoveryStatus"></div>
   </div>
-
-  <!-- Setup guide: shown when no API sources are configured -->
-  <div class="source-health-panel show" id="setupGuidePanel" style="border-color:rgba(201,151,60,.25)">
-    <p class="source-health-title" style="color:#c9973c">🔑 Connect a job source to get results</p>
-    <p style="color:#94a3b8;font-size:.78rem;margin:0 0 10px;line-height:1.6">
-      The free public feeds (Remotive, CareerJet, Findwork) are included but rarely have India civil engineering jobs.
-      For real India-specific results, add at least one API key in
-      <strong style="color:#cbd5e1">Vercel → Project → Settings → Environment Variables</strong>.
-    </p>
-    <table class="source-health-table" style="margin-bottom:6px">
-      <thead><tr><th>Provider</th><th>Cost</th><th>India jobs?</th><th>Env vars to add</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><strong>Adzuna</strong> ⭐ Recommended</td>
-          <td style="color:#6ee7b7">Free (1000 req/mo)</td>
-          <td style="color:#6ee7b7">✓ Yes</td>
-          <td style="font-size:.7rem;color:#c9973c"><code>ADZUNA_APP_ID</code> + <code>ADZUNA_APP_KEY</code></td>
-        </tr>
-        <tr>
-          <td>Google Jobs (SerpApi)</td>
-          <td style="color:#fbbf24">Free tier (100/mo)</td>
-          <td style="color:#6ee7b7">✓ Yes</td>
-          <td style="font-size:.7rem;color:#c9973c"><code>SERPAPI_API_KEY</code></td>
-        </tr>
-        <tr>
-          <td>The Muse</td>
-          <td style="color:#6ee7b7">Free (no key needed)</td>
-          <td style="color:#fca5a5">✗ Mostly US/global</td>
-          <td style="font-size:.7rem;color:#4a6a8a">Already enabled</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="font-size:.72rem;color:#6a8aaa;margin:0">
-      Register free at
-      <a href="https://developer.adzuna.com" target="_blank" rel="noopener noreferrer" style="color:#c9973c">developer.adzuna.com</a>
-      · Takes 2 minutes · No credit card.
-    </p>
-  </div>
-
-  <!-- Source Health Panel (populated after search) -->
-  <div class="source-health-panel" id="sourceHealthPanel">
-    <p class="source-health-title">Source Status</p>
-    <table class="source-health-table" id="sourceHealthTable">
-      <thead><tr><th>Source</th><th>Status</th><th>Jobs found</th><th>Note</th></tr></thead>
-      <tbody id="sourceHealthBody"></tbody>
-    </table>
-  </div>
-
-  <!-- Diagnostics summary (populated after search) -->
-  <div class="discovery-summary" id="discoverySummary"></div>
-
-  <!-- Result cards -->
   <div id="discoveryResults" class="discovery-results">
-    <div class="dash-card"><p style="color:#6a8aaa;font-size:.82rem">Press <strong style="color:#c9973c">Search Now</strong> to discover fresh civil engineering jobs from multiple sources.</p></div>
-  </div>
-
-  <!-- Review Queue (drafts from latest search run) -->
-  <div class="review-queue-section" id="reviewQueueSection">
-    <p class="review-queue-title">
-      Review Queue — Pending Drafts
-      <span class="rq-count" id="reviewQueueCount">0</span>
-    </p>
-    <div id="reviewQueueList">
-      <p class="rq-empty">No pending drafts.</p>
-    </div>
-  </div>
-
-</div>
-
-<!-- Review Detail Modal -->
-<div class="review-modal-overlay" id="reviewModalOverlay">
-  <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="rmTitle">
-    <button class="rm-close" id="rmClose" aria-label="Close review">&times;</button>
-    <h3 id="rmTitle">—</h3>
-    <p class="rm-company" id="rmCompany">—</p>
-
-    <div class="rm-field">
-      <span class="rm-label">Location</span>
-      <span class="rm-value" id="rmLocation">—</span>
-    </div>
-    <div class="rm-field">
-      <span class="rm-label">Source</span>
-      <span class="rm-value" id="rmSource">—</span>
-    </div>
-    <div class="rm-field">
-      <span class="rm-label">Posted</span>
-      <span class="rm-value" id="rmPosted">—</span>
-    </div>
-    <div class="rm-field">
-      <span class="rm-label">Application / Original URL</span>
-      <span class="rm-value"><a id="rmUrl" href="#" target="_blank" rel="noopener noreferrer" style="color:#c9973c;word-break:break-all">—</a></span>
-    </div>
-    <div class="rm-field">
-      <span class="rm-label">Description</span>
-      <span class="rm-value" id="rmDescription" style="white-space:pre-wrap">—</span>
-    </div>
-
-    <div class="rm-actions">
-      <button class="btn-gold" id="rmPublish">Publish</button>
-      <button class="btn-review" id="rmEdit">Open in Editor</button>
-      <button class="btn-reject" id="rmReject">Reject &amp; Delete</button>
-      <button class="btn-open-src" id="rmOpenSrc" target="_blank" rel="noopener noreferrer">Open Original ↗</button>
-    </div>
+    <div class="dash-card"><p style="color:#6a8aaa;font-size:.82rem">Run a web search to discover fresh job leads.</p></div>
   </div>
 </div>
 
@@ -551,13 +401,11 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    const err=Error(
+    throw Error(
       data.error ||
       data.details ||
       `Request failed (${r.status})`
     );
-    err.status=r.status;
-    throw err;
   }
 
   return data;
@@ -579,7 +427,7 @@ async function doLogin(){
 
   try{
 
-    await api('/api/jobs?auth=1',{key:k});
+    await api('/api/jobs',{key:k});
 
     adminKey=k;
 
@@ -590,7 +438,7 @@ async function doLogin(){
     $('loginError').style.display='block';
 
     $('loginError').textContent=
-      e.status===401 ? 'Incorrect key. Try again.' : (e.message || 'Admin authentication failed.');
+      'Incorrect key. Try again.';
   }
 }
 
@@ -2404,200 +2252,25 @@ function discoveryStatus(message,type='show'){
   el.textContent=message||'';
 }
 
-/* ── Phase 7: source label mapping ── */
-const SOURCE_LABELS={
-  google_jobs:'Google Jobs (SerpApi)',
-  the_muse:'The Muse (free)',
-  adzuna:'Adzuna',
-  jobvetta:'Jobvetta',
-  remotive:'Remotive',
-  careerjet:'CareerJet India',
-  findwork:'Findwork.dev'
-};
-
-function renderSourceHealth(sourceStats){
-  const panel=$('sourceHealthPanel');
-  const tbody=$('sourceHealthBody');
-  if(!sourceStats||!Object.keys(sourceStats).length){panel.classList.remove('show');return;}
-  const ORDER=['google_jobs','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
-  const allKeys=[...new Set([...ORDER,...Object.keys(sourceStats)])];
-  tbody.innerHTML=allKeys.map(key=>{
-    const v=sourceStats[key];
-    const label=SOURCE_LABELS[key]||key.replaceAll('_',' ');
-    if(!v){
-      return `<tr><td>${esc(label)}</td><td class="sh-nc">⚪ Not run</td><td>—</td><td style="color:#4a6a8a;font-size:.72rem">Not in this search</td></tr>`;
-    }
-    if(v.configured===false){
-      return `<tr><td>${esc(label)}</td><td class="sh-nc">⚪ Not configured</td><td>—</td><td style="color:#4a6a8a;font-size:.72rem">Add API key in Vercel env vars</td></tr>`;
-    }
-    if(v.ok){
-      const extra=v.remaining!=null?`Quota remaining: ${v.remaining}`:'';
-      return `<tr><td>${esc(label)}</td><td class="sh-ok">🟢 OK</td><td class="sh-ok">${Number(v.items||0)}</td><td style="color:#4a6a8a;font-size:.72rem">${esc(extra)}</td></tr>`;
-    }
-    const errMsg=v.error||'Error';
-    const isQuota=/429|quota|rate.limit/i.test(errMsg);
-    const isTimeout=/timeout|abort/i.test(errMsg);
-    const isBlocked=v.blocked||/403|blocked|forbidden/i.test(errMsg);
-    const statusIcon=isQuota?'🟡 Quota':isBlocked?'🔵 Blocked':'🔴 Error';
-    const statusClass=isQuota?'sh-warn':isBlocked?'':'sh-error';
-    const statusStyle=isBlocked?'color:#60a5fa':'';
-    const resetNote=v.reset?` (resets ${v.reset})`:'';
-    return `<tr><td>${esc(label)}</td><td class="${statusClass}" style="${statusStyle}">${statusIcon}${resetNote}</td><td>0</td><td style="font-size:.72rem;color:${isBlocked?'#60a5fa':'#fca5a5'}">${esc(isBlocked?'Source blocks server access':errMsg)}</td></tr>`;
-  }).join('');
-  panel.classList.add('show');
-}
-
-function renderDiscoverySummary(data){
-  const el=$('discoverySummary');
-  if(!data){el.classList.remove('show');return;}
-  const newDrafts=Number(data.count||0);
-  const candidates=Number(data.candidates||0);
-  const skipped=Number(data.skippedExisting||0);
-  const older=Number(data.olderCandidates||0);
-  el.innerHTML=
-    `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added to review queue &nbsp;·&nbsp; `+
-    `<strong>${candidates}</strong> fresh candidates (last 24 h) &nbsp;·&nbsp; `+
-    `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;·&nbsp; `+
-    `<strong>${older}</strong> older / unknown-date listings not queued`;
-  el.classList.add('show');
-}
-
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
-  if(!results||!results.length){
-    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No fresh vacancies found in the last 24 hours. Check the Source Status table above for per-source details.</p></div>';
+  if(!results.length){
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No new matching vacancies were found. Check the search status above for source-by-source results; a source can be temporarily unavailable or may have no fresh civil vacancies.</p></div>';
     return;
   }
-  root.innerHTML=results.map((r,i)=>{
-    const hasDate=r.postedAt&&r.postedAt!=='';
-    const dateLabel=hasDate
-      ?`<span class="dr-date">Posted: ${esc(r.postedAt)}</span>`
-      :`<span class="dr-date unknown">Posting time: Unknown</span>`;
-    const sourceBadge=r.sourceDomain||r.source
-      ?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:'';
-    const companyLine=r.company
-      ?`<span class="dr-company">${esc(r.company)}${r.location?' · '+esc(r.location):''}</span>`
-      :(r.location?`<span class="dr-company">${esc(r.location)}</span>`:'');
-    return `<article class="discovery-result">
-      <div style="min-width:0;flex:1">
-        <h4>${esc(r.title||'Untitled vacancy')}</h4>
-        <div class="dr-meta">${companyLine}${sourceBadge}${dateLabel}</div>
-        <p>${esc((r.snippet||'').slice(0,220)||'Open the original source to verify vacancy details.')}</p>
-        <a href="${esc(r.url||r.applicationUrl||'#')}" target="_blank" rel="noopener noreferrer">${esc(r.url||r.applicationUrl||'')}</a>
+  root.innerHTML=results.map((r,i)=>`
+    <article class="discovery-result">
+      <div style="min-width:0">
+        <h4>${esc(r.title||'Untitled vacancy')} <span class="discovery-score">Match ${Number(r.score||0)}</span></h4>
+        <p>${esc(r.snippet||'Web result — open the source to verify the vacancy details.')}</p>
+        <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>
       </div>
       <div class="discovery-actions">
-        <button class="btn-review" type="button" onclick="openReviewModal(${i})">Review</button>
-        <button class="btn-reject" type="button" onclick="rejectDraft('${esc(r.id||'')}',${i})">Reject</button>
-        <a class="btn-open-src" href="${esc(r.applicationUrl||r.url||'#')}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+        <button class="btn-gold" type="button" onclick="discoverExtract(${i})">Extract & review</button>
+        <a class="btn-ghost" style="text-decoration:none" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a>
       </div>
-    </article>`;
-  }).join('');
+    </article>`).join('');
   window._discoveryResults=results;
-}
-
-function renderReviewQueue(drafts){
-  const section=$('reviewQueueSection');
-  const list=$('reviewQueueList');
-  const countEl=$('reviewQueueCount');
-  if(!drafts||!drafts.length){
-    countEl.textContent='0';
-    list.innerHTML='<p class="rq-empty">No pending drafts in the review queue for this search.</p>';
-    section.classList.add('show');
-    return;
-  }
-  countEl.textContent=String(drafts.length);
-  list.innerHTML=drafts.map((r,i)=>{
-    const hasDate=r.postedAt&&r.postedAt!=='';
-    const dateLabel=hasDate?`Posted: ${esc(r.postedAt)}`:'Posting time: Unknown';
-    return `<article class="discovery-result">
-      <div style="min-width:0;flex:1">
-        <h4>${esc(r.title||'Untitled')}
-          <span style="font-size:.62rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Draft</span>
-        </h4>
-        <div class="dr-meta">
-          ${r.company?`<span class="dr-company">${esc(r.company)}${r.location?' · '+esc(r.location):''}</span>`:''}
-          ${r.sourceDomain||r.source?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:''}
-          <span class="dr-date${hasDate?'':' unknown'}">${dateLabel}</span>
-        </div>
-        <p>${esc((r.snippet||'').slice(0,180)||'No description available.')}</p>
-      </div>
-      <div class="discovery-actions">
-        <button class="btn-review" type="button" onclick="openReviewModal(${i},true)">Review</button>
-        <button class="btn-reject" type="button" onclick="rejectDraft('${esc(r.id||'')}',${i},true)">Reject</button>
-        <a class="btn-open-src" href="${esc(r.applicationUrl||r.url||'#')}" target="_blank" rel="noopener noreferrer">Open ↗</a>
-      </div>
-    </article>`;
-  }).join('');
-  section.classList.add('show');
-}
-
-/* ── Review Modal ── */
-let _reviewCurrentId=null;
-
-function openReviewModal(index,fromQueue){
-  const arr=fromQueue?(window._reviewQueueData||[]):(window._discoveryResults||[]);
-  const r=arr[index];
-  if(!r)return;
-  _reviewCurrentId=r.id||null;
-  $('rmTitle').textContent=r.title||'Untitled vacancy';
-  $('rmCompany').textContent=[r.company,r.location].filter(Boolean).join(' · ')||'—';
-  $('rmSource').textContent=r.source||r.sourceDomain||'—';
-  const hasDate=r.postedAt&&r.postedAt!=='';
-  $('rmPosted').textContent=hasDate?r.postedAt:'Unknown — posting date not confirmed by source';
-  $('rmPosted').className='rm-value'+(hasDate?'':' dr-date unknown');
-  const applyUrl=r.applicationUrl||r.url||'';
-  $('rmUrl').href=applyUrl;
-  $('rmUrl').textContent=applyUrl||'—';
-  $('rmOpenSrc').href=applyUrl;
-  $('rmDescription').textContent=r.snippet||r.description||'No description available.';
-  $('reviewModalOverlay').classList.add('show');
-  document.body.style.overflow='hidden';
-}
-
-function closeReviewModal(){
-  $('reviewModalOverlay').classList.remove('show');
-  document.body.style.overflow='';
-  _reviewCurrentId=null;
-}
-
-async function rejectDraft(id,index,fromQueue){
-  if(!id){discoveryStatus('Cannot reject: draft ID missing.','error');return;}
-  if(!confirm('Delete this draft job? This cannot be undone.'))return;
-  try{
-    await api('/api/jobs',{method:'DELETE',key:adminKey,body:JSON.stringify({id})});
-    /* Remove card from UI */
-    const arr=fromQueue?(window._reviewQueueData||[]):(window._discoveryResults||[]);
-    if(arr[index])arr.splice(index,1);
-    if(fromQueue){renderReviewQueue(window._reviewQueueData||[]);}
-    else{renderDiscoveryResults(window._discoveryResults||[]);}
-    $('reviewQueueCount').textContent=String((window._reviewQueueData||[]).length);
-    discoveryStatus('Draft deleted.','show');
-  }catch(e){
-    discoveryStatus(`Delete failed: ${e.message}`,'error');
-  }
-}
-
-async function publishReviewedDraft(){
-  if(!_reviewCurrentId){discoveryStatus('Cannot publish: draft ID missing.','error');closeReviewModal();return;}
-  try{
-    await api('/api/jobs',{method:'PATCH',key:adminKey,body:JSON.stringify({id:_reviewCurrentId,published:true,status:'Active',review_state:'Published',verification_status:'Verified'})});
-    closeReviewModal();
-    /* Refresh jobs list */
-    const resp=await api('/api/jobs',{key:adminKey});
-    jobs=(resp.jobs||[]);
-    loadAdminJobs();
-    /* Remove from queues */
-    [window._discoveryResults,window._reviewQueueData].forEach(arr=>{
-      if(!Array.isArray(arr))return;
-      const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
-      if(idx!==-1)arr.splice(idx,1);
-    });
-    renderDiscoveryResults(window._discoveryResults||[]);
-    renderReviewQueue(window._reviewQueueData||[]);
-    discoveryStatus('Job published and is now live.','show');
-  }catch(e){
-    discoveryStatus(`Publish failed: ${e.message}`,'error');
-  }
 }
 
 async function discoverJobs(){
@@ -2607,38 +2280,17 @@ async function discoverJobs(){
   const type=$('discoveryType').value;
   btn.disabled=true;
   const old=btn.textContent; btn.textContent='Searching…';
-  $('sourceHealthPanel').classList.remove('show');
-  $('discoverySummary').classList.remove('show');
-  $('reviewQueueSection').classList.remove('show');
-  $('setupGuidePanel').classList.remove('show');
-  discoveryStatus('Searching sources in parallel…','show');
+  discoveryStatus('Searching public web sources…','show');
   try{
     const data=await api('/api/jobs?discovery=1',{
       method:'POST',
       key:adminKey,
       body:JSON.stringify({q,location,type,limit:20})
     });
-    const results=data.results||[];
-    window._discoveryResults=results;
-    window._reviewQueueData=[...results]; /* same data, separate reference for queue */
-    renderSourceHealth(data.sourceStats||{});
-    renderDiscoverySummary(data);
-    renderDiscoveryResults(results);
-    renderReviewQueue(results);
-    const newCount=Number(data.count||0);
-    const totalFound=Object.values(data.sourceStats||{}).reduce((s,v)=>s+(v.ok?Number(v.items||0):0),0);
-    if(newCount===0 && totalFound===0){
-      /* All sources returned zero — show the setup guide again */
-      $('setupGuidePanel').classList.add('show');
-    }
-    discoveryStatus(
-      newCount>0
-        ?`${newCount} new draft${newCount===1?'':'s'} added — review them below before publishing.`
-        :totalFound>0
-          ?`Search complete. ${totalFound} listings found but all were duplicates already in CivilCareer or outside the freshness window.`
-          :'Search complete. No jobs found. See the setup guide above to connect an India job source.',
-      newCount>0?'show':'show'
-    );
+    renderDiscoveryResults(data.results||[]);
+    const st=data.sourceStats||{};
+    const parts=Object.entries(st).map(([name,v])=>`${name.replace('_',' ')}: ${v.ok ? `OK (${v.items})` : `failed${v.error?` — ${v.error}`:''}`}`).join(' · ');
+    discoveryStatus(`${Number(data.count||0)} new draft${Number(data.count||0)===1?'':'s'} saved · ${Number(data.candidates||0)} relevant candidates · ${Number(data.skippedExisting||0)} duplicates skipped. ${parts}` ,'show');
   }catch(e){
     renderDiscoveryResults([]);
     discoveryStatus(e.message||'Web discovery failed.','error');
@@ -2672,28 +2324,6 @@ $('discoverySearchBtn').onclick=discoverJobs;
 $('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
 $('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
 
-/* Review modal wiring */
-$('rmClose').onclick=closeReviewModal;
-$('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReviewModal();});
-$('rmPublish').onclick=publishReviewedDraft;
-$('rmReject').onclick=()=>{
-  if(!_reviewCurrentId)return;
-  /* find index in both arrays */
-  const arr=window._reviewQueueData||[];
-  const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
-  closeReviewModal();
-  if(idx!==-1)rejectDraft(_reviewCurrentId,idx,true);
-};
-$('rmEdit').onclick=()=>{
-  if(!_reviewCurrentId)return;
-  const allJobs=Array.isArray(jobs)?jobs:[];
-  const found=allJobs.find(j=>j.id===_reviewCurrentId);
-  closeReviewModal();
-  if(found)jobEditor(found);
-  else discoveryStatus('Job not found in current jobs list. Reload the Jobs tab.','error');
-};
-
 /* TABS */
 
 document
@@ -2718,6 +2348,10 @@ document
 
       $('panel-'+b.dataset.tab)
         .classList.add('active');
+      if(b.dataset.tab==='discovery' && !window._discoveryLoaded){
+        window._discoveryLoaded=true;
+        discoverJobs();
+      }
     };
   });
 
