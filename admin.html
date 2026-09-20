@@ -551,11 +551,13 @@ async function api(url,opt={}){
   }catch{}
 
   if(!r.ok){
-    throw Error(
+    const err=Error(
       data.error ||
       data.details ||
       `Request failed (${r.status})`
     );
+    err.status=r.status;
+    throw err;
   }
 
   return data;
@@ -577,7 +579,7 @@ async function doLogin(){
 
   try{
 
-    await api('/api/jobs',{key:k});
+    await api('/api/jobs?auth=1',{key:k});
 
     adminKey=k;
 
@@ -588,7 +590,7 @@ async function doLogin(){
     $('loginError').style.display='block';
 
     $('loginError').textContent=
-      'Incorrect key. Try again.';
+      e.status===401 ? 'Incorrect key. Try again.' : (e.message || 'Admin authentication failed.');
   }
 }
 
