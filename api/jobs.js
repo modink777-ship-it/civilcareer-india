@@ -1423,20 +1423,28 @@ async function runPublicDiscovery({
      * age. Undated listings are not silently treated
      * as new.
      */
-    if (
-      age === null ||
-      age > 24
-    ) {
-      older.push(
-        normalized
-      );
-      continue;
-    }
+   /*
+ * Freshness handling:
+ *
+ * We do NOT throw away a civil job merely because the
+ * source did not provide a usable posting date.
+ *
+ * If a source gives a reliable date, use it.
+ * If the date is missing, keep the listing for review
+ * rather than pretending it is old.
+ *
+ * Jobs older than 7 days are excluded.
+ */
 
-    candidates.push(
-      normalized
-    );
-  }
+if (
+  age !== null &&
+  age > 7 * 24
+) {
+  older.push(normalized);
+  continue;
+}
+
+candidates.push(normalized);
 
 
   candidates.sort(
