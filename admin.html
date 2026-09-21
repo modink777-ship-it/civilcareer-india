@@ -2451,28 +2451,48 @@ function renderDiscoverySummary(data){
   const el=$('discoverySummary');
   if(!data){el.classList.remove('show');return;}
   const newDrafts=Number(data.count||0);
-  const candidates=Number(data.candidates||0);
+  /*
+   * fresh24hCandidates is the POST-deduplication count of truly fresh (<24h)
+   * items that were newly saved this run. The old data.candidates was a
+   * PRE-dedup count — it caused "3 fresh candidates" to appear even when
+   * those 3 fresh jobs were already in the DB and the 3 newly inserted jobs
+   * were 10+ days old backup items. Fixed in api/jobs.js.
+   */
+  const fresh24h=Number(data.fresh24hCandidates!=null?data.fresh24hCandidates:data.candidates||0);
+  const backup30d=Number(data.backup30dCandidates||0);
   const skipped=Number(data.skippedExisting||0);
   const older=Number(data.olderCandidates||0);
+  const unknownDate=Number(data.unknownDateCandidates||0);
   el.innerHTML=
-    `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added to review queue &nbsp;·&nbsp; `+
-    `<strong>${candidates}</strong> fresh candidates (last 24 h) &nbsp;·&nbsp; `+
-    `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;·&nbsp; `+
-    `<strong>${older}</strong> older / unknown-date listings not queued`;
+    `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added &nbsp;&middot;&nbsp; `+
+    `<strong style="color:#6ee7b7">${fresh24h}</strong> &#x1F7E2; fresh (last 24&nbsp;h) &nbsp;&middot;&nbsp; `+
+    `<strong style="color:#fbbf24">${backup30d}</strong> &#x1F554; backup (1&ndash;30&nbsp;d) &nbsp;&middot;&nbsp; `+
+    `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;&middot;&nbsp; `+
+    `<strong>${older}</strong> older than 30&nbsp;d`+
+    (unknownDate?` &nbsp;&middot;&nbsp; <strong>${unknownDate}</strong> no usable date`:'');
   el.classList.add('show');
 }
 
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!results||!results.length){
-    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No fresh vacancies found in the last 24 hours. Check the Source Status table above for per-source details.</p></div>';
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No new drafts were created — all discovered jobs are already in CivilCareer, or no sources returned results. Check Source Status above.</p></div>';
     return;
   }
   root.innerHTML=results.map((r,i)=>{
-    const hasDate=r.postedAt&&r.postedAt!=='';
-    const dateLabel=hasDate
-      ?`<span class="dr-date">Posted: ${esc(r.postedAt)}</span>`
-      :`<span class="dr-date unknown">Posting time: Unknown</span>`;
+    const tier=r.tier||(r.ageHours!=null&&r.ageHours<=24?'fresh24h':'backup30d');
+    const tierBadge=tier==='fresh24h'
+      ?`<span style=\"font-size:.6rem;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F7E2; Fresh</span>`
+      :`<span style=\"font-size:.6rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F554; Backup</span>`;
+    const hasAge=r.postedAt&&r.postedAt!=='';
+    const hasRaw=r.postedAtRaw&&r.postedAtRaw!=='';
+    const rawShort=hasRaw?r.postedAtRaw.slice(0,10):'';
+    const articleNote=r.dateIsArticleDate?` <span style="color:#6a8aaa;font-size:.65rem">(article date)</span>`:'';
+    const dateLabel=hasAge
+      ?`<span class="dr-date">${esc(r.postedAt)}${rawShort?' · '+esc(rawShort):''}${articleNote}</span>`
+      :(hasRaw
+        ?`<span class="dr-date">${esc(rawShort)}${articleNote}</span>`
+        :`<span class="dr-date unknown">Posting date: unknown</span>`);
     const sourceBadge=r.sourceDomain||r.source
       ?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:'';
     const companyLine=r.company
@@ -2480,7 +2500,7 @@ function renderDiscoveryResults(results){
       :(r.location?`<span class="dr-company">${esc(r.location)}</span>`:'');
     return `<article class="discovery-result">
       <div style="min-width:0;flex:1">
-        <h4>${esc(r.title||'Untitled vacancy')}</h4>
+        <h4>${esc(r.title||'Untitled vacancy')}${tierBadge}</h4>
         <div class="dr-meta">${companyLine}${sourceBadge}${dateLabel}</div>
         <p>${esc((r.snippet||'').slice(0,220)||'Open the original source to verify vacancy details.')}</p>
         <a href="${esc(r.url||r.applicationUrl||'#')}" target="_blank" rel="noopener noreferrer">${esc(r.url||r.applicationUrl||'')}</a>
@@ -2507,17 +2527,21 @@ function renderReviewQueue(drafts){
   }
   countEl.textContent=String(drafts.length);
   list.innerHTML=drafts.map((r,i)=>{
-    const hasDate=r.postedAt&&r.postedAt!=='';
-    const dateLabel=hasDate?`Posted: ${esc(r.postedAt)}`:'Posting time: Unknown';
+    const tier=r.tier||(r.ageHours!=null&&r.ageHours<=24?'fresh24h':'backup30d');
+    const tierBadge=tier==='fresh24h'?`<span style=\"font-size:.6rem;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F7E2; Fresh</span>`:`<span style=\"font-size:.6rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F554; Backup</span>`;
+    const hasAge=r.postedAt&&r.postedAt!=='';
+    const hasRaw=r.postedAtRaw&&r.postedAtRaw!=='';
+    const rawShort=hasRaw?r.postedAtRaw.slice(0,10):'';
+    const dateLabel=hasAge?r.postedAt+(rawShort?' · '+rawShort:''):(rawShort||'Posting time: Unknown');
     return `<article class="discovery-result">
       <div style="min-width:0;flex:1">
-        <h4>${esc(r.title||'Untitled')}
+        <h4>${esc(r.title||'Untitled')}${tierBadge}
           <span style="font-size:.62rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Draft</span>
         </h4>
         <div class="dr-meta">
           ${r.company?`<span class="dr-company">${esc(r.company)}${r.location?' · '+esc(r.location):''}</span>`:''}
           ${r.sourceDomain||r.source?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:''}
-          <span class="dr-date${hasDate?'':' unknown'}">${dateLabel}</span>
+          <span class="dr-date${hasAge||hasRaw?'':' unknown'}">${esc(dateLabel)}</span>
         </div>
         <p>${esc((r.snippet||'').slice(0,180)||'No description available.')}</p>
       </div>
@@ -2542,9 +2566,16 @@ function openReviewModal(index,fromQueue){
   $('rmTitle').textContent=r.title||'Untitled vacancy';
   $('rmCompany').textContent=[r.company,r.location].filter(Boolean).join(' · ')||'—';
   $('rmSource').textContent=r.source||r.sourceDomain||'—';
-  const hasDate=r.postedAt&&r.postedAt!=='';
-  $('rmPosted').textContent=hasDate?r.postedAt:'Unknown — posting date not confirmed by source';
-  $('rmPosted').className='rm-value'+(hasDate?'':' dr-date unknown');
+  const _hasAge=r.postedAt&&r.postedAt!=='';
+  const _hasRaw=r.postedAtRaw&&r.postedAtRaw!=='';
+  const _rawShort=_hasRaw?r.postedAtRaw.slice(0,10):'';
+  const _articleNote=r.dateIsArticleDate?' (article date — not necessarily the original job posting date)':'';
+  const _postedText=_hasAge
+    ?r.postedAt+(_rawShort?' · '+_rawShort:'')+_articleNote
+    :(_rawShort?_rawShort+_articleNote:'Unknown — posting date not confirmed by source');
+  const _tier=r.tier||(r.ageHours!=null&&r.ageHours<=24?'fresh24h':'backup30d');
+  $('rmPosted').textContent=_postedText+' [ '+(_tier==='fresh24h'?'Fresh <24h':'Backup 1–30d')+']';
+  $('rmPosted').className='rm-value'+(_hasAge||_hasRaw?'':' dr-date unknown');
   const applyUrl=r.applicationUrl||r.url||'';
   $('rmUrl').href=applyUrl;
   $('rmUrl').textContent=applyUrl||'—';
