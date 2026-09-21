@@ -731,31 +731,48 @@ async function discoveryFetchOnJob(){
 async function discoveryFetchHopin(query, requestedLocation) {
   // Use Hopin's public jobs endpoint without assuming unsupported
   // server-side filters. India/civil validation is performed below.
-  const url = 'https://api.hopinjobs.com/api/jobs';
+  const urls = [
+    'https://api.hopinjobs.com/api/jobs',
+    'https://api.hopinjobs.com/api/jobs?is_unofficial=true',
+  ];
 
-  let raw;
-  try {
-    const text = await fetchText(url, { 'Accept': 'application/json' });
-    raw = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`Hopin API error: ${err.message}`);
+  const payloads = [];
+  for (const url of urls) {
+    try {
+      const text = await fetchText(url, { 'Accept': 'application/json' });
+      payloads.push(JSON.parse(text));
+    } catch (err) {
+      // One Hopin collection may fail while the other is available.
+      // Only fail the source if both requests fail.
+      payloads.push(null);
+    }
+  }
+  if (!payloads.some(Boolean)) {
+    throw new Error('Hopin API error: both public job collections failed');
   }
 
   // Hopin may return: array directly, { jobs:[...] }, { data:[...] }, { results:[...] }
   let jobsArray = [];
-  if (Array.isArray(raw)) {
-    jobsArray = raw;
-  } else if (raw && typeof raw === 'object') {
-    jobsArray = Array.isArray(raw.jobs)    ? raw.jobs
-              : Array.isArray(raw.data)    ? raw.data
-              : Array.isArray(raw.results) ? raw.results
-              : Array.isArray(raw.items)   ? raw.items
-              : [];
+  for (const raw of payloads) {
+    if (Array.isArray(raw)) {
+      jobsArray.push(...raw);
+    } else if (raw && typeof raw === 'object') {
+      const rows = Array.isArray(raw.jobs)    ? raw.jobs
+                 : Array.isArray(raw.data)    ? raw.data
+                 : Array.isArray(raw.results) ? raw.results
+                 : Array.isArray(raw.items)   ? raw.items
+                 : [];
+      jobsArray.push(...rows);
+    }
   }
 
   const normalized = [];
+  const seenIds = new Set();
   for (const j of jobsArray) {
     if (!j || typeof j !== 'object') continue;
+    const sourceId = j.id ? String(j.id) : '';
+    if (sourceId && seenIds.has(sourceId)) continue;
+    if (sourceId) seenIds.add(sourceId);
 
     // Title — required
     const title = cleanDiscoveryText(
@@ -771,7 +788,11 @@ async function discoveryFetchHopin(query, requestedLocation) {
     );
 
     // URL — required (never fabricated)
-    const link = j.url || j.job_url || j.link || j.source_url || '';
+    // Hopin's list endpoint does not guarantee a public job URL.
+    // When it supplies an id, use the documented getJob endpoint as the
+    // source record URL. This is a real Hopin URL, not a fabricated job page.
+    const link = j.url || j.job_url || j.link || j.source_url ||
+      (j.id ? `https://api.hopinjobs.com/api/jobs/${encodeURIComponent(String(j.id))}` : '');
     if (!link) continue;
 
     // Description
@@ -808,7 +829,7 @@ async function discoveryFetchHopin(query, requestedLocation) {
       state,
       city,
       application_url,
-      _sourceId: j.id ? String(j.id) : '',
+      _sourceId: sourceId,
       experience: j.experience || j.experience_level || '',
       employment_type: j.job_type || j.employment_type || '',
     });
@@ -955,7 +976,15 @@ async function runPublicDiscovery({q, location, type} = {}) {
     // India location filter (only applied when India is requested)
     if (isIndiaSearch) {
       const locationCheck = `${normalized.location} ${normalized.country} ${normalized.state} ${normalized.city}`;
-      if (!discoveryIsIndia(locationCheck, normalized.country, normalized.state, normalized.city)) {
+      const explicitIndia = discoveryIsIndia(locationCheck, normalized.country, normalized.state, normalized.city);
+      // Hopin's public corpus is explicitly India-focused. Its list API can
+      // omit location/country on individual rows, so do not throw away a
+      // genuine Hopin listing solely because those fields are blank.
+      const trustedIndiaSource = src === 'hopin' || src === 'hopinjobs.com';
+      const rawHopinLocation = discoveryNorm(`${normalized.location} ${normalized.city} ${normalized.state}`);
+      const hopinRemoteOnly = /^(remote|remote remote|work from home|wfh)$/.test(rawHopinLocation);
+      const hasUnknownLocation = !normalized.location && !normalized.country && !normalized.state && !normalized.city;
+      if (!explicitIndia && !(trustedIndiaSource && (hasUnknownLocation || hopinRemoteOnly))) {
         if (sourceStats[src]) sourceStats[src].rejectedIndia = (sourceStats[src].rejectedIndia || 0) + 1;
         continue;
       }
