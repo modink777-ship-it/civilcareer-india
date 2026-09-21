@@ -821,6 +821,31 @@ async function discoveryFetchHopin(query, requestedLocation) {
 // Returns null if the item should be rejected.
 // FIX: uses exact milliseconds for age — never rounds before filtering.
 // FIX: max window is 30 days (not 48 h) to allow backup30d queue.
+function discoveryIsNewsVacancy(item, sourceLabel) {
+  const src = discoveryNorm(sourceLabel || item._source || item.source || '');
+  if (src !== 'google_news' && src !== 'bing_news') return true;
+
+  const title = cleanDiscoveryText(item.title || '');
+  const text = discoveryNorm(`${title} ${item.description || item.snippet || ''}`);
+
+  // News feeds are not vacancy feeds. Require explicit hiring/vacancy language
+  // plus explicit India evidence before a news result can enter the job queue.
+  const vacancySignal = /\b(job|jobs|vacancy|vacancies|hiring|hire|recruitment|recruiting|career|careers|position|positions|opening|openings|apply|employment)\b/.test(text);
+  const indiaSignal = discoveryIsIndia(item.location || '', item.country || '', item.state || '', item.city || '') ||
+    /\bindia\b|pan[\s-]?india|all[\s-]?india|india[\s-]?based|india[\s-]?remote/.test(text);
+
+  if (!vacancySignal || !indiaSignal) return false;
+
+  // Reject common news/project-report wording even if an article happens to
+  // mention a hiring-related word elsewhere.
+  if (/\b(network rail|wales and borders|pudsey|project delivery|airport delivery|aquifers|tender award|construction update|project update|infrastructure news|industry news)\b/.test(text) &&
+      !/\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|apply)\b/.test(title)) {
+    return false;
+  }
+
+  return true;
+}
+
 function normalizeDiscoveryItem(item, requestedLocation, sourceLabel) {
   const title   = cleanDiscoveryText(item.title);
   const snippet = cleanDiscoveryText(item.description || item.snippet || '');
@@ -828,6 +853,7 @@ function normalizeDiscoveryItem(item, requestedLocation, sourceLabel) {
 
   if (!title || !url) return null;
   if (!discoveryIsCivil(title, snippet)) return null;
+  if (!discoveryIsNewsVacancy(item, sourceLabel)) return null;
 
   // Parse posting date — prefer ISO/RFC timestamps over date-only strings.
   // Date-only strings (e.g. "2026-09-11") are parsed as UTC midnight per spec.
@@ -854,7 +880,8 @@ function normalizeDiscoveryItem(item, requestedLocation, sourceLabel) {
     postedIso,                                // full ISO timestamp — never truncated
     source,
     company:        item.company         || '',
-    location:       item.location        || requestedLocation || 'India',
+    // Never infer India from the search query. A missing source location stays empty.
+    location:       item.location        || '',
     country:        item.country         || '',
     state:          item.state           || '',
     city:           item.city            || '',
@@ -912,13 +939,11 @@ async function runPublicDiscovery({q, location, type} = {}) {
     const normalized = normalizeDiscoveryItem(item, requestedLocation, src);
 
     if (!normalized) {
-      // Track whether rejection was caused by civil relevance or date/freshness.
+      // Track source-specific news/vacancy rejection separately from civil/date rejection.
       if (sourceStats[src]) {
-        const civilOk = discoveryIsCivil(
-          cleanDiscoveryText(item.title || ''),
-          cleanDiscoveryText(item.description || item.snippet || '')
-        );
-        if (!civilOk) {
+        const title = cleanDiscoveryText(item.title || '');
+        const snippet = cleanDiscoveryText(item.description || item.snippet || '');
+        if (!discoveryIsCivil(title, snippet) || !discoveryIsNewsVacancy(item, src)) {
           sourceStats[src].rejectedCivil = (sourceStats[src].rejectedCivil || 0) + 1;
         } else {
           sourceStats[src].rejectedAge = (sourceStats[src].rejectedAge || 0) + 1;
@@ -1064,6 +1089,22 @@ async function runPublicDiscovery({q, location, type} = {}) {
     inserted = await write.json();
   }
 
+  // Report freshness for the drafts actually returned to the review queue.
+  // This keeps the dashboard counts aligned with what the reviewer sees,
+  // including databases where only date_posted is retained.
+  const insertedFresh24hCount = inserted.filter(j => {
+    const d = j.posted_at || j.date_posted || '';
+    const ms = d ? Date.parse(d) : NaN;
+    return Number.isFinite(ms) && (Date.now() - ms) <= FRESH_24H_MS;
+  }).length;
+  const insertedBackup30dCount = inserted.filter(j => {
+    const d = j.posted_at || j.date_posted || '';
+    const ms = d ? Date.parse(d) : NaN;
+    const age = Number.isFinite(ms) ? Date.now() - ms : NaN;
+    return Number.isFinite(age) && age > FRESH_24H_MS && age <= BACKUP_30D_MS;
+  }).length;
+  const insertedUnknownDateCount = inserted.length - insertedFresh24hCount - insertedBackup30dCount;
+
   return {
     count:                inserted.length,
     drafts:               inserted,
@@ -1090,9 +1131,9 @@ async function runPublicDiscovery({q, location, type} = {}) {
       };
     }),
     // Freshness breakdown — basis for UI labelling
-    fresh24hCount:        fresh24h.length,
-    backup30dCount:       backup30d.length,
-    unknownDateCount:     unknownDate.length,
+    fresh24hCount:        insertedFresh24hCount,
+    backup30dCount:       insertedBackup30dCount,
+    unknownDateCount:     insertedUnknownDateCount,
     // Legacy field — kept for backward compat; now equals fresh24h + backup30d
     candidates:           candidates.length,
     typeFilteredCandidates: typeFiltered.length,
