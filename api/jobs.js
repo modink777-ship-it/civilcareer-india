@@ -1,4 +1,3 @@
- 
 /**
  * CivilCareer — Jobs API v3
  * - Public GET: published jobs only
@@ -7,20 +6,20 @@
  * - Handles empty optional date fields safely
  * - Uses Supabase service-role key on the server
  */
- 
+
 const SUPA = process.env.SUPABASE_URL;
 const KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY;
- 
+
 const SITE_URL = (
   process.env.SITE_URL ||
   'https://civilcareer-india-two.vercel.app'
 ).replace(/\/+$/, '');
- 
+
 const { runConfiguredSources } = require('../lib/discovery-sources');
- 
- 
+
+
 // Phase 1 server-rendered job page helpers. Kept in jobs.js to stay within Vercel Hobby limits.
 function escapeHtml(value) {
   return String(value ?? '')
@@ -30,85 +29,85 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
- 
+
 function stripHtml(value) {
   return String(value ?? '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
- 
+
 function truncate(value, max = 160) {
   const text = stripHtml(value);
   return text.length <= max
     ? text
     : `${text.slice(0, max - 1).trimEnd()}…`;
 }
- 
+
 function formatDate(value) {
   if (!value) return '';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
- 
+
   return d.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 }
- 
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
- 
+
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) return parsed;
     } catch (_) {}
- 
+
     return value
       .split(',')
       .map(v => v.trim())
       .filter(Boolean);
   }
- 
+
   return [];
 }
- 
+
 async function getJobBySlug(slug) {
   const response = await supa(
     `jobs?select=*&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
   );
- 
+
   if (!response.ok) {
     throw new Error(`Supabase job lookup failed: ${response.status}`);
   }
- 
+
   const rows = await response.json();
   return rows[0] || null;
 }
- 
- 
+
+
 function isExpired(job) {
   const value = job.valid_through || job.expires_at || job.deadline;
   if (!value) return false;
   const time = new Date(value).getTime();
   return Number.isFinite(time) && time < Date.now();
 }
- 
+
 async function getJobById(id) {
   const response = await supa(
     `jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`
   );
- 
+
   if (!response.ok) {
     throw new Error(`Supabase job ID lookup failed: ${response.status}`);
   }
- 
+
   const rows = await response.json();
   return rows[0] || null;
 }
- 
+
 function buildJobPosting(job, canonical) {
   const locationText =
     job.location_display ||
@@ -117,12 +116,12 @@ function buildJobPosting(job, canonical) {
       .join(', ') ||
     job.location ||
     '';
- 
+
   const employer =
     job.company ||
     job.recruitment_authority ||
     'Employer';
- 
+
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
@@ -136,26 +135,26 @@ function buildJobPosting(job, canonical) {
       name: employer,
     },
   };
- 
+
   const datePosted =
     job.date_posted ||
     job.published_at ||
     job.posted_at ||
     job.created_at;
- 
+
   if (datePosted) schema.datePosted = datePosted;
- 
+
   const validThrough =
     job.valid_through ||
     job.expires_at ||
     job.deadline;
- 
+
   if (validThrough) schema.validThrough = validThrough;
- 
+
   if (job.company_url) {
     schema.hiringOrganization.sameAs = job.company_url;
   }
- 
+
   if (locationText) {
     schema.jobLocation = {
       '@type': 'Place',
@@ -168,14 +167,14 @@ function buildJobPosting(job, canonical) {
       },
     };
   }
- 
+
   const employmentTypes = asArray(job.employment_types);
   if (employmentTypes.length === 1) {
     schema.employmentType = employmentTypes[0];
   } else if (job.employment_type) {
     schema.employmentType = job.employment_type;
   }
- 
+
   if (job.salary_min || job.salary_max) {
     schema.baseSalary = {
       '@type': 'MonetaryAmount',
@@ -188,52 +187,52 @@ function buildJobPosting(job, canonical) {
       },
     };
   }
- 
+
   if (job.application_url) {
     schema.directApply = true;
   }
- 
+
   const qualifications = asArray(job.qualifications);
   if (qualifications.length) {
     schema.qualifications = qualifications.join(', ');
   }
- 
+
   return schema;
 }
- 
+
 function jobSlug(job) {
   if (job.slug) return String(job.slug);
- 
+
   const role = String(job.role || 'job')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
- 
+
   return `${role || 'job'}-${job.id}`;
 }
- 
+
 async function renderJobPage(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).send('Method not allowed');
   }
- 
+
   if (!SUPA || !KEY) {
     return res.status(500).send('Server configuration is missing');
   }
- 
+
   const slug = String(req.query?.slug || '').trim();
- 
+
   if (!slug) {
     return res.status(400).send('Missing job slug');
   }
- 
+
   try {
     let job = await getJobBySlug(slug);
- 
+
     if (!job && /^[0-9a-f-]{36}$/i.test(slug)) {
       job = await getJobById(slug);
     }
- 
+
     if (!job) {
       res.setHeader('X-Robots-Tag', 'noindex, follow');
       return res.status(404).send(`<!doctype html>
@@ -253,16 +252,16 @@ async function renderJobPage(req, res) {
 </body>
 </html>`);
     }
- 
+
     const actualSlug = jobSlug(job);
     const canonical = `${SITE_URL}/jobs/${encodeURIComponent(actualSlug)}`;
- 
+
     const role = job.role || 'Civil Engineering Job';
     const company =
       job.company ||
       job.recruitment_authority ||
       'Employer';
- 
+
     const location =
       job.location_display ||
       [job.city, job.district, job.state, job.country]
@@ -270,24 +269,24 @@ async function renderJobPage(req, res) {
         .join(', ') ||
       job.location ||
       '';
- 
+
     const title = `${role} at ${company} | CivilCareer`;
     const expired = isExpired(job);
     const robotsDirective = expired ? 'noindex,follow' : 'index,follow';
- 
+
     const description = truncate(
       job.description ||
       `${role} opportunity at ${company}${location ? ` in ${location}` : ''}. Find civil engineering career opportunities on CivilCareer.`
     );
- 
+
     const postingSchema = buildJobPosting(job, canonical);
- 
+
     const qualifications = asArray(job.qualifications);
     const employmentTypes = asArray(job.employment_types);
     const skills = asArray(job.skills);
- 
+
     const responsibilities = stripHtml(job.responsibilities);
- 
+
     const salary =
       job.salary ||
       (
@@ -295,51 +294,51 @@ async function renderJobPage(req, res) {
           ? `${job.salary_min ?? ''}${job.salary_min != null && job.salary_max != null ? ' - ' : ''}${job.salary_max ?? ''} ${job.salary_currency || 'INR'}`
           : ''
       );
- 
+
     const postedDate =
       job.date_posted ||
       job.published_at ||
       job.posted_at ||
       job.created_at;
- 
+
     const deadline =
       job.valid_through ||
       job.expires_at ||
       job.deadline;
- 
+
     const applyUrl =
       job.application_url ||
       job.source_url ||
       '';
- 
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
     res.setHeader('X-Robots-Tag', robotsDirective);
     if (postedDate) {
       res.setHeader('Last-Modified', new Date(postedDate).toUTCString());
     }
- 
+
     return res.status(200).send(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
- 
+
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
 <meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
- 
+
 <meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escapeHtml(canonical)}">
- 
+
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
- 
+
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
 <script type="application/ld+json">${JSON.stringify({
   '@context': 'https://schema.org',
@@ -350,7 +349,7 @@ async function renderJobPage(req, res) {
     {'@type':'ListItem','position':3,'name':role,'item':canonical}
   ]
 })}</script>
- 
+
 <style>
   :root {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -406,7 +405,7 @@ async function renderJobPage(req, res) {
   }
 </style>
 </head>
- 
+
 <body>
 <header>
 <nav>
@@ -417,56 +416,56 @@ async function renderJobPage(req, res) {
   <a href="${SITE_URL}/study-materials">Study Materials</a>
 </nav>
 </header>
- 
+
 <main>
 <article>
- 
+
 <p><a href="${SITE_URL}/private-jobs">← Back to Civil Engineering Jobs</a></p>
- 
+
 <p class="muted">CivilCareer / Job Opportunity</p>
- 
+
 <h1>${escapeHtml(role)}</h1>
- 
+
 <p><strong>${escapeHtml(company)}</strong>${location ? ` · ${escapeHtml(location)}` : ''}</p>
- 
+
 ${postedDate ? `<p><strong>Posted:</strong> ${escapeHtml(formatDate(postedDate))}</p>` : ''}
 ${deadline ? `<p><strong>Application deadline:</strong> ${escapeHtml(formatDate(deadline))}</p>` : ''}
 ${job.status ? `<p><strong>Status:</strong> ${escapeHtml(job.status)}</p>` : ''}
- 
+
 ${location ? `<section><h2>Location</h2><p>${escapeHtml(location)}</p></section>` : ''}
- 
+
 ${salary ? `<section><h2>Salary</h2><p>${escapeHtml(salary)}</p></section>` : ''}
- 
+
 ${employmentTypes.length || job.employment_type ? `
 <section>
 <h2>Employment type</h2>
 <p>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : job.employment_type)}</p>
 </section>` : ''}
- 
+
 ${qualifications.length ? `
 <section>
 <h2>Qualifications</h2>
 <ul>${qualifications.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
 </section>` : ''}
- 
+
 ${skills.length ? `
 <section>
 <h2>Skills</h2>
 <p>${escapeHtml(skills.join(', '))}</p>
 </section>` : ''}
- 
+
 ${job.description ? `
 <section>
 <h2>Job description</h2>
 <p>${escapeHtml(stripHtml(job.description))}</p>
 </section>` : ''}
- 
+
 ${responsibilities ? `
 <section>
 <h2>Responsibilities</h2>
 <p>${escapeHtml(responsibilities)}</p>
 </section>` : ''}
- 
+
 <section>
 <h2>Apply</h2>
 ${
@@ -475,14 +474,14 @@ ${
     : '<p>Check the official recruitment information before applying.</p>'
 }
 </section>
- 
+
 <hr>
- 
+
 <p><strong>Safety:</strong> CivilCareer does not charge candidates to apply for jobs. Always verify the employer and application instructions from the official source.</p>
- 
+
 </article>
 </main>
- 
+
 <footer>
 <p>© ${new Date().getFullYear()} CivilCareer</p>
 </footer>
@@ -492,15 +491,16 @@ ${
     console.error('job-page error:', error);
     return res.status(500).send('Unable to load this job right now.');
   }
- 
+
 }
- 
+
+
 /* ─────────────────────────────────────────────────────────────────────
    CIVILCAREER — MULTI-SOURCE DISCOVERY ENGINE (source-specific validation)
    Shared pure logic lives in ../lib/discovery-core.js; configured providers
    in ../lib/discovery-sources.js. No additional Vercel function is created.
    ───────────────────────────────────────────────────────────────────── */
- 
+
 const {
   FRESH_24H_MS,
   BACKUP_30D_MS,
@@ -523,13 +523,13 @@ const {
   classifySector: discoverySector,
   buildNewsQueryPlan,
 } = require('../lib/discovery-core');
- 
+
 const DISCOVERY_SITES = [
   'linkedin.com/jobs', 'naukri.com', 'indeed.com', 'foundit.in',
   'timesjobs.com', 'shine.com', 'apna.co', 'workindia.in',
   'freshersworld.com', 'gov.in', 'nic.in'
 ];
- 
+
 function decodeXml(value) {
   return String(value || '')
     .replace(/<!--[\s\S]*?-->/g, '')
@@ -550,13 +550,13 @@ function parseDiscoveryRss(xml) {
   return items;
 }
 function discoverySourceHost(url){try{return new URL(url).hostname.replace(/^www\./,'')}catch{return ''}}
- 
+
 async function fetchText(url,headers={}){
   const r=await fetch(url,{headers:{'User-Agent':'CivilCareer public vacancy discovery/1.0','Accept':'application/rss+xml, application/json, text/xml, text/plain;q=0.9, */*',...headers},signal:AbortSignal.timeout(8000),redirect:'follow'});
   if(!r.ok) throw new Error(`HTTP ${r.status} from ${url}`);
   return await r.text();
 }
- 
+
 // ── NEWS FETCHERS ──
 // Google News / Bing News are NEWS sources, never job boards. Returned items
 // pass through the strict news-vacancy gate + India evidence gate later.
@@ -578,7 +578,7 @@ async function discoveryFetchBingNews(queries){
   }));
   return all.map(x=>({ ...x, source:'bing_news' }));
 }
- 
+
 // ── JOB BOARD FETCHERS (structured job/location fields) ──
 async function discoveryFetchJobicy(){
   // Jobicy is a remote-tech board; pull the engineering feed and let the
@@ -614,7 +614,7 @@ async function discoveryFetchOnJob(){
     application_url:j.applyUrl||j.application_url||''
   }));
 }
- 
+
 // ── HOPIN ADAPTER ──
 // Verified against the live API (2026-09):
 //   GET https://api.hopinjobs.com/api/jobs                  → {"jobs":[]} (official collection)
@@ -630,7 +630,7 @@ async function discoveryFetchHopin(query, requestedLocation) {
     'https://api.hopinjobs.com/api/jobs',
     'https://api.hopinjobs.com/api/jobs?is_unofficial=true',
   ];
- 
+
   const payloads = [];
   for (const url of urls) {
     try {
@@ -642,7 +642,7 @@ async function discoveryFetchHopin(query, requestedLocation) {
   if (!payloads.some(Boolean)) {
     throw new Error('Hopin API error: both public job collections failed');
   }
- 
+
   let jobsArray = [];
   for (const raw of payloads) {
     if (Array.isArray(raw)) jobsArray.push(...raw);
@@ -655,7 +655,7 @@ async function discoveryFetchHopin(query, requestedLocation) {
       jobsArray.push(...rows);
     }
   }
- 
+
   const normalized = [];
   const seenIds = new Set();
   for (const j of jobsArray) {
@@ -663,26 +663,26 @@ async function discoveryFetchHopin(query, requestedLocation) {
     const sourceId = j.id ? String(j.id) : '';
     if (sourceId && seenIds.has(sourceId)) continue;
     if (sourceId) seenIds.add(sourceId);
- 
+
     const title = discoveryCleanText(j.title || j.job_title || j.position || j.name || '');
     if (!title) continue;
- 
+
     const company = discoveryCleanText(
       typeof j.company === 'object' ? ((j.company && (j.company.name || j.company.title)) || '')
         : (j.company || j.company_name || j.employer || j.organisation || '')
     );
- 
+
     // Real URL only: explicit URLs win; otherwise the DOCUMENTED per-id API
     // route (verified live) — never an invented web page.
     const link = j.url || j.job_url || j.link || j.source_url ||
       (sourceId ? `https://api.hopinjobs.com/api/jobs/${encodeURIComponent(sourceId)}` : '');
     if (!link) continue;
- 
+
     const description = discoveryCleanText(
       [j.description, j.summary, j.excerpt, j.body, j.role_type, j.industry]
         .filter(Boolean).join(' — ')
     );
- 
+
     const city    = discoveryCleanText(j.city || j.town || '');
     const state   = discoveryCleanText(j.state || j.region || '');
     const country = discoveryCleanText(j.country || j.country_code || '');
@@ -690,14 +690,14 @@ async function discoveryFetchHopin(query, requestedLocation) {
       j.location || j.location_display || j.place ||
       [city, state, country].filter(Boolean).join(', ') || ''
     );
- 
+
     const pubDate = j.posted_at || j.published_at || j.created_at || j.date_posted
                   || j.posted_at || j.post_date || j.pubDate || '';
- 
+
     // Application URL: use ONLY what Hopin itself provides (apply_url /
     // application_url on the record). Otherwise leave blank — no fabrication.
     const application_url = j.apply_url || j.application_url || '';
- 
+
     normalized.push({
       title,
       link,
@@ -715,10 +715,10 @@ async function discoveryFetchHopin(query, requestedLocation) {
       employment_type: j.work_type || j.job_type || j.employment_type || '',
     });
   }
- 
+
   return normalized;
 }
- 
+
 // ── SINGLE-ITEM VALIDATION PIPELINE ──
 // Returns { item } when accepted or { reject: {reason} } when rejected.
 // Source class drives the validation profile:
@@ -730,10 +730,10 @@ function pipelineValidateItem(item, nowMs) {
   const title = discoveryCleanText(item.title || '');
   const snippet = discoveryCleanText(item.description || item.snippet || '');
   const url = item.link || item.url || '';
- 
+
   if (!title) return { reject: { reason: 'empty title' } };
   if (!url) return { reject: { reason: 'no URL in record (never fabricated)' } };
- 
+
   // 1. NEWS GATE (strict): news articles must be genuine vacancy adverts.
   //    Runs before everything else — a news article that is not advertising a
   //    vacancy is never a job, whatever its terminology.
@@ -741,21 +741,21 @@ function pipelineValidateItem(item, nowMs) {
     const nv = newsVacancyCheck(title, snippet);
     if (!nv.isVacancy) return { reject: { reason: `news: ${nv.reason}` } };
   }
- 
+
   // 2. Civil/construction role gate
   const civil = classifyCivilRole(title, snippet);
   if (!civil.accept) return { reject: { reason: `civil: ${civil.reason}` } };
- 
+
   // 3. India eligibility — evidence from the record only, per source class
   const structured = extractStructuredLocation(item);
   const india = resolveIndiaEligibility(structured, title, snippet, src);
   if (!india.eligible) return { reject: { reason: `india: ${india.reason}` } };
- 
+
   // 4. Freshness — exact milliseconds, never rounded before classification
   const fresh = classifyFreshness(item.pubDate || item.published_at || item.posted_at, nowMs);
   if (fresh.bucket === 'too_old') return { reject: { reason: 'age: older than 30 days' } };
   if (fresh.bucket === 'future') return { reject: { reason: 'age: date too far in the future' } };
- 
+
   return {
     item: {
       title,
@@ -779,18 +779,18 @@ function pipelineValidateItem(item, nowMs) {
     bucket: fresh.bucket,
   };
 }
- 
+
 async function runPublicDiscovery({q, location, type} = {}) {
   const requestedLocation = discoveryCleanText(location || 'India');
   const query             = discoveryCleanText(q || 'civil engineering jobs India');
   const sourceStats       = {};
   const nowMs             = Date.now();
   const all               = [];
- 
+
   // News query plan: exact role+India queries (news evidence is item-level,
   // so queries carry the terms while validation never trusts them alone).
   const newsPlan = buildNewsQueryPlan(query, requestedLocation);
- 
+
   // Public sources — always run; one failure does not stop others
   const publicSources = [
     ['google_news', () => discoveryFetchGoogleNews(newsPlan)],
@@ -800,7 +800,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     ['onjob',       () => discoveryFetchOnJob()],
     ['hopin',       () => discoveryFetchHopin(query, requestedLocation)],
   ];
- 
+
   const publicResults = await Promise.allSettled(publicSources.map(([, fn]) => fn()));
   publicResults.forEach((result, i) => {
     const name = publicSources[i][0];
@@ -817,7 +817,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
       };
     }
   });
- 
+
   // Configured providers (SerpApi / Adzuna / The Muse / Jobvetta) — attempted
   // only when their keys exist; a missing key never fails the run. Provider
   // stats merge into sourceStats under their provider keys so the dashboard
@@ -836,18 +836,18 @@ async function runPublicDiscovery({q, location, type} = {}) {
       error: String(err?.message || err),
     };
   }
- 
+
   // ── VALIDATE + CLASSIFY (per source stats) ──
   const seen       = new Set();
   const fresh24h   = [];   // exact ageMs <= 24 h
   const backup30d  = [];   // exact 24 h < ageMs <= 30 d
   const unknownDate = [];  // unparseable/missing date — tracked, not silently "today"
- 
+
   for (const item of all) {
     const src = String(item._source || item.source || 'unknown').toLowerCase();
     const st = sourceStats[src];
     const outcome = pipelineValidateItem(item, nowMs);
- 
+
     if (outcome.reject) {
       if (st) {
         const reason = String(outcome.reject.reason || '');
@@ -859,9 +859,9 @@ async function runPublicDiscovery({q, location, type} = {}) {
       }
       continue;
     }
- 
+
     const n = outcome.item;
- 
+
     // Deduplication: normalized URL + normalized title (never invented URLs)
     const key = dedupeKey(n.url, n.title);
     if (key && seen.has(key)) {
@@ -869,9 +869,9 @@ async function runPublicDiscovery({q, location, type} = {}) {
       continue;
     }
     if (key) seen.add(key);
- 
+
     if (st) st.accepted += 1;
- 
+
     // Freshness buckets use exact ms; unknown dates are NOT treated as today
     if (outcome.bucket === 'unknown') {
       if (st) st.unknownDate += 1;
@@ -882,17 +882,17 @@ async function runPublicDiscovery({q, location, type} = {}) {
       backup30d.push(n);
     }
   }
- 
+
   // Sort newest-first by exact ageMs (unknown dates last, never "now")
   const byAge = (a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity);
   fresh24h.sort(byAge);
   backup30d.sort(byAge);
- 
+
   // Candidates = fresh24h first, then backup30d, then unknown-date records.
   // Unknown dates are excluded from the fresh24h/backup30d counts and get tier
   // "unknown", but are still queued as drafts for admin review.
   const candidates = [...fresh24h, ...backup30d, ...unknownDate];
- 
+
   const typeFiltered = candidates.filter(x => {
     if (!type || type === 'all') return true;
     const sector = discoverySector(`${x.title} ${x.snippet}`);
@@ -901,9 +901,9 @@ async function runPublicDiscovery({q, location, type} = {}) {
     if (type === 'mnc')        return /mnc|multinational|large employer|corporation|ltd|limited|pvt|private/i.test(`${x.company} ${x.snippet}`);
     return true;
   });
- 
+
   const limited = typeFiltered.slice(0, 80);
- 
+
   // Dedup against existing Supabase jobs (normalized URL or role+company)
   const existingResponse = await supa('jobs?select=id,source_url,role,company,created_at');
   if (!existingResponse.ok) {
@@ -914,7 +914,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
   const existingRows   = await existingResponse.json();
   const existingUrls   = new Set(existingRows.map(r => normalizeJobUrl(r.source_url)).filter(Boolean));
   const existingTitles = new Set(existingRows.map(r => `${discoveryNormText(discoveryRole(r.role))}|${discoveryNormText(r.company || '')}`));
- 
+
   const now   = new Date().toISOString();
   const fresh = limited.filter(x => {
     const company   = x.company || discoveryCompany(x.title, x.snippet);
@@ -924,7 +924,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     if (company && existingTitles.has(titleKey)) return false;
     return true;
   });
- 
+
   const drafts = fresh.slice(0, 40).map((item, index) => {
     const role    = discoveryRole(item.title);
     const company = item.company || discoveryCompany(item.title, item.snippet);
@@ -954,7 +954,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
       slug:                makeSlug(role, company || 'civilcareer', `${Date.now()}-${index}`),
     };
   });
- 
+
   let inserted = [];
   let persistenceWarning = '';
   if (drafts.length) {
@@ -996,7 +996,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     }
     inserted = await write.json();
   }
- 
+
   // Freshness counts are computed from THE SAME inserted draft rows that are
   // returned below — UI counts always match the review queue exactly.
   const insertedFresh24hCount = inserted.filter(j => {
@@ -1011,7 +1011,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     return Number.isFinite(age) && age > FRESH_24H_MS && age <= BACKUP_30D_MS;
   }).length;
   const insertedUnknownDateCount = inserted.length - insertedFresh24hCount - insertedBackup30dCount;
- 
+
   return {
     count:                inserted.length,
     drafts:               inserted,
@@ -1065,7 +1065,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     note: 'Source-specific validation: news = strict vacancy+India evidence; job boards = structured location checks; Hopin/OnJob = trusted India sources (foreign records still rejected). fresh24h <= 24h and backup30d 24h-30d use exact ms with no rounding; unknown dates are excluded from both queues and never defaulted to today. Application URLs are only used when the source itself provides them (Hopin apply_url or its documented per-id API route); no URL is ever fabricated and no India location is inferred from the search query.',
   };
 }
- 
+
 function supa(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
     ...opts,
@@ -1078,15 +1078,15 @@ function supa(path, opts = {}) {
     },
   });
 }
- 
+
 function getKey(req) {
   return req.headers['x-owner-key'] || '';
 }
- 
+
 function isAdmin(req) {
   return getKey(req) === process.env.OWNER_KEY;
 }
- 
+
 function cleanDates(obj) {
   const dateFields = [
     'application_start','deadline','posted_at','published_at',
@@ -1097,7 +1097,7 @@ function cleanDates(obj) {
   }
   return obj;
 }
- 
+
 function cleanArrays(obj) {
   const arrayFields = [
     'skills','qualifications','employment_types',
@@ -1114,7 +1114,7 @@ function cleanArrays(obj) {
   }
   return obj;
 }
- 
+
 function makeSlug(role, company, id) {
   const base = `${role || 'job'}-${company || 'company'}`
     .toLowerCase()
@@ -1123,14 +1123,14 @@ function makeSlug(role, company, id) {
     .slice(0, 100);
   return `${base || 'job'}-${id || Date.now()}`;
 }
- 
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key');
- 
+
   if (req.method === 'OPTIONS') return res.status(200).end();
- 
+
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
     if (!process.env.OWNER_KEY) {
       return res.status(503).json({ ok: false, error: 'Admin authentication is not configured on this deployment' });
@@ -1140,11 +1140,11 @@ module.exports = async function handler(req, res) {
     }
     return res.status(200).json({ ok: true, authenticated: true });
   }
- 
+
   if (!SUPA || !KEY) {
     return res.status(500).json({ error: 'Supabase server configuration is missing' });
   }
- 
+
   if (req.method === 'GET') {
     if (String(req.query?.discovery || '') === 'cron' && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) {
       try {
@@ -1155,10 +1155,10 @@ module.exports = async function handler(req, res) {
       }
     }
     if (String(req.query?.render || '') === 'html') return renderJobPage(req, res);
- 
+
     const slug = typeof req.query?.slug === 'string' ? req.query.slug.trim() : '';
     const id   = typeof req.query?.id   === 'string' ? req.query.id.trim()   : '';
- 
+
     let query;
     if (slug) {
       query = `jobs?slug=eq.${encodeURIComponent(slug)}` + (isAdmin(req) ? '' : '&published=eq.true') + '&limit=1';
@@ -1167,7 +1167,7 @@ module.exports = async function handler(req, res) {
     } else {
       query = isAdmin(req) ? 'jobs?order=created_at.desc' : 'jobs?published=eq.true&order=created_at.desc';
     }
- 
+
     try {
       const r = await supa(query);
       if (!r.ok) {
@@ -1181,17 +1181,17 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to load jobs', details: err.message });
     }
   }
- 
+
   if (!isAdmin(req)) {
     return res.status(401).json({ error: 'Invalid owner key' });
   }
- 
+
   let body = req.body || {};
   if (typeof body === 'string') {
     try { body = JSON.parse(body); }
     catch (e) { return res.status(400).json({ error: 'Invalid JSON body' }); }
   }
- 
+
   if (req.method === 'POST' && String(req.query?.discovery || '') === '1') {
     try {
       const result = await runPublicDiscovery({ q: body.q, location: body.location, type: body.type });
@@ -1200,7 +1200,7 @@ module.exports = async function handler(req, res) {
       return res.status(502).json({ error: 'Discovery search failed', details: err.message, sourceStats: err.sourceStats || {} });
     }
   }
- 
+
   if (req.method === 'POST') {
     try {
       const { id, key, ...rest } = body;
@@ -1210,7 +1210,7 @@ module.exports = async function handler(req, res) {
       if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
       if (!rest.created_at) rest.created_at = new Date().toISOString();
       if (!rest.slug) rest.slug = makeSlug(rest.role, rest.company, Date.now());
- 
+
       const r = await supa('jobs', { method: 'POST', body: JSON.stringify(rest) });
       if (!r.ok) {
         const detail = await r.text();
@@ -1222,7 +1222,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be saved', details: err.message });
     }
   }
- 
+
   if (req.method === 'PATCH') {
     try {
       const { id, key, ...rest } = body;
@@ -1240,7 +1240,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be updated', details: err.message });
     }
   }
- 
+
   if (req.method === 'DELETE') {
     try {
       const { id } = body;
@@ -1255,10 +1255,10 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be deleted', details: err.message });
     }
   }
- 
+
   return res.status(405).json({ error: 'Method not allowed' });
 };
- 
+
 // Internals exposed for unit-style testing only. Vercel invokes the exported
 // handler function directly; these extra properties never execute in prod.
 module.exports._internal = {
@@ -1280,4 +1280,3 @@ module.exports._internal = {
   BACKUP_30D_MS,
   FUTURE_TOL_MS,
 };
- 
