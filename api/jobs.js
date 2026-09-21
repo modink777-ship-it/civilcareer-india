@@ -702,114 +702,113 @@ function discoverySector(text) {
  * This version makes the TITLE the primary civil-engineering test.
  */
 
-function discoveryIsCivil(title, description, sourceLabel) {
-  const titleNorm = discoveryNorm(title || '');
-  const textNorm = discoveryNorm(`${title || ''} ${description || ''}`);
-  const sourceNorm = discoveryNorm(sourceLabel || '');
+function discoveryIsCivil(title, description) {
+  const titleNorm = discoveryNorm(title);
+  const textNorm = discoveryNorm(
+    `${title} ${description}`
+  );
 
-  const strongCivilRolePatterns = [
+  const civilTitlePatterns = [
     /\bcivil engineer\b/,
     /\bcivil engineering\b/,
-    /\bjunior civil engineer\b/,
-    /\bassistant civil engineer\b/,
-    /\bsenior civil engineer\b/,
-    /\blead civil engineer\b/,
-    /\bprincipal civil engineer\b/,
-    /\bchief civil engineer\b/,
-    /\bcivil engineering manager\b/,
-    /\bcivil project manager\b/,
-    /\bcivil works manager\b/,
-    /\bcivil design engineer\b/,
-    /\bstructural engineer\b/,
-    /\bstructural engineering\b/,
-    /\bstructural designer\b/,
-    /\bgeotechnical engineer\b/,
-    /\bgeotechnical engineering\b/,
-    /\bhighway engineer\b/,
-    /\bhighways engineer\b/,
-    /\bbridge engineer\b/,
-    /\btransportation engineer\b/,
-    /\btraffic engineer\b/,
-    /\bwater resources engineer\b/,
-    /\bwater resource engineer\b/,
-    /\birrigation engineer\b/,
-    /\benvironmental civil engineer\b/,
-    /\bconstruction engineer\b/,
-    /\bconstruction engineering\b/,
-    /\bconstruction project engineer\b/,
     /\bsite engineer\b/,
     /\bsite engineering\b/,
-    /\bsite supervisor\b/,
-    /\bcivil supervisor\b/,
-    /\bresident engineer\b/,
+    /\bplanning engineer\b/,
+    /\bplanning engineering\b/,
     /\bquantity surveyor\b/,
     /\bquantity surveying\b/,
-    /\bcivil quantity surveyor\b/,
-    /\bplanning engineer\b/,
-    /\bcivil planning engineer\b/,
+    /\bstructural engineer\b/,
+    /\bstructural engineering\b/,
+    /\bconstruction engineer\b/,
+    /\bconstruction engineering\b/,
+    /\bproject engineer\b/,
+    /\bproject engineering\b/,
     /\bestimation engineer\b/,
-    /\bcivil estimation engineer\b/,
     /\bbilling engineer\b/,
-    /\bcivil billing engineer\b/,
-    /\bqa\s*\/?\s*qc\b.*\bcivil\b/,
-    /\bcivil\b.*\bqa\s*\/?\s*qc\b/,
-    /\bbim engineer\b.*\bcivil\b/,
-    /\bcivil\b.*\bbim engineer\b/,
+    /\bqa qc civil\b/,
+    /\bqa qc engineer\b/,
+    /\bbim engineer\b/,
+    /\bjunior civil engineer\b/,
+    /\bassistant civil engineer\b/,
+    /\bcivil engineering manager\b/,
+    /\bcivil project manager\b/,
+    /\bcivil works\b/,
+    /\bconstruction manager\b/,
+    /\bconstruction project manager\b/,
+    /\binfrastructure engineer\b/,
+    /\bhighway engineer\b/,
+    /\bbridge engineer\b/,
+    /\btransportation engineer\b/,
+    /\bgeotechnical engineer\b/,
+    /\bgeotechnical engineering\b/,
+    /\bwater resources engineer\b/,
+    /\birrigation engineer\b/,
+    /\bstructural designer\b/,
     /\bcivil designer\b/,
-    /\bcivil drafter\b/,
-    /\bcivil draughtsman\b/,
-    /\bcivil technician\b/,
-    /\bcivil inspector\b/,
-    /\bconstruction inspector\b/
+    /\bcivil supervisor\b/,
+    /\bsite supervisor\b/,
+    /\bresident engineer\b/
   ];
 
-  const isNews =
-    /google[_ ]news|bing[_ ]news|news\.google\.com|bing\.com/.test(sourceNorm);
+  const hasCivilTitle =
+    civilTitlePatterns.some(re => re.test(titleNorm));
 
-  if (strongCivilRolePatterns.some(re => re.test(titleNorm))) {
-    if (!isNews) return true;
-
-    return /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(
-      textNorm
-    );
+  if (hasCivilTitle) {
+    return true;
   }
 
-  const civilContext =
-    /\b(civil|structural|geotechnical|highway|bridge|transportation|construction)\b/.test(
-      titleNorm
-    );
+  /*
+   * Reject common unrelated engineering roles.
+   * These must be checked against the TITLE only.
+   */
+  const unrelatedTitle = [
+    /\bsoftware engineer\b/,
+    /\bdata engineer\b/,
+    /\bdevops engineer\b/,
+    /\bfrontend engineer\b/,
+    /\bbackend engineer\b/,
+    /\bfull stack\b/,
+    /\bmachine learning\b/,
+    /\bai engineer\b/,
+    /\bml engineer\b/,
+    /\bcloud engineer\b/,
+    /\bnetwork engineer\b/,
+    /\bsecurity engineer\b/,
+    /\bqa engineer\b/,
+    /\btest engineer\b/,
+    /\bautomation engineer\b/,
+    /\bcustomer engineer\b/,
+    /\bsales engineer\b/,
+    /\bsolutions engineer\b/,
+    /\bapplication engineer\b/,
+    /\bproduct engineer\b/,
+    /\bproduct manager\b/,
+    /\bproject manager\b/,
+    /\bengineering manager\b/,
+    /\bengineering lead\b/
+  ];
 
-  const engineeringRole =
-    /\b(engineer|engineering|surveyor|supervisor|inspector|designer|drafter|draughtsman|technician|estimator)\b/.test(
-      titleNorm
-    );
-
-  if (civilContext && engineeringRole) {
-    return !isNews ||
-      /\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|position|opening|openings|apply|employment)\b/.test(
-        textNorm
-      );
+  if (unrelatedTitle.some(re => re.test(titleNorm))) {
+    return false;
   }
 
-  const descriptionCivilRole =
-    /\b(civil engineer|site engineer|structural engineer|geotechnical engineer|highway engineer|bridge engineer|transportation engineer|construction engineer|quantity surveyor|planning engineer|civil supervisor|civil designer|civil inspector|civil technician)\b/.test(
-      textNorm
-    );
-
-  const vacancyLanguage =
-    /\b(job|jobs|vacancy|vacancies|hiring|we are hiring|recruitment|recruiting|career|careers|position|opening|openings|apply now|apply|employment)\b/.test(
-      textNorm
-    );
-
-  const nonTechnicalManagementTitle =
-    /\b(vice president|president|chief executive|ceo|cfo|coo|cto|director|marketing|sales|business development|account manager|relationship manager|hr manager|human resources|finance manager|legal counsel|communications manager)\b/.test(
+  /*
+   * Final fallback for title wording such as:
+   * "Engineer - Civil & Infrastructure"
+   * "Civil / Construction Engineer"
+   */
+  return (
+    /\bcivil\b.*\b(engineer|engineering|works|construction)\b/.test(
       titleNorm
-    );
-
-  return descriptionCivilRole &&
-    vacancyLanguage &&
-    !nonTechnicalManagementTitle;
+    ) ||
+    /\b(engineer|engineering)\b.*\b(civil|construction|structural|highway|bridge|geotechnical)\b/.test(
+      titleNorm
+    ) ||
+    /\bquantity surveyor\b/.test(titleNorm) ||
+    /\bsite engineer\b/.test(titleNorm)
+  );
 }
+
 
 /*
  * Location filtering.
@@ -831,10 +830,10 @@ function discoveryMatchesLocation(item, requestedLocation) {
     item.description || item.snippet || ''
   );
   const source = discoveryNorm(
-    item.source ||
-    item._source ||
-    ''
-  );
+  item.source ||
+  item._source ||
+  ''
+);
 
   if (
     requested === 'india' ||
@@ -842,53 +841,52 @@ function discoveryMatchesLocation(item, requestedLocation) {
   ) {
     const indiaCities =
       DISCOVERY_CITY_WORDS.map(discoveryNorm);
-
     const indiaStates = [
-      'andhra pradesh',
-      'arunachal pradesh',
-      'assam',
-      'bihar',
-      'chhattisgarh',
-      'goa',
-      'gujarat',
-      'haryana',
-      'himachal pradesh',
-      'jharkhand',
-      'karnataka',
-      'kerala',
-      'madhya pradesh',
-      'maharashtra',
-      'manipur',
-      'meghalaya',
-      'mizoram',
-      'nagaland',
-      'odisha',
-      'orissa',
-      'punjab',
-      'rajasthan',
-      'sikkim',
-      'tamil nadu',
-      'telangana',
-      'tripura',
-      'uttar pradesh',
-      'uttarakhand',
-      'west bengal',
-      'delhi',
-      'jammu and kashmir',
-      'ladakh',
-      'chandigarh',
-      'puducherry'
-    ].map(discoveryNorm);
+  'andhra pradesh',
+  'arunachal pradesh',
+  'assam',
+  'bihar',
+  'chhattisgarh',
+  'goa',
+  'gujarat',
+  'haryana',
+  'himachal pradesh',
+  'jharkhand',
+  'karnataka',
+  'kerala',
+  'madhya pradesh',
+  'maharashtra',
+  'manipur',
+  'meghalaya',
+  'mizoram',
+  'nagaland',
+  'odisha',
+  'orissa',
+  'punjab',
+  'rajasthan',
+  'sikkim',
+  'tamil nadu',
+  'telangana',
+  'tripura',
+  'uttar pradesh',
+  'uttarakhand',
+  'west bengal',
+  'delhi',
+  'jammu and kashmir',
+  'ladakh',
+  'chandigarh',
+  'puducherry'
+].map(discoveryNorm);
 
-    const indiaSignals = [
-      'india',
-      'indian',
-      'pan india',
-      'all india',
-      'remote india',
-      ...indiaCities,
-      ...indiaStates
-    ];
+   const indiaSignals = [
+  'india',
+  'indian',
+  'pan india',
+  'all india',
+  'remote india',
+  ...indiaCities,
+  ...indiaStates
+];
 
     const hay =
       `${location} ${title} ${description} ${source}`;
@@ -906,9 +904,8 @@ function discoveryMatchesLocation(item, requestedLocation) {
     });
 
     /*
-     * Explicit foreign locations are always rejected for an India search.
-     * This prevents a news article from being accepted merely because its
-     * search query contained "India".
+     * Explicit foreign locations are rejected even if another part
+     * of the text happens to contain "India".
      */
     const foreignSignals = [
       'germany',
@@ -959,24 +956,9 @@ function discoveryMatchesLocation(item, requestedLocation) {
     }
 
     /*
-     * Google News and Bing News are already queried with the requested
-     * India location. Their article title/description often omits the
-     * word "India", even when the article is an Indian vacancy.
-     *
-     * For these two sources, accept the item when there is no explicit
-     * foreign-location signal. Structured job-board sources remain strict:
-     * they must contain positive India evidence in their own data.
+     * CRITICAL:
+     * Missing location is NOT assumed to be India.
      */
-    const isIndiaNewsSource =
-      source === 'google news' ||
-      source === 'google_news' ||
-      source === 'bing news' ||
-      source === 'bing_news';
-
-    if (isIndiaNewsSource) {
-      return true;
-    }
-
     return hasIndiaSignal;
   }
 
@@ -1045,102 +1027,30 @@ async function fetchText(url, headers = {}) {
 }
 
 
-function discoverySearchVariants(query) {
-  const base = cleanDiscoveryText(query || 'civil engineering jobs India');
-
-  const variants = [
-    base,
-    'civil engineer India',
-    'civil engineering jobs India',
-    'civil site engineer India',
-    'site engineer India',
-    'structural engineer India',
-    'planning engineer India',
-    'quantity surveyor India',
-    'construction engineer India',
-    'project engineer civil India',
-    'estimation engineer India',
-    'billing engineer India',
-    'QA QC civil India',
-    'junior civil engineer India',
-    'assistant civil engineer India',
-    'highway engineer India',
-    'bridge engineer India',
-    'geotechnical engineer India'
-  ];
-
-  return [...new Set(variants)];
-}
-
-function discoveryDedupeRows(rows) {
-  const seen = new Set();
-  const out = [];
-
-  for (const row of rows || []) {
-    const key =
-      String(row.link || row.url || '').replace(/[?#].*$/, '') +
-      '|' +
-      discoveryNorm(row.title || '');
-
-    if (!key || key === '|') continue;
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-    out.push(row);
-  }
-
-  return out;
-}
-
 async function discoveryFetchGoogleNews(query) {
-  const queries = discoverySearchVariants(query);
+  const url =
+    `https://news.google.com/rss/search?q=` +
+    `${encodeURIComponent(`${query} when:1d`)}` +
+    `&hl=en-IN&gl=IN&ceid=IN:en`;
 
-  const results = await Promise.allSettled(
-    queries.map(searchQuery => {
-      const url =
-        `https://news.google.com/rss/search?q=` +
-        `${encodeURIComponent(`${searchQuery} when:1d`)}` +
-        `&hl=en-IN&gl=IN&ceid=IN:en`;
-
-      return fetchText(url).then(parseDiscoveryRss);
-    })
-  );
-
-  return discoveryDedupeRows(
-    results.flatMap(result =>
-      result.status === 'fulfilled'
-        ? result.value || []
-        : []
-    )
+  return parseDiscoveryRss(
+    await fetchText(url)
   );
 }
 
 
 async function discoveryFetchBingNews(query) {
-  const queries = discoverySearchVariants(query);
-  const afterDate = new Date(
-    Date.now() - 86400000
-  ).toISOString().slice(0, 10);
+  const url =
+    `https://www.bing.com/news/search?q=` +
+    `${encodeURIComponent(
+      `${query} after:${new Date(
+        Date.now() - 86400000
+      ).toISOString().slice(0, 10)}`
+    )}` +
+    `&format=rss`;
 
-  const results = await Promise.allSettled(
-    queries.map(searchQuery => {
-      const url =
-        `https://www.bing.com/news/search?q=` +
-        `${encodeURIComponent(
-          `${searchQuery} after:${afterDate}`
-        )}` +
-        `&format=rss`;
-
-      return fetchText(url).then(parseDiscoveryRss);
-    })
-  );
-
-  return discoveryDedupeRows(
-    results.flatMap(result =>
-      result.status === 'fulfilled'
-        ? result.value || []
-        : []
-    )
+  return parseDiscoveryRss(
+    await fetchText(url)
   );
 }
 
@@ -1204,60 +1114,6 @@ async function discoveryFetchArbeitnow() {
       j.company ||
       '',
     location: j.location || ''
-  }));
-}
-
-
-async function discoveryFetchHopin() {
-  /*
-   * Hopin public jobs API.
-   * Do not use exact-match filters here.
-   * Fetch the public job collection and let our own
-   * India + civil + freshness filters decide what qualifies.
-   */
-  const raw = JSON.parse(
-    await fetchText(
-      'https://api.hopinjobs.com/api/jobs',
-      {
-        Accept: 'application/json'
-      }
-    )
-  );
-
-  const jobs = Array.isArray(raw)
-    ? raw
-    : Array.isArray(raw.jobs)
-      ? raw.jobs
-      : [];
-
-  return jobs.map(j => ({
-    title: j.title || '',
-    link:
-      j.url ||
-      j.apply_url ||
-      j.application_url ||
-      '',
-    description: cleanDiscoveryText(
-      j.description || ''
-    ),
-    pubDate:
-      j.posted_at ||
-      j.created_at ||
-      j.updated_at ||
-      '',
-    source: 'hopin',
-    company:
-      j.company ||
-      j.company_name ||
-      '',
-    location:
-      j.location ||
-      '',
-    application_url:
-      j.url ||
-      j.apply_url ||
-      j.application_url ||
-      ''
   }));
 }
 
@@ -1365,8 +1221,7 @@ function normalizeDiscoveryItem(
     !url ||
     !discoveryIsCivil(
       title,
-      snippet,
-      sourceLabel || item.source || item._source || ''
+      snippet
     )
   ) {
     return null;
@@ -1531,12 +1386,6 @@ async function runPublicDiscovery({
       'onjob',
       () =>
         discoveryFetchOnJob()
-    ],
-
-    [
-      'hopin',
-      () =>
-        discoveryFetchHopin()
     ]
   ];
 
@@ -1624,26 +1473,21 @@ async function runPublicDiscovery({
     ? normalized.ageHours
     : null;
 
-    const normalizedUrlKey = normalized.url.replace(/[?#].*$/, '');
-    const titleKey = discoveryNorm(normalized.title);
-    const companyKey = discoveryNorm(
-      normalized.company ||
-      discoveryCompany(normalized.title, normalized.snippet)
-    );
-    const locationKey = discoveryNorm(normalized.location || '');
+    const key =
+      normalized.url.replace(
+        /[?#].*$/,
+        ''
+      ) +
+      '|' +
+      discoveryNorm(
+        normalized.title
+      );
 
-    const urlKey = `url|${normalizedUrlKey}`;
-    const contentKey = `job|${titleKey}|${companyKey}|${locationKey}`;
-
-    if (
-      seen.has(urlKey) ||
-      seen.has(contentKey)
-    ) {
+    if (seen.has(key)) {
       continue;
     }
 
-    seen.add(urlKey);
-    seen.add(contentKey);
+    seen.add(key);
 
 
     /*
@@ -2368,7 +2212,7 @@ async function runPublicDiscovery({
   'candidates/fresh24hCandidates is a POST-deduplication count — it reflects genuinely new fresh24h drafts saved this run, not the pre-dedup total. ' +
   'totalFresh24hFound/totalBackup30dFound give the pre-dedup source counts for debugging. ' +
   'Results are sorted newest-first; each result carries tier, isFresh24h, ageHours, postedAt (human label), postedAtRaw (stored string), postedAtISO (full timestamp), and dateIsArticleDate (true for Google/Bing News sources). ' +
-  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. Google/Bing News India searches use the requested India query plus explicit foreign-location rejection and strict vacancy-role validation; structured job feeds require positive India location evidence. Hopin is used as an additional unauthenticated India job source. LinkedIn/Naukri logins or bypass scraping are not used.'
+  'Configured job APIs are tried alongside no-key public feeds; quota/error on one source does not stop the others. LinkedIn/Naukri logins or bypass scraping are not used.'
   };
 }
 
