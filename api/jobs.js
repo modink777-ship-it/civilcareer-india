@@ -192,7 +192,7 @@ function buildJobPosting(job, canonical) {
     schema.directApply = true;
   }
 
-  const qualifications = asArray(job.qualifications);
+  const qualifications = asArray(job.qualifications).length ? asArray(job.qualifications) : asArray(job.qualification);
   if (qualifications.length) {
     schema.qualifications = qualifications.join(', ');
   }
@@ -281,7 +281,7 @@ async function renderJobPage(req, res) {
 
     const postingSchema = buildJobPosting(job, canonical);
 
-    const qualifications = asArray(job.qualifications);
+    const qualifications = asArray(job.qualifications).length ? asArray(job.qualifications) : asArray(job.qualification);
     const employmentTypes = asArray(job.employment_types);
     const skills = asArray(job.skills);
 
@@ -388,6 +388,11 @@ async function renderJobPage(req, res) {
   h1 { margin-top: 12px; line-height: 1.15; }
   h2 { margin-top: 28px; }
   .muted { color: #667085; }
+  .job-overview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:24px 0 30px; }
+  .job-overview > div { background:#eef5fb; border:1px solid #d7e4f0; border-radius:12px; padding:14px 16px; }
+  .job-overview strong { display:block; color:#173b63; font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .job-overview span { color:#26384d; line-height:1.5; }
+  @media (max-width:700px){ .job-overview{grid-template-columns:1fr;} }
   .apply {
     display: inline-block;
     padding: 12px 18px;
@@ -432,15 +437,20 @@ ${postedDate ? `<p><strong>Posted:</strong> ${escapeHtml(formatDate(postedDate))
 ${deadline ? `<p><strong>Application deadline:</strong> ${escapeHtml(formatDate(deadline))}</p>` : ''}
 ${job.status ? `<p><strong>Status:</strong> ${escapeHtml(job.status)}</p>` : ''}
 
-${location ? `<section><h2>Location</h2><p>${escapeHtml(location)}</p></section>` : ''}
-
-${salary ? `<section><h2>Salary</h2><p>${escapeHtml(salary)}</p></section>` : ''}
-
-${employmentTypes.length || job.employment_type ? `
-<section>
-<h2>Employment type</h2>
-<p>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : job.employment_type)}</p>
-</section>` : ''}
+<section class="job-overview">
+  ${location ? `<div><strong>Location</strong><span>${escapeHtml(location)}</span></div>` : ''}
+  <div><strong>State</strong><span>${escapeHtml(state || 'Not stated')}</span></div>
+  <div><strong>Country</strong><span>${escapeHtml(country)}</span></div>
+  <div><strong>Qualification</strong><span>${escapeHtml(qualifications.length ? qualifications.join(', ') : 'Not stated')}</span></div>
+  <div><strong>Experience</strong><span>${escapeHtml(experience.length ? experience.join(', ') : 'Not stated')}</span></div>
+  <div><strong>Employment type</strong><span>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : 'Not stated')}</span></div>
+  <div><strong>Salary / Pay</strong><span>${escapeHtml(salary || 'Not stated')}</span></div>
+  <div><strong>Vacancies</strong><span>${escapeHtml(vacancyCount || 'Not stated')}</span></div>
+  <div><strong>Application start</strong><span>${escapeHtml(applicationStart ? formatDate(applicationStart) : 'Not stated')}</span></div>
+  <div><strong>Deadline</strong><span>${escapeHtml(deadline ? formatDate(deadline) : 'Not stated')}</span></div>
+  <div><strong>Age limit</strong><span>${escapeHtml(ageLimit || 'Not stated')}</span></div>
+  <div><strong>Application fee</strong><span>${escapeHtml(applicationFee || 'Not stated')}</span></div>
+</section>
 
 ${qualifications.length ? `
 <section>
