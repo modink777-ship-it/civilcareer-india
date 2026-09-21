@@ -819,7 +819,11 @@ function discoveryIsCivil(title, description) {
  * For India searches we now require positive India evidence.
  */
 
-function discoveryMatchesLocation(item, requestedLocation) {
+function discoveryMatchesLocation(
+  item,
+  requestedLocation,
+  sourceLabel
+) {
   const requested = discoveryNorm(
     requestedLocation || 'India'
   );
@@ -830,10 +834,11 @@ function discoveryMatchesLocation(item, requestedLocation) {
     item.description || item.snippet || ''
   );
   const source = discoveryNorm(
-  item.source ||
-  item._source ||
-  ''
-);
+    sourceLabel ||
+    item.source ||
+    item._source ||
+    ''
+  );
 
   if (
     requested === 'india' ||
@@ -891,7 +896,7 @@ function discoveryMatchesLocation(item, requestedLocation) {
     const hay =
       `${location} ${title} ${description} ${source}`;
 
-    const hasIndiaSignal = indiaSignals.some(term => {
+    let hasIndiaSignal = indiaSignals.some(term => {
       if (term === 'indian') {
         return /\bindian\b/.test(hay);
       }
@@ -902,6 +907,25 @@ function discoveryMatchesLocation(item, requestedLocation) {
 
       return hay.includes(term);
     });
+
+    /*
+     * Google News and Bing News were queried explicitly with the
+     * requested India location. Their returned article fields do not
+     * reliably preserve the query text, so do not reject those items
+     * merely because the returned title/snippet omits "India".
+     *
+     * Explicit foreign locations are still checked below and rejected.
+     */
+    const newsSource =
+      source === 'google_news' ||
+      source === 'bing_news';
+
+    if (
+      newsSource &&
+      (requested === 'india' || requested.includes('india'))
+    ) {
+      hasIndiaSignal = true;
+    }
 
     /*
      * Explicit foreign locations are rejected even if another part
@@ -1255,7 +1279,8 @@ function normalizeDiscoveryItem(
   if (
     !discoveryMatchesLocation(
       item,
-      requestedLocation
+      requestedLocation,
+      sourceLabel
     )
   ) {
     return null;
