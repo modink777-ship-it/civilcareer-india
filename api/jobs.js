@@ -1,3 +1,4 @@
+ 
 /**
  * CivilCareer — Jobs API v3
  * - Public GET: published jobs only
@@ -6,20 +7,20 @@
  * - Handles empty optional date fields safely
  * - Uses Supabase service-role key on the server
  */
-
+ 
 const SUPA = process.env.SUPABASE_URL;
 const KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY;
-
+ 
 const SITE_URL = (
   process.env.SITE_URL ||
   'https://civilcareer-india-two.vercel.app'
 ).replace(/\/+$/, '');
-
+ 
 const { runConfiguredSources } = require('../lib/discovery-sources');
-
-
+ 
+ 
 // Phase 1 server-rendered job page helpers. Kept in jobs.js to stay within Vercel Hobby limits.
 function escapeHtml(value) {
   return String(value ?? '')
@@ -29,85 +30,85 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
+ 
 function stripHtml(value) {
   return String(value ?? '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
-
+ 
 function truncate(value, max = 160) {
   const text = stripHtml(value);
   return text.length <= max
     ? text
     : `${text.slice(0, max - 1).trimEnd()}…`;
 }
-
+ 
 function formatDate(value) {
   if (!value) return '';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
-
+ 
   return d.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 }
-
+ 
 function asArray(value) {
   if (Array.isArray(value)) return value;
-
+ 
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) return parsed;
     } catch (_) {}
-
+ 
     return value
       .split(',')
       .map(v => v.trim())
       .filter(Boolean);
   }
-
+ 
   return [];
 }
-
+ 
 async function getJobBySlug(slug) {
   const response = await supa(
     `jobs?select=*&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
   );
-
+ 
   if (!response.ok) {
     throw new Error(`Supabase job lookup failed: ${response.status}`);
   }
-
+ 
   const rows = await response.json();
   return rows[0] || null;
 }
-
-
+ 
+ 
 function isExpired(job) {
   const value = job.valid_through || job.expires_at || job.deadline;
   if (!value) return false;
   const time = new Date(value).getTime();
   return Number.isFinite(time) && time < Date.now();
 }
-
+ 
 async function getJobById(id) {
   const response = await supa(
     `jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`
   );
-
+ 
   if (!response.ok) {
     throw new Error(`Supabase job ID lookup failed: ${response.status}`);
   }
-
+ 
   const rows = await response.json();
   return rows[0] || null;
 }
-
+ 
 function buildJobPosting(job, canonical) {
   const locationText =
     job.location_display ||
@@ -116,12 +117,12 @@ function buildJobPosting(job, canonical) {
       .join(', ') ||
     job.location ||
     '';
-
+ 
   const employer =
     job.company ||
     job.recruitment_authority ||
     'Employer';
-
+ 
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
@@ -135,26 +136,26 @@ function buildJobPosting(job, canonical) {
       name: employer,
     },
   };
-
+ 
   const datePosted =
     job.date_posted ||
     job.published_at ||
     job.posted_at ||
     job.created_at;
-
+ 
   if (datePosted) schema.datePosted = datePosted;
-
+ 
   const validThrough =
     job.valid_through ||
     job.expires_at ||
     job.deadline;
-
+ 
   if (validThrough) schema.validThrough = validThrough;
-
+ 
   if (job.company_url) {
     schema.hiringOrganization.sameAs = job.company_url;
   }
-
+ 
   if (locationText) {
     schema.jobLocation = {
       '@type': 'Place',
@@ -167,14 +168,14 @@ function buildJobPosting(job, canonical) {
       },
     };
   }
-
+ 
   const employmentTypes = asArray(job.employment_types);
   if (employmentTypes.length === 1) {
     schema.employmentType = employmentTypes[0];
   } else if (job.employment_type) {
     schema.employmentType = job.employment_type;
   }
-
+ 
   if (job.salary_min || job.salary_max) {
     schema.baseSalary = {
       '@type': 'MonetaryAmount',
@@ -187,52 +188,52 @@ function buildJobPosting(job, canonical) {
       },
     };
   }
-
+ 
   if (job.application_url) {
     schema.directApply = true;
   }
-
+ 
   const qualifications = asArray(job.qualifications);
   if (qualifications.length) {
     schema.qualifications = qualifications.join(', ');
   }
-
+ 
   return schema;
 }
-
+ 
 function jobSlug(job) {
   if (job.slug) return String(job.slug);
-
+ 
   const role = String(job.role || 'job')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-
+ 
   return `${role || 'job'}-${job.id}`;
 }
-
+ 
 async function renderJobPage(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).send('Method not allowed');
   }
-
+ 
   if (!SUPA || !KEY) {
     return res.status(500).send('Server configuration is missing');
   }
-
+ 
   const slug = String(req.query?.slug || '').trim();
-
+ 
   if (!slug) {
     return res.status(400).send('Missing job slug');
   }
-
+ 
   try {
     let job = await getJobBySlug(slug);
-
+ 
     if (!job && /^[0-9a-f-]{36}$/i.test(slug)) {
       job = await getJobById(slug);
     }
-
+ 
     if (!job) {
       res.setHeader('X-Robots-Tag', 'noindex, follow');
       return res.status(404).send(`<!doctype html>
@@ -252,16 +253,16 @@ async function renderJobPage(req, res) {
 </body>
 </html>`);
     }
-
+ 
     const actualSlug = jobSlug(job);
     const canonical = `${SITE_URL}/jobs/${encodeURIComponent(actualSlug)}`;
-
+ 
     const role = job.role || 'Civil Engineering Job';
     const company =
       job.company ||
       job.recruitment_authority ||
       'Employer';
-
+ 
     const location =
       job.location_display ||
       [job.city, job.district, job.state, job.country]
@@ -269,24 +270,24 @@ async function renderJobPage(req, res) {
         .join(', ') ||
       job.location ||
       '';
-
+ 
     const title = `${role} at ${company} | CivilCareer`;
     const expired = isExpired(job);
     const robotsDirective = expired ? 'noindex,follow' : 'index,follow';
-
+ 
     const description = truncate(
       job.description ||
       `${role} opportunity at ${company}${location ? ` in ${location}` : ''}. Find civil engineering career opportunities on CivilCareer.`
     );
-
+ 
     const postingSchema = buildJobPosting(job, canonical);
-
+ 
     const qualifications = asArray(job.qualifications);
     const employmentTypes = asArray(job.employment_types);
     const skills = asArray(job.skills);
-
+ 
     const responsibilities = stripHtml(job.responsibilities);
-
+ 
     const salary =
       job.salary ||
       (
@@ -294,51 +295,51 @@ async function renderJobPage(req, res) {
           ? `${job.salary_min ?? ''}${job.salary_min != null && job.salary_max != null ? ' - ' : ''}${job.salary_max ?? ''} ${job.salary_currency || 'INR'}`
           : ''
       );
-
+ 
     const postedDate =
       job.date_posted ||
       job.published_at ||
       job.posted_at ||
       job.created_at;
-
+ 
     const deadline =
       job.valid_through ||
       job.expires_at ||
       job.deadline;
-
+ 
     const applyUrl =
       job.application_url ||
       job.source_url ||
       '';
-
+ 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
     res.setHeader('X-Robots-Tag', robotsDirective);
     if (postedDate) {
       res.setHeader('Last-Modified', new Date(postedDate).toUTCString());
     }
-
+ 
     return res.status(200).send(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
+ 
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
 <meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
-
+ 
 <meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escapeHtml(canonical)}">
-
+ 
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
-
+ 
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
 <script type="application/ld+json">${JSON.stringify({
   '@context': 'https://schema.org',
@@ -349,7 +350,7 @@ async function renderJobPage(req, res) {
     {'@type':'ListItem','position':3,'name':role,'item':canonical}
   ]
 })}</script>
-
+ 
 <style>
   :root {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -405,7 +406,7 @@ async function renderJobPage(req, res) {
   }
 </style>
 </head>
-
+ 
 <body>
 <header>
 <nav>
@@ -416,56 +417,56 @@ async function renderJobPage(req, res) {
   <a href="${SITE_URL}/study-materials">Study Materials</a>
 </nav>
 </header>
-
+ 
 <main>
 <article>
-
+ 
 <p><a href="${SITE_URL}/private-jobs">← Back to Civil Engineering Jobs</a></p>
-
+ 
 <p class="muted">CivilCareer / Job Opportunity</p>
-
+ 
 <h1>${escapeHtml(role)}</h1>
-
+ 
 <p><strong>${escapeHtml(company)}</strong>${location ? ` · ${escapeHtml(location)}` : ''}</p>
-
+ 
 ${postedDate ? `<p><strong>Posted:</strong> ${escapeHtml(formatDate(postedDate))}</p>` : ''}
 ${deadline ? `<p><strong>Application deadline:</strong> ${escapeHtml(formatDate(deadline))}</p>` : ''}
 ${job.status ? `<p><strong>Status:</strong> ${escapeHtml(job.status)}</p>` : ''}
-
+ 
 ${location ? `<section><h2>Location</h2><p>${escapeHtml(location)}</p></section>` : ''}
-
+ 
 ${salary ? `<section><h2>Salary</h2><p>${escapeHtml(salary)}</p></section>` : ''}
-
+ 
 ${employmentTypes.length || job.employment_type ? `
 <section>
 <h2>Employment type</h2>
 <p>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : job.employment_type)}</p>
 </section>` : ''}
-
+ 
 ${qualifications.length ? `
 <section>
 <h2>Qualifications</h2>
 <ul>${qualifications.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
 </section>` : ''}
-
+ 
 ${skills.length ? `
 <section>
 <h2>Skills</h2>
 <p>${escapeHtml(skills.join(', '))}</p>
 </section>` : ''}
-
+ 
 ${job.description ? `
 <section>
 <h2>Job description</h2>
 <p>${escapeHtml(stripHtml(job.description))}</p>
 </section>` : ''}
-
+ 
 ${responsibilities ? `
 <section>
 <h2>Responsibilities</h2>
 <p>${escapeHtml(responsibilities)}</p>
 </section>` : ''}
-
+ 
 <section>
 <h2>Apply</h2>
 ${
@@ -474,14 +475,14 @@ ${
     : '<p>Check the official recruitment information before applying.</p>'
 }
 </section>
-
+ 
 <hr>
-
+ 
 <p><strong>Safety:</strong> CivilCareer does not charge candidates to apply for jobs. Always verify the employer and application instructions from the official source.</p>
-
+ 
 </article>
 </main>
-
+ 
 <footer>
 <p>© ${new Date().getFullYear()} CivilCareer</p>
 </footer>
@@ -491,62 +492,44 @@ ${
     console.error('job-page error:', error);
     return res.status(500).send('Unable to load this job right now.');
   }
-
+ 
 }
-
-
+ 
 /* ─────────────────────────────────────────────────────────────────────
-   CIVILCAREER PHASE 7 — MULTI-SOURCE DISCOVERY ENGINE
+   CIVILCAREER — MULTI-SOURCE DISCOVERY ENGINE (source-specific validation)
+   Shared pure logic lives in ../lib/discovery-core.js; configured providers
+   in ../lib/discovery-sources.js. No additional Vercel function is created.
    ───────────────────────────────────────────────────────────────────── */
-
+ 
+const {
+  FRESH_24H_MS,
+  BACKUP_30D_MS,
+  FUTURE_TOL_MS,
+  isNewsSource,
+  isTrustedIndiaSource,
+  cleanText: discoveryCleanText,
+  normText: discoveryNormText,
+  classifyCivilRole,
+  newsVacancyCheck,
+  extractStructuredLocation,
+  resolveIndiaEligibility,
+  classifyFreshness,
+  formatAge: discoveryFormatAge,
+  normalizeJobUrl,
+  dedupeKey,
+  newSourceStat,
+  extractRole: discoveryRole,
+  extractCompany: discoveryCompany,
+  classifySector: discoverySector,
+  buildNewsQueryPlan,
+} = require('../lib/discovery-core');
+ 
 const DISCOVERY_SITES = [
   'linkedin.com/jobs', 'naukri.com', 'indeed.com', 'foundit.in',
   'timesjobs.com', 'shine.com', 'apna.co', 'workindia.in',
   'freshersworld.com', 'gov.in', 'nic.in'
 ];
-const DISCOVERY_KEYWORDS = [
-  'civil engineer','site engineer','planning engineer','quantity surveyor',
-  'structural engineer','construction engineer','project engineer',
-  'estimation engineer','billing engineer','qa qc civil','bim engineer',
-  'junior civil engineer','assistant engineer','civil engineering vacancy',
-  'civil recruitment','pwd engineer','nhai engineer','civil supervisor',
-  'graduate civil engineer','resident engineer','highway engineer',
-  'road engineer','bridge engineer','geotechnical engineer',
-  'water resources engineer','irrigation engineer','civil designer',
-  'civil draftsman','infrastructure engineer','civil works'
-];
-const DISCOVERY_CITY_WORDS = [
-  'bengaluru','bangalore','mumbai','delhi','new delhi','hyderabad','chennai',
-  'pune','ahmedabad','kolkata','kochi','jaipur','gurugram','gurgaon','noida',
-  'lucknow','indore','nagpur','surat','bhubaneswar','patna','thiruvananthapuram',
-  'visakhapatnam','vizag','vadodara','coimbatore','madurai','agra','kanpur',
-  'nashik','aurangabad','rajkot','meerut','faridabad','thane','navi mumbai',
-  'pimpri','chandigarh','ranchi','guwahati','bhopal','dehradun','mysuru','mysore',
-  'hubli','belgaum','mangalore','kozhikode','thrissur','ernakulam'
-];
-
-const INDIA_STATES = [
-  'karnataka','maharashtra','telangana','tamil nadu','delhi','uttar pradesh',
-  'rajasthan','gujarat','west bengal','kerala','andhra pradesh','madhya pradesh',
-  'bihar','odisha','chhattisgarh','jharkhand','assam','punjab','haryana',
-  'himachal pradesh','uttarakhand','goa','tripura','meghalaya','manipur',
-  'nagaland','arunachal pradesh','mizoram','sikkim','jammu','kashmir',
-  'chandigarh','jharkhand','uttaranchal'
-];
-
-// Explicit foreign country codes / names — used to REJECT foreign-only jobs
-const FOREIGN_COUNTRIES = new Set([
-  'us','usa','united states','uk','gb','united kingdom','au','australia',
-  'de','germany','fr','france','ca','canada','sg','singapore','nz','new zealand',
-  'ie','ireland','za','south africa','nl','netherlands','be','belgium',
-  'it','italy','es','spain','ch','switzerland','se','sweden','no','norway',
-  'dk','denmark','fi','finland','pl','poland','pt','portugal','jp','japan',
-  'cn','china','hk','hong kong','kr','south korea','my','malaysia',
-  'ph','philippines','id','indonesia','th','thailand','vn','vietnam',
-  'pk','pakistan','bd','bangladesh','lk','sri lanka','np','nepal',
-  // Gulf is NOT in this list — handled separately based on location text
-]);
-
+ 
 function decodeXml(value) {
   return String(value || '')
     .replace(/<!--[\s\S]*?-->/g, '')
@@ -567,196 +550,103 @@ function parseDiscoveryRss(xml) {
   return items;
 }
 function discoverySourceHost(url){try{return new URL(url).hostname.replace(/^www\./,'')}catch{return ''}}
-function discoveryNorm(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
-function discoveryRole(title){
-  const t=cleanDiscoveryText(title);
-  return t.replace(/\s+(?:-|–|—|at|@|\|)\s+[^|–—-]{2,100}$/i,'').trim()||t;
-}
-function discoveryCompany(title,description){
-  const t=cleanDiscoveryText(title);
-  let m=t.match(/\s+(?:-|–|—|at|@|\|)\s+([^|–—-]{2,100})$/i);
-  if(m)return m[1].trim();
-  m=cleanDiscoveryText(description).match(/(?:company|employer)\s*[:\-]\s*([^.|]+)/i);
-  return m?m[1].trim():'';
-}
-function discoveryLocation(text,requestedLocation){
-  const hay=discoveryNorm(`${requestedLocation||''} ${text}`);
-  for(const city of DISCOVERY_CITY_WORDS) if(hay.includes(city)) return city.replace(/\b\w/g,c=>c.toUpperCase());
-  return /\bindia\b|pan india|all india/.test(hay)?'India':(requestedLocation||'India');
-}
-function discoverySector(text){
-  return /government|govt|psu|public sector|recruitment|commission|authority|department|board|pwd|nhai|cpwd|railway/.test(discoveryNorm(text))?'Government':'Private';
-}
-
-// ── CIVIL JOB FILTER ──
-// Rejects non-civil engineering roles (software, data, ML, etc.)
-const REJECT_KEYWORDS = [
-  'software engineer','data engineer','ml engineer','machine learning engineer',
-  'ai engineer','cloud engineer','network engineer','cybersecurity',
-  'frontend engineer','backend engineer','full stack','fullstack',
-  'devops','sre','site reliability','mobile engineer','android engineer',
-  'ios engineer','qa automation','test automation','sales engineer',
-  'product manager','product engineer','application engineer','solutions engineer',
-  'customer success','business analyst','data analyst','data scientist',
-  'blockchain','crypto','defi','game developer','graphics engineer',
-  'embedded engineer','firmware engineer','rf engineer','vlsi','fpga',
-  'electrical engineer','mechanical engineer','chemical engineer',
-  'aerospace engineer','petroleum engineer','mining engineer',
-  // only reject electrical/mechanical/etc when no civil context
-];
-
-function discoveryIsCivil(title, description) {
-  const t = discoveryNorm(`${title} ${description}`);
-
-  // Strong accept: explicit civil engineering keywords
-  if (DISCOVERY_KEYWORDS.some(k => t.includes(discoveryNorm(k)))) return true;
-
-  // Accept if description contains civil/construction context
-  if (/civil construction|civil works|infrastructure construction|road construction|bridge construction|dam construction|rcc|reinforced concrete|structural drawings|concrete|reinforcement bar|rebar|pile foundation|earthwork|excavation|bored pile/.test(t)) return true;
-
-  // Reject if explicitly a non-civil engineering role (no civil override)
-  const hasCivilContext = /civil|construction|structural|geotechnical|highway|infrastructure|quantity survey|bim|planning engineer/.test(t);
-  if (!hasCivilContext) {
-    if (REJECT_KEYWORDS.some(k => t.includes(k))) return false;
-  }
-
-  return false;
-}
-
-// ── INDIA LOCATION FILTER ──
-function discoveryIsIndia(loc, country, state, city) {
-  // Explicit country code
-  if (country) {
-    const c = String(country).toLowerCase().trim().replace(/\.$/, '');
-    if (c === 'in' || c === 'india') return true;
-    if (FOREIGN_COUNTRIES.has(c)) return false;
-  }
-
-  const haystack = discoveryNorm(`${loc || ''} ${state || ''} ${city || ''}`);
-
-  // Positive India signals
-  if (/\bindia\b|pan[\s-]?india|all[\s-]?india|india[\s-]?based|india[\s-]?remote/.test(haystack)) return true;
-
-  // City match (word-boundary)
-  for (const c of DISCOVERY_CITY_WORDS) {
-    // Use word boundary: c must not be preceded or followed by a letter
-    const re = new RegExp(`(?:^|[^a-z])${c.replace(/\s+/g, '[\\s-]+')}(?:[^a-z]|$)`);
-    if (re.test(haystack)) return true;
-  }
-
-  // State match
-  for (const s of INDIA_STATES) {
-    const re = new RegExp(`(?:^|[^a-z])${s.replace(/\s+/g, '[\\s-]+')}(?:[^a-z]|$)`);
-    if (re.test(haystack)) return true;
-  }
-
-  // Do NOT assume an empty/unknown location is India.
-  // An India result must have an explicit India country/location signal.
-  return false;
-}
-
-// ── AGE DISPLAY ──
-function discoveryFormatAge(ms) {
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.floor(ms / 3600000);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.floor(ms / 86400000);
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-  const weeks = Math.floor(days / 7);
-  if (days < 30) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-  const months = Math.floor(days / 30);
-  return `${months} month${months === 1 ? '' : 's'} ago`;
-}
-
-// ── FRESHNESS CONSTANTS ──
-const FRESH_24H_MS  = 24  * 3600000;
-const BACKUP_30D_MS = 30  * 24 * 3600000;
-const FUTURE_TOL_MS = 2   * 3600000;  // 2h future tolerance
-
-function discoveryQueries(q,location){
-  const base=cleanDiscoveryText(q||'civil engineering jobs');
-  const loc=cleanDiscoveryText(location||'India');
-  const generic=[`${base} ${loc}`];
-  for(const role of DISCOVERY_KEYWORDS.slice(0,7)) generic.push(`${role} ${loc}`);
-  const siteQueries=DISCOVERY_SITES.slice(0,7).map(site=>`site:${site} ${base} ${loc}`);
-  return [...generic,...siteQueries].slice(0,14);
-}
-
+ 
 async function fetchText(url,headers={}){
   const r=await fetch(url,{headers:{'User-Agent':'CivilCareer public vacancy discovery/1.0','Accept':'application/rss+xml, application/json, text/xml, text/plain;q=0.9, */*',...headers},signal:AbortSignal.timeout(8000),redirect:'follow'});
   if(!r.ok) throw new Error(`HTTP ${r.status} from ${url}`);
   return await r.text();
 }
-
-async function discoveryFetchGoogleNews(query){
-  const url=`https://news.google.com/rss/search?q=${encodeURIComponent(`${query} when:1d`)}&hl=en-IN&gl=IN&ceid=IN:en`;
-  return parseDiscoveryRss(await fetchText(url));
+ 
+// ── NEWS FETCHERS ──
+// Google News / Bing News are NEWS sources, never job boards. Returned items
+// pass through the strict news-vacancy gate + India evidence gate later.
+async function discoveryFetchGoogleNews(queries){
+  const list=(Array.isArray(queries)&&queries.length?queries:['civil engineer jobs India']).slice(0,6);
+  const all=[];
+  await Promise.allSettled(list.map(async q=>{
+    const url=`https://news.google.com/rss/search?q=${encodeURIComponent(`${q} when:3d`)}&hl=en-IN&gl=IN&ceid=IN:en`;
+    all.push(...parseDiscoveryRss(await fetchText(url)));
+  }));
+  return all.map(x=>({ ...x, source:'google_news' }));
 }
-async function discoveryFetchBingNews(query){
-  const url=`https://www.bing.com/news/search?q=${encodeURIComponent(`${query} after:${new Date(Date.now()-86400000).toISOString().slice(0,10)}`)}&format=rss`;
-  return parseDiscoveryRss(await fetchText(url));
+async function discoveryFetchBingNews(queries){
+  const list=(Array.isArray(queries)&&queries.length?queries:['civil engineer jobs India']).slice(0,4);
+  const all=[];
+  await Promise.allSettled(list.map(async q=>{
+    const url=`https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss`;
+    all.push(...parseDiscoveryRss(await fetchText(url)));
+  }));
+  return all.map(x=>({ ...x, source:'bing_news' }));
 }
-async function discoveryFetchJobicy(query){
-  const tag=(query.match(/civil engineer|site engineer|planning engineer|quantity surveyor|structural engineer|construction engineer|project engineer|bim engineer/i)||['civil'])[0];
-  const url=`https://jobicy.com/api/v2/remote-jobs?count=50&tag=${encodeURIComponent(tag)}`;
+ 
+// ── JOB BOARD FETCHERS (structured job/location fields) ──
+async function discoveryFetchJobicy(){
+  // Jobicy is a remote-tech board; pull the engineering feed and let the
+  // civil + location gates decide. jobGeo is preserved for validation.
+  const url='https://jobicy.com/api/v2/remote-jobs?count=50&tag=engineering';
   const raw=JSON.parse(await fetchText(url,{'Accept':'application/json'}));
   return (raw.jobs||[]).map(j=>({
-    title:j.jobTitle||'',link:j.url||'',description:cleanDiscoveryText(j.jobExcerpt||j.jobDescription||''),
-    pubDate:j.pubDate||'',source:'jobicy.com',company:j.companyName||'',location:j.jobGeo||''
+    title:j.jobTitle||'',link:j.url||'',
+    description:discoveryCleanText(j.jobExcerpt||j.jobDescription||''),
+    pubDate:j.pubDate||'',source:'jobicy',company:j.companyName||'',
+    location:j.jobGeo||''
   }));
 }
 async function discoveryFetchArbeitnow(){
   const raw=JSON.parse(await fetchText('https://www.arbeitnow.com/api/job-board-api',{'Accept':'application/json'}));
   return (raw.data||[]).map(j=>({
-    title:j.title||'',link:j.url||'',description:cleanDiscoveryText(j.description||''),
+    title:j.title||'',link:j.url||'',description:discoveryCleanText(j.description||''),
     pubDate:j.created_at?new Date(j.created_at*1000).toISOString():(j.created_at||''),
-    source:'arbeitnow.com',company:j.company_name||j.company||'',location:j.location||''
+    source:'arbeitnow',company:j.company_name||j.company||'',location:j.location||''
   }));
 }
+// OnJob documents itself as India's AI job search platform with a public
+// crawlable feed (https://onjob.io/for-job-boards/) — India-specific source.
 async function discoveryFetchOnJob(){
   const raw=JSON.parse(await fetchText('https://onjob.io/feeds/jobs.json',{'Accept':'application/json'}));
-  return (raw.jobs||[]).map(j=>({
-    title:j.title||'',link:j.url||'',description:cleanDiscoveryText(j.descriptionHtml||j.description||''),
-    pubDate:j.datePosted||'',source:'onjob.io',company:j.company||'',location:j.location||'',
-    application_url:j.applyUrl||j.url||''
+  const rows=Array.isArray(raw)?raw:(raw.jobs||raw.data||[]);
+  return rows.map(j=>({
+    title:j.title||'',link:j.url||'',
+    description:discoveryCleanText(j.descriptionHtml||j.description||''),
+    pubDate:j.datePosted||j.published_at||j.createdAt||'',
+    source:'onjob',company:j.company||j.companyName||'',
+    location:j.location||'',city:j.city||'',state:j.state||'',country:j.country||'India',
+    application_url:j.applyUrl||j.application_url||''
   }));
 }
-
+ 
 // ── HOPIN ADAPTER ──
-// Fetches from https://api.hopinjobs.com/api/jobs
-// Handles all known Hopin response shapes defensively.
+// Verified against the live API (2026-09):
+//   GET https://api.hopinjobs.com/api/jobs                  → {"jobs":[]} (official collection)
+//   GET https://api.hopinjobs.com/api/jobs?is_unofficial=true → {"jobs":[...]} live corpus
+//   GET https://api.hopinjobs.com/api/jobs/{id}             → {"job":{...}} DOCUMENTED route
+// List records carry: id, company, title, description, location (e.g.
+// "Remote, India"), posted_at, apply_url (sometimes), work_type. Records may
+// have an id but NO URL — the per-id route above is real, so the source record
+// URL is that route. An application_url is only ever set from apply_url /
+// application_url present in the payload — never invented.
 async function discoveryFetchHopin(query, requestedLocation) {
-  // Use Hopin's public jobs endpoint without assuming unsupported
-  // server-side filters. India/civil validation is performed below.
   const urls = [
     'https://api.hopinjobs.com/api/jobs',
     'https://api.hopinjobs.com/api/jobs?is_unofficial=true',
   ];
-
+ 
   const payloads = [];
   for (const url of urls) {
     try {
-      const text = await fetchText(url, { 'Accept': 'application/json' });
-      payloads.push(JSON.parse(text));
+      payloads.push(JSON.parse(await fetchText(url, { 'Accept': 'application/json' })));
     } catch (err) {
-      // One Hopin collection may fail while the other is available.
-      // Only fail the source if both requests fail.
-      payloads.push(null);
+      payloads.push(null); // one collection may fail while the other works
     }
   }
   if (!payloads.some(Boolean)) {
     throw new Error('Hopin API error: both public job collections failed');
   }
-
-  // Hopin may return: array directly, { jobs:[...] }, { data:[...] }, { results:[...] }
+ 
   let jobsArray = [];
   for (const raw of payloads) {
-    if (Array.isArray(raw)) {
-      jobsArray.push(...raw);
-    } else if (raw && typeof raw === 'object') {
+    if (Array.isArray(raw)) jobsArray.push(...raw);
+    else if (raw && typeof raw === 'object') {
       const rows = Array.isArray(raw.jobs)    ? raw.jobs
                  : Array.isArray(raw.data)    ? raw.data
                  : Array.isArray(raw.results) ? raw.results
@@ -765,7 +655,7 @@ async function discoveryFetchHopin(query, requestedLocation) {
       jobsArray.push(...rows);
     }
   }
-
+ 
   const normalized = [];
   const seenIds = new Set();
   for (const j of jobsArray) {
@@ -773,56 +663,47 @@ async function discoveryFetchHopin(query, requestedLocation) {
     const sourceId = j.id ? String(j.id) : '';
     if (sourceId && seenIds.has(sourceId)) continue;
     if (sourceId) seenIds.add(sourceId);
-
-    // Title — required
-    const title = cleanDiscoveryText(
-      j.title || j.job_title || j.position || j.name || ''
-    );
+ 
+    const title = discoveryCleanText(j.title || j.job_title || j.position || j.name || '');
     if (!title) continue;
-
-    // Company — may be object or string
-    const company = cleanDiscoveryText(
-      typeof j.company === 'object'
-        ? (j.company?.name || j.company?.title || '')
+ 
+    const company = discoveryCleanText(
+      typeof j.company === 'object' ? ((j.company && (j.company.name || j.company.title)) || '')
         : (j.company || j.company_name || j.employer || j.organisation || '')
     );
-
-    // URL — required (never fabricated)
-    // Hopin's list endpoint does not guarantee a public job URL.
-    // When it supplies an id, use the documented getJob endpoint as the
-    // source record URL. This is a real Hopin URL, not a fabricated job page.
+ 
+    // Real URL only: explicit URLs win; otherwise the DOCUMENTED per-id API
+    // route (verified live) — never an invented web page.
     const link = j.url || j.job_url || j.link || j.source_url ||
-      (j.id ? `https://api.hopinjobs.com/api/jobs/${encodeURIComponent(String(j.id))}` : '');
+      (sourceId ? `https://api.hopinjobs.com/api/jobs/${encodeURIComponent(sourceId)}` : '');
     if (!link) continue;
-
-    // Description
-    const description = cleanDiscoveryText(
-      j.description || j.summary || j.excerpt || j.body || ''
+ 
+    const description = discoveryCleanText(
+      [j.description, j.summary, j.excerpt, j.body, j.role_type, j.industry]
+        .filter(Boolean).join(' — ')
     );
-
-    // Location — preserve structured fields
-    const city    = cleanDiscoveryText(j.city    || j.town   || '');
-    const state   = cleanDiscoveryText(j.state   || j.region || '');
-    const country = cleanDiscoveryText(j.country || j.country_code || '');
-    const locationText = cleanDiscoveryText(
-      j.location || j.location_display || j.place
-      || [city, state, country].filter(Boolean).join(', ')
-      || ''
+ 
+    const city    = discoveryCleanText(j.city || j.town || '');
+    const state   = discoveryCleanText(j.state || j.region || '');
+    const country = discoveryCleanText(j.country || j.country_code || '');
+    const locationText = discoveryCleanText(
+      j.location || j.location_display || j.place ||
+      [city, state, country].filter(Boolean).join(', ') || ''
     );
-
-    // Posted date — prefer precise timestamp over date-only
-    const pubDate = j.published_at || j.created_at || j.date_posted
-                  || j.posted_at   || j.post_date  || j.pubDate || '';
-
-    // Application URL
+ 
+    const pubDate = j.posted_at || j.published_at || j.created_at || j.date_posted
+                  || j.posted_at || j.post_date || j.pubDate || '';
+ 
+    // Application URL: use ONLY what Hopin itself provides (apply_url /
+    // application_url on the record). Otherwise leave blank — no fabrication.
     const application_url = j.apply_url || j.application_url || '';
-
+ 
     normalized.push({
       title,
       link,
       description,
       pubDate,
-      source: 'hopinjobs.com',
+      source: 'hopin',
       company,
       location: locationText,
       country,
@@ -831,192 +712,187 @@ async function discoveryFetchHopin(query, requestedLocation) {
       application_url,
       _sourceId: sourceId,
       experience: j.experience || j.experience_level || '',
-      employment_type: j.job_type || j.employment_type || '',
+      employment_type: j.work_type || j.job_type || j.employment_type || '',
     });
   }
-
+ 
   return normalized;
 }
-
-// ── NORMALISE A SINGLE DISCOVERY ITEM ──
-// Returns null if the item should be rejected.
-// FIX: uses exact milliseconds for age — never rounds before filtering.
-// FIX: max window is 30 days (not 48 h) to allow backup30d queue.
-function discoveryIsNewsVacancy(item, sourceLabel) {
-  const src = discoveryNorm(sourceLabel || item._source || item.source || '');
-  if (src !== 'google_news' && src !== 'bing_news') return true;
-
-  const title = cleanDiscoveryText(item.title || '');
-  const text = discoveryNorm(`${title} ${item.description || item.snippet || ''}`);
-
-  // News feeds are not vacancy feeds. Require explicit hiring/vacancy language
-  // plus explicit India evidence before a news result can enter the job queue.
-  const vacancySignal = /\b(job|jobs|vacancy|vacancies|hiring|hire|recruitment|recruiting|career|careers|position|positions|opening|openings|apply|employment)\b/.test(text);
-  const indiaSignal = discoveryIsIndia(item.location || '', item.country || '', item.state || '', item.city || '') ||
-    /\bindia\b|pan[\s-]?india|all[\s-]?india|india[\s-]?based|india[\s-]?remote/.test(text);
-
-  if (!vacancySignal || !indiaSignal) return false;
-
-  // Reject common news/project-report wording even if an article happens to
-  // mention a hiring-related word elsewhere.
-  if (/\b(network rail|wales and borders|pudsey|project delivery|airport delivery|aquifers|tender award|construction update|project update|infrastructure news|industry news)\b/.test(text) &&
-      !/\b(job|jobs|vacancy|vacancies|hiring|recruitment|career|careers|apply)\b/.test(title)) {
-    return false;
+ 
+// ── SINGLE-ITEM VALIDATION PIPELINE ──
+// Returns { item } when accepted or { reject: {reason} } when rejected.
+// Source class drives the validation profile:
+//   news            → strict news-vacancy gate + record-level India evidence
+//   job board       → structured location validation (no invented India)
+//   India-specific  → trusted source-level India, foreign still rejected
+function pipelineValidateItem(item, nowMs) {
+  const src = String(item._source || item.source || '').toLowerCase();
+  const title = discoveryCleanText(item.title || '');
+  const snippet = discoveryCleanText(item.description || item.snippet || '');
+  const url = item.link || item.url || '';
+ 
+  if (!title) return { reject: { reason: 'empty title' } };
+  if (!url) return { reject: { reason: 'no URL in record (never fabricated)' } };
+ 
+  // 1. NEWS GATE (strict): news articles must be genuine vacancy adverts.
+  //    Runs before everything else — a news article that is not advertising a
+  //    vacancy is never a job, whatever its terminology.
+  if (isNewsSource(src)) {
+    const nv = newsVacancyCheck(title, snippet);
+    if (!nv.isVacancy) return { reject: { reason: `news: ${nv.reason}` } };
   }
-
-  return true;
-}
-
-function normalizeDiscoveryItem(item, requestedLocation, sourceLabel) {
-  const title   = cleanDiscoveryText(item.title);
-  const snippet = cleanDiscoveryText(item.description || item.snippet || '');
-  const url     = item.link || item.url || '';
-
-  if (!title || !url) return null;
-  if (!discoveryIsCivil(title, snippet)) return null;
-  if (!discoveryIsNewsVacancy(item, sourceLabel)) return null;
-
-  // Parse posting date — prefer ISO/RFC timestamps over date-only strings.
-  // Date-only strings (e.g. "2026-09-11") are parsed as UTC midnight per spec.
-  const rawDate  = String(item.pubDate || item.published_at || item.posted_at || '').trim();
-  const parsedMs = rawDate ? Date.parse(rawDate) : NaN;
-
-  // Exact age in milliseconds — null means the date is unknown/unparseable.
-  const ageMs = Number.isFinite(parsedMs) ? Date.now() - parsedMs : null;
-
-  // Reject: future dates beyond 2 h tolerance
-  if (ageMs !== null && ageMs < -FUTURE_TOL_MS) return null;
-
-  // Reject: older than 30 days
-  if (ageMs !== null && ageMs > BACKUP_30D_MS) return null;
-
-  const source    = sourceLabel || item.source || discoverySourceHost(url) || 'Public web';
-  const postedIso = Number.isFinite(parsedMs) ? new Date(parsedMs).toISOString() : '';
-
+ 
+  // 2. Civil/construction role gate
+  const civil = classifyCivilRole(title, snippet);
+  if (!civil.accept) return { reject: { reason: `civil: ${civil.reason}` } };
+ 
+  // 3. India eligibility — evidence from the record only, per source class
+  const structured = extractStructuredLocation(item);
+  const india = resolveIndiaEligibility(structured, title, snippet, src);
+  if (!india.eligible) return { reject: { reason: `india: ${india.reason}` } };
+ 
+  // 4. Freshness — exact milliseconds, never rounded before classification
+  const fresh = classifyFreshness(item.pubDate || item.published_at || item.posted_at, nowMs);
+  if (fresh.bucket === 'too_old') return { reject: { reason: 'age: older than 30 days' } };
+  if (fresh.bucket === 'future') return { reject: { reason: 'age: date too far in the future' } };
+ 
   return {
-    title,
-    url,
-    snippet:        snippet.slice(0, 800),
-    pubDate:        rawDate,
-    postedIso,                                // full ISO timestamp — never truncated
-    source,
-    company:        item.company         || '',
-    // Never infer India from the search query. A missing source location stays empty.
-    location:       item.location        || '',
-    country:        item.country         || '',
-    state:          item.state           || '',
-    city:           item.city            || '',
-    application_url:item.application_url || '',
-    ageMs,                                    // exact ms — null if unknown
-    // ageHours is kept for backward compat but is NOT used for fresh/backup gating.
-    ageHours:       ageMs === null ? null : ageMs / 3600000,
-    ageDisplay:     ageMs === null ? null : discoveryFormatAge(ageMs),
-    _sourceId:      item._sourceId       || '',
+    item: {
+      title,
+      url,
+      snippet: snippet.slice(0, 800),
+      pubDate: String(item.pubDate || item.published_at || item.posted_at || ''),
+      postedIso: fresh.postedIso,
+      source: src || discoverySourceHost(url) || 'Public web',
+      company: discoveryCleanText(item.company || ''),
+      location: structured.rawLocation,
+      country: structured.country,
+      state: structured.state,
+      city: structured.city,
+      application_url: discoveryCleanText(item.application_url || item.apply_url || ''),
+      ageMs: fresh.ageMs,
+      ageHours: fresh.ageMs === null ? null : fresh.ageMs / 3600000,
+      ageDisplay: fresh.ageMs === null ? null : discoveryFormatAge(fresh.ageMs),
+      dateIsArticleDate: isNewsSource(src),
+      _sourceId: String(item._sourceId || ''),
+    },
+    bucket: fresh.bucket,
   };
 }
-
+ 
 async function runPublicDiscovery({q, location, type} = {}) {
-  const requestedLocation = cleanDiscoveryText(location || 'India');
-  const query             = cleanDiscoveryText(q || 'civil engineering jobs India');
-  const isIndiaSearch     = /\bindia\b/i.test(requestedLocation);
+  const requestedLocation = discoveryCleanText(location || 'India');
+  const query             = discoveryCleanText(q || 'civil engineering jobs India');
   const sourceStats       = {};
+  const nowMs             = Date.now();
   const all               = [];
-
-  // Configured providers (lib/discovery-sources.js)
-  const configured = await runConfiguredSources({ q: query, location: requestedLocation });
-  Object.assign(sourceStats, configured.stats || {});
-  all.push(...(configured.jobs || []));
-
+ 
+  // News query plan: exact role+India queries (news evidence is item-level,
+  // so queries carry the terms while validation never trusts them alone).
+  const newsPlan = buildNewsQueryPlan(query, requestedLocation);
+ 
   // Public sources — always run; one failure does not stop others
   const publicSources = [
-    ['google_news', () => discoveryFetchGoogleNews(`${query} ${requestedLocation}`)],
-    ['bing_news',   () => discoveryFetchBingNews(`${query} ${requestedLocation}`)],
-    ['jobicy',      () => discoveryFetchJobicy(query)],
+    ['google_news', () => discoveryFetchGoogleNews(newsPlan)],
+    ['bing_news',   () => discoveryFetchBingNews(newsPlan)],
+    ['jobicy',      () => discoveryFetchJobicy()],
     ['arbeitnow',   () => discoveryFetchArbeitnow()],
     ['onjob',       () => discoveryFetchOnJob()],
     ['hopin',       () => discoveryFetchHopin(query, requestedLocation)],
   ];
-
+ 
   const publicResults = await Promise.allSettled(publicSources.map(([, fn]) => fn()));
   publicResults.forEach((result, i) => {
     const name = publicSources[i][0];
     if (result.status === 'fulfilled') {
       const rows = Array.isArray(result.value) ? result.value : [];
-      sourceStats[name] = { name, configured: true, ok: true, items: rows.length, error: null, remaining: null, reset: null, rejectedCivil: 0, rejectedIndia: 0, rejectedAge: 0, rejectedDupe: 0 };
+      sourceStats[name] = { ...newSourceStat(name, true), items: rows.length };
       all.push(...rows.map(x => ({ ...x, _source: name })));
     } else {
-      sourceStats[name] = { name, configured: true, ok: false, items: 0, error: String(result.reason?.message || result.reason), remaining: null, reset: null };
+      sourceStats[name] = {
+        ...newSourceStat(name, true),
+        ok: false,
+        items: 0,
+        error: String(result.reason?.message || result.reason),
+      };
     }
   });
-
-  // ── CLASSIFY ITEMS ──
+ 
+  // Configured providers (SerpApi / Adzuna / The Muse / Jobvetta) — attempted
+  // only when their keys exist; a missing key never fails the run. Provider
+  // stats merge into sourceStats under their provider keys so the dashboard
+  // can see every track (items accepted/rejected per provider).
+  try {
+    const configured = await runConfiguredSources({ q: query, location: requestedLocation });
+    const cfgJobs = Array.isArray(configured.jobs) ? configured.jobs : [];
+    for (const [key, cs] of Object.entries(configured.stats || {})) {
+      sourceStats[key] = cs;
+    }
+    all.push(...cfgJobs);
+  } catch (err) {
+    sourceStats.configured_sources = {
+      ...newSourceStat('configured_sources', false),
+      ok: false,
+      error: String(err?.message || err),
+    };
+  }
+ 
+  // ── VALIDATE + CLASSIFY (per source stats) ──
   const seen       = new Set();
-  const fresh24h   = [];   // ageMs <= 24h (exact)
-  const backup30d  = [];   // 24h < ageMs <= 30d (exact)
-  const unknownDate = [];  // ageMs === null
-
+  const fresh24h   = [];   // exact ageMs <= 24 h
+  const backup30d  = [];   // exact 24 h < ageMs <= 30 d
+  const unknownDate = [];  // unparseable/missing date — tracked, not silently "today"
+ 
   for (const item of all) {
-    const src = item._source || item.source || 'unknown';
-    const normalized = normalizeDiscoveryItem(item, requestedLocation, src);
-
-    if (!normalized) {
-      // Track source-specific news/vacancy rejection separately from civil/date rejection.
-      if (sourceStats[src]) {
-        const title = cleanDiscoveryText(item.title || '');
-        const snippet = cleanDiscoveryText(item.description || item.snippet || '');
-        if (!discoveryIsCivil(title, snippet) || !discoveryIsNewsVacancy(item, src)) {
-          sourceStats[src].rejectedCivil = (sourceStats[src].rejectedCivil || 0) + 1;
-        } else {
-          sourceStats[src].rejectedAge = (sourceStats[src].rejectedAge || 0) + 1;
-        }
+    const src = String(item._source || item.source || 'unknown').toLowerCase();
+    const st = sourceStats[src];
+    const outcome = pipelineValidateItem(item, nowMs);
+ 
+    if (outcome.reject) {
+      if (st) {
+        const reason = String(outcome.reject.reason || '');
+        if (reason.startsWith('news:')) st.rejectedNews = (st.rejectedNews || 0) + 1;
+        else if (reason.startsWith('civil:')) st.rejectedCivil += 1;
+        else if (reason.startsWith('india:')) st.rejectedIndia += 1;
+        else if (reason.startsWith('age:')) st.rejectedAge += 1;
+        else st.rejectedOther = (st.rejectedOther || 0) + 1;
       }
       continue;
     }
-
-    // India location filter (only applied when India is requested)
-    if (isIndiaSearch) {
-      const locationCheck = `${normalized.location} ${normalized.country} ${normalized.state} ${normalized.city}`;
-      const explicitIndia = discoveryIsIndia(locationCheck, normalized.country, normalized.state, normalized.city);
-      // Hopin's public corpus is explicitly India-focused. Its list API can
-      // omit location/country on individual rows, so do not throw away a
-      // genuine Hopin listing solely because those fields are blank.
-      const trustedIndiaSource = src === 'hopin' || src === 'hopinjobs.com';
-      const rawHopinLocation = discoveryNorm(`${normalized.location} ${normalized.city} ${normalized.state}`);
-      const hopinRemoteOnly = /^(remote|remote remote|work from home|wfh)$/.test(rawHopinLocation);
-      const hasUnknownLocation = !normalized.location && !normalized.country && !normalized.state && !normalized.city;
-      if (!explicitIndia && !(trustedIndiaSource && (hasUnknownLocation || hopinRemoteOnly))) {
-        if (sourceStats[src]) sourceStats[src].rejectedIndia = (sourceStats[src].rejectedIndia || 0) + 1;
-        continue;
-      }
-    }
-
-    // Deduplication
-    const key = normalized.url.replace(/[?#].*$/, '') + '|' + discoveryNorm(normalized.title);
-    if (seen.has(key)) {
-      if (sourceStats[src]) sourceStats[src].rejectedDupe = (sourceStats[src].rejectedDupe || 0) + 1;
+ 
+    const n = outcome.item;
+ 
+    // Deduplication: normalized URL + normalized title (never invented URLs)
+    const key = dedupeKey(n.url, n.title);
+    if (key && seen.has(key)) {
+      if (st) st.rejectedDupe += 1;
       continue;
     }
-    seen.add(key);
-
-    // Freshness gating — use exact ageMs, never rounded
-    if (normalized.ageMs === null) {
-      unknownDate.push(normalized);
-    } else if (normalized.ageMs <= FRESH_24H_MS) {
-      fresh24h.push(normalized);
+    if (key) seen.add(key);
+ 
+    if (st) st.accepted += 1;
+ 
+    // Freshness buckets use exact ms; unknown dates are NOT treated as today
+    if (outcome.bucket === 'unknown') {
+      if (st) st.unknownDate += 1;
+      unknownDate.push(n);
+    } else if (outcome.bucket === 'fresh24h') {
+      fresh24h.push(n);
     } else {
-      // ageMs > FRESH_24H_MS and <= BACKUP_30D_MS (enforced in normalizeDiscoveryItem)
-      backup30d.push(normalized);
+      backup30d.push(n);
     }
   }
-
-  // Sort each queue newest-first using exact ageMs
+ 
+  // Sort newest-first by exact ageMs (unknown dates last, never "now")
   const byAge = (a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity);
   fresh24h.sort(byAge);
   backup30d.sort(byAge);
-
-  // Candidates = fresh24h first, then backup30d as fallback
-  const candidates = [...fresh24h, ...backup30d];
-
+ 
+  // Candidates = fresh24h first, then backup30d, then unknown-date records.
+  // Unknown dates are excluded from the fresh24h/backup30d counts and get tier
+  // "unknown", but are still queued as drafts for admin review.
+  const candidates = [...fresh24h, ...backup30d, ...unknownDate];
+ 
   const typeFiltered = candidates.filter(x => {
     if (!type || type === 'all') return true;
     const sector = discoverySector(`${x.title} ${x.snippet}`);
@@ -1025,10 +901,10 @@ async function runPublicDiscovery({q, location, type} = {}) {
     if (type === 'mnc')        return /mnc|multinational|large employer|corporation|ltd|limited|pvt|private/i.test(`${x.company} ${x.snippet}`);
     return true;
   });
-
+ 
   const limited = typeFiltered.slice(0, 80);
-
-  // Dedup against existing Supabase jobs
+ 
+  // Dedup against existing Supabase jobs (normalized URL or role+company)
   const existingResponse = await supa('jobs?select=id,source_url,role,company,created_at');
   if (!existingResponse.ok) {
     const err = new Error(`Supabase job lookup failed: ${existingResponse.status}`);
@@ -1036,28 +912,31 @@ async function runPublicDiscovery({q, location, type} = {}) {
     throw err;
   }
   const existingRows   = await existingResponse.json();
-  const existingUrls   = new Set(existingRows.map(r => String(r.source_url || '').replace(/[?#].*$/, '')).filter(Boolean));
-  const existingTitles = new Set(existingRows.map(r => `${discoveryNorm(r.role)}|${discoveryNorm(r.company)}`));
-
+  const existingUrls   = new Set(existingRows.map(r => normalizeJobUrl(r.source_url)).filter(Boolean));
+  const existingTitles = new Set(existingRows.map(r => `${discoveryNormText(discoveryRole(r.role))}|${discoveryNormText(r.company || '')}`));
+ 
   const now   = new Date().toISOString();
   const fresh = limited.filter(x => {
     const company   = x.company || discoveryCompany(x.title, x.snippet);
-    const titleKey  = `${discoveryNorm(discoveryRole(x.title))}|${discoveryNorm(company)}`;
-    return !existingUrls.has(x.url.replace(/[?#].*$/, '')) && !existingTitles.has(titleKey);
+    const urlKey    = normalizeJobUrl(x.url);
+    const titleKey  = `${discoveryNormText(discoveryRole(x.title))}|${discoveryNormText(company)}`;
+    if (urlKey && existingUrls.has(urlKey)) return false;
+    if (company && existingTitles.has(titleKey)) return false;
+    return true;
   });
-
+ 
   const drafts = fresh.slice(0, 40).map((item, index) => {
     const role    = discoveryRole(item.title);
     const company = item.company || discoveryCompany(item.title, item.snippet);
-    // Prefer full ISO timestamp; fall back to pubDate for date_posted
-    const posted  = item.postedIso || (item.pubDate ? new Date(Date.parse(item.pubDate) || Date.now()).toISOString() : '');
+    // Full ISO timestamp when known; unknown-date drafts keep NULL (never "today")
+    const posted  = item.postedIso || '';
     return {
       source_url:          item.url,
       role,
       role_normalized:     role,
       company:             company || null,
-      location:            item.location || discoveryLocation(`${item.title} ${item.snippet}`, requestedLocation),
-      location_display:    item.location || discoveryLocation(`${item.title} ${item.snippet}`, requestedLocation),
+      location:            item.location || '',
+      location_display:    item.location || '',
       country:             'India',
       description:         item.snippet || `Vacancy discovered from ${item.source}. Verify the original source before publishing.`,
       sector:              discoverySector(`${item.title} ${item.snippet}`),
@@ -1075,7 +954,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
       slug:                makeSlug(role, company || 'civilcareer', `${Date.now()}-${index}`),
     };
   });
-
+ 
   let inserted = [];
   let persistenceWarning = '';
   if (drafts.length) {
@@ -1117,31 +996,32 @@ async function runPublicDiscovery({q, location, type} = {}) {
     }
     inserted = await write.json();
   }
-
-  // Report freshness for the drafts actually returned to the review queue.
-  // This keeps the dashboard counts aligned with what the reviewer sees,
-  // including databases where only date_posted is retained.
+ 
+  // Freshness counts are computed from THE SAME inserted draft rows that are
+  // returned below — UI counts always match the review queue exactly.
   const insertedFresh24hCount = inserted.filter(j => {
     const d = j.posted_at || j.date_posted || '';
     const ms = d ? Date.parse(d) : NaN;
-    return Number.isFinite(ms) && (Date.now() - ms) <= FRESH_24H_MS;
+    return Number.isFinite(ms) && (nowMs - ms) <= FRESH_24H_MS;
   }).length;
   const insertedBackup30dCount = inserted.filter(j => {
     const d = j.posted_at || j.date_posted || '';
     const ms = d ? Date.parse(d) : NaN;
-    const age = Number.isFinite(ms) ? Date.now() - ms : NaN;
+    const age = Number.isFinite(ms) ? nowMs - ms : NaN;
     return Number.isFinite(age) && age > FRESH_24H_MS && age <= BACKUP_30D_MS;
   }).length;
   const insertedUnknownDateCount = inserted.length - insertedFresh24hCount - insertedBackup30dCount;
-
+ 
   return {
     count:                inserted.length,
     drafts:               inserted,
     results:              inserted.map(j => {
-      // Recalculate age from the saved timestamp for accurate display
+      // Age is recalculated from the SAVED timestamp for accurate display
       const dateStr = j.posted_at || j.date_posted || '';
       const dateMs  = dateStr ? Date.parse(dateStr) : NaN;
-      const ageMs   = Number.isFinite(dateMs) ? Date.now() - dateMs : null;
+      const ageMs   = Number.isFinite(dateMs) ? nowMs - dateMs : null;
+      const tier    = ageMs === null ? 'unknown'
+                    : ageMs <= FRESH_24H_MS ? 'fresh24h' : 'backup30d';
       return {
         id:            j.id,
         title:         j.role,
@@ -1154,30 +1034,38 @@ async function runPublicDiscovery({q, location, type} = {}) {
         sourceDomain:  j.source_domain || '',
         postedAt:      j.date_posted   || '',
         postedAtIso:   j.posted_at     || '',
+        postedAtRaw:   dateStr,
         ageDisplay:    ageMs !== null ? discoveryFormatAge(ageMs) : null,
-        freshness:     ageMs !== null ? (ageMs <= FRESH_24H_MS ? 'fresh24h' : 'backup30d') : 'unknown',
+        ageHours:      ageMs === null ? null : ageMs / 3600000,
+        tier,
+        freshness:     tier,
+        dateIsArticleDate: /news/i.test(String(j.source || '')),
         score:         100,
       };
     }),
-    // Freshness breakdown — basis for UI labelling
+    // Freshness breakdown — computed from the same rows shown in the queue
     fresh24hCount:        insertedFresh24hCount,
+    fresh24hCandidates:   insertedFresh24hCount,
     backup30dCount:       insertedBackup30dCount,
+    backup30dCandidates:  insertedBackup30dCount,
     unknownDateCount:     insertedUnknownDateCount,
-    // Legacy field — kept for backward compat; now equals fresh24h + backup30d
+    unknownDateCandidates: insertedUnknownDateCount,
+    olderCandidates:      Math.max(0, candidates.length - typeFiltered.length),
+    // Legacy: kept for backward compat — pre-dedup accepted candidates
     candidates:           candidates.length,
     typeFilteredCandidates: typeFiltered.length,
     scanned:              limited.length,
     skippedExisting:      Math.max(0, limited.length - fresh.length),
     sourceStats,
-    configuredSources:    Object.values(sourceStats)
-      .filter(x => x.configured && x.name && !['google_news','bing_news','jobicy','arbeitnow','onjob','hopin'].includes(x.name))
-      .map(x => x.name),
+    configuredSources:    Object.entries(sourceStats)
+      .filter(([key, x]) => x.configured && !['google_news','bing_news','jobicy','arbeitnow','onjob','hopin'].includes(key))
+      .map(([key]) => key),
     runAt:                now,
     persistenceWarning,
-    note: 'Freshness: fresh24h uses exact ms (no rounding). fresh24h <= 24 h; backup30d 24 h–30 d; unknown-date items excluded from both queues. India location filter applied. Hopin included as public source.',
+    note: 'Source-specific validation: news = strict vacancy+India evidence; job boards = structured location checks; Hopin/OnJob = trusted India sources (foreign records still rejected). fresh24h <= 24h and backup30d 24h-30d use exact ms with no rounding; unknown dates are excluded from both queues and never defaulted to today. Application URLs are only used when the source itself provides them (Hopin apply_url or its documented per-id API route); no URL is ever fabricated and no India location is inferred from the search query.',
   };
 }
-
+ 
 function supa(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
     ...opts,
@@ -1190,15 +1078,15 @@ function supa(path, opts = {}) {
     },
   });
 }
-
+ 
 function getKey(req) {
   return req.headers['x-owner-key'] || '';
 }
-
+ 
 function isAdmin(req) {
   return getKey(req) === process.env.OWNER_KEY;
 }
-
+ 
 function cleanDates(obj) {
   const dateFields = [
     'application_start','deadline','posted_at','published_at',
@@ -1209,7 +1097,7 @@ function cleanDates(obj) {
   }
   return obj;
 }
-
+ 
 function cleanArrays(obj) {
   const arrayFields = [
     'skills','qualifications','employment_types',
@@ -1226,7 +1114,7 @@ function cleanArrays(obj) {
   }
   return obj;
 }
-
+ 
 function makeSlug(role, company, id) {
   const base = `${role || 'job'}-${company || 'company'}`
     .toLowerCase()
@@ -1235,14 +1123,14 @@ function makeSlug(role, company, id) {
     .slice(0, 100);
   return `${base || 'job'}-${id || Date.now()}`;
 }
-
+ 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key');
-
+ 
   if (req.method === 'OPTIONS') return res.status(200).end();
-
+ 
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
     if (!process.env.OWNER_KEY) {
       return res.status(503).json({ ok: false, error: 'Admin authentication is not configured on this deployment' });
@@ -1252,11 +1140,11 @@ module.exports = async function handler(req, res) {
     }
     return res.status(200).json({ ok: true, authenticated: true });
   }
-
+ 
   if (!SUPA || !KEY) {
     return res.status(500).json({ error: 'Supabase server configuration is missing' });
   }
-
+ 
   if (req.method === 'GET') {
     if (String(req.query?.discovery || '') === 'cron' && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) {
       try {
@@ -1267,10 +1155,10 @@ module.exports = async function handler(req, res) {
       }
     }
     if (String(req.query?.render || '') === 'html') return renderJobPage(req, res);
-
+ 
     const slug = typeof req.query?.slug === 'string' ? req.query.slug.trim() : '';
     const id   = typeof req.query?.id   === 'string' ? req.query.id.trim()   : '';
-
+ 
     let query;
     if (slug) {
       query = `jobs?slug=eq.${encodeURIComponent(slug)}` + (isAdmin(req) ? '' : '&published=eq.true') + '&limit=1';
@@ -1279,7 +1167,7 @@ module.exports = async function handler(req, res) {
     } else {
       query = isAdmin(req) ? 'jobs?order=created_at.desc' : 'jobs?published=eq.true&order=created_at.desc';
     }
-
+ 
     try {
       const r = await supa(query);
       if (!r.ok) {
@@ -1293,17 +1181,17 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to load jobs', details: err.message });
     }
   }
-
+ 
   if (!isAdmin(req)) {
     return res.status(401).json({ error: 'Invalid owner key' });
   }
-
+ 
   let body = req.body || {};
   if (typeof body === 'string') {
     try { body = JSON.parse(body); }
     catch (e) { return res.status(400).json({ error: 'Invalid JSON body' }); }
   }
-
+ 
   if (req.method === 'POST' && String(req.query?.discovery || '') === '1') {
     try {
       const result = await runPublicDiscovery({ q: body.q, location: body.location, type: body.type });
@@ -1312,7 +1200,7 @@ module.exports = async function handler(req, res) {
       return res.status(502).json({ error: 'Discovery search failed', details: err.message, sourceStats: err.sourceStats || {} });
     }
   }
-
+ 
   if (req.method === 'POST') {
     try {
       const { id, key, ...rest } = body;
@@ -1322,7 +1210,7 @@ module.exports = async function handler(req, res) {
       if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
       if (!rest.created_at) rest.created_at = new Date().toISOString();
       if (!rest.slug) rest.slug = makeSlug(rest.role, rest.company, Date.now());
-
+ 
       const r = await supa('jobs', { method: 'POST', body: JSON.stringify(rest) });
       if (!r.ok) {
         const detail = await r.text();
@@ -1334,7 +1222,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be saved', details: err.message });
     }
   }
-
+ 
   if (req.method === 'PATCH') {
     try {
       const { id, key, ...rest } = body;
@@ -1352,7 +1240,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be updated', details: err.message });
     }
   }
-
+ 
   if (req.method === 'DELETE') {
     try {
       const { id } = body;
@@ -1367,6 +1255,29 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Job could not be deleted', details: err.message });
     }
   }
-
+ 
   return res.status(405).json({ error: 'Method not allowed' });
 };
+ 
+// Internals exposed for unit-style testing only. Vercel invokes the exported
+// handler function directly; these extra properties never execute in prod.
+module.exports._internal = {
+  pipelineValidateItem,
+  discoveryFetchHopin,
+  discoveryFetchJobicy,
+  discoveryFetchArbeitnow,
+  discoveryFetchOnJob,
+  runPublicDiscovery,
+  classifyFreshness,
+  classifyCivilRole,
+  newsVacancyCheck,
+  resolveIndiaEligibility,
+  extractStructuredLocation,
+  dedupeKey,
+  normalizeJobUrl,
+  discoveryFormatAge,
+  FRESH_24H_MS,
+  BACKUP_30D_MS,
+  FUTURE_TOL_MS,
+};
+ 
