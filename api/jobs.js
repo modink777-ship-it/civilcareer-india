@@ -1184,6 +1184,45 @@ async function discoveryFetchOnJob() {
 }
 
 
+async function discoveryFetchHopin() {
+  const raw = JSON.parse(
+    await fetchText(
+      'https://api.hopinjobs.com/api/jobs',
+      {
+        Accept: 'application/json'
+      }
+    )
+  );
+
+  return (raw.jobs || []).map(j => {
+    const jobUrl =
+      j.url ||
+      j.apply_url ||
+      j.application_url ||
+      (j.id
+        ? `https://hopinjobs.com/jobs/${encodeURIComponent(j.id)}`
+        : '');
+
+    return {
+      title: j.title || '',
+      link: jobUrl,
+      description: cleanDiscoveryText(
+        j.description || ''
+      ),
+      pubDate:
+        j.posted_at ||
+        '',
+      source: 'hopinjobs.com',
+      company: j.company || '',
+      location: j.location || '',
+      application_url:
+        j.apply_url ||
+        j.application_url ||
+        jobUrl
+    };
+  }).filter(j => j.title && j.link);
+}
+
 /*
  * Normalize one discovered listing.
  *
@@ -1423,6 +1462,12 @@ async function runPublicDiscovery({
       'onjob',
       () =>
         discoveryFetchOnJob()
+    ],
+
+    [
+      'hopin',
+      () =>
+        discoveryFetchHopin()
     ]
   ];
 
