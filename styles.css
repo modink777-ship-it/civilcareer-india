@@ -1520,3 +1520,134 @@ body{
     opacity:1 !important;
   }
 }
+
+
+/* ================================================================
+   CIVILCAREER — SOFT-BLUE INNER-PAGE THEME
+   Jobs / Government Jobs / Exams / Study Materials
+   Visual-only: cards remain white for contrast; page canvas uses
+   the same soft-blue family as the home hero.
+================================================================ */
+
+/* Inner page headers sit on the soft-blue canvas instead of the
+   older dark photo-hero treatment. */
+[data-page="private"] .page-hero,
+[data-page="government"] .page-hero,
+[data-page="exams"] .page-hero,
+[data-page="materials"] .page-hero{
+  background:
+    radial-gradient(circle at 88% 10%,rgba(255,255,255,.48),transparent 34%),
+    linear-gradient(160deg,#e6f0f8 0%,#dbe8f2 52%,#d3e2ee 100%) !important;
+  color:#4d5b6d !important;
+  border-bottom:1px solid #cbd9e6 !important;
+  isolation:isolate !important;
+}
+
+/* Remove the old dark overlay that was making these pages visually
+   unrelated to the new home hero. */
+[data-page="private"] .page-hero:before,
+[data-page="government"] .page-hero:before,
+[data-page="exams"] .page-hero:before,
+[data-page="materials"] .page-hero:before{
+  display:none !important;
+}
+
+[data-page="private"] .page-hero .eyebrow,
+[data-page="government"] .page-hero .eyebrow,
+[data-page="exams"] .page-hero .eyebrow,
+[data-page="materials"] .page-hero .eyebrow{
+  color:#155ea8 !important;
+}
+
+[data-page="private"] .page-hero h1,
+[data-page="government"] .page-hero h1,
+[data-page="exams"] .page-hero h1,
+[data-page="materials"] .page-hero h1{
+  color:#0b1f3a !important;
+  text-shadow:0 1px 0 rgba(255,255,255,.35) !important;
+}
+
+[data-page="private"] .page-hero>p:last-child,
+[data-page="government"] .page-hero>p:last-child,
+[data-page="exams"] .page-hero>p:last-child,
+[data-page="materials"] .page-hero>p:last-child{
+  color:#536477 !important;
+}
+
+/* Keep the listing canvas visibly blue between white cards. */
+[data-page="private"] .listing-layout,
+[data-page="government"] .listing-layout,
+[data-page="exams"] > .container,
+[data-page="materials"] > .container{
+  position:relative;
+}
+
+/* White cards are intentional: they provide clean contrast against
+   the blue canvas rather than creating a second page background. */
+[data-page="private"] .job-card,
+[data-page="government"] .job-card,
+[data-page="exams"] .exam-card,
+[data-page="materials"] .material-card{
+  background:#fff !important;
+  border-color:#d6e1eb !important;
+}
+
+/* Filters / results header remain white utility cards. */
+[data-page="private"] .filters,
+[data-page="government"] .filters,
+[data-page="private"] .results-head,
+[data-page="government"] .results-head{
+  background:#fff !important;
+  border-color:#d6e1eb !important;
+}
+
+/* Tabs/chips remain crisp white controls on the blue canvas. */
+[data-page="exams"] .chips button,
+[data-page="materials"] .material-tabs button{
+  background:#fff !important;
+  border-color:#cfdce8 !important;
+  color:#0b1f3a !important;
+}
+
+[data-page="exams"] .chips button.active,
+[data-page="materials"] .material-tabs button.active{
+  background:#0b1f3a !important;
+  color:#fff !important;
+  border-color:#0b1f3a !important;
+}
+
+/* Empty states should belong to the blue family instead of looking
+   like a stray grey-white rectangle. */
+[data-page="private"] .empty-state,
+[data-page="government"] .empty-state,
+[data-page="exams"] .empty-state,
+[data-page="materials"] .empty-state{
+  background:#eef5fb !important;
+  border-color:#bdcedd !important;
+}
+
+/* Subject/resource grouping gets the same blue tint. */
+[data-page="materials"] .subject-grid>div{
+  background:#e7eff7 !important;
+  border-color:#cbdbe8 !important;
+}
+
+/* Preserve the established dark/navy sections, buttons and footer. */
+[data-page="private"] .btn.secondary,
+[data-page="government"] .btn.secondary,
+[data-page="exams"] .btn.secondary,
+[data-page="materials"] .btn.secondary{
+  background:#fff !important;
+}
+
+/* Slightly soften the generic light section used elsewhere so the
+   blue canvas feels continuous rather than alternating to near-white. */
+.section.soft{
+  background:#e7eff7 !important;
+  border-top:1px solid #d4e0eb;
+  border-bottom:1px solid #d4e0eb;
+}
+
+.how-section{
+  background:linear-gradient(160deg,#e8f1f8 0%,#dfeaf3 100%) !important;
+}
