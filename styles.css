@@ -1391,3 +1391,111 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 @media(min-width:1051px){
   #mainNav{display:flex!important}
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CIVILCAREER CINEMATIC 4D/5D FINAL VISUAL LAYER
+   Targeted only: hero atmosphere + site background continuity.
+   No new dependencies, images, fonts, APIs or external requests.
+═══════════════════════════════════════════════════════════════ */
+
+:root{
+  --cc-hero-navy:#07152e;
+  --cc-hero-mid:#0d2041;
+  --cc-hero-blue:#102d52;
+  --cc-hero-accent:#55ddb0;
+}
+
+/* Carry the hero's navy visual language through the page without
+   turning readable content/cards into dark surfaces. */
+body{
+  background:
+    radial-gradient(circle at 88% 4%,rgba(21,94,168,.11),transparent 30rem),
+    linear-gradient(180deg,#e7eff8 0%,#dfe9f4 46%,#e7eef6 100%) !important;
+  background-attachment:fixed !important;
+}
+
+main{
+  position:relative;
+  background:transparent !important;
+}
+
+/* The home hero is now generated entirely by the first-party canvas.
+   This removes competing remote photo layers from the hero only. */
+.hero{
+  background:
+    radial-gradient(circle at 82% 18%,rgba(34,126,225,.22),transparent 31%),
+    radial-gradient(circle at 18% 82%,rgba(16,185,129,.09),transparent 28%),
+    linear-gradient(135deg,var(--cc-hero-navy) 0%,var(--cc-hero-mid) 54%,var(--cc-hero-blue) 100%) !important;
+  color:#fff !important;
+}
+
+.hero .cc-bg-layer{
+  display:none !important;
+}
+
+.hero-3d-canvas{
+  opacity:1 !important;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 88%,transparent 100%) !important;
+  mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 88%,transparent 100%) !important;
+}
+
+.hero:after{
+  background:
+    radial-gradient(circle at 74% 28%,rgba(102,217,239,.07),transparent 28%),
+    linear-gradient(90deg,rgba(5,18,36,.82) 0%,rgba(7,24,46,.50) 52%,rgba(7,24,46,.22) 100%),
+    linear-gradient(0deg,rgba(5,18,36,.62),rgba(5,18,36,.02) 58%,rgba(5,18,36,.28)) !important;
+}
+
+.hero .hero-grid{
+  text-shadow:0 1px 20px rgba(0,0,0,.18);
+}
+
+.hero-panel{
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.24),
+    inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+
+.hero .btn.primary{
+  box-shadow:
+    0 12px 28px rgba(29,114,238,.25),
+    0 0 0 1px rgba(255,255,255,.08) inset !important;
+}
+
+/* Inner page heroes stay photo/cinematic, but their surrounding
+   page color now belongs to the same navy/blue visual family. */
+.page-hero{
+  box-shadow:0 16px 45px rgba(7,21,46,.08);
+}
+
+.section.soft{
+  background:rgba(231,239,247,.82) !important;
+}
+
+.employer-cta{
+  background:rgba(218,231,242,.88) !important;
+}
+
+.trust{
+  background:
+    radial-gradient(circle at 80% 0%,rgba(21,94,168,.20),transparent 34%),
+    linear-gradient(135deg,var(--cc-hero-navy),#102b4b) !important;
+}
+
+@media(max-width:760px){
+  body{
+    background:
+      linear-gradient(180deg,#e7eff8 0%,#e1eaf4 52%,#e8eff7 100%) !important;
+    background-attachment:scroll !important;
+  }
+  .hero:after{
+    background:
+      linear-gradient(90deg,rgba(5,18,36,.88),rgba(7,24,46,.48)),
+      linear-gradient(0deg,rgba(5,18,36,.68),rgba(5,18,36,.06)) !important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .hero-3d-canvas{opacity:.92 !important;}
+}

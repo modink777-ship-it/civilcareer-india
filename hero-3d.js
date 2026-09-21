@@ -170,6 +170,40 @@
       ctx.beginPath(); ctx.moveTo(x - len, y - len * slope); ctx.lineTo(x, y); ctx.stroke();
     }
 
+
+    /* ── atmospheric depth fog: layered volumetric bands ── */
+    function drawDepthFog(t) {
+      var drift = Math.sin(t * 0.055) * W * 0.08;
+      var horizon = H * 0.67;
+
+      var fog = ctx.createLinearGradient(0, horizon - H * 0.20, 0, H);
+      fog.addColorStop(0, 'rgba(7,24,46,0)');
+      fog.addColorStop(0.52, 'rgba(7,24,46,0.045)');
+      fog.addColorStop(1, 'rgba(7,24,46,0.18)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, horizon - H * 0.20, W, H * 0.34);
+
+      var hazeX = W * 0.52 + drift;
+      var haze = ctx.createRadialGradient(hazeX, horizon, 0, hazeX, horizon, W * 0.52);
+      haze.addColorStop(0, 'rgba(102,217,239,0.055)');
+      haze.addColorStop(0.55, 'rgba(21,94,168,0.028)');
+      haze.addColorStop(1, 'rgba(21,94,168,0)');
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, horizon - H * 0.35, W, H * 0.55);
+    }
+
+    /* ── slow construction-light sweep: adds a fifth depth cue ── */
+    function drawLightSweep(t) {
+      var phase = (t * 0.035) % 1.6;
+      var x = (-0.25 + phase) * W;
+      var g = ctx.createLinearGradient(x - W * 0.18, 0, x + W * 0.18, 0);
+      g.addColorStop(0, 'rgba(102,217,239,0)');
+      g.addColorStop(0.5, 'rgba(102,217,239,0.055)');
+      g.addColorStop(1, 'rgba(102,217,239,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H * 0.08, W, H * 0.72);
+    }
+
     /* ── perspective grid + horizon glow ── */
     function drawGrid() {
       var EXT = 42, STEP = 6, i, a, b2;
@@ -322,9 +356,11 @@
       aurora(t);
       drawStars(t);
       drawStreak(t, dt);
+      drawDepthFog(t);
       drawGrid();
       for (var i = 0; i < buildings.length; i++) drawBuilding(buildings[i], t);
       drawParts(t, dt);
+      drawLightSweep(t);
       vignette();
     }
 
