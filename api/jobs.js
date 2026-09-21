@@ -947,13 +947,25 @@ function discoveryMatchesLocation(item, requestedLocation) {
       'lisbon'
     ];
 
-    if (
-      foreignSignals.some(term =>
-        hay.includes(term)
-      )
-    ) {
-      return false;
-    }
+  const foreignMatchText =
+  `${location} ${title} ${description}`;
+
+const hasForeignSignal =
+  foreignSignals.some(term => {
+    const escaped = term.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+
+    return new RegExp(
+      `\\b${escaped}\\b`,
+      'i'
+    ).test(foreignMatchText);
+  });
+
+if (hasForeignSignal) {
+  return false;
+}
 
     /*
      * CRITICAL:
