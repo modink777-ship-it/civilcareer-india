@@ -35,24 +35,6 @@ function scanEmails(){const found=emailList($('importJobText').value),sel=$('det
 const oldImport=importJobLink;importJobLink=async function(){scanEmails();await oldImport()};$('importJobText').addEventListener('input',scanEmails);$('useDetectedEmail').onclick=()=>{if($('detectedEmailSelect').value)$('importApplicationEmail').value=$('detectedEmailSelect').value};$('importJobBtn').onclick=async()=>{const url=$('importJobUrl').value.trim(),text=$('importJobText').value.trim();if(!url&&!text)return importStatus('importJobStatus','Paste a URL or source text.','error');const b=$('importJobBtn');b.disabled=true;try{const data=await api('/api/extract',{method:'POST',key:adminKey,body:JSON.stringify({url,text})}),x={...(data.extracted||data.job||{})};x.source_url=x.source_url||url;x.application_email=$('importApplicationEmail').value||x.application_email;x.application_emails=emailList(text);x.last_verified=new Date().toISOString().slice(0,10);x.status='Active';importStatus('importJobStatus',data.warning||`Extraction complete using ${data.source||'AI'}. Verify every field before saving.`,'success');jobEditor(x)}catch(e){importStatus('importJobStatus',e.message,'error')}finally{b.disabled=false}};
 function multi(name,items,selected=[]){return`<input name="${name}" placeholder="Type ${name} (comma-separated)" value="${selected.join(', ')}">`}
 
-function existingJobDuplicateV8(candidate, ignoreId='') {
-  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-  const u=norm(candidate?.source_url||candidate?.application_url||candidate?.apply_url);
-  const role=norm(candidate?.role||candidate?.role_normalized), company=norm(candidate?.company||candidate?.recruitment_authority);
-  const loc=norm(candidate?.location_display||candidate?.location||[candidate?.city,candidate?.state,candidate?.country].filter(Boolean).join(' '));
-  return (jobs||[]).find(j=>{
-    if(ignoreId && String(j.id)===String(ignoreId)) return false;
-    const ju=norm(j.source_url||j.application_url||j.apply_url);
-    if(u && ju && (u===ju || u.includes(ju) || ju.includes(u))) return true;
-    const jr=norm(j.role||j.role_normalized), jc=norm(j.company||j.recruitment_authority);
-    if(role && company && jr===role && jc===company){
-      const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
-      return !loc || !jl || loc===jl || loc.includes(jl) || jl.includes(loc);
-    }
-    return false;
-  })||null;
-}
-
 jobEditor = function(j = {}) {
   $('editorTitle').textContent = j.id ? 'Edit opportunity' : 'Add opportunity';
   $('editorBody').innerHTML = `
@@ -152,10 +134,6 @@ jobEditor = function(j = {}) {
     if (j.id) d.id = j.id;
 
     try {
-      if (!j.id) {
-        const duplicate=existingJobDuplicateV8(d);
-        if (duplicate) throw new Error(`Already exists in CivilCareer: ${duplicate.role||'this job'}${duplicate.company?` — ${duplicate.company}`:''}.`);
-      }
       await api('/api/jobs', {
         method: j.id ? 'PATCH' : 'POST',
         key: adminKey,
@@ -164,18 +142,10 @@ jobEditor = function(j = {}) {
       $('editorDialog').close();
       await loadData();
       loadAdmin();
-      toast(j.id ? 'Job updated successfully.' : 'Job added successfully.');
+      toast('Opportunity saved successfully.');
     } catch (err) {
-      if (/similar active job/i.test(err.message) && confirm(err.message + ' Publish anyway?')) {
-        d.confirm_duplicate = true;
-        await api('/api/jobs', {
-          method: 'POST',
-          key: adminKey,
-          body: JSON.stringify(d)
-        });
-        $('editorDialog').close();
-        await loadData();
-        loadAdmin();
+      if (/Already exists in CivilCareer/i.test(err.message)) {
+        toast('Already exists in CivilCareer — same job or same link.');
       } else {
         toast(err.message);
       }
