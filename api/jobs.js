@@ -192,7 +192,7 @@ function buildJobPosting(job, canonical) {
     schema.directApply = true;
   }
 
-  const qualifications = asArray(job.qualifications).length ? asArray(job.qualifications) : asArray(job.qualification);
+  const qualifications = asArray(job.qualifications);
   if (qualifications.length) {
     schema.qualifications = qualifications.join(', ');
   }
@@ -282,7 +282,8 @@ async function renderJobPage(req, res) {
     const postingSchema = buildJobPosting(job, canonical);
 
     const qualifications = asArray(job.qualifications).length ? asArray(job.qualifications) : asArray(job.qualification);
-    const employmentTypes = asArray(job.employment_types);
+    const employmentTypes = asArray(job.employment_types).length ? asArray(job.employment_types) : asArray(job.employment_type);
+    const experiences = asArray(job.experience_ranges).length ? asArray(job.experience_ranges) : asArray(job.experience_level);
     const skills = asArray(job.skills);
 
     const responsibilities = stripHtml(job.responsibilities);
@@ -300,6 +301,15 @@ async function renderJobPage(req, res) {
       job.published_at ||
       job.posted_at ||
       job.created_at;
+    const applicationStart = job.application_start || '';
+    const vacancyCount = job.vacancy_count ?? job.vacancies ?? '';
+    const ageLimit = job.age_limit || '';
+    const applicationFee = job.application_fee || '';
+    const qualificationNotes = job.qualification_notes || '';
+    const experienceText = experiences.join(', ');
+    const state = job.state || '';
+    const country = job.country || '';
+    const city = job.city || '';
 
     const deadline =
       job.valid_through ||
@@ -314,9 +324,7 @@ async function renderJobPage(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
     res.setHeader('X-Robots-Tag', robotsDirective);
-    if (postedDate) {
-      res.setHeader('Last-Modified', new Date(postedDate).toUTCString());
-    }
+    if (postedDate) { const postedMs=new Date(postedDate).getTime(); if(Number.isFinite(postedMs)) res.setHeader('Last-Modified',new Date(postedMs).toUTCString()); }
 
     return res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -388,11 +396,6 @@ async function renderJobPage(req, res) {
   h1 { margin-top: 12px; line-height: 1.15; }
   h2 { margin-top: 28px; }
   .muted { color: #667085; }
-  .job-overview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:24px 0 30px; }
-  .job-overview > div { background:#eef5fb; border:1px solid #d7e4f0; border-radius:12px; padding:14px 16px; }
-  .job-overview strong { display:block; color:#173b63; font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
-  .job-overview span { color:#26384d; line-height:1.5; }
-  @media (max-width:700px){ .job-overview{grid-template-columns:1fr;} }
   .apply {
     display: inline-block;
     padding: 12px 18px;
@@ -437,26 +440,22 @@ ${postedDate ? `<p><strong>Posted:</strong> ${escapeHtml(formatDate(postedDate))
 ${deadline ? `<p><strong>Application deadline:</strong> ${escapeHtml(formatDate(deadline))}</p>` : ''}
 ${job.status ? `<p><strong>Status:</strong> ${escapeHtml(job.status)}</p>` : ''}
 
-<section class="job-overview">
-  ${location ? `<div><strong>Location</strong><span>${escapeHtml(location)}</span></div>` : ''}
-  <div><strong>State</strong><span>${escapeHtml(state || 'Not stated')}</span></div>
-  <div><strong>Country</strong><span>${escapeHtml(country)}</span></div>
-  <div><strong>Qualification</strong><span>${escapeHtml(qualifications.length ? qualifications.join(', ') : 'Not stated')}</span></div>
-  <div><strong>Experience</strong><span>${escapeHtml(experience.length ? experience.join(', ') : 'Not stated')}</span></div>
-  <div><strong>Employment type</strong><span>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : 'Not stated')}</span></div>
-  <div><strong>Salary / Pay</strong><span>${escapeHtml(salary || 'Not stated')}</span></div>
-  <div><strong>Vacancies</strong><span>${escapeHtml(vacancyCount || 'Not stated')}</span></div>
-  <div><strong>Application start</strong><span>${escapeHtml(applicationStart ? formatDate(applicationStart) : 'Not stated')}</span></div>
-  <div><strong>Deadline</strong><span>${escapeHtml(deadline ? formatDate(deadline) : 'Not stated')}</span></div>
-  <div><strong>Age limit</strong><span>${escapeHtml(ageLimit || 'Not stated')}</span></div>
-  <div><strong>Application fee</strong><span>${escapeHtml(applicationFee || 'Not stated')}</span></div>
-</section>
+${location ? `<section><h2>Location</h2><p>${escapeHtml(location)}</p></section>` : ''}
+${city || state || country ? `<section><h2>Location details</h2><p>${[city,state,country].filter(Boolean).map(escapeHtml).join(', ')}</p></section>` : ''}
+${applicationStart ? `<section><h2>Application starts</h2><p>${escapeHtml(formatDate(applicationStart))}</p></section>` : ''}
+${salary ? `<section><h2>Salary / Pay</h2><p>${escapeHtml(salary)}</p></section>` : ''}
+${vacancyCount !== '' ? `<section><h2>Vacancies</h2><p>${escapeHtml(vacancyCount)}</p></section>` : ''}
+${ageLimit ? `<section><h2>Age limit</h2><p>${escapeHtml(ageLimit)}</p></section>` : ''}
+${applicationFee ? `<section><h2>Application fee</h2><p>${escapeHtml(applicationFee)}</p></section>` : ''}
 
-${qualifications.length ? `
+${employmentTypes.length || job.employment_type ? `
 <section>
-<h2>Qualifications</h2>
-<ul>${qualifications.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+<h2>Employment type</h2>
+<p>${escapeHtml(employmentTypes.length ? employmentTypes.join(', ') : job.employment_type)}</p>
 </section>` : ''}
+
+${qualifications.length || qualificationNotes ? `<section><h2>Qualifications</h2>${qualifications.length ? `<ul>${qualifications.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : ''}${qualificationNotes ? `<p>${escapeHtml(qualificationNotes)}</p>` : ''}</section>` : ''}
+${experienceText ? `<section><h2>Experience</h2><p>${escapeHtml(experienceText)}</p></section>` : ''}
 
 ${skills.length ? `
 <section>
@@ -499,6 +498,7 @@ ${
 </html>`);
   } catch (error) {
     console.error('job-page error:', error);
+    res.setHeader('Cache-Control','no-store');
     return res.status(500).send('Unable to load this job right now.');
   }
 
@@ -1216,6 +1216,30 @@ module.exports = async function handler(req, res) {
       const { id, key, ...rest } = body;
       cleanDates(rest);
       cleanArrays(rest);
+      if (!rest.confirm_duplicate) {
+        const sourceKey=normalizeJobUrl(rest.source_url||rest.application_url||rest.apply_url||'');
+        const roleKey=discoveryNormText(discoveryRole(rest.role||rest.role_normalized||''));
+        const companyKey=discoveryNormText(rest.company||rest.recruitment_authority||'');
+        if(sourceKey || (roleKey&&companyKey)){
+          const check=await supa('jobs?select=id,role,company,source_url,application_url,apply_url,location,city,state,country&limit=1000');
+          if(check.ok){
+            const rows=await check.json();
+            const dup=rows.find(r=>{
+              if(rest.id&&String(r.id)===String(rest.id))return false;
+              const ru=normalizeJobUrl(r.source_url||r.application_url||r.apply_url||'');
+              if(sourceKey&&ru&&sourceKey===ru)return true;
+              const rr=discoveryNormText(discoveryRole(r.role||'')),rc=discoveryNormText(r.company||'');
+              if(roleKey&&companyKey&&rr===roleKey&&rc===companyKey){
+                const rl=discoveryNormText(r.location||[r.city,r.state,r.country].filter(Boolean).join(' '));
+                const nl=discoveryNormText(rest.location||[rest.city,rest.state,rest.country].filter(Boolean).join(' '));
+                return !nl||!rl||nl===rl||nl.includes(rl)||rl.includes(nl);
+              }
+              return false;
+            });
+            if(dup)return res.status(409).json({error:`Already exists in CivilCareer: ${dup.role||'this job'}${dup.company?` — ${dup.company}`:''}.`,existing_id:dup.id});
+          }
+        }
+      }
       if (typeof rest.published !== 'boolean') rest.published = true;
       if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
       if (!rest.created_at) rest.created_at = new Date().toISOString();

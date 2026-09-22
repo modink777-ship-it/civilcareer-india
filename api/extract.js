@@ -760,4 +760,3 @@ module.exports = async function handler(req, res) {
     providers: result.attempts
   });
 };
-
