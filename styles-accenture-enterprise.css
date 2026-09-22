@@ -274,3 +274,47 @@ body.enterprise-ui .admin-page .admin-tabs button.active{background:var(--ccx-na
 .cc-stat-exams{background:linear-gradient(145deg,rgba(66,35,111,.84),rgba(34,25,71,.88))}
 .cc-stat-resources{background:linear-gradient(145deg,rgba(92,69,20,.82),rgba(53,43,18,.88))}
 @media(max-width:720px){.cc-live-stats{padding:18px}.cc-live-stats-grid{gap:10px}.cc-stat-card{min-height:112px;padding:15px}.cc-stat-card strong{font-size:26px}}
+
+/* FINAL: one homepage hero, live stats directly beside headline */
+.homepage-hero-clean{
+  min-height:700px!important;
+  overflow:hidden!important;
+  position:relative!important;
+}
+.homepage-hero-clean .hero-grid{
+  min-height:700px!important;
+  max-width:1240px!important;
+  margin:0 auto!important;
+  padding:66px 32px 70px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(430px,.82fr)!important;
+  gap:58px!important;
+  align-items:center!important;
+}
+.homepage-hero-clean .hero-main-copy{position:relative!important;z-index:4!important;max-width:730px!important}
+.homepage-hero-clean .eyebrow{color:#36d8b6!important;font-size:12px!important;font-weight:900!important;letter-spacing:.15em!important;text-transform:uppercase!important;margin-bottom:18px!important}
+.homepage-hero-clean h1{color:#fff!important;font-size:clamp(52px,5.8vw,82px)!important;line-height:.94!important;letter-spacing:-4px!important;margin:0!important}
+.homepage-hero-clean h1 span{color:#14aaff!important}
+.homepage-hero-clean .lead{color:#e5eef5!important;font-size:17px!important;line-height:1.55!important;max-width:700px!important;margin:24px 0 0!important}
+.homepage-hero-clean .hero-actions{display:flex!important;gap:13px!important;margin-top:27px!important}
+.homepage-hero-clean .hero-actions .btn{min-height:56px!important;border-radius:999px!important;padding:0 23px!important}
+.homepage-hero-clean .hero-actions .primary{background:linear-gradient(135deg,#14b9ff,#087bff)!important;color:#fff!important;border:1px solid #43caff!important}
+.homepage-hero-clean .hero-actions .secondary{background:rgba(5,25,45,.75)!important;color:#fff!important;border:1px solid rgba(74,203,255,.75)!important}
+.homepage-hero-clean .hero-scope{display:flex!important;gap:10px!important;align-items:center!important;margin-top:22px!important;color:#b9cedd!important;font-size:11px!important;font-weight:800!important}
+.homepage-hero-clean .hero-scope i{width:4px!important;height:4px!important;border-radius:50%!important;background:#22c9aa!important}
+.homepage-hero-clean .cc-live-stats{position:relative!important;z-index:5!important;width:100%!important;max-width:560px!important;justify-self:end!important;padding:24px!important;border-radius:24px!important;background:linear-gradient(145deg,rgba(7,31,52,.96),rgba(3,17,31,.94))!important;border:1px solid rgba(92,207,255,.55)!important;box-shadow:0 28px 80px rgba(0,0,0,.43),inset 0 1px rgba(255,255,255,.08)!important;backdrop-filter:blur(16px)!important}
+.homepage-hero-clean .cc-live-stats-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important}
+.homepage-hero-clean .cc-stat-card{min-height:145px!important;padding:20px!important;border-radius:17px!important}
+.homepage-hero-clean .cc-stat-card strong{font-size:32px!important}
+@media(max-width:950px){
+  .homepage-hero-clean .hero-grid{grid-template-columns:1fr!important;gap:35px!important;padding:58px 24px 100px!important}
+  .homepage-hero-clean .cc-live-stats{justify-self:center!important;max-width:650px!important}
+}
+@media(max-width:620px){
+  .homepage-hero-clean h1{font-size:45px!important;letter-spacing:-2.5px!important}
+  .homepage-hero-clean .hero-actions{flex-direction:column!important}
+  .homepage-hero-clean .hero-actions .btn{width:100%!important}
+  .homepage-hero-clean .cc-live-stats{padding:17px!important}
+  .homepage-hero-clean .cc-stat-card{min-height:112px!important;padding:15px!important}
+  .homepage-hero-clean .cc-stat-card strong{font-size:26px!important}
+}
