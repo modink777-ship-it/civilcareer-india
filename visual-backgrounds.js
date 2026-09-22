@@ -97,7 +97,6 @@
     resource:['REBAR & DETAILING','CONCRETE','STEEL'],
     about:['RESIDENTIAL','CONCRETE','INDUSTRIAL / EPC'],
     search:['PROJECT DELIVERY','RESIDENTIAL','REINFORCEMENT'],
-    jobDetail:[],
     report:['STEEL WORK','COMMERCIAL','CONCRETE'],
     careerhub:['RESIDENTIAL','CONCRETE & REINFORCEMENT','INDUSTRIAL / EPC','COMMERCIAL','STEEL & STRUCTURAL'],
     admin:['INDUSTRIAL / EPC','REINFORCEMENT','PROJECT DELIVERY']
@@ -110,7 +109,6 @@
   function targets(){
     const active=document.querySelector('.page.active');
     if(!active)return [];
-    if(active.dataset.page==='jobDetail') return [];
     const hero=active.querySelector('.hero, .careerhub-hero');
     const pageHero=active.querySelector('.page-hero');
     if(hero||pageHero)return [hero,pageHero].filter(Boolean);
@@ -136,7 +134,6 @@
   }
   function routeNow(){
     const p=location.pathname.replace(/\/$/,'')||'/';
-    if(/^\/jobs\//.test(p)) return 'jobDetail';
     return ({'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin','/career-hub':'careerhub'})[p]||'home';
   }
   function setImage(route,position,imageIndex){
@@ -166,7 +163,6 @@
   function build(route){
     clearLayers();
     idx=0;
-    if(!sets[route] || !sets[route].length) return;
     targets().forEach((parent)=>{
       const a=makeLayer(parent,'a'), b=makeLayer(parent,'b');
       layers.set(parent,{a,b});
@@ -192,10 +188,20 @@
   }
   const observer=new MutationObserver(()=>{requestAnimationFrame(refresh)});
   function init(){
+    /* Prevent a browser reload from restoring a previous deep scroll position.
+       Normal in-site navigation still controls its own scroll position. */
+    try{history.scrollRestoration='manual'}catch(e){}
+    if(performance.getEntriesByType('navigation')[0]?.type==='reload'){
+      requestAnimationFrame(()=>window.scrollTo(0,0));
+      setTimeout(()=>window.scrollTo(0,0),80);
+    }
     observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
     refresh();
     setTimeout(refresh,120);
     setTimeout(refresh,600);
+    window.addEventListener('pageshow',()=>{
+      if(performance.getEntriesByType('navigation')[0]?.type==='reload') window.scrollTo(0,0);
+    });
     window.addEventListener('popstate',refresh);
     document.addEventListener('click',()=>setTimeout(refresh,80),true);
   }

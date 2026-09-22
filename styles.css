@@ -1382,11 +1382,31 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
   #mainNav{display:flex!important}
 }
 
-/* CivilCareer job detail: structured public information panel */
-.job-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0 30px}
-.job-overview>div{background:#eef5fb;border:1px solid #d7e4f0;border-radius:12px;padding:14px 16px}
-.job-overview b,.job-overview strong{display:block;color:var(--navy,#173b63);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.job-overview span{display:block;color:var(--text,#26384d);line-height:1.5}
-@media(max-width:760px){.job-overview{grid-template-columns:1fr}}
-/* Never show the decorative site visual above a job detail page. */
-[data-page="jobDetail"]>.cc-page-visual{display:none!important}
+
+/* ═══════════════════════════════════════════════════════════════
+   HARD-REFRESH / HOME HERO VISIBILITY FIX
+   The construction photo is decorative only. It must never create
+   its own layout height or push the actual home content below the fold.
+═══════════════════════════════════════════════════════════════ */
+[data-page="home"]{position:relative!important;overflow:visible!important;min-height:0!important}
+[data-page="home"]>.cc-page-visual{display:none!important}
+[data-page="home"] .hero{height:auto!important;min-height:0!important;max-height:none!important;display:block!important;overflow:hidden!important}
+[data-page="home"] .hero-grid{position:relative!important;z-index:5!important;visibility:visible!important;opacity:1!important}
+[data-page="home"] .hero .cc-bg-layer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;pointer-events:none!important}
+[data-page="home"] .hero-lines{position:absolute!important;inset:0!important;z-index:1!important;pointer-events:none!important}
+[data-page="home"] .hero:after{z-index:2!important;pointer-events:none!important}
+[data-page="home"] .search-wrap,[data-page="home"]>.section,[data-page="home"]>footer{position:relative!important;z-index:4!important}
+
+/* Keep the first real content section close to the hero on desktop.
+   This does not remove any content; it only prevents an oversized hero. */
+@media(min-width:901px){
+  [data-page="home"] .hero-grid{padding-top:64px!important;padding-bottom:70px!important}
+  [data-page="home"] .lead{margin-top:18px!important}
+  [data-page="home"] .hero-actions{margin-top:24px!important}
+}
+@media(max-width:900px){
+  [data-page="home"] .hero-grid{padding-top:52px!important;padding-bottom:58px!important}
+}
+@media(max-width:600px){
+  [data-page="home"] .hero-grid{padding-top:46px!important;padding-bottom:54px!important}
+}
