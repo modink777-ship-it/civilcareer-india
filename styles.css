@@ -1413,3 +1413,14 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .page[data-page="home"] .section.soft{margin-top:0!important}
 @media(max-width:900px){.page[data-page="home"] .hero-grid{grid-template-columns:1fr!important}.page[data-page="home"] .hero-stats-panel{min-height:0!important}.page[data-page="home"] .trust-row-inner{grid-template-columns:1fr 1fr!important}.page[data-page="home"] .smart-search{grid-template-columns:1fr 1fr!important;gap:8px!important;padding:8px!important}.page[data-page="home"] .smart-search label+label{border-left:0!important;border-radius:12px!important}.page[data-page="home"] .smart-search .btn{grid-column:1/-1;min-height:58px!important;margin-left:0!important}}
 @media(max-width:620px){.page[data-page="home"] .hero-stat-grid{grid-template-columns:1fr 1fr!important}.page[data-page="home"] .hero-stat{min-height:110px!important;padding:16px!important}.page[data-page="home"] .hero-stat strong{font-size:1.8rem!important}.page[data-page="home"] .trust-row-inner{grid-template-columns:1fr!important}.page[data-page="home"] .smart-search{grid-template-columns:1fr!important}.page[data-page="home"] .smart-search .btn{grid-column:auto!important}}
+
+
+/* CivilCareer targeted stability fixes — 2026-09-22 */
+[data-page="jobDetail"]{position:relative!important;isolation:isolate!important;overflow:visible!important;padding-top:0!important}
+[data-page="jobDetail"]::before,[data-page="jobDetail"]::after{display:none!important}
+[data-page="jobDetail"] .dedicated-detail{padding-top:8px!important;margin-top:0!important}
+[data-page="jobDetail"] .dedicated-card{margin-top:0!important;transform:none!important;position:relative!important;z-index:10!important}
+[data-page="jobDetail"] .detail-grid{position:relative!important;z-index:11!important}
+.profile-modal-actions .btn{min-height:46px!important}
+.profile-modal-actions .btn.secondary{background:#eef4f9!important;color:#17324d!important;border:1px solid #b8cad8!important}
+.profile-modal-actions .btn.secondary:hover{background:#e3edf5!important}

@@ -487,7 +487,10 @@ function openProfileSetup(){
         <option ${prefs.sectors==='Government'?'selected':''}>Government</option>
       </select></label>
     </div>
-    <button class="btn primary wide" style="margin-top:1rem;width:100%" onclick="saveProfile()">💾 Save & Find Matches</button>
+    <div class="profile-modal-actions" style="display:flex;gap:.7rem;margin-top:1rem">
+      <button type="button" class="btn secondary" style="flex:1" onclick="closeProfileModal()">Cancel</button>
+      <button type="button" class="btn primary" style="flex:2" onclick="saveProfile()">💾 Save & Find Matches</button>
+    </div>
   </div>`;
   overlay.style.display='flex';
 }
@@ -623,31 +626,46 @@ function normDiscovery(v){
   return String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 }
 function existingJobDuplicate(candidate, ignoreId='') {
-  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-  const u=norm(candidate?.url||candidate?.source_url||candidate?.application_url||candidate?.apply_url);
-  const role=norm(candidate?.role||candidate?.role_normalized||candidate?.title), company=norm(candidate?.company||candidate?.recruitment_authority);
+  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+  const u=norm(candidate?.url||candidate?.source_url||'');
+  const a=norm(candidate?.application_url||candidate?.apply_url||'');
+  const role=norm(candidate?.role||candidate?.role_normalized||candidate?.title||'');
+  const company=norm(candidate?.company||candidate?.recruitment_authority||'');
   const loc=norm(candidate?.location_display||candidate?.location||[candidate?.city,candidate?.state,candidate?.country].filter(Boolean).join(' '));
+
   return (jobs||[]).find(j=>{
     if(ignoreId && String(j.id)===String(ignoreId)) return false;
-    const ju=norm(j.source_url||j.application_url||j.apply_url);
+    const ju=norm(j.source_url||'');
+    const ja=norm(j.application_url||j.apply_url||'');
     if(u && ju && (u===ju || u.includes(ju) || ju.includes(u))) return true;
-    const jr=norm(j.role||j.role_normalized), jc=norm(j.company||j.recruitment_authority);
-    if(role && company && jr===role && jc===company){
-      const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
-      return !loc || !jl || loc===jl || loc.includes(jl) || jl.includes(loc);
-    }
-    return false;
+    if(a && ja && (a===ja || a.includes(ja) || ja.includes(a))) return true;
+    const jr=norm(j.role||j.role_normalized||''), jc=norm(j.company||j.recruitment_authority||'');
+    const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
+    return !!(role && company && loc && jr===role && jc===company && jl===loc);
   })||null;
 }
 
 function discoveryDuplicate(item){
-  const iu=normDiscovery(item?.url).replace(/\/$/,'');
-  const it=normDiscovery(item?.title);
-  return jobs.find(j=>{
-    const ju=normDiscovery(j.source_url||j.apply_url).replace(/\/$/,'');
+  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+  const iu=norm(item?.url||item?.source_url||'');
+  const ia=norm(item?.application_url||item?.apply_url||'');
+  const role=norm(item?.role||item?.role_normalized||item?.title||'');
+  const company=norm(item?.company||item?.recruitment_authority||'');
+  const loc=norm(item?.location_display||item?.location||[item?.city,item?.state,item?.country].filter(Boolean).join(' '));
+
+  return (jobs||[]).find(j=>{
+    const ju=norm(j.source_url||'');
+    const ja=norm(j.application_url||j.apply_url||'');
     if(iu && ju && (iu===ju || iu.includes(ju) || ju.includes(iu))) return true;
-    const jt=normDiscovery(`${j.role||''} ${j.company||''} ${j.location||''}`);
-    return it && jt && (jt.includes(it) || it.includes(it.split(' ').slice(0,5).join(' ')));
+    if(ia && ja && (ia===ja || ia.includes(ja) || ja.includes(ia))) return true;
+
+    const jr=norm(j.role||j.role_normalized||'');
+    const jc=norm(j.company||j.recruitment_authority||'');
+    const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
+
+    // Same company alone is NEVER a duplicate.
+    // Same title + company + known same location is the same vacancy.
+    return !!(role && company && loc && jr===role && jc===company && jl===loc);
   }) || null;
 }
 function renderDiscoveryDrafts(){
@@ -804,6 +822,13 @@ function jobEditor(j={}){
     d.published=j._discoveryDraft ? d.status==='Active' : true;
     if(j.id)d.id=j.id;
     try{
+      if(!j.id){
+        const dup=existingJobDuplicate(d);
+        if(dup){
+          toast(`Already exists in CivilCareer — ${dup.role||'same job'}${dup.company?' · '+dup.company:''}.`);
+          return;
+        }
+      }
       await api('/api/jobs',{method:j.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});
       if(j._submission)await api('/api/employer-submissions',{method:'PATCH',key:adminKey,body:JSON.stringify({id:j._submission,status:'Approved'})});
       // Auto-post only genuinely published NEW jobs. Discovery drafts never alert users.
@@ -821,7 +846,13 @@ function jobEditor(j={}){
         toast('Opportunity updated.');
       }
       await loadData();loadAdmin();
-    }catch(err){toast(err.message)}
+    }catch(err){
+      if(/Already exists in CivilCareer/i.test(err.message)){
+        toast('Already exists in CivilCareer — same job or same link.');
+      }else{
+        toast(err.message);
+      }
+    }
   }
 }
 function examEditor(x={}){$('editorTitle').textContent=x.id?'Edit recruitment':'Review AI recruitment draft';$('editorBody').innerHTML=`<form class="panel-form" id="examEdit"><div class="field-grid"><label>Exam / recruitment code *<input name="code" value="${val(x.code)}" required></label><label>Authority / organization<input name="authority" value="${val(x.authority)}"></label><label class="wide">Professional listing title *<input name="title_en" value="${val(x.title_en)}" placeholder="KPSC KAS Recruitment 2026 — Apply Online for 319 Group A & B Posts" required></label><label class="wide">Kannada title<input name="title_kn" value="${val(x.title_kn)}"></label><label>Notification number<input name="notification_number" value="${val(x.notification_number)}"></label><label>Category<input name="category" value="${val(x.category)}"></label><label>Vacancies<input type="number" name="vacancy_count" value="${val(x.vacancy_count)}"></label><label>Status<input name="status" value="${val(x.status||'Open')}"></label><label>Notification date<input type="date" name="notification_date" value="${val(x.notification_date)}"></label><label>Application starts<input type="date" name="application_start" value="${val(x.application_start)}"></label><label>Application deadline<input type="date" name="application_end" value="${val(x.application_end)}"></label><label>Exam date<input type="date" name="exam_date" value="${val(x.exam_date)}"></label><label>Last verified<input type="date" name="last_verified" value="${val(x.last_verified||new Date().toISOString().slice(0,10))}"></label><label>Job location<input name="job_location" value="${val(x.job_location)}"></label><label>Application mode<input name="application_mode" value="${val(x.application_mode)}"></label><label class="wide">Post names<input name="post_names" value="${val(x.post_names)}"></label><label class="wide">Overview<textarea name="overview">${val(x.overview)}</textarea></label><label class="wide">Eligibility and qualification<textarea name="eligibility_en">${val(x.eligibility_en)}</textarea></label><label class="wide">Kannada eligibility<textarea name="eligibility_kn">${val(x.eligibility_kn)}</textarea></label><label class="wide">Post-wise vacancy details<textarea name="vacancy_breakdown">${val(x.vacancy_breakdown)}</textarea></label><label class="wide">Important dates details<textarea name="important_dates_details">${val(x.important_dates_details)}</textarea></label><label class="wide">Age limit and relaxation<textarea name="age_limit">${val(x.age_limit)}</textarea></label><label class="wide">Pay scale<textarea name="pay_scale">${val(x.pay_scale)}</textarea></label><label class="wide">Application fee<textarea name="application_fee">${val(x.application_fee)}</textarea></label><label class="wide">Selection process<textarea name="selection_process">${val(x.selection_process)}</textarea></label><label class="wide">Exam pattern<textarea name="exam_pattern">${val(x.exam_pattern)}</textarea></label><label class="wide">Syllabus<textarea name="syllabus">${val(x.syllabus)}</textarea></label><label class="wide">How to apply<textarea name="how_to_apply">${val(x.how_to_apply)}</textarea></label><label class="wide">Attempts<textarea name="attempts">${val(x.attempts)}</textarea></label><label class="wide">Physical standards<textarea name="physical_standards">${val(x.physical_standards)}</textarea></label><label class="wide">Helpline<input name="helpline" value="${val(x.helpline)}"></label><label class="wide">Other important information<textarea name="other_information">${val(x.other_information)}</textarea></label><label class="wide">Frequently asked questions<textarea name="frequently_asked_questions">${val(x.frequently_asked_questions)}</textarea></label><label class="wide">Official notification PDF URL<input type="url" name="official_notification_url" value="${val(x.official_notification_url)}"></label><label class="wide">Official application URL<input type="url" name="apply_url" value="${val(x.apply_url)}"></label><label class="wide">Official website URL<input type="url" name="official_website_url" value="${val(x.official_website_url)}"></label><button class="btn primary wide">Verify and publish recruitment</button></div><div class="form-status"></div></form>`;openEditor();$('examEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);if(x.id)d.id=x.id;try{await api('/api/exams',{method:x.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Recruitment published.');await loadData();loadAdmin()}catch(err){toast(err.message)}}}
