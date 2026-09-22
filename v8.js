@@ -19,54 +19,46 @@ function clearPrivate(){['privateCountry','privateState','privateCity','privateR
 function govScopeOf(j){const level=String(j.government_level||j.gov_level||'').toLowerCase();if(level==='central'||level==='state')return level;const t=[j.recruitment_authority,j.company,j.discipline,j.description].join(' ').toLowerCase();const central=['upsc','ssc','cpwd','cwc','nhai','bro','mes','indian railways','railway board','central government','central public works','border roads','national highways','ministry of','central water'].some(x=>t.includes(x));if(central)return'central';if(j.state||j.state_region||j.region)return'state';return'central'}
 renderGovernment=function(){let a=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)),status=$('govStatus').value,scope=document.querySelector('#govScopeChips .active')?.dataset.scope||'all';if(scope!=='all')a=a.filter(j=>govScopeOf(j)===scope);if($('govState')&&$('govState').options.length<=1)$('govState').innerHTML='<option value="">All states / regions</option>'+INDIA_STATES.map(s=>`<option>${s}</option>`).join('');const state=($('govState')&&$('govState').value||'').toLowerCase(),loc=($('govLocation')&&$('govLocation').value||'').toLowerCase(),qual=($('govQualification')&&$('govQualification').value||'').toLowerCase(),edu=($('govEdu')&&$('govEdu').value||'').toLowerCase();a=a.filter(j=>!state||[j.state,j.state_region,j.location_display,j.location,j.city].filter(Boolean).join(' ').toLowerCase().includes(state)).filter(j=>!loc||[j.city,j.district,j.location_display,j.location].join(' ').toLowerCase().includes(loc)).filter(j=>!qual||jobQuals(j).join(' ').toLowerCase().includes(qual)).filter(j=>!edu||jobQuals(j).join(' ').toLowerCase().includes(edu));if($('govStatus')&&$('govStatus').value)a=a.filter(j=>$('govStatus').value==='closed'?!active(j):active(j));a.sort($('govSort')&&$('govSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));$('governmentCount').textContent=`${a.length} active government civil opportunit${a.length===1?'y':'ies'}`;$('governmentJobs').innerHTML=a.length?a.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');chipBox(['govState','govLocation','govQualification','govStatus'],'govFilterChips',renderGovernment);bindCards()}
 jobCard=function(j,gov=false){const closed=!active(j),loc=jobLocs(j).join(' · ')||j.location_display||j.location;return`<article class="job-card"><div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date">${ago(pubDate(j))}</span></div><h3>${esc(j.role)}</h3><div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div><div class="card-meta"><span>${esc(loc||'Location in source')}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p class="card-copy">${esc(short(j.description||'Verify details at the original source.'))}</p><div class="card-actions"><button data-job="${j.id}">View Details</button></div></article>`}
-function activateDynamic(name,path,push=true){route=name;$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));if(push)history.pushState({},'',path);scrollTo({top:0,left:0,behavior:'auto'})}
+function activateDynamic(name,path,push=true){route=name;$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));if(push)history.pushState({},'',path);scrollTo(0,0)}
 function jobPath(j){return`/jobs/${j.slug||String(j.role||'job').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+j.id}`}
 function materialPath(m){return`/study-materials/${String(m.slug||m.title_en||'resource').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)}-${m.id}`}
+
+function mountDetailStickyActions(kind, actions){
+  const old=document.querySelector('.detail-sticky-actions');
+  if(old) old.remove();
+  if(!actions || !actions.length) return;
+  const bar=document.createElement('div');
+  bar.className='detail-sticky-actions';
+  bar.setAttribute('aria-label',kind==='job'?'Job actions':'Resource actions');
+  bar.innerHTML=actions.map(a=>`<a class="detail-action ${a.primary?'primary':'secondary'}" href="${esc(a.href)}" target="_blank" rel="noopener">${esc(a.label)} ↗</a>`).join('');
+  document.body.appendChild(bar);
+}
 function openMaterialDedicated(m,push=true){
   if(!m)return;
   const title=lang==='kn'&&m.title_kn?m.title_kn:(m.title_en||m.title||'Study resource');
   const url=m.file_url||m.pdf_url||m.preview_url||'';
-  $('materialDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">Study material · ${esc(m.category||'Civil Engineering')}</div><h1>${esc(title)}</h1>${m.author?`<p class="detail-lead">By ${esc(m.author)}</p>`:''}<div class="detail-grid"><div class="detail"><b>Category</b>${esc(m.category||'Study resource')}</div>${m.subject?`<div class="detail"><b>Subject / Topic</b>${esc(m.subject)}</div>`:''}${m.page_count?`<div class="detail"><b>Pages</b>${esc(m.page_count)}</div>`:''}<div class="detail full"><b>Description</b>${richText(m.description_en||m.description||'Open the resource to review its contents.')}</div></div><div class="card-actions">${url?`<a href="${esc(url)}" target="_blank" rel="noopener">OPEN RESOURCE ↗</a>`:''}${m.preview_url&&m.preview_url!==url?`<a href="${esc(m.preview_url)}" target="_blank" rel="noopener">Preview ↗</a>`:''}</div><div class="callout">Only use materials shared by their owner or with appropriate permission.</div></article>`;
-  activateDynamic('materialDetail',materialPath(m),push);document.title=`${title} | CivilCareer`;
+  $('materialDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">Study material · ${esc(m.category||'Civil Engineering')}</div><h1>${esc(title)}</h1>${m.author?`<p class="detail-lead">By ${esc(m.author)}</p>`:''}
+<div class="detail-top-actions" aria-label="Resource actions">
+  ${url?`<a class="detail-action primary" href="${esc(url)}" target="_blank" rel="noopener">VIEW RESOURCE ↗</a>`:''}
+  ${m.preview_url&&m.preview_url!==url?`<a class="detail-action secondary" href="${esc(m.preview_url)}" target="_blank" rel="noopener">PREVIEW ↗</a>`:''}
+</div><div class="detail-grid"><div class="detail"><b>Category</b>${esc(m.category||'Study resource')}</div>${m.subject?`<div class="detail"><b>Subject / Topic</b>${esc(m.subject)}</div>`:''}${m.page_count?`<div class="detail"><b>Pages</b>${esc(m.page_count)}</div>`:''}<div class="detail full"><b>Description</b>${richText(m.description_en||m.description||'Open the resource to review its contents.')}</div></div><div class="card-actions">${url?`<a href="${esc(url)}" target="_blank" rel="noopener">OPEN RESOURCE ↗</a>`:''}${m.preview_url&&m.preview_url!==url?`<a href="${esc(m.preview_url)}" target="_blank" rel="noopener">Preview ↗</a>`:''}</div><div class="callout">Only use materials shared by their owner or with appropriate permission.</div></article>`;
+  activateDynamic('materialDetail',materialPath(m),push);
+  mountDetailStickyActions('resource',[
+    ...(url?[{href:url,label:'VIEW RESOURCE',primary:true}]:[]),
+    ...(m.preview_url&&m.preview_url!==url?[{href:m.preview_url,label:'PREVIEW',primary:false}]:[])
+  ]);
+  document.title=`${title} | CivilCareer`;
 }
-openJob=function(j,push=true){
-  if(!j)return;
-  const closed=!active(j),
-    email=!j.application_email_private&&j.application_email,
-    loc=jobLocs(j).join(' · ')||j.location_display||j.location,
-    quals=jobQuals(j),
-    exps=jobExps(j),
-    types=jobTypes(j);
-  $('jobDetailPage').innerHTML=`<article class="dedicated-card">
-    <div class="detail-kicker">${closed?'Expired opportunity':'Verified opportunity'} · ${ago(pubDate(j))}</div>
-    <h1>${esc(j.role||'Civil Engineering Opportunity')}</h1>
-    <p class="detail-lead">${esc(j.company||j.recruitment_authority||'Organization')}${loc?' · '+esc(loc):''}</p>
-    ${closed?'<div class="expired-banner">This opportunity has expired and is retained for transparency. Do not treat it as open.</div>':''}
-    <div class="detail-grid">
-      <div class="detail"><b>Location</b>${esc(loc||'Not stated')}</div>
-      <div class="detail"><b>State</b>${esc(j.state||'Not stated')}</div>
-      <div class="detail"><b>Country</b>${esc(j.country||'India')}</div>
-      <div class="detail"><b>Qualification</b>${esc(quals.join(' · ')||j.qualification||'Not stated')}</div>
-      <div class="detail"><b>Experience</b>${esc(exps.join(' · ')||j.experience_level||'Not stated')}</div>
-      <div class="detail"><b>Employment</b>${esc(types.join(' · ')||j.employment_type||'Not stated')}</div>
-      <div class="detail"><b>Salary / Pay</b>${esc(j.salary||'Not stated')}</div>
-      <div class="detail"><b>Vacancies</b>${esc(j.vacancy_count??'Not stated')}</div>
-      <div class="detail"><b>Application start</b>${j.application_start?date(j.application_start):'Not stated'}</div>
-      <div class="detail"><b>Application deadline</b>${j.deadline?date(j.deadline):'Not stated'}</div>
-      <div class="detail"><b>Age limit</b>${esc(j.age_limit||'Not stated')}</div>
-      <div class="detail"><b>Application fee</b>${esc(j.application_fee||'Not stated')}</div>
-      <div class="detail"><b>Published</b>${date(String(pubDate(j)).slice(0,10))}</div>
-      <div class="detail full"><b>Description</b>${richText(j.description||'Verify the complete vacancy at the original source.')}</div>
-      ${j.responsibilities?`<div class="detail full"><b>Responsibilities</b>${richText(j.responsibilities)}</div>`:''}
-      ${j.skills?`<div class="detail full"><b>Skills</b>${richText(j.skills)}</div>`:''}
-    </div>
-    ${email?`<div class="email-apply"><b>Apply via Email</b><span>${esc(email)}</span><button data-copy-email="${esc(email)}">Copy email</button><a href="mailto:${esc(email)}">Email Application</a></div>`:''}
-    <div class="card-actions">${j.application_url||j.source_url?`<a href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a>`:''}${j.source_url?`<a href="${esc(j.source_url)}" target="_blank" rel="noopener">View original source ↗</a>`:''}</div>
-    <div class="callout">Always verify the job, deadline and application instructions at the original source. Never pay for a job.</div>
-  </article>`;
-  activateDynamic('jobDetail',jobPath(j),push);
-  scrollTo({top:0,left:0,behavior:'auto'});
-  document.title=`${j.role||'Civil Engineering Job'} — ${j.company||'CivilCareer'}`;
+openJob=function(j,push=true){if(!j)return;const closed=!active(j),email=!j.application_email_private&&j.application_email,loc=jobLocs(j).join(' · ')||j.location_display||j.location;$('jobDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">${closed?'Expired opportunity':'Verified opportunity'} · ${ago(pubDate(j))}</div><h1>${esc(j.role)}</h1><p class="detail-lead">${esc(j.company||'Organization')} · ${esc(loc||'Location in source')}</p>
+<div class="detail-top-actions" aria-label="Job actions">
+  ${j.application_url||j.source_url?`<a class="detail-action primary" href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a>`:''}
+  ${j.source_url?`<a class="detail-action secondary" href="${esc(j.source_url)}" target="_blank" rel="noopener">VIEW ORIGINAL SOURCE ↗</a>`:''}
+</div>${closed?'<div class="expired-banner">This opportunity has expired and is retained for transparency. Do not treat it as open.</div>':''}<div class="detail-grid"><div class="detail"><b>Qualifications</b>${esc(jobQuals(j).join(' · ')||'Check source')}</div><div class="detail"><b>Experience</b>${esc(jobExps(j).join(' · ')||'Not stated')}</div><div class="detail"><b>Employment</b>${esc(jobTypes(j).join(' · ')||'Not stated')}</div><div class="detail"><b>Published</b>${date(String(pubDate(j)).slice(0,10))}</div><div class="detail full"><b>Description</b>${richText(j.description)}</div>${j.responsibilities?`<div class="detail full"><b>Responsibilities</b>${richText(j.responsibilities)}</div>`:''}${j.skills?`<div class="detail full"><b>Skills</b>${richText(j.skills)}</div>`:''}</div>${email?`<div class="email-apply"><b>Apply via Email</b><span>${esc(email)}</span><button data-copy-email="${esc(email)}">Copy email</button><a href="mailto:${esc(email)}">Email Application</a></div>`:''}<div class="card-actions"><a href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a><a href="${esc(j.source_url)}" target="_blank" rel="noopener">View original source ↗</a></div><div class="callout">Always verify the job, deadline and application instructions at the original source. Never pay for a job.</div></article>`;activateDynamic('jobDetail',jobPath(j),push);
+  mountDetailStickyActions('job',[
+    ...((j.application_url||j.source_url)?[{href:(j.application_url||j.source_url),label:'APPLY NOW',primary:true}]:[]),
+    ...(j.source_url?[{href:j.source_url,label:'VIEW SOURCE',primary:false}]:[])
+  ]);
+  document.title=`${j.role} — ${j.company||'CivilCareer'}`;
   $$('[data-copy-email]').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copyEmail).then(()=>toast('Email copied.')));
 }
 openExam=function(x,push=true){if(!x)return;const title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('examDetailPage').innerHTML=`<article class="dedicated-card exam-detail-page"><div class="detail-kicker">${closed?'Application Closed':esc(x.status||'Active')} · Last verified ${date(x.last_verified)}</div><h1>${esc(title)}</h1><p class="detail-lead">${esc(x.authority||'Authority in notification')}</p>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Quick Information</h3><div class="exam-overview"><div><b>Authority</b>${esc(x.authority||'Check source')}</div><div><b>Vacancies</b>${esc(x.vacancy_count||'Not stated')}</div><div><b>Qualification</b>${richText(x.eligibility_en)}</div><div><b>Application fee</b>${richText(x.application_fee)}</div></div></section>${examSection('Important Dates',x.important_dates_details)}${examSection('Eligibility',x.eligibility_en)}${examSection('Vacancies',x.vacancy_breakdown)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('Application Process',x.how_to_apply)}<section class="exam-detail-section"><h3>Official Links</h3><div class="card-actions">${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank">Official Website ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank">Official Notification ↗</a>`:''}${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank">Apply Online ↗</a>`:''}</div></section><div class="callout">Always verify dates, eligibility and application instructions in the official notification before applying.</div></article>`;const p=`/exams/${x.slug||String(x.code||title).toLowerCase().replace(/[^a-z0-9]+/g,'-')}`;activateDynamic('examDetail',p,push);document.title=`${title} | CivilCareer`}
@@ -183,8 +175,16 @@ jobEditor = function(j = {}) {
       loadAdmin();
       toast('Opportunity saved successfully.');
     } catch (err) {
-      if (/Already exists in CivilCareer/i.test(err.message)) {
-        toast('Already exists in CivilCareer — same job or same link.');
+      if (/similar active job/i.test(err.message) && confirm(err.message + ' Publish anyway?')) {
+        d.confirm_duplicate = true;
+        await api('/api/jobs', {
+          method: 'POST',
+          key: adminKey,
+          body: JSON.stringify(d)
+        });
+        $('editorDialog').close();
+        await loadData();
+        loadAdmin();
       } else {
         toast(err.message);
       }

@@ -629,3 +629,104 @@ body.enterprise-ui .admin-page .admin-tabs button.active{background:var(--ccx-na
     font-size:25px!important;
   }
 }
+
+/* ============================================================
+   DETAIL PAGE ACTIONS — CivilCareer native style
+   Primary action is visible immediately at the top.
+   A compact sticky bar appears on small screens as a second
+   access point. Existing bottom actions remain unchanged.
+   ============================================================ */
+
+.detail-top-actions{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:10px!important;
+  margin:18px 0 24px!important;
+  padding:12px!important;
+  border:1px solid #d8e2ec!important;
+  border-radius:14px!important;
+  background:#f4f8fb!important;
+}
+
+.detail-action{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:44px!important;
+  padding:0 17px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.02em!important;
+  text-decoration:none!important;
+  transition:transform .2s ease,background .2s ease,border-color .2s ease!important;
+}
+
+.detail-action.primary{
+  background:#1d72ee!important;
+  color:#fff!important;
+  border:1px solid #1d72ee!important;
+}
+
+.detail-action.primary:hover{
+  background:#155fc8!important;
+  border-color:#155fc8!important;
+  transform:translateY(-1px)!important;
+}
+
+.detail-action.secondary{
+  background:#fff!important;
+  color:#0b1f3a!important;
+  border:1px solid #cbd9e6!important;
+}
+
+.detail-action.secondary:hover{
+  background:#edf6ff!important;
+  border-color:#9fc9e6!important;
+  transform:translateY(-1px)!important;
+}
+
+.detail-sticky-actions{
+  display:none;
+}
+
+@media(max-width:720px){
+  .detail-top-actions{
+    position:sticky!important;
+    top:8px!important;
+    z-index:30!important;
+    margin:14px 0 20px!important;
+    padding:8px!important;
+    box-shadow:0 8px 22px rgba(7,26,45,.10)!important;
+  }
+
+  .detail-top-actions .detail-action{
+    flex:1 1 160px!important;
+  }
+
+  .detail-sticky-actions{
+    position:fixed!important;
+    left:12px!important;
+    right:12px!important;
+    bottom:12px!important;
+    z-index:999!important;
+    display:flex!important;
+    gap:8px!important;
+    padding:8px!important;
+    border:1px solid #d4e0eb!important;
+    border-radius:14px!important;
+    background:#fff!important;
+    box-shadow:0 10px 30px rgba(7,26,45,.18)!important;
+  }
+
+  .detail-sticky-actions .detail-action{
+    flex:1 1 0!important;
+    min-height:46px!important;
+    padding:0 10px!important;
+    font-size:11px!important;
+  }
+
+  body:has(.detail-sticky-actions){
+    padding-bottom:82px!important;
+  }
+}
