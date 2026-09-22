@@ -318,3 +318,314 @@ body.enterprise-ui .admin-page .admin-tabs button.active{background:var(--ccx-na
   .homepage-hero-clean .cc-stat-card{min-height:112px!important;padding:15px!important}
   .homepage-hero-clean .cc-stat-card strong{font-size:26px!important}
 }
+
+
+/* ============================================================
+   CIVILCAREER HERO / LIVE-STATS VISUAL MATCH
+   The live stats are designed as the visual counterpart of
+   "Where Civil Engineering Careers Take Shape." — same scale,
+   rhythm, radius, glow and accent language. No JS/API changes.
+   ============================================================ */
+
+.homepage-hero-clean{
+  background:
+    radial-gradient(circle at 78% 42%, rgba(20,170,255,.10), transparent 28%),
+    radial-gradient(circle at 18% 68%, rgba(22,211,174,.07), transparent 26%),
+    #061a2d!important;
+}
+
+.homepage-hero-clean .hero-grid{
+  align-items:center!important;
+}
+
+.homepage-hero-clean .hero-main-copy{
+  align-self:center!important;
+}
+
+.homepage-hero-clean .hero-main-copy h1{
+  max-width:720px!important;
+  text-wrap:balance!important;
+}
+
+.homepage-hero-clean .hero-main-copy .lead{
+  max-width:680px!important;
+}
+
+/* Stats container: no artificial full-height/empty lower area */
+.homepage-hero-clean .cc-live-stats{
+  align-self:center!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  box-sizing:border-box!important;
+  padding:25px!important;
+  overflow:hidden!important;
+}
+
+/* Match the heading's visual weight with a clean enterprise header */
+.homepage-hero-clean .cc-live-stats-head{
+  min-height:28px!important;
+  margin:0 0 18px!important;
+  display:flex!important;
+  align-items:center!important;
+  color:#8edfff!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  letter-spacing:.075em!important;
+}
+
+/* Keep the four stats compact and visually centered against the hero copy */
+.homepage-hero-clean .cc-live-stats-grid{
+  grid-auto-rows:132px!important;
+  gap:12px!important;
+}
+
+.homepage-hero-clean .cc-stat-card{
+  min-height:0!important;
+  height:132px!important;
+  box-sizing:border-box!important;
+  padding:19px!important;
+  border-radius:18px!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.08),
+    0 12px 28px rgba(0,0,0,.18)!important;
+  transition:
+    transform .35s cubic-bezier(.22,1,.36,1),
+    border-color .35s cubic-bezier(.22,1,.36,1),
+    box-shadow .35s cubic-bezier(.22,1,.36,1)!important;
+}
+
+.homepage-hero-clean .cc-stat-card:hover{
+  transform:translateY(-5px)!important;
+  border-color:rgba(91,217,255,.65)!important;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.12),
+    0 20px 38px rgba(0,0,0,.28),
+    0 0 28px rgba(20,170,255,.08)!important;
+}
+
+.homepage-hero-clean .cc-stat-card strong{
+  font-size:31px!important;
+  line-height:1!important;
+  letter-spacing:-1px!important;
+}
+
+.homepage-hero-clean .cc-stat-card>span:last-child{
+  margin-top:8px!important;
+  font-size:10px!important;
+  letter-spacing:.055em!important;
+}
+
+.homepage-hero-clean .cc-stat-icon{
+  top:17px!important;
+  left:18px!important;
+  font-size:18px!important;
+}
+
+.homepage-hero-clean .cc-stat-card:before{
+  height:2px!important;
+  opacity:1!important;
+}
+
+/* A single connecting accent makes the stats feel like part of
+   the headline rather than a separate widget. */
+.homepage-hero-clean .cc-live-stats:after{
+  content:"";
+  display:block;
+  width:74px;
+  height:3px;
+  margin-top:18px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#18c7f7,#18d4a7);
+  box-shadow:0 0 16px rgba(24,199,247,.28);
+}
+
+/* Match the hero's small turquoise divider */
+.homepage-hero-clean .hero-main-copy:after{
+  content:"";
+  display:block;
+  width:96px;
+  height:4px;
+  margin-top:25px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#18c7f7,#18d4a7);
+}
+
+/* Avoid double spacing if the existing theme adds its own divider */
+.homepage-hero-clean .hero-main-copy .lead + .hero-actions{
+  margin-top:24px!important;
+}
+
+@media(max-width:950px){
+  .homepage-hero-clean .cc-live-stats{
+    width:min(650px,100%)!important;
+    margin:0 auto!important;
+  }
+}
+
+@media(max-width:620px){
+  .homepage-hero-clean .cc-live-stats{
+    padding:18px!important;
+    border-radius:20px!important;
+  }
+  .homepage-hero-clean .cc-live-stats-grid{
+    grid-auto-rows:112px!important;
+    gap:10px!important;
+  }
+  .homepage-hero-clean .cc-stat-card{
+    height:112px!important;
+    padding:15px!important;
+  }
+  .homepage-hero-clean .cc-stat-card strong{
+    font-size:25px!important;
+  }
+}
+
+
+/* ============================================================
+   CIVILCAREER NATIVE LIVE STATS
+   Replaces the previous Accenture/glass-style stats treatment.
+   Uses the site's own navy / blue / cyan / teal language.
+   No backdrop-filter, no glassmorphism, no decorative gradients.
+   ============================================================ */
+
+.homepage-hero-clean .cc-live-stats{
+  width:100%!important;
+  max-width:560px!important;
+  box-sizing:border-box!important;
+  padding:22px!important;
+  border:1px solid #294968!important;
+  border-radius:18px!important;
+  background:#0b1f3a!important;
+  box-shadow:0 14px 34px rgba(3,16,30,.28)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+
+.homepage-hero-clean .cc-live-stats-head{
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  margin:0 0 15px!important;
+  color:#20b8ff!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  letter-spacing:.06em!important;
+}
+
+.homepage-hero-clean .cc-live-dot{
+  color:#20c997!important;
+  text-shadow:none!important;
+}
+
+.homepage-hero-clean .cc-live-badge{
+  margin-left:auto!important;
+  color:#20c997!important;
+  border:1px solid #24785f!important;
+  background:#102d3d!important;
+  padding:4px 9px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+}
+
+.homepage-hero-clean .cc-live-stats-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+}
+
+.homepage-hero-clean .cc-stat-card{
+  position:relative!important;
+  min-height:132px!important;
+  height:132px!important;
+  box-sizing:border-box!important;
+  padding:18px!important;
+  border-radius:16px!important;
+  border:1px solid #294968!important;
+  background:#102d52!important;
+  box-shadow:none!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-end!important;
+  overflow:hidden!important;
+  transition:transform .25s ease,border-color .25s ease,background .25s ease!important;
+}
+
+.homepage-hero-clean .cc-stat-card:hover{
+  transform:translateY(-3px)!important;
+  border-color:#3c78a6!important;
+  background:#14365f!important;
+  box-shadow:none!important;
+}
+
+.homepage-hero-clean .cc-stat-card:before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  top:0!important;
+  height:3px!important;
+  background:#20b8ff!important;
+  opacity:1!important;
+  transform:none!important;
+}
+
+.homepage-hero-clean .cc-stat-jobs:before{background:#20c997!important}
+.homepage-hero-clean .cc-stat-govt:before{background:#20b8ff!important}
+.homepage-hero-clean .cc-stat-exams:before{background:#6d8cff!important}
+.homepage-hero-clean .cc-stat-resources:before{background:#e5b54f!important}
+
+.homepage-hero-clean .cc-stat-icon{
+  position:absolute!important;
+  top:16px!important;
+  left:17px!important;
+  color:#20b8ff!important;
+  font-size:18px!important;
+  text-shadow:none!important;
+}
+
+.homepage-hero-clean .cc-stat-jobs .cc-stat-icon{color:#20c997!important}
+.homepage-hero-clean .cc-stat-govt .cc-stat-icon{color:#20b8ff!important}
+.homepage-hero-clean .cc-stat-exams .cc-stat-icon{color:#8fa5ff!important}
+.homepage-hero-clean .cc-stat-resources .cc-stat-icon{color:#e5b54f!important}
+
+.homepage-hero-clean .cc-stat-card strong{
+  color:#fff!important;
+  font-size:31px!important;
+  line-height:1!important;
+  letter-spacing:-.5px!important;
+  font-weight:900!important;
+}
+
+.homepage-hero-clean .cc-stat-card>span:last-child{
+  margin-top:8px!important;
+  color:#b9cde0!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+  letter-spacing:.045em!important;
+}
+
+.homepage-hero-clean .cc-live-stats:after{
+  display:none!important;
+}
+
+@media(max-width:620px){
+  .homepage-hero-clean .cc-live-stats{
+    padding:17px!important;
+    border-radius:16px!important;
+  }
+  .homepage-hero-clean .cc-live-stats-grid{
+    gap:10px!important;
+  }
+  .homepage-hero-clean .cc-stat-card{
+    height:112px!important;
+    min-height:112px!important;
+    padding:15px!important;
+  }
+  .homepage-hero-clean .cc-stat-card strong{
+    font-size:25px!important;
+  }
+}
