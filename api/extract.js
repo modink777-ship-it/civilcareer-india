@@ -515,6 +515,47 @@ async function callGeminiModel(model, prompt, sourceUrl) {
   }
 }
 
+
+function localFallbackExtract(content, sourceUrl) {
+  const text = String(content || '').replace(/\s+/g, ' ').trim();
+  const result = { ...EMPTY_FIELDS };
+  result.source_url = sourceUrl || '';
+
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}/i);
+  if (email) result.apply_url = sourceUrl || '';
+
+  const titlePatterns = [
+    /(?:job title|position|role|designation)\s*[:\-]\s*([^|.;]{4,120})/i,
+    /(?:hiring|vacancy|opening)\s*[:\-]?\s*([^|.;]{4,120})/i
+  ];
+  for (const re of titlePatterns) {
+    const m=text.match(re);
+    if(m){result.role=cleanText(m[1]);break;}
+  }
+  if(!result.role){
+    const first=text.split(/[.!?\n]/).map(x=>x.trim()).find(x=>/\b(civil|site|planning|structural|quantity survey|billing|estimation|construction|bim|qa\/?qc)\b/i.test(x));
+    if(first && first.length<160) result.role=cleanText(first);
+  }
+
+  const companyMatch=text.match(/(?:company|employer|organization|organisation)\s*[:\-]\s*([^|.;]{2,120})/i);
+  if(companyMatch) result.company=cleanText(companyMatch[1]);
+
+  const locationMatch=text.match(/(?:location|based in|job location)\s*[:\-]\s*([^|.;]{2,120})/i);
+  if(locationMatch) result.location=cleanText(locationMatch[1]);
+
+  const expMatch=text.match(/(?:experience|exp\.?)\s*[:\-]?\s*([^|.;]{2,100}(?:years?|yrs?)[^|.;]*)/i);
+  if(expMatch) result.experience_level=cleanText(expMatch[1]);
+
+  const qualMatch=text.match(/(?:qualification|education|eligibility)\s*[:\-]\s*([^|.;]{4,220})/i);
+  if(qualMatch) result.qualification=cleanText(qualMatch[1]);
+
+  result.description=text.slice(0,5000);
+  result.country=/\bindia\b/i.test(text) ? 'India' : '';
+  result.sector=/\b(government|govt|kpsc|nhai|rrb|ssc je|public sector)\b/i.test(text) ? 'Government' : 'Private';
+
+  return normalizeExtracted(result, sourceUrl);
+}
+
 async function runExtractionChain(prompt, sourceUrl) {
   const attempts = [];
 
@@ -574,7 +615,8 @@ async function runExtractionChain(prompt, sourceUrl) {
 
   return {
     ok: false,
-    attempts
+    attempts,
+    fallback: true
   };
 }
 
@@ -755,8 +797,21 @@ module.exports = async function handler(req, res) {
     JSON.stringify(result.attempts)
   );
 
+  // Free-tier providers can temporarily rate-limit after several extractions.
+  // Do not make the importer unusable: return a clearly marked local extraction
+  // so the admin can review/edit it and continue adding jobs.
+  const fallback = localFallbackExtract(content, url);
+  if (fallback) {
+    return res.status(200).json({
+      extracted: fallback,
+      source: 'local-fallback',
+      warning: 'Free AI providers are temporarily rate-limited. A local fallback organized the available text. Verify every field before saving.',
+      providers: result.attempts
+    });
+  }
+
   return res.status(502).json({
-    error: 'All configured AI extraction providers failed or were rate-limited.',
+    error: 'All configured AI extraction providers failed or were rate-limited, and the source text could not be organized.',
     providers: result.attempts
   });
 };
