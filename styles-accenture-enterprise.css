@@ -631,102 +631,108 @@ body.enterprise-ui .admin-page .admin-tabs button.active{background:var(--ccx-na
 }
 
 /* ============================================================
-   DETAIL PAGE ACTIONS — CivilCareer native style
-   Primary action is visible immediately at the top.
-   A compact sticky bar appears on small screens as a second
-   access point. Existing bottom actions remain unchanged.
+   PRIVATE JOBS — LIST + DETAIL SPLIT VIEW
+   CivilCareer native layout: vacancies left, selected job right.
    ============================================================ */
-
-.detail-top-actions{
-  display:flex!important;
-  flex-wrap:wrap!important;
-  gap:10px!important;
-  margin:18px 0 24px!important;
-  padding:12px!important;
-  border:1px solid #d8e2ec!important;
-  border-radius:14px!important;
-  background:#f4f8fb!important;
+.private-split-shell{padding-top:1.25rem;padding-bottom:3rem}
+.private-split-layout{
+  display:grid;
+  grid-template-columns:minmax(390px, .92fr) minmax(0,1.55fr);
+  gap:18px;
+  align-items:start;
 }
-
-.detail-action{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-height:44px!important;
-  padding:0 17px!important;
-  border-radius:10px!important;
-  font-size:12px!important;
-  font-weight:900!important;
-  letter-spacing:.02em!important;
-  text-decoration:none!important;
-  transition:transform .2s ease,background .2s ease,border-color .2s ease!important;
+.private-results-pane,
+.private-detail-pane{
+  background:#fff;
+  border:1px solid #d9e3ed;
+  border-radius:18px;
+  box-shadow:0 8px 24px rgba(9,31,55,.07);
 }
-
-.detail-action.primary{
-  background:#1d72ee!important;
-  color:#fff!important;
-  border:1px solid #1d72ee!important;
+.private-results-pane{padding:16px;min-height:650px}
+.private-pane-heading{
+  display:flex;align-items:end;justify-content:space-between;gap:14px;
+  padding:4px 4px 13px;border-bottom:1px solid #e3eaf1
 }
-
-.detail-action.primary:hover{
-  background:#155fc8!important;
-  border-color:#155fc8!important;
-  transform:translateY(-1px)!important;
+.private-pane-heading .eyebrow{margin:0 0 4px}
+.private-pane-heading h2{margin:0;color:#0b1f3a;font-size:22px}
+.private-pane-heading>strong{font-size:12px;color:#61748a;white-space:nowrap}
+.private-scope-chips{display:flex;gap:7px;flex-wrap:wrap;padding:12px 2px}
+.private-scope-chips button{
+  border:1px solid #cddae7;background:#fff;color:#0b1f3a;border-radius:999px;
+  padding:8px 12px;font-weight:800;cursor:pointer
 }
-
-.detail-action.secondary{
-  background:#fff!important;
-  color:#0b1f3a!important;
-  border:1px solid #cbd9e6!important;
+.private-scope-chips button.active{background:#0b1f3a;color:#fff;border-color:#0b1f3a}
+.private-filter-box{
+  border:1px solid #dce5ed;border-radius:14px;background:#f7fafc;padding:12px;margin-bottom:14px
 }
-
-.detail-action.secondary:hover{
-  background:#edf6ff!important;
-  border-color:#9fc9e6!important;
-  transform:translateY(-1px)!important;
+.private-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.private-filter-grid label{font-size:11px;font-weight:800;color:#60738a}
+.private-filter-grid select,.private-filter-grid input{
+  display:block;width:100%;box-sizing:border-box;margin-top:5px;
+  min-height:38px;border:1px solid #cfdbe6;border-radius:9px;background:#fff;
+  color:#0b1f3a;padding:0 9px
 }
-
-.detail-sticky-actions{
-  display:none;
+.private-filter-box>.btn{margin-top:10px}
+.private-results-sort{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:11px 2px;border-bottom:1px solid #e3eaf1;margin-bottom:8px
 }
-
-@media(max-width:720px){
-  .detail-top-actions{
-    position:sticky!important;
-    top:8px!important;
-    z-index:30!important;
-    margin:14px 0 20px!important;
-    padding:8px!important;
-    box-shadow:0 8px 22px rgba(7,26,45,.10)!important;
-  }
-
-  .detail-top-actions .detail-action{
-    flex:1 1 160px!important;
-  }
-
-  .detail-sticky-actions{
-    position:fixed!important;
-    left:12px!important;
-    right:12px!important;
-    bottom:12px!important;
-    z-index:999!important;
-    display:flex!important;
-    gap:8px!important;
-    padding:8px!important;
-    border:1px solid #d4e0eb!important;
-    border-radius:14px!important;
-    background:#fff!important;
-    box-shadow:0 10px 30px rgba(7,26,45,.18)!important;
-  }
-
-  .detail-sticky-actions .detail-action{
-    flex:1 1 0!important;
-    min-height:46px!important;
-    padding:0 10px!important;
-    font-size:11px!important;
-  }
-
-  body:has(.detail-sticky-actions){
-    padding-bottom:82px!important;
-  }
+.private-results-sort strong{font-size:13px;color:#0b1f3a}
+.private-results-sort select{border:1px solid #ccd9e5;border-radius:8px;padding:7px 9px;background:#fff;color:#0b1f3a}
+.private-job-list{display:grid!important;gap:8px!important}
+.private-job-list .job-card{
+  margin:0!important;cursor:pointer;border:1px solid #dce5ed!important;
+  border-radius:12px!important;box-shadow:none!important;transition:border-color .2s,background .2s,transform .2s!important
+}
+.private-job-list .job-card:hover{border-color:#8bbce3!important;background:#f7fbff!important;transform:translateY(-1px)!important}
+.private-job-list .job-card.selected{border-color:#1598df!important;background:#f2f9ff!important}
+.private-detail-pane{
+  position:sticky;top:18px;min-height:650px;max-height:calc(100vh - 36px);overflow:auto
+}
+.private-detail-empty{
+  min-height:610px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:44px;color:#60738a
+}
+.private-detail-mark{
+  width:48px;height:48px;border-radius:12px;background:#eaf6ff;color:#078bd2;
+  display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px
+}
+.private-detail-empty h2{margin:0 0 9px;color:#0b1f3a;font-size:28px}
+.private-detail-empty p:last-child{max-width:520px;line-height:1.6}
+.private-inline-card{padding:28px}
+.private-inline-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.private-inline-top h2{margin:4px 0 7px;color:#0b1f3a;font-size:32px;line-height:1.12}
+.private-inline-company{margin:0;color:#5e7288;font-size:15px}
+.private-inline-open{white-space:nowrap;color:#087ac1;font-weight:800;text-decoration:none}
+.private-inline-actions{display:flex;flex-wrap:wrap;gap:9px;margin:22px 0}
+.private-inline-meta{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0;padding:14px 0;
+  border-top:1px solid #e0e8ef;border-bottom:1px solid #e0e8ef
+}
+.private-inline-meta>div{padding:10px 12px;background:#f6f9fc;border-radius:9px}
+.private-inline-meta b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#60738a;margin-bottom:5px}
+.private-inline-meta span{font-size:14px;color:#243a50;line-height:1.45}
+.private-inline-description h3{font-size:19px;color:#0b1f3a;margin:22px 0 10px}
+.private-inline-description{color:#334b62;line-height:1.65}
+.private-inline-card .detail-action{display:inline-flex!important;align-items:center;justify-content:center;min-height:44px;padding:0 17px;border-radius:10px;font-size:12px;font-weight:900;text-decoration:none}
+.private-inline-card .detail-action.primary{background:#1379e8;color:#fff;border:1px solid #1379e8}
+.private-inline-card .detail-action.secondary{background:#fff;color:#0b1f3a;border:1px solid #cbd9e6}
+@media(max-width:1100px){
+  .private-split-layout{grid-template-columns:minmax(340px,.85fr) minmax(0,1.15fr)}
+  .private-inline-top h2{font-size:27px}
+}
+@media(max-width:900px){
+  .private-split-layout{display:block}
+  .private-results-pane{min-height:0;margin-bottom:14px}
+  .private-detail-pane{position:relative;top:auto;max-height:none;min-height:0}
+  .private-detail-empty{min-height:260px;padding:30px}
+  .private-inline-card{padding:22px}
+  .private-filter-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .private-filter-grid{grid-template-columns:1fr}
+  .private-inline-top{display:block}
+  .private-inline-open{display:inline-block;margin-top:10px}
+  .private-inline-top h2{font-size:24px}
+  .private-inline-meta{grid-template-columns:1fr}
 }

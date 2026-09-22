@@ -1381,16 +1381,3 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 @media(min-width:1051px){
   #mainNav{display:flex!important}
 }
-
-/* Company logo + official website identity */
-.organization{margin-top:7px}
-.company-link,.company-identity{display:inline-flex;align-items:center;gap:9px;min-width:0}
-.company-link{color:inherit;text-decoration:none}
-.company-link:hover .company-name{color:#0b78d0;text-decoration:underline;text-underline-offset:3px}
-.company-logo,.company-logo-fallback{width:32px;height:32px;min-width:32px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid #d7e1eb;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
-.company-logo-fallback{color:#0b5fa5;background:#edf6ff;font-size:11px;font-weight:900}
-.company-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.detail-company{margin:8px 0 4px}
-.detail-company .company-logo,.detail-company .company-logo-fallback{width:42px;height:42px;min-width:42px;border-radius:10px}
-.detail-company .company-name{font-size:16px;font-weight:800;color:#0b1f3a}
-@media(max-width:640px){.company-logo,.company-logo-fallback{width:30px;height:30px;min-width:30px}.detail-company .company-logo,.detail-company .company-logo-fallback{width:38px;height:38px;min-width:38px}}
