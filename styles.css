@@ -1382,9 +1382,105 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
   #mainNav{display:flex!important}
 }
 
-/* CIVILCAREER TARGETED FIX — 2026-09-22 */
-[data-page="jobDetail"],[data-page="examDetail"],[data-page="materialDetail"]{overflow:visible!important;min-height:0!important;background:#f7f9fc!important;}
-[data-page="jobDetail"]>.cc-page-visual,[data-page="examDetail"]>.cc-page-visual,[data-page="materialDetail"]>.cc-page-visual{display:none!important;}
-.dedicated-detail{padding-top:22px!important;padding-bottom:70px!important;}
-.dedicated-detail .dedicated-card{margin-top:0!important;position:relative!important;z-index:5!important;}
-.profile-overlay{z-index:200!important;}
+
+/* CivilCareer homepage hero/search refinement — 2026-09-22 */
+[data-page="home"] .hero{
+  min-height:0!important;
+}
+[data-page="home"] .hero-grid{
+  padding:64px 0 72px!important;
+}
+[data-page="home"] .hero .lead{
+  max-width:700px!important;
+  font-size:1.02rem!important;
+  line-height:1.72!important;
+}
+[data-page="home"] .hero-actions{
+  margin-top:26px!important;
+}
+[data-page="home"] .home-stats{
+  background:#f4f8fc!important;
+  border-top:1px solid #dbe6f0!important;
+  border-bottom:1px solid #dbe6f0!important;
+}
+[data-page="home"] .home-stats .stats-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  padding:0!important;
+}
+[data-page="home"] .home-stats .stat-item{
+  min-height:112px;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  padding:20px 24px!important;
+  border-right:1px solid #dbe6f0!important;
+  background:#f4f8fc!important;
+}
+[data-page="home"] .home-stats .stat-item:last-child{border-right:0!important}
+[data-page="home"] .home-stats .stat-num{
+  display:block!important;
+  color:#0b1f3a!important;
+  font-size:2rem!important;
+  line-height:1!important;
+  font-weight:900!important;
+}
+[data-page="home"] .home-stats .stat-label{
+  display:block!important;
+  margin-top:8px!important;
+  color:#52657b!important;
+  font-size:.76rem!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+  letter-spacing:.06em!important;
+}
+[data-page="home"] .trust-row{
+  background:#fff!important;
+}
+[data-page="home"] .trust-row-inner{
+  padding:16px 0!important;
+  gap:14px 28px!important;
+}
+[data-page="home"] .trust-row-inner span{
+  flex:1 1 220px;
+  color:#52657b!important;
+  line-height:1.45!important;
+}
+[data-page="home"] .trust-row-inner b{
+  color:#0b8f6b!important;
+}
+[data-page="home"] .smart-search{
+  min-height:88px!important;
+  padding:10px!important;
+  background:#eaf3ff!important;
+  border:1px solid #9ec5f2!important;
+}
+[data-page="home"] .smart-search label{
+  padding:10px 16px!important;
+  background:#f5f9ff!important;
+  border-radius:10px!important;
+}
+[data-page="home"] .smart-search input{
+  min-height:52px!important;
+  font-size:1.08rem!important;
+}
+[data-page="home"] .smart-search .btn{
+  min-height:64px!important;
+  padding:0 32px!important;
+  background:#0fb981!important;
+  color:#fff!important;
+  border:0!important;
+}
+/* The homepage search was intentionally removed; this styling remains for any other smart-search instance. */
+@media(max-width:900px){
+  [data-page="home"] .home-stats .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  [data-page="home"] .home-stats .stat-item:nth-child(2){border-right:0!important}
+  [data-page="home"] .home-stats .stat-item:nth-child(-n+2){border-bottom:1px solid #dbe6f0!important}
+}
+@media(max-width:620px){
+  [data-page="home"] .hero-grid{padding:46px 0 54px!important}
+  [data-page="home"] .home-stats .stats-grid{grid-template-columns:1fr 1fr!important}
+  [data-page="home"] .home-stats .stat-item{padding:18px 14px!important;min-height:96px}
+  [data-page="home"] .home-stats .stat-num{font-size:1.6rem!important}
+  [data-page="home"] .trust-row-inner{display:grid!important;grid-template-columns:1fr!important}
+}
