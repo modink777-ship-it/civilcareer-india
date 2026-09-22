@@ -1382,105 +1382,34 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
   #mainNav{display:flex!important}
 }
 
+/* CIVILCAREER TARGETED FIX — 2026-09-22 */
+[data-page="jobDetail"],[data-page="examDetail"],[data-page="materialDetail"]{overflow:visible!important;min-height:0!important;background:#f7f9fc!important;}
+[data-page="jobDetail"]>.cc-page-visual,[data-page="examDetail"]>.cc-page-visual,[data-page="materialDetail"]>.cc-page-visual{display:none!important;}
+.dedicated-detail{padding-top:22px!important;padding-bottom:70px!important;}
+.dedicated-detail .dedicated-card{margin-top:0!important;position:relative!important;z-index:5!important;}
+.profile-overlay{z-index:200!important;}
 
-/* CivilCareer homepage hero/search refinement — 2026-09-22 */
-[data-page="home"] .hero{
-  min-height:0!important;
-}
-[data-page="home"] .hero-grid{
-  padding:64px 0 72px!important;
-}
-[data-page="home"] .hero .lead{
-  max-width:700px!important;
-  font-size:1.02rem!important;
-  line-height:1.72!important;
-}
-[data-page="home"] .hero-actions{
-  margin-top:26px!important;
-}
-[data-page="home"] .home-stats{
-  background:#f4f8fc!important;
-  border-top:1px solid #dbe6f0!important;
-  border-bottom:1px solid #dbe6f0!important;
-}
-[data-page="home"] .home-stats .stats-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:0!important;
-  padding:0!important;
-}
-[data-page="home"] .home-stats .stat-item{
-  min-height:112px;
-  display:flex!important;
-  flex-direction:column!important;
-  justify-content:center!important;
-  padding:20px 24px!important;
-  border-right:1px solid #dbe6f0!important;
-  background:#f4f8fc!important;
-}
-[data-page="home"] .home-stats .stat-item:last-child{border-right:0!important}
-[data-page="home"] .home-stats .stat-num{
-  display:block!important;
-  color:#0b1f3a!important;
-  font-size:2rem!important;
-  line-height:1!important;
-  font-weight:900!important;
-}
-[data-page="home"] .home-stats .stat-label{
-  display:block!important;
-  margin-top:8px!important;
-  color:#52657b!important;
-  font-size:.76rem!important;
-  font-weight:800!important;
-  text-transform:uppercase!important;
-  letter-spacing:.06em!important;
-}
-[data-page="home"] .trust-row{
-  background:#fff!important;
-}
-[data-page="home"] .trust-row-inner{
-  padding:16px 0!important;
-  gap:14px 28px!important;
-}
-[data-page="home"] .trust-row-inner span{
-  flex:1 1 220px;
-  color:#52657b!important;
-  line-height:1.45!important;
-}
-[data-page="home"] .trust-row-inner b{
-  color:#0b8f6b!important;
-}
-[data-page="home"] .smart-search{
-  min-height:88px!important;
-  padding:10px!important;
-  background:#eaf3ff!important;
-  border:1px solid #9ec5f2!important;
-}
-[data-page="home"] .smart-search label{
-  padding:10px 16px!important;
-  background:#f5f9ff!important;
-  border-radius:10px!important;
-}
-[data-page="home"] .smart-search input{
-  min-height:52px!important;
-  font-size:1.08rem!important;
-}
-[data-page="home"] .smart-search .btn{
-  min-height:64px!important;
-  padding:0 32px!important;
-  background:#0fb981!important;
-  color:#fff!important;
-  border:0!important;
-}
-/* The homepage search was intentionally removed; this styling remains for any other smart-search instance. */
-@media(max-width:900px){
-  [data-page="home"] .home-stats .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-  [data-page="home"] .home-stats .stat-item:nth-child(2){border-right:0!important}
-  [data-page="home"] .home-stats .stat-item:nth-child(-n+2){border-bottom:1px solid #dbe6f0!important}
-}
-@media(max-width:620px){
-  [data-page="home"] .hero-grid{padding:46px 0 54px!important}
-  [data-page="home"] .home-stats .stats-grid{grid-template-columns:1fr 1fr!important}
-  [data-page="home"] .home-stats .stat-item{padding:18px 14px!important;min-height:96px}
-  [data-page="home"] .home-stats .stat-num{font-size:1.6rem!important}
-  [data-page="home"] .trust-row-inner{display:grid!important;grid-template-columns:1fr!important}
-}
+/* CivilCareer HOME FINAL — stats-in-hero + visible jobs + colorful search */
+.page[data-page="home"] .hero-grid{grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr)!important;align-items:stretch!important}
+.page[data-page="home"] .hero-stats-panel{display:flex!important;flex-direction:column!important;justify-content:center!important;min-height:420px!important;padding:34px!important;background:linear-gradient(145deg,#102945,#0b1f3a)!important;border:1px solid rgba(117,214,185,.35)!important;border-left:4px solid #10b981!important;box-shadow:0 24px 60px rgba(5,18,36,.25)!important}
+.page[data-page="home"] .hero-stats-panel .panel-label{color:#62e0b5!important;letter-spacing:.08em!important;font-weight:900!important;text-transform:uppercase!important}
+.page[data-page="home"] .hero-stat-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important;margin-top:22px!important}
+.page[data-page="home"] .hero-stat{min-height:142px!important;padding:22px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:16px!important;background:rgba(255,255,255,.055)!important;display:flex!important;flex-direction:column!important;justify-content:center!important}
+.page[data-page="home"] .hero-stat strong{font-size:2.35rem!important;line-height:1!important;color:#fff!important;font-weight:950!important}
+.page[data-page="home"] .hero-stat span{margin-top:10px!important;color:#c7d5e5!important;font-size:.78rem!important;line-height:1.35!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.05em!important}
+.page[data-page="home"] .trust-row{background:#fff!important}
+.page[data-page="home"] .trust-row-inner{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:14px!important;padding:18px 0!important}
+.page[data-page="home"] .trust-row-inner span{font-size:.82rem!important;line-height:1.45!important;color:#53677e!important}
+.page[data-page="home"] .trust-row-inner b{color:#0b8f6b!important}
+.page[data-page="home"] .search-wrap{margin-top:22px!important;margin-bottom:34px!important}
+.page[data-page="home"] .smart-search{display:grid!important;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr) 170px!important;align-items:stretch!important;gap:0!important;min-height:104px!important;padding:8px!important;border-radius:18px!important;background:linear-gradient(135deg,#e8f3ff,#eefcf8)!important;border:1px solid #a8c9e8!important;box-shadow:0 14px 34px rgba(11,31,58,.10)!important}
+.page[data-page="home"] .smart-search label{display:flex!important;flex-direction:column!important;justify-content:center!important;padding:14px 20px!important;background:#fff!important;border-radius:12px!important}
+.page[data-page="home"] .smart-search label+label{border-left:1px solid #d2e0ed!important;border-radius:0 12px 12px 0!important}
+.page[data-page="home"] .smart-search label span{color:#49627e!important;font-size:.72rem!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.06em!important}
+.page[data-page="home"] .smart-search input{width:100%!important;min-height:48px!important;border:0!important;outline:0!important;background:transparent!important;color:#0b1f3a!important;font-size:1.12rem!important;font-weight:600!important}
+.page[data-page="home"] .smart-search .btn{align-self:stretch!important;margin-left:8px!important;border-radius:12px!important;background:linear-gradient(135deg,#11b981,#0b9d72)!important;color:#fff!important;border:0!important;font-size:1.05rem!important;font-weight:900!important;box-shadow:0 10px 24px rgba(16,185,129,.25)!important}
+.page[data-page="home"] .smart-search .btn:hover{filter:brightness(1.05)!important;transform:translateY(-1px)!important}
+.page[data-page="home"] .portal-highlights{display:none!important}
+.page[data-page="home"] .section.soft{margin-top:0!important}
+@media(max-width:900px){.page[data-page="home"] .hero-grid{grid-template-columns:1fr!important}.page[data-page="home"] .hero-stats-panel{min-height:0!important}.page[data-page="home"] .trust-row-inner{grid-template-columns:1fr 1fr!important}.page[data-page="home"] .smart-search{grid-template-columns:1fr 1fr!important;gap:8px!important;padding:8px!important}.page[data-page="home"] .smart-search label+label{border-left:0!important;border-radius:12px!important}.page[data-page="home"] .smart-search .btn{grid-column:1/-1;min-height:58px!important;margin-left:0!important}}
+@media(max-width:620px){.page[data-page="home"] .hero-stat-grid{grid-template-columns:1fr 1fr!important}.page[data-page="home"] .hero-stat{min-height:110px!important;padding:16px!important}.page[data-page="home"] .hero-stat strong{font-size:1.8rem!important}.page[data-page="home"] .trust-row-inner{grid-template-columns:1fr!important}.page[data-page="home"] .smart-search{grid-template-columns:1fr!important}.page[data-page="home"] .smart-search .btn{grid-column:auto!important}}
