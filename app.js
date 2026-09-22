@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════
    ROLE-BASED CATEGORISATION SYSTEM
 ═══════════════════════════════════════════════ */
@@ -456,7 +457,7 @@ function openProfileSetup(){
   overlay.innerHTML=`<div class="profile-modal-inner">
     <div class="profile-modal-header">
       <h2>🎯 Your Job Profile</h2>
-      <button class="profile-close" onclick="document.getElementById('profileModal').close()">✕</button>
+      <button class="profile-close" onclick="closeProfileModal()">✕</button>
     </div>
     <div class="profile-tabs">
       <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
@@ -554,7 +555,7 @@ function saveProfile(){
     keywords_exclude:$('pExclude')?.value||''
   };
   saveProfileLocal();
-  $('editorDialog').close();
+  closeProfileModal();
   toast('Profile saved! Finding your matches…');
   navigate('foryou');
   renderForYou();
@@ -621,6 +622,24 @@ function discoveryStatus(message,type='show'){
 function normDiscovery(v){
   return String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 }
+function existingJobDuplicate(candidate, ignoreId='') {
+  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+  const u=norm(candidate?.url||candidate?.source_url||candidate?.application_url||candidate?.apply_url);
+  const role=norm(candidate?.role||candidate?.role_normalized||candidate?.title), company=norm(candidate?.company||candidate?.recruitment_authority);
+  const loc=norm(candidate?.location_display||candidate?.location||[candidate?.city,candidate?.state,candidate?.country].filter(Boolean).join(' '));
+  return (jobs||[]).find(j=>{
+    if(ignoreId && String(j.id)===String(ignoreId)) return false;
+    const ju=norm(j.source_url||j.application_url||j.apply_url);
+    if(u && ju && (u===ju || u.includes(ju) || ju.includes(u))) return true;
+    const jr=norm(j.role||j.role_normalized), jc=norm(j.company||j.recruitment_authority);
+    if(role && company && jr===role && jc===company){
+      const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
+      return !loc || !jl || loc===jl || loc.includes(jl) || jl.includes(loc);
+    }
+    return false;
+  })||null;
+}
+
 function discoveryDuplicate(item){
   const iu=normDiscovery(item?.url).replace(/\/$/,'');
   const it=normDiscovery(item?.title);
@@ -652,19 +671,18 @@ function renderDiscoveryDrafts(){
   });
 }
 function renderDiscoveryResults(results){
-  const root=$('discoveryResults');
-  if(!root)return;
-  if(!results.length){
-    root.innerHTML='<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';
+  const root=$('discoveryResults'); if(!root)return;
+  const input=Array.isArray(results)?results:[];
+  const fresh=input.filter(r=>!discoveryDuplicate(r));
+  window._ccDiscoveryResults=fresh;
+  if(!fresh.length){
+    root.innerHTML=input.length
+      ? '<div class="empty-state"><h3>No new jobs found</h3><p>All matching discovery results are already present on CivilCareer.</p></div>'
+      : '<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';
     return;
   }
-  window._ccDiscoveryResults=results;
-  root.innerHTML=results.map((r,i)=>{
-    const duplicate=discoveryDuplicate(r);
-    return `<article class="admin-discovery-result ${duplicate?'is-duplicate':''}"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>${duplicate?`<div class="discovery-duplicate">Already in CivilCareer: ${esc(duplicate.role||'existing job')} — review instead of creating another copy.</div>`:''}</div><div class="admin-discovery-actions">${duplicate?`<button class="btn secondary" type="button" data-discovery-existing="${esc(duplicate.id)}">Review existing</button>`:`<button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button>`}<a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`;
-  }).join('');
-  $$('#discoveryResults [data-discovery-existing]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.discoveryExisting))));
-  $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
+  root.innerHTML=fresh.map((r,i)=>`<article class="admin-discovery-result"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button><a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('');
+  $$('[data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
 async function discoverJobs(){
   const btn=$('discoverySearchBtn');
