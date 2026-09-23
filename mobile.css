@@ -267,3 +267,5 @@ img, svg { max-width: 100%; height: auto; }
   .live-stat span{font-size:11px!important}
   .live-panel-note{font-size:12px!important;line-height:1.45!important}
 }
+
+@media(max-width:760px){.job-filter-bar .filter-controls select{min-width:120px!important}.job-filter-bar .scope-scroll button{min-height:38px}.results-head{gap:8px;align-items:flex-start}.results-head .filter-hint{display:none}}

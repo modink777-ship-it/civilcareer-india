@@ -69,19 +69,50 @@
     </div>
   </div>
 </section>
-<section class="page" data-page="private"><div class="page-hero container"><p class="eyebrow">PRIVATE CIVIL ENGINEERING OPPORTUNITIES · INDIA + GLOBAL</p><h1>Civil Engineering Jobs</h1><p>Private-sector Civil Engineering opportunities across India — local and regional employers, Indian companies, Indian MNCs and global engineering organizations.</p></div><div class="container"><div class="private-scope-chips" id="privateScopeChips"><button class="active" data-scope="all">All India</button><button data-scope="state">State-wise</button><button data-scope="city">City-wise</button><button data-scope="global">International</button></div><button class="btn secondary mobile-filter-btn" id="privateFilterBtn" type="button">Filters</button><div class="active-filters" id="privateFilterChips"></div><input type="hidden" id="privateLocation"><div class="listing-layout"><aside class="filters" id="privateFilters"><div class="filter-title"><h3>Filter active jobs</h3><button id="closePrivateFilters" type="button">×</button></div><label>Country<select id="privateCountry"><option value="">All countries</option></select></label><label>State / region<select id="privateState"><option value="">All states / regions</option></select></label><label>City / district<select id="privateCity"><option value="">All cities / districts</option></select></label><label>Role<select id="privateRole"><option value="">All roles</option></select></label><label>Experience<select id="privateExperience"><option value="">All experience levels</option></select></label><label>Employment type<select id="privateType"><option value="">All employment types</option></select></label><label>Posted date<select id="privatePosted"><option value="">Any posted date</option><option value="1">Today</option><option value="3">Last 3 days</option><option value="7">Last 7 days</option><option value="15">Last 15 days</option><option value="30">Last 30 days</option></select></label><button class="btn secondary" id="clearPrivateFilters" type="button">Clear all filters</button></aside><div><div class="results-head"><strong id="privateCount">Active opportunities</strong><select id="privateSort">
-      <option value="new">Newest first</option>
-      <option value="24h">Last 24 hours</option>
-      <option value="3d">Last 3 days</option>
-      <option value="7d">Last 7 days</option>
-      <option value="14d">Last 14 days</option>
-      <option value="30d">Last 30 days</option>
-      <option value="week">This week</option>
-      <option value="month">This month</option>
-      <option value="closing_soon">Closing soon</option>
-      <option value="oldest">Oldest first</option>
-    </select></div><div class="cards list" id="privateJobs"></div></div></div></div></section>
-<section class="page" data-page="government"><div class="page-hero container"><p class="eyebrow">GOVERNMENT CIVIL RECRUITMENT · INDIA</p><h1>Government Civil Jobs</h1><p>Central and State government opportunities specifically relevant to Civil Engineers, Diploma holders and civil-technical candidates.</p></div><div class="container"><div class="gov-scope-chips" id="govScopeChips"><button class="active" data-scope="all">All Government</button><button data-scope="central">Central Government</button><button data-scope="state">State Government</button></div><button class="btn secondary mobile-filter-btn" id="govFilterBtn" type="button">Filters</button><div class="active-filters" id="govFilterChips"></div><div class="listing-layout"><aside class="filters" id="govFilters"><div class="filter-title"><h3>Filter recruitment</h3><button id="closeGovFilters" type="button">×</button></div><label>State / region<select id="govState"><option value="">All states / regions</option></select></label><label>District<select id="govDistrict"><option value="">All districts</option><option>Bagalkot</option><option>Ballari</option><option>Belagavi</option><option>Bengaluru</option><option>Bidar</option><option>Chamarajanagar</option><option>Chikkaballapur</option><option>Chikkamagaluru</option><option>Chitradurga</option><option>Dakshina Kannada</option><option>Davanagere</option><option>Dharwad</option><option>Gadag</option><option>Hassan</option><option>Haveri</option><option>Kalaburagi</option><option>Kodagu</option><option>Kolar</option><option>Koppal</option><option>Mandya</option><option>Mangaluru</option><option>Mysuru</option><option>Raichur</option><option>Ramanagara</option><option>Shivamogga</option><option>Tumakuru</option><option>Udupi</option><option>Uttara Kannada</option><option>Vijayapura</option><option>Yadgir</option></select></label><label>Qualification<select id="govEdu"><option value="">All qualifications</option><option value="diploma">Diploma</option><option value="degree">Degree / Graduation</option><option value="b.e">B.E / B.Tech</option><option value="m.e">M.E / M.Tech</option></select></label><label>District / city<select id="govLocation"><option value="">All locations</option></select></label><label>Qualification<select id="govQualification"><option value="">All qualifications</option></select></label><label>Application status<select id="govStatus"><option value="active">Applications open</option><option value="closed">Application closed</option><option value="">All statuses</option></select></label><button class="btn secondary" id="clearGovFilters" type="button">Clear all filters</button></aside><div><div class="results-note">Browse by Central or State recruitment above. Qualification remains available as a filter inside the job listings.</div><div class="results-head"><strong id="governmentCount">Recruitment opportunities</strong><select id="govSort"><option value="new">Newest first</option><option value="deadline">Application deadline</option></select></div><div class="cards list" id="governmentJobs"></div></div></div></div></section>
+<section class="page" data-page="private">
+<div class="page-hero container"><p class="eyebrow">PRIVATE CIVIL ENGINEERING OPPORTUNITIES · INDIA + GLOBAL</p><h1>Civil Engineering Jobs</h1><p>Private-sector Civil Engineering opportunities across India — local and regional employers, Indian companies, Indian MNCs and global engineering organizations.</p></div>
+<div class="container">
+  <div class="job-filter-bar" id="privateFilterBar">
+    <div class="scope-scroll" id="privateScopeChips">
+      <button class="active" data-scope="all">All India</button><button data-scope="state">State-wise</button><button data-scope="city">City-wise</button><button data-scope="global">International</button>
+    </div>
+    <div class="filter-controls">
+      <select id="privateRole"><option value="">Role</option></select>
+      <select id="privateExperience"><option value="">Experience</option></select>
+      <select id="privateState"><option value="">State</option></select>
+      <select id="privateCity"><option value="">City</option></select>
+      <select id="privateType"><option value="">Employment</option></select>
+      <select id="privateSort"><option value="new">Newest</option><option value="24h">Last 24 hours</option><option value="3d">Last 3 days</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="closing_soon">Closing soon</option><option value="oldest">Oldest</option></select>
+      <button class="clear-filter-btn" id="clearPrivateFilters" type="button">Clear</button>
+    </div>
+  </div>
+  <div class="results-head"><strong id="privateCount">Active opportunities</strong><span class="filter-hint">Select a job to view full details →</span></div>
+  <div class="job-results-split">
+    <div class="job-results-list"><div class="cards list" id="privateJobs"></div></div>
+    <aside class="job-detail-pane" id="privateJobDetail"></aside>
+  </div>
+</div>
+</section>
+<section class="page" data-page="government">
+<div class="page-hero container"><p class="eyebrow">GOVERNMENT CIVIL RECRUITMENT · INDIA</p><h1>Government Civil Jobs</h1><p>Central and State government opportunities specifically relevant to Civil Engineers, Diploma holders and civil-technical candidates.</p></div>
+<div class="container">
+  <div class="job-filter-bar gov-filter-bar" id="govFilterBar">
+    <div class="scope-scroll" id="govScopeChips"><button class="active" data-scope="all">All Government</button><button data-scope="central">Central Government</button><button data-scope="state">State Government</button></div>
+    <div class="filter-controls">
+      <select id="govState"><option value="">State</option></select>
+      <select id="govDistrict"><option value="">District</option></select>
+      <select id="govEdu"><option value="">Qualification</option><option value="diploma">Diploma</option><option value="degree">Degree / Graduation</option><option value="b.e">B.E / B.Tech</option><option value="m.e">M.E / M.Tech</option></select>
+      <select id="govStatus"><option value="active">Applications open</option><option value="closed">Closed</option><option value="">All statuses</option></select>
+      <select id="govSort"><option value="new">Newest</option><option value="deadline">Deadline</option></select>
+    </div>
+  </div>
+  <div class="results-head"><strong id="governmentCount">Recruitment opportunities</strong><span class="filter-hint">Select a recruitment to view full details →</span></div>
+  <div class="job-results-split">
+    <div class="job-results-list"><div class="cards list" id="governmentJobs"></div></div>
+    <aside class="job-detail-pane" id="governmentJobDetail"></aside>
+  </div>
+</div>
+</section>
 <section class="page" data-page="exams"><div class="page-hero container"><p class="eyebrow">CIVIL ENGINEERING EXAMINATIONS · INDIA</p><h1>Civil Engineering Exams</h1><p>Explore civil-focused government and competitive examinations across India, with eligibility, dates and official sources.</p></div><div class="container"><div class="chips" id="examChips"><button class="active" data-code="">All</button><button data-code="GATE">GATE</button><button data-code="ESE">ESE</button><button data-code="SSC JE">SSC JE</button><button data-code="RRB JE">RRB JE</button><button data-code="AE">AE</button><button data-code="JE">JE</button></div><div class="cards three" id="examCards"></div></div></section>
 <section class="page" data-page="jobDetail"><div class="container dedicated-detail"><button class="back-link route" data-route="private" type="button">← Back to jobs</button><div id="jobDetailPage"></div></div></section>
 <section class="page" data-page="examDetail">
@@ -119,7 +150,7 @@
 </div>
 
 <div class="toast" id="toast" role="status"></div><dialog id="detailDialog"><div class="dialog-head"><h2 id="detailTitle">Details</h2><button data-close>×</button></div><div class="dialog-body" id="detailBody"></div></dialog><dialog id="editorDialog"><div class="dialog-head"><h2 id="editorTitle">Content editor</h2><button data-close>×</button></div><div class="dialog-body" id="editorBody"></div></dialog>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script src="/app.js?v=20260924-compact-cards-v2"></script><script src="/v8.js?v=20260924-compact-cards"></script><script src="/discovery-v9.js?v=20260922-800"></script><script src="/cc-intelligence.js?v=20260924-compact-cards"></script><script src="/hero-3d.js?v=20260921-200" defer></script><script src="/next-phase.js?v=20260924-compact-cards"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script src="/app.js?v=20260924-job-split-v3"></script><script src="/v8.js?v=20260924-compact-cards"></script><script src="/discovery-v9.js?v=20260922-800"></script><script src="/cc-intelligence.js?v=20260924-compact-cards"></script><script src="/hero-3d.js?v=20260921-200" defer></script><script src="/next-phase.js?v=20260924-compact-cards"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
