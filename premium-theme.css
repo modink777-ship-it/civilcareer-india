@@ -546,3 +546,149 @@ tr:nth-child(even) td{background:#FAF9F5!important}
 .cc-bg-layer,.cc-bg-label{
   display:none!important;
 }
+
+/* =========================================================
+   MY CAREER — ACCOUNT ENTRY
+   ========================================================= */
+.mycareer-page{
+  padding:42px 0 60px!important;
+}
+.mycareer-card{
+  max-width:1120px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);
+  gap:28px;
+  padding:42px;
+  border:1px solid #D7E0E8;
+  border-radius:24px;
+  background:linear-gradient(135deg,#fffefa 0%,#f3f7fb 100%);
+  box-shadow:0 18px 50px rgba(11,20,36,.09);
+}
+.mycareer-copy h1{
+  color:#0B1424!important;
+  font-size:clamp(2.25rem,4vw,3.6rem)!important;
+  line-height:1.04!important;
+  letter-spacing:-2px!important;
+  margin:8px 0 16px!important;
+  max-width:700px;
+}
+.mycareer-lead{
+  color:#536477!important;
+  font-size:17px!important;
+  line-height:1.65!important;
+  max-width:700px;
+  margin:0!important;
+}
+.mycareer-actions{
+  display:flex;
+  gap:12px;
+  margin-top:26px;
+}
+.mycareer-actions .btn{
+  min-height:48px!important;
+  padding:0 22px!important;
+}
+.mycareer-note{
+  color:#758397!important;
+  font-size:12px!important;
+  margin-top:13px!important;
+}
+.mycareer-points{
+  display:grid;
+  gap:12px;
+  align-content:center;
+}
+.mycareer-points>div{
+  padding:18px;
+  border:1px solid #DCE4EC;
+  border-radius:16px;
+  background:#fffefa;
+}
+.mycareer-points span{
+  display:block;
+  color:#C6A15B;
+  font-weight:800;
+  font-size:12px;
+  margin-bottom:6px;
+}
+.mycareer-points strong{
+  display:block;
+  color:#0B1424;
+  font-size:16px;
+}
+.mycareer-points small{
+  display:block;
+  color:#64748A;
+  line-height:1.45;
+  margin-top:4px;
+}
+.modal-backdrop[hidden]{display:none!important}
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(5,12,24,.68);
+}
+.mycareer-auth{
+  position:relative;
+  width:min(100%,440px);
+  padding:32px;
+  border-radius:22px;
+  background:#fffefa;
+  box-shadow:0 30px 90px rgba(0,0,0,.3);
+}
+.mycareer-auth h2{
+  color:#0B1424!important;
+  margin:7px 0 8px!important;
+}
+.mycareer-auth>p:not(.eyebrow):not(.mycareer-auth-foot){
+  color:#536477!important;
+  line-height:1.55;
+}
+.mycareer-auth form{
+  display:grid;
+  gap:14px;
+  margin-top:20px;
+}
+.mycareer-auth label{
+  color:#26364A;
+  font-size:13px;
+  font-weight:700;
+}
+.mycareer-auth input{
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
+  height:46px;
+  padding:0 13px;
+  border:1px solid #CBD5E1;
+  border-radius:10px;
+  color:#0B1424;
+  background:#fff;
+}
+.mycareer-auth .btn{width:100%;margin-top:3px}
+.mycareer-auth-close{
+  position:absolute;
+  top:12px;
+  right:14px;
+  border:0;
+  background:transparent;
+  color:#536477;
+  font-size:28px;
+  cursor:pointer;
+}
+.mycareer-auth-foot{
+  color:#8A96A6!important;
+  font-size:11px;
+  margin-top:14px;
+}
+body.modal-open{overflow:hidden}
+@media(max-width:800px){
+  .mycareer-card{grid-template-columns:1fr;padding:26px}
+  .mycareer-actions{flex-direction:column}
+  .mycareer-actions .btn{width:100%}
+}
