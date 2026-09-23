@@ -259,7 +259,7 @@
     if (!host || host.querySelector('.cc-brief')) return;
     const j = (typeof window.__ccCurrentJob !== 'undefined') ? window.__ccCurrentJob : null;
     if (!j) return;
-    host.insertAdjacentHTML('beforeend', `<div class="detail full cc-brief"><b>AI Job Brief</b><div class="detail-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">${jobBrief(j)}</div></div>`);
+    host.insertAdjacentHTML('beforeend', `<div class="detail full cc-brief"><b></b><div class="detail-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">${jobBrief(j)}</div></div>`);
   }
 
   let wired = false;
@@ -293,9 +293,9 @@
       let i = 0;
       setInterval(() => { if (document.activeElement !== qEl && !qEl.value) qEl.placeholder = examples[i++ % examples.length]; }, 4000);
     }
-    setInterval(() => { try { injectHomeSections(); briefOnDetail(); decorateMatches(document.querySelector('.page.active')); } catch (e) {} }, 1200);
+    setInterval(() => { try { injectHomeSections(); decorateMatches(document.querySelector('.page.active')); } catch (e) {} }, 1200);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.CivilCareerIntelligence = { parseQuery, matchJob, radarData, jobBrief, searchJobsFallback, applyToFilters };
+  window.CivilCareerIntelligence = { parseQuery, matchJob, radarData, searchJobsFallback, applyToFilters };
 })();

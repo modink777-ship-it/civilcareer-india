@@ -193,3 +193,7 @@ tr:nth-child(even) td{background:#FAF9F5!important}
 
 /* Homepage radar/stat strip intentionally removed. */
 .cc-radar,#ccRadar{display:none!important;}
+
+/* TARGETED CLEANUP: NO PHOTO HEROES */
+.hero,.page-hero,.careerhub-hero,.cc-page-visual{background-image:none!important;background-color:var(--soft,#e7eff7)!important;}
+.cc-bg-layer,.cc-bg-label{display:none!important;}
