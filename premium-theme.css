@@ -197,3 +197,7 @@ tr:nth-child(even) td{background:#FAF9F5!important}
 /* TARGETED CLEANUP: NO PHOTO HEROES */
 .hero,.page-hero,.careerhub-hero,.cc-page-visual{background-image:none!important;background-color:var(--soft,#e7eff7)!important;}
 .cc-bg-layer,.cc-bg-label{display:none!important;}
+
+/* TARGETED HERO 3D PALETTE */
+.hero{background-image:none!important;background-color:#e7eff7!important;}
+.hero-3d-canvas{opacity:.78!important;filter:saturate(1.25) contrast(1.08);}

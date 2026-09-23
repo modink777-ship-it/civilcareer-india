@@ -132,7 +132,6 @@ if($('privateCity')&&!$('privateCity').options.length){
 const role=($('privateRole')&&$('privateRole').value||'').toLowerCase();
   const loc=($('privateLocation')&&$('privateLocation').value||'').toLowerCase();
   const exp=($('privateExperience')&&$('privateExperience').value||'').toLowerCase();
-  const qual=($('privateQualification')&&$('privateQualification').value||'').toLowerCase();
   const timePeriod=$('privateSort')&&$('privateSort').value||'';
   const now=new Date();
 
@@ -152,8 +151,7 @@ const role=($('privateRole')&&$('privateRole').value||'').toLowerCase();
 
   a=a.filter(j=>!role||String(j.role).toLowerCase().includes(role))
      .filter(j=>!loc||String(j.location).toLowerCase().includes(loc))
-     .filter(j=>!exp||String(j.experience_level).toLowerCase()===exp)
-     .filter(j=>!qual||String(j.qualification).toLowerCase().includes(qual));
+     .filter(j=>!exp||String(j.experience_level).toLowerCase()===exp);
 
   if($('privateType')&&$('privateType').value)a=a.filter(j=>j.employment_type===$('privateType').value);
 
@@ -200,7 +198,6 @@ const dep=($('govDepartment')&&$('govDepartment').value||'').toLowerCase();
   a=a.filter(j=>!dep||[j.company,j.discipline,j.description].join(' ').toLowerCase().includes(dep))
      .filter(j=>!loc||String(j.location).toLowerCase().includes(loc))
      .filter(j=>!dist||String(j.location).toLowerCase().includes(dist))
-     .filter(j=>!qual||String(j.qualification).toLowerCase().includes(qual))
      .filter(j=>!edu||String(j.qualification).toLowerCase().includes(edu))
      .filter(j=>!org||[j.company,j.recruitment_authority,j.description].join(' ').toLowerCase().includes(org));
 
@@ -815,7 +812,7 @@ function materialEditor(m={}){$('editorTitle').textContent=m.id?'Edit material':
 function openEditor(){$('editorDialog').showModal()}
 $$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$('language').onclick=()=>{lang=lang==='en'?'kn':'en';localStorage.setItem('cc_lang',lang);translate();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('searchOpen').onclick=()=>{$('globalQuery').focus();scrollTo({top:document.querySelector('.search-wrap').offsetTop-90,behavior:'smooth'})};
 const sug=['Civil Engineer','Site Engineer','Planning Engineer','Quantity Surveyor','BIM Engineer','Structural Engineer','Government Civil Jobs','SSC JE Civil','ESE Civil','Bengaluru','Mumbai','Hyderabad'];$('globalQuery').oninput=e=>{const q=e.target.value.toLowerCase();const a=sug.filter(x=>x.toLowerCase().includes(q)).slice(0,5);$('suggestions').innerHTML=a.map(x=>`<button type="button">${x}</button>`).join('');$('suggestions').classList.toggle('show',q.length>0&&a.length>0);$$('#suggestions button').forEach(b=>b.onclick=()=>{$('globalQuery').value=b.textContent;$('suggestions').classList.remove('show')})};$('smartSearch').onsubmit=e=>{e.preventDefault();$('suggestions').classList.remove('show');search($('globalQuery').value,$('globalLocation').value)};
-if($('privateScopeChips'))$$('#privateScopeChips button').forEach(b=>b.onclick=()=>{$$('#privateScopeChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});['privateRole','privateExperience','privateType','privateSort'].forEach(id=>$(id).onchange=renderPrivate);['privateLocation','privateQualification'].forEach(id=>$(id).oninput=renderPrivate);['govStatus','govSort'].forEach(id=>$(id)&&$(id).addEventListener('change',renderGovernment));
+if($('privateScopeChips'))$$('#privateScopeChips button').forEach(b=>b.onclick=()=>{$$('#privateScopeChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});['privateRole','privateExperience','privateType','privateSort'].forEach(id=>$(id).onchange=renderPrivate);['privateLocation'].forEach(id=>$(id).oninput=renderPrivate);['govStatus','govSort'].forEach(id=>$(id)&&$(id).addEventListener('change',renderGovernment));
 $('privateSort')&&$('privateSort').addEventListener('change',renderPrivate);
 ['govState','govLocation','govQualification','govDistrict','govEdu'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',renderGovernment);el&&el.addEventListener('input',renderGovernment)});
 // Org chips for govt jobs

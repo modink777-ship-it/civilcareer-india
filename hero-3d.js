@@ -142,7 +142,7 @@
       return { sx: W * 0.62 + rx * sc, sy: H * 0.80 - y * sc, s: sc };
     }
 
-    var BLUE = '21, 94, 168';
+    var BLUE = '11, 31, 58';
     function blue(a) { return 'rgba(' + BLUE + ',' + a + ')'; }
 
     /* ── aurora atmosphere ── */
@@ -155,7 +155,7 @@
 
       var bx = W * 0.20 - mx * 24, by = H * 0.70 + my * 14;
       var g2 = ctx.createRadialGradient(bx, by, 10, bx, by, Math.max(W, H) * 0.45);
-      g2.addColorStop(0, 'rgba(36,117,104,0.12)');
+      g2.addColorStop(0, 'rgba(36,117,104,0.16)');
       g2.addColorStop(1, 'rgba(36,117,104,0)');
       ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
