@@ -22,7 +22,7 @@ jobCard=function(j,gov=false){
   const closed=isClosed(j),saved=getSaved().has(j.id);
   const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
   const applyUrl=j.apply_url||j.source_url||'';
-  return `<article class="job-card cc-modern-job-card job-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
+  return `<article class="job-card cc-modern-job-card job-summary-card homepage-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
     <div class="cc-job-title-row"><h3>${esc(j.role||'Opportunity')}</h3></div>
     <div class="cc-company-name job-summary-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
     <div class="cc-job-meta job-summary-meta">

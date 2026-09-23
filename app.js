@@ -77,7 +77,7 @@ function jobCard(j,gov=false){
   const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
   const applyUrl=j.apply_url||j.source_url||'';
   const waText=encodeURIComponent((j.role||'Job')+' at '+(j.company||'Organization')+'\n'+(j.location?j.location+'\n':'')+(applyUrl?'Apply: '+applyUrl:''));
-  return `<article class="job-card cc-modern-job-card job-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
+  return `<article class="job-card cc-modern-job-card job-summary-card homepage-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
     <div class="cc-job-title-row">
       <h3>${esc(j.role||'Opportunity')}</h3>
     </div>

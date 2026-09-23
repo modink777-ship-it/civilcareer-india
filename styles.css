@@ -1634,3 +1634,127 @@ main,.page{background:transparent}
 
 @media(max-width:900px){.job-summary-card{aspect-ratio:auto!important;min-height:390px!important}}
 @media(max-width:760px){.live-stat-grid{gap:8px}.live-stat{padding:12px}.live-stat b{font-size:24px}.job-summary-card{min-height:370px!important}.smart-search{border-width:2px!important}.smart-search .btn{border-width:2px!important}}
+
+
+/* CIVILCAREER — FINAL HOMEPAGE JOB CARD COMPACT MODE */
+.job-summary-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  max-width:1200px!important;
+  margin-inline:auto!important;
+  gap:18px!important;
+  align-items:stretch!important;
+}
+.job-summary-card{
+  width:100%!important;
+  aspect-ratio:1 / 1!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:hidden!important;
+  padding:20px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+}
+.job-summary-card .cc-job-title-row{
+  flex:0 0 auto!important;
+  margin:0 0 7px!important;
+}
+.job-summary-card .cc-job-title-row h3{
+  font-size:18px!important;
+  line-height:1.22!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+}
+.job-summary-card .job-summary-company{
+  flex:0 0 auto!important;
+  margin:0 0 13px!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.job-summary-card .job-summary-meta{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:7px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.job-summary-card .job-summary-meta span{
+  display:block!important;
+  padding:7px 9px!important;
+  border:1px solid #e1e8f0!important;
+  border-radius:8px!important;
+  background:#f6f9fc!important;
+  font-size:12px!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.job-summary-card .job-summary-actions{
+  margin-top:auto!important;
+  padding-top:12px!important;
+  border-top:1px solid #e7edf3!important;
+  display:grid!important;
+  grid-template-columns:1fr auto auto!important;
+  gap:7px!important;
+}
+.job-summary-card .job-summary-actions>*{
+  min-width:0!important;
+}
+.job-summary-card .job-summary-actions .cc-view-btn,
+.job-summary-card .job-summary-actions .btn-apply,
+.job-summary-card .job-summary-actions .btn-save{
+  min-height:38px!important;
+  height:38px!important;
+  padding:7px 10px!important;
+  font-size:12px!important;
+  border-radius:8px!important;
+}
+
+/* Never expose descriptive/qualification text on the homepage summary cards. */
+#homePrivate .job-summary-card > p,
+#homeGovernment .job-summary-card > p,
+#homePrivate .job-summary-card .job-description,
+#homeGovernment .job-summary-card .job-description,
+#homePrivate .job-summary-card .description,
+#homeGovernment .job-summary-card .description,
+#homePrivate .job-summary-card .job-description-text,
+#homeGovernment .job-summary-card .job-description-text,
+#homePrivate .job-summary-card .role-description,
+#homeGovernment .job-summary-card .role-description,
+#homePrivate .job-summary-card .job-summary-description,
+#homeGovernment .job-summary-card .job-summary-description,
+#homePrivate .job-summary-card .qualification,
+#homeGovernment .job-summary-card .qualification,
+#homePrivate .job-summary-card .job-qualification,
+#homeGovernment .job-summary-card .job-qualification,
+#homePrivate .job-summary-card .match-reasons,
+#homeGovernment .job-summary-card .match-reasons,
+#homePrivate .job-summary-card .salary-badge,
+#homeGovernment .job-summary-card .salary-badge,
+#homePrivate .job-summary-card .card-pay,
+#homeGovernment .job-summary-card .card-pay{
+  display:none!important;
+}
+
+@media(max-width:900px){
+  .job-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:620px){
+  .job-summary-grid{
+    grid-template-columns:1fr!important;
+  }
+  .job-summary-card{
+    aspect-ratio:auto!important;
+    min-height:0!important;
+  }
+}
