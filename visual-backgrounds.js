@@ -108,7 +108,7 @@
 
   function targets(){
     const active=document.querySelector('.page.active');
-    if(!active || ['jobDetail','examDetail','materialDetail'].includes(active.dataset.page))return [];
+    if(!active)return [];
     const hero=active.querySelector('.hero, .careerhub-hero');
     const pageHero=active.querySelector('.page-hero');
     if(hero||pageHero)return [hero,pageHero].filter(Boolean);
@@ -134,7 +134,7 @@
   }
   function routeNow(){
     const p=location.pathname.replace(/\/$/,'')||'/';
-    return (p.startsWith('/jobs/') ? 'jobDetail' : ({'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin','/career-hub':'careerhub'})[p]||'home');
+    return ({'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin','/career-hub':'careerhub'})[p]||'home';
   }
   function setImage(route,position,imageIndex){
     const el=layers.get(position); if(!el)return;
@@ -163,7 +163,6 @@
   function build(route){
     clearLayers();
     idx=0;
-    if(['jobDetail','examDetail','materialDetail'].includes(route))return;
     targets().forEach((parent)=>{
       const a=makeLayer(parent,'a'), b=makeLayer(parent,'b');
       layers.set(parent,{a,b});
