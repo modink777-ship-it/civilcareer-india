@@ -233,8 +233,10 @@ function openJob(j){if(!j)return;const gov=['Government','Public Sector'].includ
 function richText(v){return esc(v||'').replace(/\n/g,'<br>')}function examSection(title,value){return value?`<section class="exam-detail-section"><h3>${esc(title)}</h3><div class="exam-detail-copy">${richText(value)}</div></section>`:''}
 function openExam(x){if(!x)return;const title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('detailTitle').textContent=title;$('detailBody').innerHTML=`<article class="exam-detail-page"><div class="exam-detail-status"><span class="pill ${closed?'closed':'verified'}">${closed?'Application Closed':esc(x.status||'Open')}</span>${x.last_verified?`<span>Last verified ${date(x.last_verified)}</span>`:''}</div>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Recruitment Overview</h3><div class="exam-overview"><div><b>Organization</b>${esc(x.authority||'Check official notification')}</div><div><b>Notification number</b>${esc(x.notification_number||'Not stated')}</div><div><b>Post names</b>${esc(x.post_names||x.code||'See official notification')}</div><div><b>Total vacancies</b>${esc(x.vacancy_count||'Not stated')}</div><div><b>Qualification</b>${esc(lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en||'See official notification')}</div><div><b>Job location</b>${esc(x.job_location||'Karnataka')}</div><div><b>Application mode</b>${esc(x.application_mode||'See official notification')}</div><div><b>Last date to apply</b>${date(x.application_end)}</div></div></section>${examSection('Important Dates',x.important_dates_details||[['Application start',date(x.application_start)],['Application deadline',date(x.application_end)],['Exam date',date(x.exam_date)]].map(a=>a.join(': ')).join('\n'))}${examSection('Post-wise Vacancy Details',x.vacancy_breakdown)}${examSection('Eligibility and Qualification',lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en)}${examSection('Age Limit and Relaxation',x.age_limit)}${examSection('Pay Scale',x.pay_scale)}${examSection('Application Fees',x.application_fee)}${examSection('Selection Procedure',x.selection_process)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('How to Apply',x.how_to_apply)}${examSection('Attempts',x.attempts)}${examSection('Physical Standards',x.physical_standards)}${examSection('Helpline',x.helpline)}${examSection('Other Important Information',x.other_information)}${examSection('Frequently Asked Questions',x.frequently_asked_questions)}<section class="exam-detail-section official-links"><h3>Important Official Links</h3><div class="card-actions">${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank" rel="noopener">Apply on Official Portal ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Download Official Notification ↗</a>`:''}${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank" rel="noopener">Official Website ↗</a>`:''}</div></section><div class="callout"><b>We Organize. You Verify.</b><br>CivilCareer is independent and is not a government authority. Read the official notification before applying or paying an official application fee.</div></article>`;navigate('examDetail');}
 function openMaterial(m){if(typeof openMaterialDedicated==='function')return openMaterialDedicated(m);$('detailTitle').textContent=lang==='kn'&&m.title_kn?m.title_kn:m.title_en;$('detailBody').innerHTML=`<p>${esc(m.description_en||'Open the resource to review its contents.')}</p><div class="callout">Only use materials shared by their owner or with appropriate permission.</div><div class="card-actions"><a href="${esc(m.file_url||m.pdf_url||m.preview_url||'#')}" target="_blank" rel="noopener">Open Resource ↗</a></div>`;navigate('examDetail');}
-function animateCount(el,target,duration=1500){
+function animateCount(el,target,duration=900){
   if(!el)return;
+  target=Number(target)||0;
+  if(target===0){el.textContent='0';return;}
   let start=0;const step=target/(duration/16);
   const timer=setInterval(()=>{
     start+=step;
@@ -244,9 +246,13 @@ function animateCount(el,target,duration=1500){
 }
 function updateHeroLiveStats(){
   const isLive=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));
-  const priv=jobs.filter(j=>(j.sector||'Private')==='Private'&&isLive(j)).length;
-  const govt=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)&&isLive(j)).length;
-  const set=(id,value)=>{const el=$(id);if(el)animateCount(el,value)};
+  const privateAll=jobs.filter(j=>(j.sector||'Private')==='Private').length;
+  const govtAll=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)).length;
+  const privLive=jobs.filter(j=>(j.sector||'Private')==='Private'&&isLive(j)).length;
+  const govtLive=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)&&isLive(j)).length;
+  const priv=privLive || privateAll;
+  const govt=govtLive || govtAll;
+  const set=(id,value)=>{const el=$(id);if(el)animateCount(el,Number(value)||0)};
   set('heroStatJobs',priv);
   set('heroStatGovt',govt);
   set('heroStatExams',exams.length);

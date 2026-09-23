@@ -201,3 +201,138 @@ tr:nth-child(even) td{background:#FAF9F5!important}
 /* TARGETED HERO 3D PALETTE */
 .hero{background-image:none!important;background-color:#e7eff7!important;}
 .hero-3d-canvas{opacity:.78!important;filter:saturate(1.25) contrast(1.08);}
+
+/* =========================================================
+   FINAL UI FIX — COMPACT PAGE HEADERS + READABLE TEXT
+   ========================================================= */
+.page-hero{
+  width:100%!important;
+  max-width:1180px!important;
+  margin:0 auto!important;
+  left:auto!important;
+  right:auto!important;
+  position:relative!important;
+  padding:42px 24px 26px!important;
+  min-height:0!important;
+  height:auto!important;
+  border:0!important;
+  border-bottom:1px solid var(--cc-line)!important;
+  border-radius:0 0 18px 18px!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+  background:
+    radial-gradient(circle at 82% 15%,rgba(198,161,91,.12),transparent 22rem),
+    linear-gradient(135deg,#edf4fa 0%,#e5eef6 55%,#dce7f0 100%)!important;
+  color:var(--cc-text)!important;
+}
+.page-hero:before,
+.page-hero:after{
+  display:none!important;
+  content:none!important;
+}
+.page-hero>*{
+  position:relative!important;
+  z-index:2!important;
+}
+.page-hero .eyebrow{
+  color:#8B6A2D!important;
+  margin-bottom:9px!important;
+}
+.page-hero h1,
+.page-hero h2{
+  color:var(--cc-navy)!important;
+  text-shadow:none!important;
+  margin:0 0 10px!important;
+}
+.page-hero h1{
+  font-size:clamp(2rem,4vw,3rem)!important;
+  letter-spacing:-1.6px!important;
+}
+.page-hero>p:last-child{
+  color:#536477!important;
+  font-size:16px!important;
+  line-height:1.6!important;
+  max-width:850px!important;
+  margin:0!important;
+}
+.page-hero+.container{
+  padding-top:22px!important;
+}
+
+/* For You: direct, compact entry into matches */
+.foryou-header{
+  padding:38px 0 18px!important;
+}
+.foryou-title-row{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+}
+.foryou-header h1{
+  color:var(--cc-navy)!important;
+  font-size:clamp(2rem,4vw,3rem)!important;
+  margin:0 0 8px!important;
+}
+.foryou-header p:not(.eyebrow){
+  color:#536477!important;
+  margin:0!important;
+}
+.foryou-content{
+  padding-top:6px!important;
+}
+
+/* Consistent top spacing on every public page */
+.page.active>.container:first-child:not(.page-hero){
+  margin-top:0!important;
+}
+.page.active>.page-hero + .container{
+  margin-top:0!important;
+}
+.page-hero + .container .chips,
+.page-hero + .container .material-tabs,
+.page-hero + .container .private-scope-chips,
+.page-hero + .container .gov-scope-chips{
+  margin-top:0!important;
+}
+
+/* Live stats: high-contrast, visible against the hero */
+.hero-live-panel .live-stat b{
+  color:#0B1424!important;
+}
+.hero-live-panel .live-stat span{
+  color:#465467!important;
+}
+.hero-live-panel{
+  background:rgba(255,254,250,.94)!important;
+  border:2px solid rgba(198,161,91,.55)!important;
+  border-left:4px solid #C6A15B!important;
+}
+.hero-live-panel .panel-label{
+  color:#0B1424!important;
+}
+.hero-live-panel .live-dot{
+  color:#16866A!important;
+  border-color:rgba(22,134,106,.25)!important;
+}
+
+/* Keep the 3D visual visible on the homepage, but never as a photo. */
+.hero{
+  background-image:none!important;
+}
+.hero-3d-canvas{
+  opacity:.62!important;
+  filter:saturate(1.35) contrast(1.1)!important;
+}
+
+/* Responsive */
+@media(max-width:760px){
+  .page-hero{
+    padding:30px 18px 22px!important;
+    border-radius:0 0 14px 14px!important;
+  }
+  .page-hero h1{font-size:2rem!important}
+  .foryou-header{padding:28px 18px 14px!important}
+  .foryou-title-row{align-items:flex-start;flex-direction:column}
+  .foryou-title-row .btn{width:100%}
+}
