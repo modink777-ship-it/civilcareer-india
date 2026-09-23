@@ -18,7 +18,25 @@ renderPrivate=function(){refreshPrivateOptions();let a=activePrivate();const sco
 function clearPrivate(){['privateCountry','privateState','privateCity','privateRole','privateQualification','privateExperience','privateType','privatePosted','privateSalary'].forEach(id=>$(id).value='');renderPrivate()}
 function govScopeOf(j){const level=String(j.government_level||j.gov_level||'').toLowerCase();if(level==='central'||level==='state')return level;const t=[j.recruitment_authority,j.company,j.discipline,j.description].join(' ').toLowerCase();const central=['upsc','ssc','cpwd','cwc','nhai','bro','mes','indian railways','railway board','central government','central public works','border roads','national highways','ministry of','central water'].some(x=>t.includes(x));if(central)return'central';if(j.state||j.state_region||j.region)return'state';return'central'}
 renderGovernment=function(){let a=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)),status=$('govStatus').value,scope=document.querySelector('#govScopeChips .active')?.dataset.scope||'all';if(scope!=='all')a=a.filter(j=>govScopeOf(j)===scope);if($('govState')&&$('govState').options.length<=1)$('govState').innerHTML='<option value="">All states / regions</option>'+INDIA_STATES.map(s=>`<option>${s}</option>`).join('');const state=($('govState')&&$('govState').value||'').toLowerCase(),loc=($('govLocation')&&$('govLocation').value||'').toLowerCase(),qual=($('govQualification')&&$('govQualification').value||'').toLowerCase(),edu=($('govEdu')&&$('govEdu').value||'').toLowerCase();a=a.filter(j=>!state||[j.state,j.state_region,j.location_display,j.location,j.city].filter(Boolean).join(' ').toLowerCase().includes(state)).filter(j=>!loc||[j.city,j.district,j.location_display,j.location].join(' ').toLowerCase().includes(loc)).filter(j=>!qual||jobQuals(j).join(' ').toLowerCase().includes(qual)).filter(j=>!edu||jobQuals(j).join(' ').toLowerCase().includes(edu));if($('govStatus')&&$('govStatus').value)a=a.filter(j=>$('govStatus').value==='closed'?!active(j):active(j));a.sort($('govSort')&&$('govSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));$('governmentCount').textContent=`${a.length} active government civil opportunit${a.length===1?'y':'ies'}`;$('governmentJobs').innerHTML=a.length?a.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');chipBox(['govState','govLocation','govQualification','govStatus'],'govFilterChips',renderGovernment);bindCards()}
-jobCard=function(j,gov=false){const closed=!active(j),loc=jobLocs(j).join(' · ')||j.location_display||j.location;return`<article class="job-card"><div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date">${ago(pubDate(j))}</span></div><h3>${esc(j.role)}</h3><div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div><div class="card-meta"><span>${esc(loc||'Location in source')}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p class="card-copy">${esc(short(j.description||'Verify details at the original source.'))}</p><div class="card-actions"><button data-job="${j.id}">View Details</button></div></article>`}
+jobCard=function(j,gov=false){
+  const closed=isClosed(j),saved=getSaved().has(j.id);
+  const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
+  const applyUrl=j.apply_url||j.source_url||'';
+  return `<article class="job-card cc-modern-job-card job-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
+    <div class="cc-job-title-row"><h3>${esc(j.role||'Opportunity')}</h3></div>
+    <div class="cc-company-name job-summary-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
+    <div class="cc-job-meta job-summary-meta">
+      <span>📍 ${esc(j.location||j.location_display||'India')}</span>
+      <span>◷ ${esc(j.experience_level||'Experience not specified')}</span>
+      <span>↗ Posted ${esc(posted)}</span>
+    </div>
+    <div class="cc-job-footer job-summary-actions">
+      <button data-job="${j.id}" class="cc-view-btn">View Details →</button>
+      ${applyUrl?`<a class="btn-apply" href="${esc(applyUrl)}" target="_blank" rel="noopener">Apply ↗</a>`:`<button class="btn-apply" data-job="${j.id}">Apply ↗</button>`}
+      <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★ Save':'☆ Save'}</button>
+    </div>
+  </article>`
+}
 function activateDynamic(name,path,push=true){route=name;$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));if(push)history.pushState({},'',path);scrollTo(0,0)}
 function jobPath(j){return`/jobs/${j.slug||String(j.role||'job').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+j.id}`}
 function materialPath(m){return`/study-materials/${String(m.slug||m.title_en||'resource').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)}-${m.id}`}

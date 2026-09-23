@@ -1578,3 +1578,59 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .job-summary-actions{grid-template-columns:1fr 1fr!important}
   .job-summary-actions .btn-save{grid-column:1/-1}
 }
+
+
+/* =========================================================
+   CIVILCAREER — HERO-LED VISUAL SYSTEM / HOMEPAGE FIXES
+   Final cascade: keeps the live hero palette across the site.
+   ========================================================= */
+:root{
+  --cc-hero-navy:#0B1424;
+  --cc-hero-blue:#182B45;
+  --cc-hero-blue-soft:#E8EEF5;
+  --cc-hero-ivory:#FFFCF5;
+  --cc-hero-gold:#C6A15B;
+  --cc-hero-gold-light:#E1C98F;
+}
+body{
+  background:
+    radial-gradient(circle at 12% 10%,rgba(24,43,69,.10),transparent 26rem),
+    radial-gradient(circle at 88% 34%,rgba(198,161,91,.08),transparent 24rem),
+    linear-gradient(180deg,#EEF2F6 0%,#E4EAF1 46%,#DCE4ED 100%)!important;
+}
+main,.page{background:transparent}
+.section.soft{background:linear-gradient(180deg,rgba(232,238,245,.96),rgba(221,229,238,.96))!important;border-top:1px solid rgba(11,20,36,.07)!important;border-bottom:1px solid rgba(11,20,36,.07)!important}
+.portal-highlights{background:linear-gradient(180deg,#E7EDF4,#DDE6EF)!important}
+.how-section{background:linear-gradient(135deg,#E7EDF4 0%,#DCE6F0 100%)!important}
+.employer-cta{background:linear-gradient(135deg,#DDE6EF,#E9E4D7)!important}
+.page-hero{background:linear-gradient(135deg,#0B1424 0%,#13243A 58%,#1B304B 100%)!important;color:#fff}
+
+/* Live stats panel replaces the old static hero copy. */
+.hero-live-panel{padding:24px!important;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.045))!important;border:1px solid rgba(255,255,255,.18)!important;border-left:3px solid var(--cc-hero-gold)!important;border-radius:18px!important}
+.live-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.live-dot{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid rgba(225,201,143,.35);border-radius:999px;color:#E1C98F;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}
+.live-dot:before{content:"";width:6px;height:6px;border-radius:50%;background:#5EE0A6;box-shadow:0 0 0 4px rgba(94,224,166,.12)}
+.live-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.live-stat{padding:15px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.055)}
+.live-stat b{display:block;color:#FFFDF7;font-size:28px;line-height:1;font-weight:850;letter-spacing:-.8px}
+.live-stat span{display:block;margin-top:7px;color:#B9C4D2;font-size:11px;font-weight:700}
+.live-panel-note{color:#AEBACA!important;font-size:11.5px!important;line-height:1.55}
+
+/* Thick premium search ribbon + gold action button. */
+.smart-search{border:3px solid var(--cc-hero-gold)!important;background:var(--cc-hero-ivory)!important;box-shadow:0 18px 45px rgba(11,20,36,.16),0 0 0 5px rgba(198,161,91,.08)!important}
+.smart-search .btn{border:3px solid #B38A3D!important;background:linear-gradient(135deg,#C6A15B,#D8BC7E)!important;color:#101725!important;box-shadow:0 8px 18px rgba(126,92,25,.20)!important}
+.smart-search .btn:hover{background:linear-gradient(135deg,#D8BC7E,#E1C98F)!important}
+
+/* Homepage job summaries are deliberately square and contain no description. */
+.job-summary-card{aspect-ratio:1 / 1!important;min-height:0!important;height:auto!important;overflow:hidden!important;background:linear-gradient(180deg,#FFFCF5 0%,#F7F4EC 100%)!important;border:1px solid #D4D7DA!important;border-top:4px solid var(--cc-hero-gold)!important;border-radius:18px!important;box-shadow:0 16px 38px rgba(11,20,36,.10)!important}
+.job-summary-card .cc-job-title-row h3{font-size:clamp(18px,1.65vw,21px)!important;line-height:1.22!important}
+.job-summary-company{color:#43556C!important}
+.job-summary-meta{display:grid!important;grid-template-columns:1fr!important;gap:7px!important;padding:12px!important;margin:4px 0 0!important;background:#EEF2F5!important;border:1px solid #D9E0E6!important;border-radius:12px!important}
+.job-summary-meta span{font-size:12.5px!important;color:#40536A!important}
+.job-summary-actions{margin-top:auto!important;padding-top:14px!important;border-top:1px solid #DADDE0!important}
+.job-summary-actions .cc-view-btn{color:#0F5FAF!important}
+.job-summary-actions .btn-apply{background:#1D72EE!important}
+.job-summary-actions .btn-save{background:#FFFCF5!important}
+
+@media(max-width:900px){.job-summary-card{aspect-ratio:auto!important;min-height:390px!important}}
+@media(max-width:760px){.live-stat-grid{gap:8px}.live-stat{padding:12px}.live-stat b{font-size:24px}.job-summary-card{min-height:370px!important}.smart-search{border-width:2px!important}.smart-search .btn{border-width:2px!important}}
