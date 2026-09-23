@@ -168,7 +168,7 @@ function buildJobPosting(job, canonical) {
     };
   }
 
-  const employmentTypes = asArray(job.employment_types || job.employment_type);
+  const employmentTypes = asArray(job.employment_types);
   if (employmentTypes.length === 1) {
     schema.employmentType = employmentTypes[0];
   } else if (job.employment_type) {
@@ -192,7 +192,7 @@ function buildJobPosting(job, canonical) {
     schema.directApply = true;
   }
 
-  const qualifications = asArray(job.qualifications || job.qualification);
+  const qualifications = asArray(job.qualifications);
   if (qualifications.length) {
     schema.qualifications = qualifications.join(', ');
   }
@@ -229,12 +229,8 @@ async function renderJobPage(req, res) {
   try {
     let job = await getJobBySlug(slug);
 
-    // Durable fallback for older CivilCareer links generated as role-id
-    // even when the database row has no matching slug column value.
-    if (!job) {
-      const idMatch = slug.match(/([0-9a-f]{8}-[0-9a-f-]{27,})$/i);
-      const possibleId = idMatch ? idMatch[1] : (/^[0-9a-f-]{36}$/i.test(slug) ? slug : '');
-      if (possibleId) job = await getJobById(possibleId);
+    if (!job && /^[0-9a-f-]{36}$/i.test(slug)) {
+      job = await getJobById(slug);
     }
 
     if (!job) {
@@ -362,12 +358,9 @@ async function renderJobPage(req, res) {
   }
   body { margin: 0; }
   header {
-    background: #f7fbff;
-    border-bottom: 1px solid #d9e5ef;
-    padding: 18px 20px;
-    position:sticky;
-    top:0;
-    z-index:10;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 20px;
   }
   nav {
     max-width: 1000px;
@@ -382,16 +375,15 @@ async function renderJobPage(req, res) {
     font-weight: 600;
   }
   main {
-    max-width: 1080px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 18px 20px 60px;
+    padding: 32px 20px 60px;
   }
   article {
     background: #fff;
-    border: 1px solid #d9e5ef;
-    border-radius: 18px;
-    padding: 30px;
-    box-shadow: 0 14px 45px rgba(10,35,60,.07);
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 28px;
   }
   h1 { margin-top: 12px; line-height: 1.15; }
   h2 { margin-top: 28px; }
@@ -461,14 +453,6 @@ ${skills.length ? `
 <h2>Skills</h2>
 <p>${escapeHtml(skills.join(', '))}</p>
 </section>` : ''}
-
-${job.experience_level || job.experience_ranges ? `<section><h2>Experience</h2><p>${escapeHtml(asArray(job.experience_ranges || job.experience_level).join(', '))}</p></section>` : ''}
-${job.state ? `<section><h2>State</h2><p>${escapeHtml(job.state)}</p></section>` : ''}
-${job.country ? `<section><h2>Country</h2><p>${escapeHtml(job.country)}</p></section>` : ''}
-${job.vacancy_count != null && job.vacancy_count !== '' ? `<section><h2>Vacancies</h2><p>${escapeHtml(job.vacancy_count)}</p></section>` : ''}
-${job.application_start ? `<section><h2>Application starts</h2><p>${escapeHtml(formatDate(job.application_start))}</p></section>` : ''}
-${job.age_limit ? `<section><h2>Age limit</h2><p>${escapeHtml(job.age_limit)}</p></section>` : ''}
-${job.application_fee ? `<section><h2>Application fee</h2><p>${escapeHtml(job.application_fee)}</p></section>` : ''}
 
 ${job.description ? `
 <section>
@@ -921,49 +905,23 @@ async function runPublicDiscovery({q, location, type} = {}) {
   const limited = typeFiltered.slice(0, 80);
 
   // Dedup against existing Supabase jobs (normalized URL or role+company)
-  const existingResponse = await supa('jobs?select=id,source_url,application_url,role,company,location,location_display,city,state,country,created_at');
+  const existingResponse = await supa('jobs?select=id,source_url,role,company,created_at');
   if (!existingResponse.ok) {
     const err = new Error(`Supabase job lookup failed: ${existingResponse.status}`);
     err.sourceStats = sourceStats;
     throw err;
   }
   const existingRows   = await existingResponse.json();
-  const existingUrls = new Set(
-    existingRows.map(r => normalizeJobUrl(r.source_url)).filter(Boolean)
-  );
-  const existingApplications = new Set(
-    existingRows.map(r => normalizeJobUrl(r.application_url)).filter(Boolean)
-  );
-  const existingIdentities = new Set(
-    existingRows.map(r => {
-      const role = discoveryNormText(discoveryRole(r.role));
-      const company = discoveryNormText(r.company || '');
-      const location = discoveryNormText(
-        r.location_display ||
-        [r.city, r.state, r.country].filter(Boolean).join(', ') ||
-        r.location || ''
-      );
-      if (!role || !company || !location) return '';
-      return `${role}|${company}|${location}`;
-    }).filter(Boolean)
-  );
+  const existingUrls   = new Set(existingRows.map(r => normalizeJobUrl(r.source_url)).filter(Boolean));
+  const existingTitles = new Set(existingRows.map(r => `${discoveryNormText(discoveryRole(r.role))}|${discoveryNormText(r.company || '')}`));
 
-  const now = new Date().toISOString();
+  const now   = new Date().toISOString();
   const fresh = limited.filter(x => {
-    const company = x.company || discoveryCompany(x.title, x.snippet);
-    const urlKey = normalizeJobUrl(x.url);
-    const applyKey = normalizeJobUrl(x.application_url);
-    const roleKey = discoveryNormText(discoveryRole(x.title));
-    const companyKey = discoveryNormText(company);
-    const locationKey = discoveryNormText(x.location || '');
-    const identityKey = (roleKey && companyKey && locationKey)
-      ? `${roleKey}|${companyKey}|${locationKey}`
-      : '';
-
-    if (urlKey && (existingUrls.has(urlKey) || existingApplications.has(urlKey))) return false;
-    if (applyKey && (existingUrls.has(applyKey) || existingApplications.has(applyKey))) return false;
-    if (identityKey && existingIdentities.has(identityKey)) return false;
-
+    const company   = x.company || discoveryCompany(x.title, x.snippet);
+    const urlKey    = normalizeJobUrl(x.url);
+    const titleKey  = `${discoveryNormText(discoveryRole(x.title))}|${discoveryNormText(company)}`;
+    if (urlKey && existingUrls.has(urlKey)) return false;
+    if (company && existingTitles.has(titleKey)) return false;
     return true;
   });
 
@@ -1166,63 +1124,6 @@ function makeSlug(role, company, id) {
   return `${base || 'job'}-${id || Date.now()}`;
 }
 
-
-// ── PRECISE JOB DUPLICATE IDENTITY ───────────────────────────────────
-// Same link OR same title+company+location = existing vacancy.
-// Same company with a different title is allowed.
-function duplicateNorm(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-function duplicateUrl(value) {
-  return normalizeJobUrl(String(value || '').trim());
-}
-function jobIdentityKey(job) {
-  const role = duplicateNorm(job.role || job.title || '');
-  const company = duplicateNorm(job.company || '');
-  const location = duplicateNorm(
-    job.location_display ||
-    [job.city, job.state, job.country].filter(Boolean).join(', ') ||
-    job.location || ''
-  );
-  // Without all three, title/company identity is not strong enough to
-  // declare an existing vacancy.
-  if (!role || !company || !location) return '';
-  return `${role}|${company}|${location}`;
-}
-async function findExistingJobForCreate(job) {
-  const r = await supa(
-    'jobs?select=id,role,company,location,location_display,city,state,country,source_url,application_url&limit=10000'
-  );
-  if (!r.ok) throw new Error(`Existing-job check failed: ${r.status}`);
-  const rows = await r.json();
-  const incomingSource = duplicateUrl(job.source_url);
-  const incomingApply = duplicateUrl(job.application_url);
-  const incomingIdentity = jobIdentityKey(job);
-
-  for (const existing of rows) {
-    const existingSource = duplicateUrl(existing.source_url);
-    const existingApply = duplicateUrl(existing.application_url);
-
-    if (
-      (incomingSource && existingSource && incomingSource === existingSource) ||
-      (incomingApply && existingApply && incomingApply === existingApply)
-    ) {
-      return { id: existing.id, reason: 'same-link', role: existing.role, company: existing.company };
-    }
-
-    if (incomingIdentity && incomingIdentity === jobIdentityKey(existing)) {
-      return { id: existing.id, reason: 'same-job', role: existing.role, company: existing.company };
-    }
-  }
-  return null;
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
@@ -1309,20 +1210,6 @@ module.exports = async function handler(req, res) {
       if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
       if (!rest.created_at) rest.created_at = new Date().toISOString();
       if (!rest.slug) rest.slug = makeSlug(rest.role, rest.company, Date.now());
-
-      // Company alone is NEVER a duplicate criterion.
-      // Only the same link or same title+company+location is blocked.
-      const existing = await findExistingJobForCreate(rest);
-      if (existing) {
-        return res.status(409).json({
-          error: 'Already exists in CivilCareer',
-          duplicate: true,
-          reason: existing.reason,
-          existing_id: existing.id,
-          existing_role: existing.role,
-          existing_company: existing.company,
-        });
-      }
 
       const r = await supa('jobs', { method: 'POST', body: JSON.stringify(rest) });
       if (!r.ok) {
