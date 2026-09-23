@@ -275,8 +275,8 @@ function updateNavCounts(){
   const govt=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)&&isLive(j)).length;
   $$('a[data-route="private"]').forEach(a=>{if(priv>0)a.setAttribute('data-count',priv)});
   $$('a[data-route="government"]').forEach(a=>{if(govt>0)a.setAttribute('data-count',govt)});
-  if($('statJobs'))$('statJobs').textContent=priv>0?String(priv)+'+':'0';
-  if($('statGovt'))$('statGovt').textContent=govt>0?String(govt)+'+':'0';
+  if($('statJobs'))$('statJobs').textContent=String(priv);
+  if($('statGovt'))$('statGovt').textContent=String(govt);
   if($('statExams'))$('statExams').textContent=String(exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
   if($('statRes'))$('statRes').textContent=String(materials.length);
 }
@@ -457,7 +457,7 @@ function openProfileSetup(){
   overlay.innerHTML=`<div class="profile-modal-inner">
     <div class="profile-modal-header">
       <h2>🎯 Your Job Profile</h2>
-      <button class="profile-close" onclick="closeProfileModal()">✕</button>
+      <button class="profile-close" onclick="document.getElementById('profileModal').close()">✕</button>
     </div>
     <div class="profile-tabs">
       <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
@@ -487,10 +487,7 @@ function openProfileSetup(){
         <option ${prefs.sectors==='Government'?'selected':''}>Government</option>
       </select></label>
     </div>
-    <div class="profile-modal-actions" style="display:flex;gap:.7rem;margin-top:1rem">
-      <button type="button" class="btn secondary" style="flex:1" onclick="closeProfileModal()">Cancel</button>
-      <button type="button" class="btn primary" style="flex:2" onclick="saveProfile()">💾 Save & Find Matches</button>
-    </div>
+    <button class="btn primary wide" style="margin-top:1rem;width:100%" onclick="saveProfile()">💾 Save & Find Matches</button>
   </div>`;
   overlay.style.display='flex';
 }
@@ -558,13 +555,13 @@ function saveProfile(){
     keywords_exclude:$('pExclude')?.value||''
   };
   saveProfileLocal();
-  closeProfileModal();
+  $('editorDialog').close();
   toast('Profile saved! Finding your matches…');
   navigate('foryou');
   renderForYou();
 }
 
-async function loadData(){const [j,e,m]=await Promise.allSettled([api('/api/jobs'),api('/api/exams'),api('/api/materials')]);jobs=j.status==='fulfilled'?(j.value.jobs||[]):jobs;exams=e.status==='fulfilled'?(e.value.exams||[]):exams;materials=m.status==='fulfilled'?(m.value.materials||[]):materials;renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
+async function loadData(){const [j,e,m]=await Promise.allSettled([api('/api/jobs'),api('/api/exams'),api('/api/materials')]);jobs=j.status==='fulfilled'?j.value.jobs||[]:[];exams=e.status==='fulfilled'?e.value.exams||[]:[];materials=m.status==='fulfilled'?m.value.materials||[]:[];renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
 function formObject(form){return Object.fromEntries(new FormData(form).entries())}function wireForm(id,url,transform=x=>x){const f=$(id);f.onsubmit=async e=>{e.preventDefault();const st=f.querySelector('.form-status');st.className='form-status show';st.textContent='Submitting securely…';try{let data=formObject(f);data=transform(data);await api(url,{method:'POST',body:JSON.stringify(data)});st.className='form-status show success';st.textContent='Thank you. Your submission is pending administrator review.';f.reset()}catch(err){st.className='form-status show error';st.textContent=err.message}}}
 function search(q,loc=''){q=q.toLowerCase();loc=loc.toLowerCase();const results=[];jobs.forEach(j=>{if((!q||[j.role,j.company,j.description,j.discipline,j.qualification].join(' ').toLowerCase().includes(q))&&(!loc||String(j.location).toLowerCase().includes(loc)))results.push({type:['Government','Public Sector'].includes(j.sector)?'Government Job':'Civil Job',title:j.role,sub:j.company||j.location,action:`data-job="${j.id}"`})});exams.forEach(x=>{if(!q||[x.code,x.title_en,x.authority,x.post_names,x.notification_number,x.overview].join(' ').toLowerCase().includes(q))results.push({type:'Exam',title:`${x.code} — ${x.title_en}`,sub:x.authority,action:`data-exam="${x.id}"`})});materials.forEach(m=>{if(!q||[m.title_en,m.category,m.exam_code].join(' ').toLowerCase().includes(q))results.push({type:'Resource',title:m.title_en,sub:m.category,action:`data-material-id="${m.id}"`})});$('searchSummary').textContent=results.length?`${results.length} result${results.length===1?'':'s'} for “${q||'all content'}”`:'No matching results.';$('searchResults').innerHTML=results.length?results.slice(0,60).map(x=>`<article class="job-card"><span class="pill">${esc(x.type)}</span><h3>${esc(x.title)}</h3><p>${esc(x.sub||'')}</p><div class="card-actions"><button ${x.action}>View Details</button></div></article>`).join(''):empty('No results found','Try a different keyword, department or location.');bindCards();navigate('search');track('search','universal')}
 async function showAdmin(){adminKey=sessionStorage.getItem('cc_admin')||'';$('adminGate').hidden=!!adminKey;$('adminDashboard').hidden=!adminKey;if(adminKey)await loadAdmin()}
@@ -625,47 +622,14 @@ function discoveryStatus(message,type='show'){
 function normDiscovery(v){
   return String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 }
-function existingJobDuplicate(candidate, ignoreId='') {
-  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-  const u=norm(candidate?.url||candidate?.source_url||'');
-  const a=norm(candidate?.application_url||candidate?.apply_url||'');
-  const role=norm(candidate?.role||candidate?.role_normalized||candidate?.title||'');
-  const company=norm(candidate?.company||candidate?.recruitment_authority||'');
-  const loc=norm(candidate?.location_display||candidate?.location||[candidate?.city,candidate?.state,candidate?.country].filter(Boolean).join(' '));
-
-  return (jobs||[]).find(j=>{
-    if(ignoreId && String(j.id)===String(ignoreId)) return false;
-    const ju=norm(j.source_url||'');
-    const ja=norm(j.application_url||j.apply_url||'');
-    if(u && ju && (u===ju || u.includes(ju) || ju.includes(u))) return true;
-    if(a && ja && (a===ja || a.includes(ja) || ja.includes(a))) return true;
-    const jr=norm(j.role||j.role_normalized||''), jc=norm(j.company||j.recruitment_authority||'');
-    const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
-    return !!(role && company && loc && jr===role && jc===company && jl===loc);
-  })||null;
-}
-
 function discoveryDuplicate(item){
-  const norm=v=>String(v||'').toLowerCase().replace(/https?:\/\/(www\.)?/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-  const iu=norm(item?.url||item?.source_url||'');
-  const ia=norm(item?.application_url||item?.apply_url||'');
-  const role=norm(item?.role||item?.role_normalized||item?.title||'');
-  const company=norm(item?.company||item?.recruitment_authority||'');
-  const loc=norm(item?.location_display||item?.location||[item?.city,item?.state,item?.country].filter(Boolean).join(' '));
-
-  return (jobs||[]).find(j=>{
-    const ju=norm(j.source_url||'');
-    const ja=norm(j.application_url||j.apply_url||'');
+  const iu=normDiscovery(item?.url).replace(/\/$/,'');
+  const it=normDiscovery(item?.title);
+  return jobs.find(j=>{
+    const ju=normDiscovery(j.source_url||j.apply_url).replace(/\/$/,'');
     if(iu && ju && (iu===ju || iu.includes(ju) || ju.includes(iu))) return true;
-    if(ia && ja && (ia===ja || ia.includes(ja) || ja.includes(ia))) return true;
-
-    const jr=norm(j.role||j.role_normalized||'');
-    const jc=norm(j.company||j.recruitment_authority||'');
-    const jl=norm(j.location_display||j.location||[j.city,j.state,j.country].filter(Boolean).join(' '));
-
-    // Same company alone is NEVER a duplicate.
-    // Same title + company + known same location is the same vacancy.
-    return !!(role && company && loc && jr===role && jc===company && jl===loc);
+    const jt=normDiscovery(`${j.role||''} ${j.company||''} ${j.location||''}`);
+    return it && jt && (jt.includes(it) || it.includes(it.split(' ').slice(0,5).join(' ')));
   }) || null;
 }
 function renderDiscoveryDrafts(){
@@ -689,18 +653,19 @@ function renderDiscoveryDrafts(){
   });
 }
 function renderDiscoveryResults(results){
-  const root=$('discoveryResults'); if(!root)return;
-  const input=Array.isArray(results)?results:[];
-  const fresh=input.filter(r=>!discoveryDuplicate(r));
-  window._ccDiscoveryResults=fresh;
-  if(!fresh.length){
-    root.innerHTML=input.length
-      ? '<div class="empty-state"><h3>No new jobs found</h3><p>All matching discovery results are already present on CivilCareer.</p></div>'
-      : '<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';
+  const root=$('discoveryResults');
+  if(!root)return;
+  if(!results.length){
+    root.innerHTML='<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';
     return;
   }
-  root.innerHTML=fresh.map((r,i)=>`<article class="admin-discovery-result"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button><a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('');
-  $$('[data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
+  window._ccDiscoveryResults=results;
+  root.innerHTML=results.map((r,i)=>{
+    const duplicate=discoveryDuplicate(r);
+    return `<article class="admin-discovery-result ${duplicate?'is-duplicate':''}"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>${duplicate?`<div class="discovery-duplicate">Already in CivilCareer: ${esc(duplicate.role||'existing job')} — review instead of creating another copy.</div>`:''}</div><div class="admin-discovery-actions">${duplicate?`<button class="btn secondary" type="button" data-discovery-existing="${esc(duplicate.id)}">Review existing</button>`:`<button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button>`}<a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`;
+  }).join('');
+  $$('#discoveryResults [data-discovery-existing]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.discoveryExisting))));
+  $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
 async function discoverJobs(){
   const btn=$('discoverySearchBtn');
@@ -822,13 +787,6 @@ function jobEditor(j={}){
     d.published=j._discoveryDraft ? d.status==='Active' : true;
     if(j.id)d.id=j.id;
     try{
-      if(!j.id){
-        const dup=existingJobDuplicate(d);
-        if(dup){
-          toast(`Already exists in CivilCareer — ${dup.role||'same job'}${dup.company?' · '+dup.company:''}.`);
-          return;
-        }
-      }
       await api('/api/jobs',{method:j.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});
       if(j._submission)await api('/api/employer-submissions',{method:'PATCH',key:adminKey,body:JSON.stringify({id:j._submission,status:'Approved'})});
       // Auto-post only genuinely published NEW jobs. Discovery drafts never alert users.
@@ -846,13 +804,7 @@ function jobEditor(j={}){
         toast('Opportunity updated.');
       }
       await loadData();loadAdmin();
-    }catch(err){
-      if(/Already exists in CivilCareer/i.test(err.message)){
-        toast('Already exists in CivilCareer — same job or same link.');
-      }else{
-        toast(err.message);
-      }
-    }
+    }catch(err){toast(err.message)}
   }
 }
 function examEditor(x={}){$('editorTitle').textContent=x.id?'Edit recruitment':'Review AI recruitment draft';$('editorBody').innerHTML=`<form class="panel-form" id="examEdit"><div class="field-grid"><label>Exam / recruitment code *<input name="code" value="${val(x.code)}" required></label><label>Authority / organization<input name="authority" value="${val(x.authority)}"></label><label class="wide">Professional listing title *<input name="title_en" value="${val(x.title_en)}" placeholder="KPSC KAS Recruitment 2026 — Apply Online for 319 Group A & B Posts" required></label><label class="wide">Kannada title<input name="title_kn" value="${val(x.title_kn)}"></label><label>Notification number<input name="notification_number" value="${val(x.notification_number)}"></label><label>Category<input name="category" value="${val(x.category)}"></label><label>Vacancies<input type="number" name="vacancy_count" value="${val(x.vacancy_count)}"></label><label>Status<input name="status" value="${val(x.status||'Open')}"></label><label>Notification date<input type="date" name="notification_date" value="${val(x.notification_date)}"></label><label>Application starts<input type="date" name="application_start" value="${val(x.application_start)}"></label><label>Application deadline<input type="date" name="application_end" value="${val(x.application_end)}"></label><label>Exam date<input type="date" name="exam_date" value="${val(x.exam_date)}"></label><label>Last verified<input type="date" name="last_verified" value="${val(x.last_verified||new Date().toISOString().slice(0,10))}"></label><label>Job location<input name="job_location" value="${val(x.job_location)}"></label><label>Application mode<input name="application_mode" value="${val(x.application_mode)}"></label><label class="wide">Post names<input name="post_names" value="${val(x.post_names)}"></label><label class="wide">Overview<textarea name="overview">${val(x.overview)}</textarea></label><label class="wide">Eligibility and qualification<textarea name="eligibility_en">${val(x.eligibility_en)}</textarea></label><label class="wide">Kannada eligibility<textarea name="eligibility_kn">${val(x.eligibility_kn)}</textarea></label><label class="wide">Post-wise vacancy details<textarea name="vacancy_breakdown">${val(x.vacancy_breakdown)}</textarea></label><label class="wide">Important dates details<textarea name="important_dates_details">${val(x.important_dates_details)}</textarea></label><label class="wide">Age limit and relaxation<textarea name="age_limit">${val(x.age_limit)}</textarea></label><label class="wide">Pay scale<textarea name="pay_scale">${val(x.pay_scale)}</textarea></label><label class="wide">Application fee<textarea name="application_fee">${val(x.application_fee)}</textarea></label><label class="wide">Selection process<textarea name="selection_process">${val(x.selection_process)}</textarea></label><label class="wide">Exam pattern<textarea name="exam_pattern">${val(x.exam_pattern)}</textarea></label><label class="wide">Syllabus<textarea name="syllabus">${val(x.syllabus)}</textarea></label><label class="wide">How to apply<textarea name="how_to_apply">${val(x.how_to_apply)}</textarea></label><label class="wide">Attempts<textarea name="attempts">${val(x.attempts)}</textarea></label><label class="wide">Physical standards<textarea name="physical_standards">${val(x.physical_standards)}</textarea></label><label class="wide">Helpline<input name="helpline" value="${val(x.helpline)}"></label><label class="wide">Other important information<textarea name="other_information">${val(x.other_information)}</textarea></label><label class="wide">Frequently asked questions<textarea name="frequently_asked_questions">${val(x.frequently_asked_questions)}</textarea></label><label class="wide">Official notification PDF URL<input type="url" name="official_notification_url" value="${val(x.official_notification_url)}"></label><label class="wide">Official application URL<input type="url" name="apply_url" value="${val(x.apply_url)}"></label><label class="wide">Official website URL<input type="url" name="official_website_url" value="${val(x.official_website_url)}"></label><button class="btn primary wide">Verify and publish recruitment</button></div><div class="form-status"></div></form>`;openEditor();$('examEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);if(x.id)d.id=x.id;try{await api('/api/exams',{method:x.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Recruitment published.');await loadData();loadAdmin()}catch(err){toast(err.message)}}}

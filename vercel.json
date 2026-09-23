@@ -634,6 +634,18 @@
       "destination": "/index.html"
     },
     {
+      "source": "/career-tools",
+      "destination": "/career-tools.html"
+    },
+    {
+      "source": "/exam-guides",
+      "destination": "/exam-guides.html"
+    },
+    {
+      "source": "/career-guides",
+      "destination": "/career-guides.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     }
