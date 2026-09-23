@@ -1,0 +1,19 @@
+CivilCareer — Phase 4 FINAL (UI/UX + all prior phases merged)
+
+This ZIP is the complete project, merged from the known-working baseline plus:
+- Phase 1 job URL/server-rendering fixes
+- Phase 2 admin/security fixes
+- Phase 3 SEO/GEO foundations
+- Phase 4 UI/UX visual layer
+
+IMPORTANT: Upload the ENTIRE project contents in this ZIP to the repository in ONE deployment/commit.
+Do not mix this ZIP with an older Phase 4 ZIP.
+
+Protected routes/features:
+- /jobs/:slug -> /api/jobs?slug=:slug&render=html
+- /admin -> /admin.html
+- /sitemap.xml -> /api/sitemap
+- no api/job-page.js (keeps Vercel Hobby function count within the free limit)
+
+No Supabase or environment-variable changes are required.
+No paid services are required.

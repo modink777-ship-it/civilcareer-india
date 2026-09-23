@@ -1,0 +1,17 @@
+
+/* CivilCareer v16 — portal, analytics and mobile performance */
+.portal-note{font-size:12px;color:#64748b;margin:8px 0 14px}
+.cc-health{margin:0 0 16px}
+.insight-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.insight-grid>div{padding:12px;border:1px solid var(--line,#e2e8f0);border-radius:10px;background:#fff}
+.insight-grid b{display:block;font-size:20px;color:var(--navy,#0b1f3a)}
+.insight-grid span{display:block;font-size:11px;color:#64748b;margin-top:3px}
+.offline-banner{position:sticky;top:0;z-index:1000;padding:9px 14px;text-align:center;background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;font-size:12px;font-weight:700}
+@media(max-width:760px){
+  .insight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .results-head{gap:8px;flex-wrap:wrap}
+  .results-head select{max-width:100%;min-width:150px}
+  .filters{max-height:80vh;overflow:auto;-webkit-overflow-scrolling:touch}
+  .job-card{content-visibility:auto;contain-intrinsic-size:280px}
+  button,.btn,.detail-link{min-height:42px}
+}

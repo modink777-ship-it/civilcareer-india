@@ -1,0 +1,94 @@
+{
+  "name": "CivilCareer India — Civil Engineering Jobs",
+  "short_name": "CivilCareer",
+  "description": "Civil engineering jobs, government jobs, exams and study materials in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1f3a",
+  "theme_color": "#0b1f3a",
+  "orientation": "portrait-primary",
+  "categories": [
+    "business",
+    "education"
+  ],
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Civil Jobs",
+      "short_name": "Civil Jobs",
+      "description": "Browse private civil engineering jobs",
+      "url": "/private-jobs",
+      "icons": [
+        {
+          "src": "/icons/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Karnataka Govt Jobs",
+      "short_name": "Govt Jobs",
+      "description": "Browse Karnataka government recruitment",
+      "url": "/government-jobs",
+      "icons": [
+        {
+          "src": "/icons/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Exams",
+      "short_name": "Exams",
+      "description": "Karnataka competitive exams calendar",
+      "url": "/exams",
+      "icons": [
+        {
+          "src": "/icons/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "id": "/",
+  "scope": "/",
+  "prefer_related_applications": false
+}

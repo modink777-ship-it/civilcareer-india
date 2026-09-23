@@ -1,0 +1,7 @@
+CIVILCAREER V8 DEPLOYMENT
+1. Run supabase-v8.sql in Supabase SQL Editor.
+2. Upload index.html, app.js, v8.js, styles.css and vercel.json to the GitHub root.
+3. Upload api/jobs.js and api/extract.js to the GitHub api folder.
+4. Wait for Vercel Ready and hard refresh.
+
+Includes: validated multi-email extraction and selection, structured job fields, controlled role/qualification/experience values, dynamic filters with counts, mobile filter drawers, newest-first active jobs, private 30-day expiry, government deadline expiry, historical admin records, duplicate warning, dedicated job/exam routes, email application actions and no-result recovery.

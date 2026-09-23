@@ -1,0 +1,2757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CivilCareer Admin — Protected</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="/styles.css">
+
+<style>
+body{background:#0b1f3a;min-height:100vh;display:flex;flex-direction:column}
+.admin-header{background:#0a1828;border-bottom:1px solid rgba(255,255,255,.06);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.admin-header .logo{font-weight:800;font-size:1.2rem;color:#fff;text-decoration:none}
+.admin-header .logo span{color:#c9973c}
+.admin-header .badge{background:#c9973c;color:#0b1f3a;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+
+.admin-body{flex:1;padding:2rem 1.5rem;max-width:1200px;margin:0 auto;width:100%}
+
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:80vh}
+.login-card{background:#0f2847;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2.5rem;width:100%;max-width:400px;text-align:center}
+.login-card .icon{font-size:3rem;margin-bottom:1rem}
+.login-card h1{font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:6px}
+.login-card p{color:#6a8aaa;font-size:.85rem;margin-bottom:1.5rem}
+.login-card input{width:100%;padding:12px 16px;border-radius:10px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:1rem;font-family:inherit;text-align:center;letter-spacing:.08em;margin-bottom:12px;outline:none}
+.login-card input:focus{border-color:#c9973c}
+.login-card button{width:100%;padding:12px;background:#c9973c;color:#0b1f3a;border:none;border-radius:10px;font-weight:800;font-size:.95rem;cursor:pointer;font-family:inherit}
+.login-card button:hover{background:#e8b04a}
+.login-error{color:#fca5a5;font-size:.82rem;margin-top:8px;display:none}
+
+#dashboard{display:none}
+.dash-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.dash-topbar h1{font-size:1.5rem;font-weight:800;color:#fff;margin:0}
+.dash-topbar .sign-out{background:rgba(255,255,255,.08);color:#94a3b8;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:.83rem;font-weight:600;font-family:inherit}
+.dash-topbar .sign-out:hover{background:rgba(255,255,255,.14);color:#fff}
+
+.metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px}
+.metric span{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6a8aaa;display:block;margin-bottom:6px}
+.metric b{font-size:1.5rem;font-weight:800;color:#fff}
+
+.tabs{display:flex;gap:4px;margin-bottom:1.5rem;flex-wrap:wrap;background:#0a1828;padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,.06)}
+.tabs button{padding:8px 16px;border-radius:8px;border:none;background:transparent;color:#6a8aaa;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.tabs button.active{background:#c9973c;color:#0b1f3a}
+.tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
+
+.panel{display:none}
+.panel.active{display:block}
+
+.import-box{background:#0f2847;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem}
+.import-box h3{color:#fff;font-size:1rem;font-weight:700;margin:0 0 6px}
+.import-box p{color:#6a8aaa;font-size:.83rem;line-height:1.6;margin-bottom:1rem}
+.import-box label{display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+.import-box label span{font-weight:500;color:#6a8aaa;font-size:.73rem;text-transform:none;letter-spacing:0}
+.import-box input,.import-box textarea,.import-box select{padding:9px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;width:100%;outline:none}
+.import-box input:focus,.import-box textarea:focus{border-color:#c9973c}
+.import-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+.btn-gold{background:#c9973c;color:#0b1f3a;border:none;border-radius:8px;padding:9px 18px;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit}
+.btn-ghost{background:rgba(255,255,255,.06);color:#94a3b8;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 18px;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit}
+.btn-ghost:hover{background:rgba(255,255,255,.12);color:#fff}
+
+.import-status{font-size:.83rem;padding:10px 14px;border-radius:8px;margin-top:10px;display:none}
+.import-status.show{display:block}
+.import-status.success{background:rgba(5,150,105,.15);color:#6ee7b7;border:1px solid rgba(5,150,105,.3)}
+.import-status.error{background:rgba(220,38,38,.15);color:#fca5a5;border:1px solid rgba(220,38,38,.3)}
+
+.admin-actions{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.admin-actions .check{display:flex;align-items:center;gap:6px;font-size:.82rem;color:#94a3b8;cursor:pointer}
+
+.list-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.list-item-info h4{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:3px}
+.list-item-info p{font-size:.75rem;color:#6a8aaa}
+.status-badge{display:inline-block;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;text-transform:uppercase}
+.status-badge.published{background:rgba(5,150,105,.2);color:#6ee7b7}
+.status-badge.unpublished{background:rgba(217,119,6,.2);color:#fbbf24}
+.status-badge.expired{background:rgba(220,38,38,.2);color:#fca5a5}
+
+.mini-actions{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap}
+.mini-actions button,.mini-actions a{padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);font-size:.73rem;font-weight:700;color:#94a3b8;cursor:pointer;font-family:inherit;text-decoration:none;transition:all .15s}
+.mini-actions button:hover,.mini-actions a:hover{background:rgba(255,255,255,.12);color:#fff}
+.mini-actions .btn-publish{border-color:rgba(5,150,105,.4);color:#6ee7b7}
+.mini-actions .btn-delete{border-color:rgba(220,38,38,.4);color:#fca5a5}
+
+dialog{border:none;border-radius:16px;padding:0;max-width:780px;width:calc(100% - 2rem);max-height:90vh;overflow-y:auto;background:#0f2847;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+.dialog-head{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0f2847;z-index:10}
+.dialog-head h2{font-size:1.1rem;font-weight:700;color:#fff;margin:0}
+.dialog-head button{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6a8aaa;line-height:1}
+.dialog-body{padding:1.5rem}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.field-grid label{display:flex;flex-direction:column;gap:4px;font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em}
+.field-grid label.wide{grid-column:1/-1}
+.field-grid input,.field-grid select,.field-grid textarea{padding:9px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none;width:100%}
+.field-grid input:focus,.field-grid select:focus,.field-grid textarea:focus{border-color:#c9973c}
+.field-grid select option{background:#0f2847;color:#fff}
+.field-grid textarea{resize:vertical;min-height:90px}
+.field-grid .btn-save{grid-column:1/-1;padding:11px;background:#c9973c;color:#0b1f3a;border:none;border-radius:9px;font-weight:800;font-size:.95rem;cursor:pointer;font-family:inherit;margin-top:8px}
+.save-status{font-size:.83rem;padding:10px 14px;border-radius:8px;display:none;margin-top:8px;grid-column:1/-1}
+.save-status.show{display:block}
+.save-status.success{background:rgba(5,150,105,.15);color:#6ee7b7}
+.save-status.error{background:rgba(220,38,38,.15);color:#fca5a5}
+
+.analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.dash-card{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem}
+.dash-card h3{font-size:.85rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.78rem}
+.bar-row span{width:80px;color:#6a8aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.bar-row b{width:36px;text-align:right;font-weight:700;color:#fff;flex-shrink:0}
+.bar{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:#c9973c;border-radius:4px}
+
+.email-detection{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-top:12px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:10px 22px;border-radius:10px;font-size:.88rem;font-weight:600;opacity:0;transition:all .25s;z-index:9999;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.1)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  .admin-body{padding:1rem}
+  .admin-header{padding:12px 16px}
+  .field-grid{grid-template-columns:1fr}
+  .field-grid label.wide{grid-column:auto}
+  .email-detection{grid-template-columns:1fr}
+}
+
+.discovery-controls{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;margin-bottom:14px}
+.discovery-grid{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+.discovery-grid label{display:flex;flex-direction:column;gap:6px;color:#94a3b8;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.discovery-grid input,.discovery-grid select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font:inherit;text-transform:none;letter-spacing:normal}
+.discovery-note{color:#6a8aaa;font-size:.76rem;line-height:1.5;margin-top:10px}
+.discovery-status{display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:.8rem}
+.discovery-status.show{display:block;background:rgba(5,150,105,.12);color:#6ee7b7;border:1px solid rgba(5,150,105,.25)}
+.discovery-status.error{background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.discovery-results{display:grid;gap:9px}
+.discovery-result{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:14px 16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.discovery-result h4{font-size:.9rem;color:#fff;margin:0 0 5px;line-height:1.35}
+.discovery-result p{font-size:.74rem;color:#6a8aaa;margin:0 0 5px;line-height:1.45}
+.discovery-result a{font-size:.7rem;color:#c9973c;word-break:break-all}
+.discovery-actions{display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.discovery-score{display:inline-block;font-size:.65rem;color:#6ee7b7;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);padding:3px 6px;border-radius:999px;margin-left:5px}
+@media(max-width:850px){.discovery-grid{grid-template-columns:1fr 1fr}.discovery-grid .wide{grid-column:1/-1}.discovery-result{align-items:flex-start;flex-direction:column}.discovery-actions{width:100%}}
+@media(max-width:560px){.discovery-grid{grid-template-columns:1fr}}
+
+/* Phase 7 — Source Health Panel */
+.source-health-panel{background:#0a1c35;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none}
+.source-health-panel.show{display:block}
+.source-health-title{color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
+.source-health-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.source-health-table th{color:#4a6a8a;font-weight:600;text-align:left;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.source-health-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;color:#cbd5e1}
+.source-health-table tr:last-child td{border-bottom:none}
+.sh-ok{color:#6ee7b7}.sh-error{color:#fca5a5}.sh-warn{color:#fbbf24}.sh-nc{color:#4a6a8a}
+.discovery-summary{font-size:.78rem;color:#6a8aaa;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:10px;display:none;line-height:1.7}
+.discovery-summary.show{display:block}
+.discovery-summary strong{color:#cbd5e1}
+
+/* Phase 7 — Upgraded result cards */
+.dr-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px}
+.dr-source-badge{font-size:.65rem;padding:2px 8px;border-radius:999px;background:rgba(201,151,60,.12);color:#c9973c;border:1px solid rgba(201,151,60,.25);font-weight:600;white-space:nowrap}
+.dr-date{font-size:.68rem;color:#6a8aaa}
+.dr-date.unknown{color:#4a6a8a;font-style:italic}
+.dr-company{font-size:.78rem;color:#94a3b8;font-weight:600}
+.btn-review{background:rgba(201,151,60,.15);color:#c9973c;border:1px solid rgba(201,151,60,.35);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-review:hover{background:rgba(201,151,60,.25)}
+.btn-reject{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-reject:hover{background:rgba(220,38,38,.2)}
+.btn-open-src{background:transparent;color:#6a8aaa;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+.btn-open-src:hover{color:#cbd5e1;border-color:rgba(255,255,255,.2)}
+
+/* Phase 7 — Review Queue */
+.review-queue-section{margin-top:20px;display:none}
+.review-queue-section.show{display:block}
+.review-queue-title{color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.review-queue-title .rq-count{background:rgba(201,151,60,.2);color:#c9973c;border-radius:999px;padding:1px 8px;font-size:.68rem}
+.rq-empty{font-size:.8rem;color:#4a6a8a;padding:10px 0}
+
+/* Phase 7 — Review detail modal */
+.review-modal-overlay{display:none;position:fixed;inset:0;background:rgba(5,15,30,.88);z-index:9000;overflow-y:auto;padding:24px 16px}
+.review-modal-overlay.show{display:flex;align-items:flex-start;justify-content:center}
+.review-modal{background:#0f2847;border:1px solid rgba(255,255,255,.12);border-radius:16px;max-width:680px;width:100%;padding:24px;position:relative}
+.review-modal h3{color:#fff;font-size:1.05rem;margin:0 0 4px}
+.review-modal .rm-company{color:#94a3b8;font-size:.85rem;margin:0 0 14px}
+.review-modal .rm-field{margin-bottom:10px}
+.review-modal .rm-label{color:#4a6a8a;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:2px}
+.review-modal .rm-value{color:#cbd5e1;font-size:.82rem;line-height:1.55}
+.review-modal .rm-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.rm-close{position:absolute;top:14px;right:16px;background:transparent;border:none;color:#6a8aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0}
+.rm-close:hover{color:#fff}
+@media(max-width:560px){.review-modal{padding:16px}.review-modal .rm-actions{flex-direction:column}}
+
+</style>
+</head>
+
+<body>
+
+<div class="admin-header">
+  <a href="/" class="logo">Civil<span>Career</span></a>
+  <span class="badge">🔐 Admin</span>
+</div>
+
+<div class="admin-body">
+
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="icon">🔐</div>
+    <h1>Admin Dashboard</h1>
+    <p>Enter your owner key to access the CivilCareer admin panel.</p>
+    <input type="password" id="keyInput" placeholder="Enter owner key" autocomplete="current-password">
+    <button onclick="doLogin()">Continue →</button>
+    <div class="login-error" id="loginError">Incorrect key. Try again.</div>
+  </div>
+</div>
+
+<div id="dashboard">
+
+<div class="dash-topbar">
+  <div>
+    <p style="color:#6a8aaa;font-size:.72rem;text-transform:uppercase;font-weight:700;letter-spacing:.06em;margin-bottom:4px">Founder / Product Owner</p>
+    <h1>CivilCareer Overview</h1>
+  </div>
+  <button class="sign-out" onclick="signOut()">Sign out</button>
+</div>
+
+<div class="metrics" id="metrics">
+  <div class="metric"><span>Loading</span><b>…</b></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="active" data-tab="analytics">Analytics</button>
+  <button data-tab="jobs">Jobs</button>
+  <button data-tab="discovery">Discovery</button>
+  <button data-tab="exams">Exams</button>
+  <button data-tab="materials">Materials</button>
+  <button data-tab="submissions">Submissions</button>
+  <button data-tab="reports">Reports</button>
+</div>
+
+<div class="panel active" id="panel-analytics">
+  <div class="analytics-grid" id="analyticsPanel">
+    <div class="dash-card"><p style="color:#6a8aaa;font-size:.85rem">Loading analytics…</p></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-jobs">
+
+<div class="import-box">
+
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+AI-assisted job importer
+</p>
+
+<h3>Import from a link or pasted vacancy text</h3>
+
+<p>Paste the vacancy URL, job description, or both. AI extracts the fields. You review everything before saving.</p>
+
+<label>
+Vacancy URL
+<span>LinkedIn, Naukri, company careers, government site</span>
+<input type="url" id="importJobUrl" placeholder="https://...">
+</label>
+
+<label>
+Vacancy text / description
+<span>Paste full job post, WhatsApp message, or vacancy description</span>
+<textarea id="importJobText" rows="6" placeholder="Site Engineer — XYZ Company, Bengaluru. BE Civil, 3 years experience..."></textarea>
+</label>
+
+<div class="email-detection">
+
+<label>
+Detected emails
+<select id="detectedEmailSelect">
+<option value="">No email detected yet</option>
+</select>
+</label>
+
+<button class="btn-ghost" id="useDetectedEmail" onclick="useDetectedEmailFn()">Use selected</button>
+
+</div>
+
+<label style="margin-top:12px">
+Application email
+<span>Editable — manual value is never overwritten automatically</span>
+<input type="email" id="importApplicationEmail" placeholder="hr@company.com">
+</label>
+
+<div class="import-actions">
+<button class="btn-gold" id="importJobBtn" onclick="importJobLink()">Extract & fill fields</button>
+<button class="btn-ghost" onclick="clearJobImport()">Clear</button>
+</div>
+
+<div class="import-status" id="importJobStatus"></div>
+
+<p style="font-size:.75rem;color:#4a6a8a;margin-top:10px">
+AI never publishes automatically. Verify every field before saving.
+</p>
+
+</div>
+
+<div class="admin-actions">
+<button class="btn-ghost" onclick="jobEditor()">+ Add manually</button>
+<label class="check">
+<input type="checkbox" id="showExpiredAdmin" checked onchange="loadAdminJobs()">
+Show expired
+</label>
+</div>
+
+<div id="adminJobs">
+<p style="color:#6a8aaa;font-size:.85rem">Loading jobs…</p>
+</div>
+
+
+</div>
+
+<div class="panel" id="panel-discovery">
+
+  <!-- Search Controls -->
+  <div class="discovery-controls">
+    <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Live web job discovery</p>
+    <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Find fresh civil-engineering vacancies from the web</h3>
+    <p class="discovery-note" style="margin-top:0">Searches 9 sources in parallel — 4 optional API providers + 5 no-key public feeds. If a provider is unavailable or rate-limited, the remaining sources continue automatically. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
+    <div class="discovery-grid" style="margin-top:14px">
+      <label class="wide">Search query
+        <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
+      </label>
+      <label>Location
+        <input id="discoveryLocation" placeholder="Bengaluru / Mumbai / India">
+      </label>
+      <label>Type
+        <select id="discoveryType">
+          <option value="all">All jobs</option>
+          <option value="private">Private</option>
+          <option value="government">Government</option>
+          <option value="mnc">MNC / large employers</option>
+        </select>
+      </label>
+      <button class="btn-gold" id="discoverySearchBtn" type="button">Search Now</button>
+    </div>
+    <div class="discovery-status" id="discoveryStatus"></div>
+  </div>
+
+  <!-- Setup guide: shown when no API sources are configured -->
+  <div class="source-health-panel show" id="setupGuidePanel" style="border-color:rgba(201,151,60,.25)">
+    <p class="source-health-title" style="color:#c9973c">🔑 Connect a job source to get results</p>
+    <p style="color:#94a3b8;font-size:.78rem;margin:0 0 10px;line-height:1.6">
+      The free public feeds (Remotive, CareerJet, Findwork) are included but rarely have India civil engineering jobs.
+      For real India-specific results, add at least one API key in
+      <strong style="color:#cbd5e1">Vercel → Project → Settings → Environment Variables</strong>.
+    </p>
+    <table class="source-health-table" style="margin-bottom:6px">
+      <thead><tr><th>Provider</th><th>Cost</th><th>India jobs?</th><th>Env vars to add</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Adzuna</strong> ⭐ Recommended</td>
+          <td style="color:#6ee7b7">Free (1000 req/mo)</td>
+          <td style="color:#6ee7b7">✓ Yes</td>
+          <td style="font-size:.7rem;color:#c9973c"><code>ADZUNA_APP_ID</code> + <code>ADZUNA_APP_KEY</code></td>
+        </tr>
+        <tr>
+          <td>Google Jobs (SerpApi)</td>
+          <td style="color:#fbbf24">Free tier (100/mo)</td>
+          <td style="color:#6ee7b7">✓ Yes</td>
+          <td style="font-size:.7rem;color:#c9973c"><code>SERPAPI_API_KEY</code></td>
+        </tr>
+        <tr>
+          <td>The Muse</td>
+          <td style="color:#6ee7b7">Free (no key needed)</td>
+          <td style="color:#fca5a5">✗ Mostly US/global</td>
+          <td style="font-size:.7rem;color:#4a6a8a">Already enabled</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:.72rem;color:#6a8aaa;margin:0">
+      Register free at
+      <a href="https://developer.adzuna.com" target="_blank" rel="noopener noreferrer" style="color:#c9973c">developer.adzuna.com</a>
+      · Takes 2 minutes · No credit card.
+    </p>
+  </div>
+
+  <!-- Source Health Panel (populated after search) -->
+  <div class="source-health-panel" id="sourceHealthPanel">
+    <p class="source-health-title">Source Status</p>
+    <table class="source-health-table" id="sourceHealthTable">
+      <thead><tr><th>Source</th><th>Status</th><th>Jobs found</th><th>Note</th></tr></thead>
+      <tbody id="sourceHealthBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Diagnostics summary (populated after search) -->
+  <div class="discovery-summary" id="discoverySummary"></div>
+
+  <!-- Result cards -->
+  <div id="discoveryResults" class="discovery-results">
+    <div class="dash-card"><p style="color:#6a8aaa;font-size:.82rem">Press <strong style="color:#c9973c">Search Now</strong> to discover fresh civil engineering jobs from multiple sources.</p></div>
+  </div>
+
+  <!-- Review Queue (drafts from latest search run) -->
+  <div class="review-queue-section" id="reviewQueueSection">
+    <p class="review-queue-title">
+      Review Queue — Pending Drafts
+      <span class="rq-count" id="reviewQueueCount">0</span>
+    </p>
+    <div id="reviewQueueList">
+      <p class="rq-empty">No pending drafts.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Review Detail Modal -->
+<div class="review-modal-overlay" id="reviewModalOverlay">
+  <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="rmTitle">
+    <button class="rm-close" id="rmClose" aria-label="Close review">&times;</button>
+    <h3 id="rmTitle">—</h3>
+    <p class="rm-company" id="rmCompany">—</p>
+
+    <div class="rm-field">
+      <span class="rm-label">Location</span>
+      <span class="rm-value" id="rmLocation">—</span>
+    </div>
+    <div class="rm-field">
+      <span class="rm-label">Source</span>
+      <span class="rm-value" id="rmSource">—</span>
+    </div>
+    <div class="rm-field">
+      <span class="rm-label">Posted</span>
+      <span class="rm-value" id="rmPosted">—</span>
+    </div>
+    <div class="rm-field">
+      <span class="rm-label">Application / Original URL</span>
+      <span class="rm-value"><a id="rmUrl" href="#" target="_blank" rel="noopener noreferrer" style="color:#c9973c;word-break:break-all">—</a></span>
+    </div>
+    <div class="rm-field">
+      <span class="rm-label">Description</span>
+      <span class="rm-value" id="rmDescription" style="white-space:pre-wrap">—</span>
+    </div>
+
+    <div class="rm-actions">
+      <button class="btn-gold" id="rmPublish">Publish</button>
+      <button class="btn-review" id="rmEdit">Open in Editor</button>
+      <button class="btn-reject" id="rmReject">Reject &amp; Delete</button>
+      <button class="btn-open-src" id="rmOpenSrc" target="_blank" rel="noopener noreferrer">Open Original ↗</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-exams">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Notification reader
+</p>
+
+<h3>Import an official exam PDF</h3>
+<p>Select a text-based government notification PDF.</p>
+
+<div class="import-actions">
+<input type="file" id="importExamPdf" accept="application/pdf,.pdf">
+<button class="btn-gold" id="importExamBtn" onclick="importExamPdf()">Read PDF</button>
+</div>
+
+<div class="import-status" id="importExamStatus"></div>
+</div>
+
+<div class="admin-actions">
+<button class="btn-ghost" onclick="examEditor()">+ Add manually</button>
+</div>
+
+<div id="adminExams">
+<p style="color:#6a8aaa;font-size:.85rem">Loading exams…</p>
+</div>
+
+</div>
+
+<div class="panel" id="panel-materials">
+
+<div class="admin-actions">
+<button class="btn-gold" onclick="materialEditor()">+ Add material</button>
+</div>
+
+<div id="adminMaterials">
+<p style="color:#6a8aaa;font-size:.85rem">Loading materials…</p>
+</div>
+
+</div>
+
+<div class="panel" id="panel-submissions">
+<div id="adminSubmissions">
+<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>
+</div>
+</div>
+
+<div class="panel" id="panel-reports">
+<div id="adminReports">
+<p style="color:#6a8aaa;font-size:.85rem">Loading reports…</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="editorDialog">
+<div class="dialog-head">
+<h2 id="editorTitle">Editor</h2>
+<button onclick="document.getElementById('editorDialog').close()">×</button>
+</div>
+<div class="dialog-body" id="editorBody"></div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script>
+let adminKey='',jobs=[],exams=[],materials=[];
+
+const $=id=>document.getElementById(id);
+
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({
+  '&':'&amp;',
+  '<':'&lt;',
+  '>':'&gt;',
+  '"':'&quot;',
+  "'":'&#39;'
+}[c]));
+
+const val=v=>esc(v||'');
+
+function toast(msg){
+  const t=$('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+async function api(url,opt={}){
+  const headers={
+    'content-type':'application/json',
+    ...(opt.key?{'x-owner-key':opt.key}:{}),
+    ...(opt.headers||{})
+  };
+
+  const r=await fetch(url,{...opt,headers});
+
+  const text=await r.text();
+
+  let data={};
+
+  try{
+    data=text?JSON.parse(text):{};
+  }catch{}
+
+  if(!r.ok){
+    const err=Error(
+      data.error ||
+      data.details ||
+      `Request failed (${r.status})`
+    );
+    err.status=r.status;
+    throw err;
+  }
+
+  return data;
+}
+
+function formObject(form){
+  return Object.fromEntries(
+    new FormData(form).entries()
+  );
+}
+
+/* AUTH */
+
+async function doLogin(){
+
+  const k=$('keyInput').value.trim();
+
+  if(!k)return;
+
+  try{
+
+    await api('/api/jobs?auth=1',{key:k});
+
+    adminKey=k;
+
+    showDashboard();
+
+  }catch(e){
+
+    $('loginError').style.display='block';
+
+    $('loginError').textContent=
+      e.status===401 ? 'Incorrect key. Try again.' : (e.message || 'Admin authentication failed.');
+  }
+}
+
+$('keyInput').addEventListener(
+  'keydown',
+  e=>{
+    if(e.key==='Enter')doLogin();
+  }
+);
+
+function signOut(){
+
+  adminKey='';
+
+  $('loginWrap').style.display='flex';
+
+  $('dashboard').style.display='none';
+}
+
+async function showDashboard(){
+
+  $('loginWrap').style.display='none';
+
+  $('dashboard').style.display='block';
+
+  await loadAll();
+}
+
+/* LOAD ALL */
+
+async function loadAll(){
+
+  try{
+
+    const [
+      j,
+      a,
+      es,
+      rs,
+      re
+    ]=await Promise.all([
+
+      api('/api/jobs',{key:adminKey}),
+
+      api('/api/analytics',{key:adminKey}),
+
+      api('/api/employer-submissions',{
+        key:adminKey
+      }),
+
+      api('/api/resource-submissions',{
+        key:adminKey
+      }),
+
+      api('/api/reports',{
+        key:adminKey
+      })
+
+    ]);
+
+    jobs=j.jobs||[];
+
+    exams=
+      (await api('/api/exams',{
+        key:adminKey
+      })).exams||[];
+
+    materials=
+      (await api('/api/materials',{
+        key:adminKey
+      })).materials||[];
+
+    const an=a.analytics||{};
+
+    renderMetrics(
+      an,
+      re.reports||[]
+    );
+
+    renderAnalytics(an);
+
+    loadAdminJobs();
+
+    loadAdminExams();
+
+    loadAdminMaterials();
+
+    renderSubmissions(
+      es.submissions||[],
+      rs.submissions||[]
+    );
+
+    renderReports(
+      re.reports||[]
+    );
+
+  }catch(e){
+
+    toast(e.message);
+  }
+}
+
+/* METRICS */
+
+function renderMetrics(an,reports){
+
+  $('metrics').innerHTML=[
+
+    ['Visitors today',an.visitors_today||0],
+
+    ['Unique visitors',an.unique_visitors||0],
+
+    ['This week',an.visitors_week||0],
+
+    ['This month',an.visitors_month||0],
+
+    ['Page views',an.total_page_views||0],
+
+    ['Total jobs',jobs.length],
+
+    [
+      'Published jobs',
+      jobs.filter(j=>j.published).length
+    ],
+
+    [
+      'Open reports',
+      reports.filter(
+        r=>r.status==='Open'
+      ).length
+    ]
+
+  ].map(x=>
+    `<div class="metric">
+      <span>${x[0]}</span>
+      <b>${Number(x[1]).toLocaleString('en-IN')}</b>
+    </div>`
+  ).join('');
+}
+
+/* ANALYTICS */
+
+function bars(rows,lk,vk){
+
+  const max=Math.max(
+    1,
+    ...rows.map(x=>Number(x[vk]||0))
+  );
+
+  return rows.length
+
+    ?rows.map(x=>
+      `<div class="bar-row">
+        <span>${esc(x[lk])}</span>
+        <div class="bar">
+          <i style="width:${Math.max(
+            3,
+            Number(x[vk]||0)/max*100
+          )}%"></i>
+        </div>
+        <b>${Number(x[vk]||0)}</b>
+      </div>`
+    ).join('')
+
+    :'<p style="color:#6a8aaa;font-size:.82rem">No data yet.</p>';
+}
+
+function renderAnalytics(a){
+
+  $('analyticsPanel').innerHTML=`
+
+    <div class="dash-card">
+      <h3>Page views — last 7 days</h3>
+      ${bars(a.daily||[],'view_date','views')}
+    </div>
+
+    <div class="dash-card">
+      <h3>Devices</h3>
+      ${bars(a.devices||[],'device','visits')}
+    </div>
+
+    <div class="dash-card">
+      <h3>Top pages</h3>
+      ${bars(a.top_pages||[],'path','views')}
+    </div>
+
+    <div class="dash-card">
+      <h3>Traffic sources</h3>
+      ${bars(a.traffic_sources||[],'source','visits')}
+    </div>
+
+    <div class="dash-card">
+      <h3>Countries</h3>
+      ${bars(a.countries||[],'country','visits')}
+    </div>
+
+    <div class="dash-card">
+      <h3>Searches this month</h3>
+      <p style="color:#fff;font-size:1.5rem;font-weight:800">
+        ${Number(
+          a.searches_month||0
+        ).toLocaleString('en-IN')}
+      </p>
+    </div>
+  `;
+}
+
+/* JOBS */
+
+function loadAdminJobs(){
+
+  const showExpired=
+    $('showExpiredAdmin').checked;
+
+  const list=showExpired
+    ?jobs
+    :jobs.filter(
+      j=>j.status!=='Expired'
+    );
+
+  $('adminJobs').innerHTML=
+
+    list.length
+
+    ?list.map(j=>`
+
+      <div class="list-item">
+
+        <div class="list-item-info">
+
+          <h4>
+
+            ${esc(j.role||'Untitled')}
+
+            <span class="status-badge ${
+              j.published
+              ?'published'
+              :'unpublished'
+            }">
+
+              ${j.published
+                ?'Published'
+                :'Draft'}
+
+            </span>
+
+            ${
+              j.status==='Expired'
+              ?'<span class="status-badge expired">Expired</span>'
+              :''
+            }
+
+          </h4>
+
+          <p>
+            ${esc(j.company||'')}
+            ·
+            ${esc(j.sector||'Private')}
+            ·
+            ${esc(j.location||'')}
+          </p>
+
+        </div>
+
+        <div class="mini-actions">
+
+          <button
+            onclick="jobEditor(jobs.find(x=>x.id==='${j.id}'))">
+            Edit
+          </button>
+
+          <button
+            class="btn-publish"
+            onclick="toggleJob('${j.id}',${!j.published})">
+
+            ${j.published
+              ?'Unpublish'
+              :'Publish'}
+
+          </button>
+
+          <button
+            class="btn-delete"
+            onclick="confirmDelete('/api/jobs','${j.id}')">
+            Delete
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join('')
+
+    :'<p style="color:#6a8aaa;padding:1rem">No jobs found.</p>';
+}
+
+async function toggleJob(id,published){
+
+  await api('/api/jobs',{
+    method:'PATCH',
+    key:adminKey,
+    body:JSON.stringify({
+      id,
+      published
+    })
+  });
+
+  toast(
+    published
+    ?'Job published ✓'
+    :'Job unpublished'
+  );
+
+  const j=jobs.find(
+    x=>x.id===id
+  );
+
+  if(j)j.published=published;
+
+  loadAdminJobs();
+}
+
+async function confirmDelete(url,id){
+
+  if(!confirm('Delete permanently?'))return;
+
+  await api(url,{
+    method:'DELETE',
+    key:adminKey,
+    body:JSON.stringify({id})
+  });
+
+  toast('Deleted.');
+
+  jobs=jobs.filter(
+    x=>x.id!==id
+  );
+
+  exams=exams.filter(
+    x=>x.id!==id
+  );
+
+  materials=materials.filter(
+    x=>x.id!==id
+  );
+
+  loadAdminJobs();
+
+  loadAdminExams();
+
+  loadAdminMaterials();
+}
+
+async function statusUpdate(url,id,status){
+
+  await api(url,{
+    method:'PATCH',
+    key:adminKey,
+    body:JSON.stringify({
+      id,
+      status
+    })
+  });
+
+  toast('Updated.');
+
+  await loadAll();
+}
+
+/* EXAMS */
+
+function loadAdminExams(){
+
+  $('adminExams').innerHTML=
+
+    exams.length
+
+    ?exams.map(x=>`
+
+      <div class="list-item">
+
+        <div class="list-item-info">
+
+          <h4>
+            ${esc(x.code||'')}
+            —
+            ${esc(x.title_en||'Untitled')}
+          </h4>
+
+          <p>
+            ${esc(x.authority||'')}
+            · Deadline:
+            ${x.application_end||'—'}
+          </p>
+
+        </div>
+
+        <div class="mini-actions">
+
+          <button
+            onclick="examEditor(exams.find(e=>e.id==='${x.id}'))">
+            Edit
+          </button>
+
+          <button
+            class="btn-delete"
+            onclick="confirmDelete('/api/exams','${x.id}')">
+            Delete
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join('')
+
+    :'<p style="color:#6a8aaa;padding:1rem">No exams found.</p>';
+}
+
+/* MATERIALS */
+
+function loadAdminMaterials(){
+
+  $('adminMaterials').innerHTML=
+
+    materials.length
+
+    ?materials.map(m=>`
+
+      <div class="list-item">
+
+        <div class="list-item-info">
+
+          <h4>
+            ${esc(m.title_en||'Untitled')}
+          </h4>
+
+          <p>
+            ${esc(m.category||'')}
+            ·
+            <a
+              href="${esc(m.file_url)}"
+              target="_blank"
+              style="color:#c9973c">
+              Open →
+            </a>
+          </p>
+
+        </div>
+
+        <div class="mini-actions">
+
+          <button
+            onclick="materialEditor(materials.find(x=>x.id==='${m.id}'))">
+            Edit
+          </button>
+
+          <button
+            class="btn-delete"
+            onclick="confirmDelete('/api/materials','${m.id}')">
+            Delete
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join('')
+
+    :'<p style="color:#6a8aaa;padding:1rem">No materials found.</p>';
+}
+
+/* SUBMISSIONS */
+
+function renderSubmissions(emp,res){
+
+  $('adminSubmissions').innerHTML=`
+
+    <h3 style="color:#fff;font-size:1rem;font-weight:700;margin-bottom:12px">
+      Employer job submissions
+    </h3>
+
+    ${
+      emp.length
+
+      ?emp.map(x=>`
+
+        <div class="list-item">
+
+          <div class="list-item-info">
+
+            <h4>
+
+              ${esc(x.job_title||'')}
+
+              <span class="status-badge ${
+                x.status==='Approved'
+                ?'published'
+                :x.status==='Rejected'
+                ?'expired'
+                :'unpublished'
+              }">
+
+                ${esc(x.status||'')}
+
+              </span>
+
+            </h4>
+
+            <p>
+              ${esc(x.company_name||'')}
+              ·
+              <a
+                href="${esc(x.official_url||'#')}"
+                target="_blank"
+                style="color:#c9973c">
+                View URL →
+              </a>
+            </p>
+
+          </div>
+
+          <div class="mini-actions">
+
+            <button onclick="jobEditor({
+              role:'${esc(x.job_title)}',
+              company:'${esc(x.company_name)}',
+              location:'${esc(x.location)}',
+              description:'${esc(x.description)}',
+              qualification:'${esc(x.qualification)}',
+              experience_level:'${esc(x.experience)}',
+              employment_type:'${esc(x.employment_type)}',
+              salary:'${esc(x.salary)}',
+              source_url:'${esc(x.official_url)}',
+              sector:'Private',
+              _submission:'${x.id}'
+            })">
+              Review
+            </button>
+
+            <button
+              class="btn-delete"
+              onclick="statusUpdate('/api/employer-submissions','${x.id}','Rejected')">
+              Reject
+            </button>
+
+          </div>
+
+        </div>
+
+      `).join('')
+
+      :'<p style="color:#6a8aaa;padding:1rem">No employer submissions.</p>'
+    }
+
+    <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:1.5rem 0 12px">
+      Resource submissions
+    </h3>
+
+    ${
+      res.length
+
+      ?res.map(x=>`
+
+        <div class="list-item">
+
+          <div class="list-item-info">
+
+            <h4>
+
+              ${esc(x.title||'')}
+
+              <span class="status-badge ${
+                x.status==='Approved'
+                ?'published'
+                :x.status==='Rejected'
+                ?'expired'
+                :'unpublished'
+              }">
+
+                ${esc(x.status||'')}
+
+              </span>
+
+            </h4>
+
+            <p>
+              ${esc(x.category||'')}
+              ·
+              <a
+                href="${esc(x.resource_url||'#')}"
+                target="_blank"
+                style="color:#c9973c">
+                Open →
+              </a>
+            </p>
+
+          </div>
+
+          <div class="mini-actions">
+
+            <button
+              class="btn-publish"
+              onclick="statusUpdate('/api/resource-submissions','${x.id}','Approved')">
+              Approve
+            </button>
+
+            <button
+              class="btn-delete"
+              onclick="statusUpdate('/api/resource-submissions','${x.id}','Rejected')">
+              Reject
+            </button>
+
+          </div>
+
+        </div>
+
+      `).join('')
+
+      :'<p style="color:#6a8aaa;padding:1rem">No resource submissions.</p>'
+    }
+  `;
+}
+
+/* REPORTS */
+
+function renderReports(reports){
+
+  $('adminReports').innerHTML=
+
+    reports.length
+
+    ?reports.map(x=>`
+
+      <div class="list-item">
+
+        <div class="list-item-info">
+
+          <h4>
+
+            ${esc(x.report_type||'')}
+
+            <span class="status-badge ${
+              x.status==='Resolved'
+              ?'published'
+              :x.status==='Dismissed'
+              ?'expired'
+              :'unpublished'
+            }">
+
+              ${esc(x.status||'')}
+
+            </span>
+
+          </h4>
+
+          <p>
+            ${esc(
+              (x.details||'').slice(0,100)
+            )}
+          </p>
+
+        </div>
+
+        <div class="mini-actions">
+
+          <button
+            class="btn-publish"
+            onclick="statusUpdate('/api/reports','${x.id}','Resolved')">
+            Resolve
+          </button>
+
+          <button
+            class="btn-delete"
+            onclick="statusUpdate('/api/reports','${x.id}','Dismissed')">
+            Dismiss
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join('')
+
+    :'<p style="color:#6a8aaa;padding:1rem">No reports.</p>';
+}
+
+/* JOB EDITOR */
+
+function jobEditor(j={}){
+
+  $('editorTitle').textContent=
+    j.id
+    ?'Edit opportunity'
+    :'Add opportunity';
+
+  $('editorBody').innerHTML=`
+
+<form id="jobEdit">
+
+<div class="field-grid">
+
+<label>
+Sector
+<select name="sector">
+
+<option ${
+  (j.sector||'Private')==='Private'
+  ?'selected'
+  :''
+}>
+Private
+</option>
+
+<option ${
+  j.sector==='Government'
+  ?'selected'
+  :''
+}>
+Government
+</option>
+
+<option ${
+  j.sector==='Public Sector'
+  ?'selected'
+  :''
+}>
+Public Sector
+</option>
+
+</select>
+</label>
+
+<label>
+Job title *
+<input
+name="role"
+value="${val(j.role)}"
+required
+placeholder="e.g. Site Engineer">
+</label>
+
+<label>
+Company / Department
+<input
+name="company"
+value="${val(j.company)}"
+placeholder="e.g. L&T, KPSC">
+</label>
+
+<label>
+Location
+<input
+name="location"
+value="${val(j.location)}"
+placeholder="e.g. Bengaluru, Karnataka">
+</label>
+
+<label>
+State
+<input
+name="state"
+value="${val(j.state)}"
+placeholder="e.g. Karnataka">
+</label>
+
+<label>
+Country
+<input
+name="country"
+value="${val(j.country||'India')}"
+placeholder="e.g. India">
+</label>
+
+<label>
+Qualification
+<input
+name="qualification"
+value="${val(j.qualification)}"
+placeholder="e.g. B.E. Civil">
+</label>
+
+<label>
+Experience
+<input
+name="experience_level"
+value="${val(j.experience_level)}"
+placeholder="e.g. 2-5 years">
+</label>
+
+<label>
+Employment type
+<input
+name="employment_type"
+value="${val(j.employment_type||'Full-time')}">
+</label>
+
+<label>
+Salary / Pay scale
+<input
+name="salary"
+value="${val(j.salary)}"
+placeholder="e.g. ₹4-7 LPA">
+</label>
+
+<label>
+Vacancies
+<input
+type="number"
+name="vacancy_count"
+value="${val(j.vacancy_count)}"
+placeholder="e.g. 50">
+</label>
+
+<label>
+Application starts
+<input
+type="date"
+name="application_start"
+value="${val(j.application_start)}">
+</label>
+
+<label>
+Application deadline
+<input
+type="date"
+name="deadline"
+value="${val(j.deadline)}">
+</label>
+
+<label>
+Age limit
+<input
+name="age_limit"
+value="${val(j.age_limit)}"
+placeholder="e.g. 18-35">
+</label>
+
+<label>
+Application fee
+<input
+name="application_fee"
+value="${val(j.application_fee)}"
+placeholder="e.g. ₹200">
+</label>
+
+<label>
+Status
+<select name="status">
+
+<option ${
+  j.status!=='Expired'
+  ?'selected'
+  :''
+}>
+Active
+</option>
+
+<option ${
+  j.status==='Expired'
+  ?'selected'
+  :''
+}>
+Expired
+</option>
+
+</select>
+</label>
+
+<label>
+Last verified
+<input
+type="date"
+name="last_verified"
+value="${val(
+  j.last_verified||
+  new Date().toISOString().slice(0,10)
+)}">
+</label>
+
+<label class="wide">
+Skills
+<input
+name="skills"
+value="${val(j.skills)}"
+placeholder="AutoCAD, STAAD Pro, estimation, site supervision">
+</label>
+
+<label class="wide">
+Recruitment authority
+<input
+name="recruitment_authority"
+value="${val(j.recruitment_authority)}"
+placeholder="KPSC, department, recruiting authority">
+</label>
+
+<label class="wide">
+Official notification / source URL *
+<input
+type="url"
+name="source_url"
+value="${val(j.source_url)}"
+required
+placeholder="https://...">
+</label>
+
+<label class="wide">
+Online apply URL
+<input
+type="url"
+name="application_url"
+value="${val(
+  j.application_url||
+  j.apply_url
+)}"
+placeholder="https://...">
+</label>
+
+<label class="wide">
+Application email
+<input
+type="email"
+name="application_email"
+value="${val(
+  j.application_email||
+  j.application_method
+)}"
+placeholder="hr@company.com">
+</label>
+
+<label class="wide">
+Description
+<textarea name="description">${val(j.description)}</textarea>
+</label>
+
+<button type="submit" class="btn-save">
+Save & Publish
+</button>
+
+<div class="save-status" id="saveStatus"></div>
+
+</div>
+
+</form>
+`;
+
+  $('editorDialog').showModal();
+
+  $('jobEdit').onsubmit=async e=>{
+
+    e.preventDefault();
+
+    const d=formObject(e.target);
+
+    d.published=true;
+
+    if(j.id)d.id=j.id;
+
+    const st=$('saveStatus');
+
+    st.className='save-status show';
+
+    st.textContent='Saving…';
+
+    try{
+
+      const saved=await api(
+        '/api/jobs',
+        {
+          method:j.id?'PATCH':'POST',
+          key:adminKey,
+          body:JSON.stringify(d)
+        }
+      );
+
+      if(j._submission){
+
+        await statusUpdate(
+          '/api/employer-submissions',
+          j._submission,
+          'Approved'
+        );
+      }
+
+      if(!j.id){
+
+        fetch('/api/telegram',{
+          method:'POST',
+          headers:{
+            'content-type':'application/json'
+          },
+          body:JSON.stringify({job:d})
+        }).catch(()=>{});
+
+      }
+
+      st.className=
+        'save-status show success';
+
+      st.textContent=
+        'Saved successfully ✓';
+
+      toast('Opportunity saved.');
+
+      const newJob=
+        saved.job||
+        {...d,id:Date.now().toString()};
+
+      if(j.id){
+
+        const idx=
+          jobs.findIndex(
+            x=>x.id===j.id
+          );
+
+        if(idx>-1)jobs[idx]=newJob;
+
+      }else{
+
+        jobs.unshift(newJob);
+      }
+
+      loadAdminJobs();
+
+      setTimeout(
+        ()=>$('editorDialog').close(),
+        800
+      );
+
+    }catch(err){
+
+      st.className=
+        'save-status show error';
+
+      st.textContent=
+        err.message;
+    }
+  };
+}
+
+/* EXAM EDITOR */
+
+function examEditor(x={}){
+
+  $('editorTitle').textContent=
+    x.id
+    ?'Edit exam'
+    :'Add exam';
+
+  $('editorBody').innerHTML=`
+
+<form id="examEdit">
+
+<div class="field-grid">
+
+<label>
+Code *
+<input
+name="code"
+value="${val(x.code)}"
+required
+placeholder="e.g. KPSC-AE">
+</label>
+
+<label>
+Authority
+<input
+name="authority"
+value="${val(x.authority)}"
+placeholder="e.g. Karnataka PSC">
+</label>
+
+<label class="wide">
+Title (English) *
+<input
+name="title_en"
+value="${val(x.title_en)}"
+required
+placeholder="e.g. KPSC AE Recruitment 2026">
+</label>
+
+<label>
+Vacancies
+<input
+type="number"
+name="vacancy_count"
+value="${val(x.vacancy_count)}">
+</label>
+
+<label>
+Status
+<input
+name="status"
+value="${val(x.status||'Open')}"
+placeholder="Open / Upcoming / Closed">
+</label>
+
+<label>
+Application start
+<input
+type="date"
+name="application_start"
+value="${val(x.application_start)}">
+</label>
+
+<label>
+Application deadline
+<input
+type="date"
+name="application_end"
+value="${val(x.application_end)}">
+</label>
+
+<label>
+Exam date
+<input
+type="date"
+name="exam_date"
+value="${val(x.exam_date)}">
+</label>
+
+<label>
+Last verified
+<input
+type="date"
+name="last_verified"
+value="${val(
+  x.last_verified||
+  new Date().toISOString().slice(0,10)
+)}">
+</label>
+
+<label class="wide">
+Post names
+<input
+name="post_names"
+value="${val(x.post_names)}"
+placeholder="e.g. AE Civil, JE Civil">
+</label>
+
+<label class="wide">
+Overview
+<textarea name="overview">${val(x.overview)}</textarea>
+</label>
+
+<label class="wide">
+Eligibility
+<textarea name="eligibility_en">${val(x.eligibility_en)}</textarea>
+</label>
+
+<label class="wide">
+Age limit
+<textarea name="age_limit">${val(x.age_limit)}</textarea>
+</label>
+
+<label class="wide">
+Pay scale
+<textarea name="pay_scale">${val(x.pay_scale)}</textarea>
+</label>
+
+<label class="wide">
+Application fee
+<textarea name="application_fee">${val(x.application_fee)}</textarea>
+</label>
+
+<label class="wide">
+How to apply
+<textarea name="how_to_apply">${val(x.how_to_apply)}</textarea>
+</label>
+
+<label class="wide">
+Official notification PDF URL
+<input
+type="url"
+name="official_notification_url"
+value="${val(x.official_notification_url)}">
+</label>
+
+<label class="wide">
+Apply online URL
+<input
+type="url"
+name="apply_url"
+value="${val(x.apply_url)}">
+</label>
+
+<button type="submit" class="btn-save">
+Save & Publish
+</button>
+
+<div class="save-status" id="saveStatus"></div>
+
+</div>
+</form>
+`;
+
+  $('editorDialog').showModal();
+
+  $('examEdit').onsubmit=async e=>{
+
+    e.preventDefault();
+
+    const d=formObject(e.target);
+
+    if(x.id)d.id=x.id;
+
+    const st=$('saveStatus');
+
+    st.className='save-status show';
+
+    st.textContent='Saving…';
+
+    try{
+
+      await api('/api/exams',{
+        method:x.id?'PATCH':'POST',
+        key:adminKey,
+        body:JSON.stringify(d)
+      });
+
+      st.className=
+        'save-status show success';
+
+      st.textContent='Saved ✓';
+
+      toast('Exam saved.');
+
+      loadAdminExams();
+
+      setTimeout(
+        ()=>$('editorDialog').close(),
+        800
+      );
+
+    }catch(err){
+
+      st.className=
+        'save-status show error';
+
+      st.textContent=err.message;
+    }
+  };
+}
+
+/* MATERIAL EDITOR */
+
+function materialEditor(m={}){
+
+  $('editorTitle').textContent=
+    m.id
+    ?'Edit material'
+    :'Add material';
+
+  $('editorBody').innerHTML=`
+
+<form id="materialEdit">
+
+<div class="field-grid">
+
+<label class="wide">
+Title *
+<input
+name="title_en"
+value="${val(m.title_en)}"
+required
+placeholder="e.g. KPSC AE Civil Notes">
+</label>
+
+<label>
+Category
+<input
+name="category"
+value="${val(m.category)}"
+placeholder="Civil Engineering / Competitive Exams">
+</label>
+
+<label>
+Author
+<input
+name="author"
+value="${val(m.author)}">
+</label>
+
+<label>
+Pages
+<input
+type="number"
+name="page_count"
+value="${val(m.page_count)}">
+</label>
+
+<label class="wide">
+Description
+<textarea name="description_en">${val(m.description_en)}</textarea>
+</label>
+
+<label class="wide">
+Resource URL *
+<input
+type="url"
+name="file_url"
+value="${val(m.file_url)}"
+required
+placeholder="https://drive.google.com/...">
+</label>
+
+<button type="submit" class="btn-save">
+Save Material
+</button>
+
+<div class="save-status" id="saveStatus"></div>
+
+</div>
+</form>
+`;
+
+  $('editorDialog').showModal();
+
+  $('materialEdit').onsubmit=async e=>{
+
+    e.preventDefault();
+
+    const d=formObject(e.target);
+
+    d.access_type='Free';
+
+    if(m.id)d.id=m.id;
+
+    const st=$('saveStatus');
+
+    st.className='save-status show';
+
+    st.textContent='Saving…';
+
+    try{
+
+      await api('/api/materials',{
+        method:m.id?'PATCH':'POST',
+        key:adminKey,
+        body:JSON.stringify(d)
+      });
+
+      st.className=
+        'save-status show success';
+
+      st.textContent='Saved ✓';
+
+      toast('Material saved.');
+
+      loadAdminMaterials();
+
+      setTimeout(
+        ()=>$('editorDialog').close(),
+        800
+      );
+
+    }catch(err){
+
+      st.className=
+        'save-status show error';
+
+      st.textContent=err.message;
+    }
+  };
+}
+
+/* =====================================================
+   AI JOB IMPORT — FINAL VERSION
+   ===================================================== */
+
+async function importJobLink(){
+
+  const url=
+    $('importJobUrl').value.trim();
+
+  const text=
+    $('importJobText').value.trim();
+
+  if(!url&&!text){
+
+    return setImportStatus(
+      'importJobStatus',
+      'Paste a URL, text, or both.',
+      'error'
+    );
+  }
+
+  const btn=$('importJobBtn');
+
+  btn.disabled=true;
+
+  btn.textContent='Extracting…';
+
+  setImportStatus(
+    'importJobStatus',
+    'Analyzing vacancy with the free AI fallback chain…'
+  );
+
+  try{
+
+    const data=await api(
+      '/api/extract',
+      {
+        method:'POST',
+        key:adminKey,
+        body:JSON.stringify({
+          url,
+          text
+        })
+      }
+    );
+
+    /*
+      IMPORTANT:
+
+      extract.js returns:
+
+      {
+        extracted: {...},
+        source: "groq"
+      }
+
+      Therefore we MUST read:
+
+      data.extracted
+
+      NOT:
+
+      data.job
+    */
+
+    const ai=data.extracted||{};
+
+    if(!Object.keys(ai).length){
+
+      throw new Error(
+        'AI returned no extracted fields.'
+      );
+    }
+
+    /*
+      Convert AI response into the exact
+      fields used by jobEditor().
+    */
+
+    const x={
+
+      role:ai.role||'',
+
+      company:ai.company||'',
+
+      location:ai.location||'',
+
+      state:ai.state||'',
+
+      country:ai.country||'India',
+
+      description:ai.description||'',
+
+      qualification:
+        ai.qualification||'',
+
+      skills:
+        ai.skills||'',
+
+      experience_level:
+        ai.experience_level||'',
+
+      salary:
+        ai.salary||'',
+
+      vacancy_count:
+        ai.vacancy_count||'',
+
+      deadline:
+        ai.deadline||'',
+
+      employment_type:
+        ai.employment_type||'',
+
+      sector:
+        ai.sector||'Private',
+
+      source_url:
+        ai.source_url||
+        url||
+        '',
+
+      application_url:
+        ai.apply_url||
+        ai.application_url||
+        '',
+
+      application_email:
+        ai.application_email||
+        '',
+
+      recruitment_authority:
+        ai.recruitment_authority||
+        '',
+
+      posted_date:
+        ai.posted_date||
+        '',
+
+      last_verified:
+        new Date()
+          .toISOString()
+          .slice(0,10),
+
+      status:'Active'
+
+    };
+
+    /*
+      Normalize date.
+    */
+
+    x.deadline=
+      (x.deadline||'')
+      .slice(0,10);
+
+    x.posted_date=
+      (x.posted_date||'')
+      .slice(0,10);
+
+    /*
+      Detect email addresses directly from
+      the pasted vacancy text.
+
+      This is independent of AI.
+    */
+
+    const emailSource=
+      text+' '+(url||'');
+
+    const emails=[
+      ...new Set(
+        emailSource.match(
+          /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
+        )||[]
+      )
+    ];
+
+    const sel=
+      $('detectedEmailSelect');
+
+    sel.innerHTML=
+
+      emails.length
+
+      ?emails.map(email=>
+        `<option value="${esc(email)}">
+          ${esc(email)}
+        </option>`
+      ).join('')
+
+      :'<option value="">No email detected</option>';
+
+    /*
+      If AI supplied an email, use it.
+
+      Otherwise use the first detected
+      email from the vacancy text.
+    */
+
+    if(x.application_email){
+
+      $('importApplicationEmail').value=
+        x.application_email;
+
+    }else if(emails.length){
+
+      $('importApplicationEmail').value=
+        emails[0];
+
+      x.application_email=
+        emails[0];
+    }
+
+    /*
+      Tell the admin extraction succeeded.
+    */
+
+    setImportStatus(
+      'importJobStatus',
+
+      `Extraction complete using ${
+        data.source||'AI'
+      }. Verify every field before saving.${data.warning?' '+data.warning:''}`,
+
+      'success'
+    );
+
+    /*
+      Open the job editor with the
+      extracted information.
+    */
+
+    jobEditor(x);
+
+  }catch(err){
+
+    console.error(
+      'CivilCareer job extraction failed:',
+      err
+    );
+
+    setImportStatus(
+      'importJobStatus',
+      err.message||
+      'AI extraction failed.',
+      'error'
+    );
+
+  }finally{
+
+    btn.disabled=false;
+
+    btn.textContent=
+      'Extract & fill fields';
+  }
+}
+
+function useDetectedEmailFn(){
+
+  const v=
+    $('detectedEmailSelect').value;
+
+  if(v){
+
+    $('importApplicationEmail').value=v;
+  }
+}
+
+function clearJobImport(){
+
+  $('importJobUrl').value='';
+
+  $('importJobText').value='';
+
+  $('importApplicationEmail').value='';
+
+  $('detectedEmailSelect').innerHTML=
+    '<option value="">No email detected yet</option>';
+
+  $('importJobStatus').className=
+    'import-status';
+
+  $('importJobStatus').textContent='';
+}
+
+function setImportStatus(
+  id,
+  msg,
+  type=''
+){
+
+  const el=$(id);
+
+  el.textContent=msg;
+
+  el.className=
+    `import-status show${
+      type?' '+type:''
+    }`;
+}
+
+/* PDF */
+
+async function pdfText(file){
+
+  if(!window.pdfjsLib){
+
+    throw Error(
+      'PDF reader not loaded. Refresh and try again.'
+    );
+  }
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc=
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const bytes=
+    new Uint8Array(
+      await file.arrayBuffer()
+    );
+
+  const doc=
+    await window.pdfjsLib
+      .getDocument({data:bytes})
+      .promise;
+
+  let text='';
+
+  for(
+    let p=1;
+    p<=Math.min(doc.numPages,160);
+    p++
+  ){
+
+    const page=
+      await doc.getPage(p);
+
+    const content=
+      await page.getTextContent();
+
+    text+=
+      content.items
+        .map(x=>x.str)
+        .join(' ')+'\n';
+  }
+
+  return text;
+}
+
+async function importExamPdf(){
+
+  const file=
+    $('importExamPdf').files[0];
+
+  if(!file){
+
+    return setImportStatus(
+      'importExamStatus',
+      'Select a PDF first.',
+      'error'
+    );
+  }
+
+  if(
+    file.size>
+    20*1024*1024
+  ){
+
+    return setImportStatus(
+      'importExamStatus',
+      'Use a PDF under 20 MB.',
+      'error'
+    );
+  }
+
+  const btn=
+    $('importExamBtn');
+
+  btn.disabled=true;
+
+  btn.textContent='Reading…';
+
+  setImportStatus(
+    'importExamStatus',
+    'Extracting text…'
+  );
+
+  try{
+
+    const text=
+      await pdfText(file);
+
+    setImportStatus(
+      'importExamStatus',
+      'Organizing fields with AI…'
+    );
+
+    const data=
+      await api(
+        '/api/exam-extract',
+        {
+          method:'POST',
+          key:adminKey,
+          body:JSON.stringify({text})
+        }
+      );
+
+    const x=data.exam||{};
+
+    x.last_verified=
+      new Date()
+      .toISOString()
+      .slice(0,10);
+
+    setImportStatus(
+      'importExamStatus',
+      data.warning||
+      'Done. Verify all fields before saving.',
+      'success'
+    );
+
+    examEditor(x);
+
+  }catch(err){
+
+    setImportStatus(
+      'importExamStatus',
+      err.message,
+      'error'
+    );
+
+  }finally{
+
+    btn.disabled=false;
+
+    btn.textContent='Read PDF';
+  }
+}
+
+
+/* WEB DISCOVERY */
+function discoveryStatus(message,type='show'){
+  const el=$('discoveryStatus');
+  el.className=`discovery-status ${type}`;
+  el.textContent=message||'';
+}
+
+/* ── Phase 7: source label mapping ── */
+const SOURCE_LABELS={
+  google_jobs:'Google Jobs (SerpApi)',
+  the_muse:'The Muse (free)',
+  adzuna:'Adzuna',
+  jobvetta:'Jobvetta',
+  remotive:'Remotive',
+  careerjet:'CareerJet India',
+  findwork:'Findwork.dev'
+};
+
+function renderSourceHealth(sourceStats){
+  const panel=$('sourceHealthPanel');
+  const tbody=$('sourceHealthBody');
+  if(!sourceStats||!Object.keys(sourceStats).length){panel.classList.remove('show');return;}
+  const ORDER=['google_jobs','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
+  const allKeys=[...new Set([...ORDER,...Object.keys(sourceStats)])];
+  tbody.innerHTML=allKeys.map(key=>{
+    const v=sourceStats[key];
+    const label=SOURCE_LABELS[key]||key.replaceAll('_',' ');
+    if(!v){
+      return `<tr><td>${esc(label)}</td><td class="sh-nc">⚪ Not run</td><td>—</td><td style="color:#4a6a8a;font-size:.72rem">Not in this search</td></tr>`;
+    }
+    if(v.configured===false){
+      return `<tr><td>${esc(label)}</td><td class="sh-nc">⚪ Not configured</td><td>—</td><td style="color:#4a6a8a;font-size:.72rem">Add API key in Vercel env vars</td></tr>`;
+    }
+    if(v.ok){
+      const extra=v.remaining!=null?`Quota remaining: ${v.remaining}`:'';
+      return `<tr><td>${esc(label)}</td><td class="sh-ok">🟢 OK</td><td class="sh-ok">${Number(v.items||0)}</td><td style="color:#4a6a8a;font-size:.72rem">${esc(extra)}</td></tr>`;
+    }
+    const errMsg=v.error||'Error';
+    const isQuota=/429|quota|rate.limit/i.test(errMsg);
+    const isTimeout=/timeout|abort/i.test(errMsg);
+    const isBlocked=v.blocked||/403|blocked|forbidden/i.test(errMsg);
+    const statusIcon=isQuota?'🟡 Quota':isBlocked?'🔵 Blocked':'🔴 Error';
+    const statusClass=isQuota?'sh-warn':isBlocked?'':'sh-error';
+    const statusStyle=isBlocked?'color:#60a5fa':'';
+    const resetNote=v.reset?` (resets ${v.reset})`:'';
+    return `<tr><td>${esc(label)}</td><td class="${statusClass}" style="${statusStyle}">${statusIcon}${resetNote}</td><td>0</td><td style="font-size:.72rem;color:${isBlocked?'#60a5fa':'#fca5a5'}">${esc(isBlocked?'Source blocks server access':errMsg)}</td></tr>`;
+  }).join('');
+  panel.classList.add('show');
+}
+
+function renderDiscoverySummary(data){
+  const el=$('discoverySummary');
+  if(!data){el.classList.remove('show');return;}
+  const newDrafts=Number(data.count||0);
+  const candidates=Number(data.candidates||0);
+  const skipped=Number(data.skippedExisting||0);
+  const older=Number(data.olderCandidates||0);
+  el.innerHTML=
+    `<strong>${newDrafts}</strong> new draft${newDrafts===1?'':'s'} added to review queue &nbsp;·&nbsp; `+
+    `<strong>${candidates}</strong> fresh candidates (last 24 h) &nbsp;·&nbsp; `+
+    `<strong>${skipped}</strong> skipped (already in CivilCareer) &nbsp;·&nbsp; `+
+    `<strong>${older}</strong> older / unknown-date listings not queued`;
+  el.classList.add('show');
+}
+
+function renderDiscoveryResults(results){
+  const root=$('discoveryResults');
+  if(!results||!results.length){
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No jobs are available in the preview list.</p></div>';
+    return;
+  }
+  root.innerHTML=`<div class="dash-card" style="margin-bottom:10px"><strong>${results.length}</strong> CivilCareer job${results.length===1?'':'s'} shown in the preview list. Existing jobs are displayed even when discovery finds no new draft.</div>`+results.map((r,i)=>{
+    const hasDate=r.postedAt&&r.postedAt!=='';
+    const dateLabel=hasDate
+      ?`<span class="dr-date">Posted: ${esc(r.postedAt)}</span>`
+      :`<span class="dr-date unknown">Posting time: Unknown</span>`;
+    const sourceBadge=r.sourceDomain||r.source
+      ?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:'';
+    const companyLine=r.company
+      ?`<span class="dr-company">${esc(r.company)}${r.location?' · '+esc(r.location):''}</span>`
+      :(r.location?`<span class="dr-company">${esc(r.location)}</span>`:'');
+    const existing=!!r.existing;
+    const safeUrl=r.applicationUrl||r.url||'#';
+    const actions=existing
+      ?`<a class="btn-open-src" href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`
+      :`<button class="btn-review" type="button" onclick="openReviewModal(${i})">Review</button><button class="btn-reject" type="button" onclick="rejectDraft('${esc(r.id||'')}',${i})">Reject</button><a class="btn-open-src" href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`;
+    return `<article class="discovery-result">
+      <div style="min-width:0;flex:1">
+        <h4>${esc(r.title||'Untitled vacancy')} ${existing?'<span style="font-size:.62rem;background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Already in CivilCareer</span>':''}</h4>
+        <div class="dr-meta">${companyLine}${sourceBadge}${dateLabel}</div>
+        <p>${esc((r.snippet||'').slice(0,220)||'Open the original source to verify vacancy details.')}</p>
+        <a href="${esc(r.url||r.applicationUrl||'#')}" target="_blank" rel="noopener noreferrer">${esc(r.url||r.applicationUrl||'')}</a>
+      </div>
+      <div class="discovery-actions">${actions}</div>
+    </article>`;
+  }).join('');
+  window._discoveryResults=results;
+}
+
+function mapExistingJobsToPreview(rows){
+  return (rows||[]).map(j=>({
+    id:j.id,
+    title:j.role||j.title||'Untitled vacancy',
+    company:j.company||j.recruitment_authority||'',
+    location:j.location_display||j.location||j.city||j.state||'',
+    url:j.source_url||j.application_url||j.apply_url||'',
+    applicationUrl:j.application_url||j.apply_url||j.source_url||'',
+    snippet:(j.description||'').slice(0,400),
+    source:j.source||j.source_domain||'CivilCareer',
+    sourceDomain:j.source_domain||'',
+    postedAt:j.posted_at||j.published_at||j.date_posted||j.created_at||'',
+    existing:true,
+    published:!!j.published
+  }));
+}
+
+function renderReviewQueue(drafts){
+  const section=$('reviewQueueSection');
+  const list=$('reviewQueueList');
+  const countEl=$('reviewQueueCount');
+  if(!drafts||!drafts.length){
+    countEl.textContent='0';
+    list.innerHTML='<p class="rq-empty">No pending drafts in the review queue for this search.</p>';
+    section.classList.add('show');
+    return;
+  }
+  countEl.textContent=String(drafts.length);
+  list.innerHTML=drafts.map((r,i)=>{
+    const hasDate=r.postedAt&&r.postedAt!=='';
+    const dateLabel=hasDate?`Posted: ${esc(r.postedAt)}`:'Posting time: Unknown';
+    return `<article class="discovery-result">
+      <div style="min-width:0;flex:1">
+        <h4>${esc(r.title||'Untitled')}
+          <span style="font-size:.62rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Draft</span>
+        </h4>
+        <div class="dr-meta">
+          ${r.company?`<span class="dr-company">${esc(r.company)}${r.location?' · '+esc(r.location):''}</span>`:''}
+          ${r.sourceDomain||r.source?`<span class="dr-source-badge">${esc(r.sourceDomain||r.source)}</span>`:''}
+          <span class="dr-date${hasDate?'':' unknown'}">${dateLabel}</span>
+        </div>
+        <p>${esc((r.snippet||'').slice(0,180)||'No description available.')}</p>
+      </div>
+      <div class="discovery-actions">
+        <button class="btn-review" type="button" onclick="openReviewModal(${i},true)">Review</button>
+        <button class="btn-reject" type="button" onclick="rejectDraft('${esc(r.id||'')}',${i},true)">Reject</button>
+        <a class="btn-open-src" href="${esc(r.applicationUrl||r.url||'#')}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+      </div>
+    </article>`;
+  }).join('');
+  section.classList.add('show');
+}
+
+/* ── Review Modal ── */
+let _reviewCurrentId=null;
+
+function openReviewModal(index,fromQueue){
+  const arr=fromQueue?(window._reviewQueueData||[]):(window._discoveryResults||[]);
+  const r=arr[index];
+  if(!r)return;
+  _reviewCurrentId=r.id||null;
+  $('rmTitle').textContent=r.title||'Untitled vacancy';
+  $('rmCompany').textContent=[r.company,r.location].filter(Boolean).join(' · ')||'—';
+  $('rmSource').textContent=r.source||r.sourceDomain||'—';
+  const hasDate=r.postedAt&&r.postedAt!=='';
+  $('rmPosted').textContent=hasDate?r.postedAt:'Unknown — posting date not confirmed by source';
+  $('rmPosted').className='rm-value'+(hasDate?'':' dr-date unknown');
+  const applyUrl=r.applicationUrl||r.url||'';
+  $('rmUrl').href=applyUrl;
+  $('rmUrl').textContent=applyUrl||'—';
+  $('rmOpenSrc').href=applyUrl;
+  $('rmDescription').textContent=r.snippet||r.description||'No description available.';
+  $('reviewModalOverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+
+function closeReviewModal(){
+  $('reviewModalOverlay').classList.remove('show');
+  document.body.style.overflow='';
+  _reviewCurrentId=null;
+}
+
+async function rejectDraft(id,index,fromQueue){
+  if(!id){discoveryStatus('Cannot reject: draft ID missing.','error');return;}
+  if(!confirm('Delete this draft job? This cannot be undone.'))return;
+  try{
+    await api('/api/jobs',{method:'DELETE',key:adminKey,body:JSON.stringify({id})});
+    /* Remove card from UI */
+    const arr=fromQueue?(window._reviewQueueData||[]):(window._discoveryResults||[]);
+    if(arr[index])arr.splice(index,1);
+    if(fromQueue){renderReviewQueue(window._reviewQueueData||[]);}
+    else{renderDiscoveryResults(window._discoveryResults||[]);}
+    $('reviewQueueCount').textContent=String((window._reviewQueueData||[]).length);
+    discoveryStatus('Draft deleted.','show');
+  }catch(e){
+    discoveryStatus(`Delete failed: ${e.message}`,'error');
+  }
+}
+
+async function publishReviewedDraft(){
+  if(!_reviewCurrentId){discoveryStatus('Cannot publish: draft ID missing.','error');closeReviewModal();return;}
+  try{
+    await api('/api/jobs',{method:'PATCH',key:adminKey,body:JSON.stringify({id:_reviewCurrentId,published:true,status:'Active',review_state:'Published',verification_status:'Verified'})});
+    closeReviewModal();
+    /* Refresh jobs list */
+    const resp=await api('/api/jobs',{key:adminKey});
+    jobs=(resp.jobs||[]);
+    loadAdminJobs();
+    /* Remove from queues */
+    [window._discoveryResults,window._reviewQueueData].forEach(arr=>{
+      if(!Array.isArray(arr))return;
+      const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
+      if(idx!==-1)arr.splice(idx,1);
+    });
+    renderDiscoveryResults(window._discoveryResults||[]);
+    renderReviewQueue(window._reviewQueueData||[]);
+    discoveryStatus('Job published and is now live.','show');
+  }catch(e){
+    discoveryStatus(`Publish failed: ${e.message}`,'error');
+  }
+}
+
+async function discoverJobs(){
+  const btn=$('discoverySearchBtn');
+  const q=$('discoveryQuery').value.trim()||'civil engineering jobs India';
+  const location=$('discoveryLocation').value.trim();
+  const type=$('discoveryType').value;
+  btn.disabled=true;
+  const old=btn.textContent; btn.textContent='Searching…';
+  $('sourceHealthPanel').classList.remove('show');
+  $('discoverySummary').classList.remove('show');
+  $('reviewQueueSection').classList.remove('show');
+  $('setupGuidePanel').classList.remove('show');
+  discoveryStatus('Searching sources in parallel…','show');
+  try{
+    const data=await api('/api/jobs?discovery=1',{
+      method:'POST',
+      key:adminKey,
+      body:JSON.stringify({q,location,type,limit:20})
+    });
+    const discovered=data.results||[];
+    /* Always show the complete CivilCareer inventory in the preview.
+       Discovery may return zero new drafts because those vacancies already exist;
+       that is not a reason to hide the existing jobs. */
+    const allResp=await api('/api/jobs',{key:adminKey});
+    const existingPreview=mapExistingJobsToPreview(allResp.jobs||[]);
+    const existingKeys=new Set(existingPreview.map(x=>`${String(x.url||'').replace(/[?#].*$/,'')}|${String(x.title||'').toLowerCase()}`));
+    const newPreview=discovered.filter(x=>{
+      const k=`${String(x.url||'').replace(/[?#].*$/,'')}|${String(x.title||'').toLowerCase()}`;
+      return !existingKeys.has(k);
+    });
+    const results=[...newPreview,...existingPreview];
+    window._discoveryResults=results;
+    window._reviewQueueData=discovered;
+    renderSourceHealth(data.sourceStats||{});
+    renderDiscoverySummary(data);
+    renderDiscoveryResults(results);
+    renderReviewQueue(discovered);
+    const newCount=Number(data.count||0);
+    const totalFound=Object.values(data.sourceStats||{}).reduce((s,v)=>s+(v.ok?Number(v.items||0):0),0);
+    if(newCount===0 && totalFound===0){
+      /* All sources returned zero — show the setup guide again */
+      $('setupGuidePanel').classList.add('show');
+    }
+    discoveryStatus(
+      newCount>0
+        ?`${newCount} new draft${newCount===1?'':'s'} added. Preview below also shows all ${existingPreview.length} jobs already in CivilCareer.`
+        :totalFound>0
+          ?`Search complete. No new draft was required. Preview below shows all ${existingPreview.length} jobs already in CivilCareer.`
+          :`Search complete. Preview below shows all ${existingPreview.length} jobs already in CivilCareer.`,
+      'show'
+    );
+  }catch(e){
+    renderDiscoveryResults([]);
+    discoveryStatus(e.message||'Web discovery failed.','error');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
+
+async function discoverExtract(index){
+  const item=(window._discoveryResults||[])[index];
+  if(!item?.url)return;
+  discoveryStatus('Fetching the original vacancy page and extracting structured fields…','show');
+  try{
+    const data=await api('/api/extract',{
+      method:'POST',
+      key:adminKey,
+      body:JSON.stringify({url:item.url,text:''})
+    });
+    const x={...(data.extracted||data.job||{})};
+    x.source_url=x.source_url||item.url;
+    x.status='Active';
+    x.last_verified=new Date().toISOString().slice(0,10);
+    discoveryStatus(data.warning||`Extraction complete using ${data.source||'free AI/local fallback'}. Verify every field before saving.` ,'show');
+    jobEditor(x);
+  }catch(e){
+    discoveryStatus(`Could not extract this page: ${e.message}. You can still open the source and paste the vacancy text into the Jobs importer.`,'error');
+  }
+}
+
+$('discoverySearchBtn').onclick=discoverJobs;
+$('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+$('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+
+/* Review modal wiring */
+$('rmClose').onclick=closeReviewModal;
+$('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReviewModal();});
+$('rmPublish').onclick=publishReviewedDraft;
+$('rmReject').onclick=()=>{
+  if(!_reviewCurrentId)return;
+  /* find index in both arrays */
+  const arr=window._reviewQueueData||[];
+  const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
+  closeReviewModal();
+  if(idx!==-1)rejectDraft(_reviewCurrentId,idx,true);
+};
+$('rmEdit').onclick=()=>{
+  if(!_reviewCurrentId)return;
+  const allJobs=Array.isArray(jobs)?jobs:[];
+  const found=allJobs.find(j=>j.id===_reviewCurrentId);
+  closeReviewModal();
+  if(found)jobEditor(found);
+  else discoveryStatus('Job not found in current jobs list. Reload the Jobs tab.','error');
+};
+
+/* TABS */
+
+document
+  .querySelectorAll('#tabs button')
+  .forEach(b=>{
+
+    b.onclick=()=>{
+
+      document
+        .querySelectorAll('#tabs button')
+        .forEach(x=>
+          x.classList.remove('active')
+        );
+
+      document
+        .querySelectorAll('.panel')
+        .forEach(x=>
+          x.classList.remove('active')
+        );
+
+      b.classList.add('active');
+
+      $('panel-'+b.dataset.tab)
+        .classList.add('active');
+    };
+  });
+
+/* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
+</script>
+
+</body>
+</html>

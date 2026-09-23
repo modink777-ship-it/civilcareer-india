@@ -1,0 +1,189 @@
+/* ============================================================
+   CIVILCAREER CSS FIXES v2 — Replace entire css-fixes.css
+   ============================================================ */
+
+/* ── FIX 1: Text cutting on ALL inner pages ── */
+html, body {
+  overflow-x: hidden;
+}
+
+.page,
+section.page {
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+.page-hero {
+  overflow: visible !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.page-hero .container,
+.container {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+/* ── FIX 2: Stats do NOT overlap search bar ── */
+#homeStats {
+  position: relative !important;
+  z-index: 2 !important;
+  padding: 1.25rem 1.5rem 1.5rem !important;
+  margin-bottom: 0 !important;
+}
+
+.search-wrap {
+  position: relative !important;
+  z-index: 3 !important;
+  margin-top: 0 !important;
+  padding-top: 1rem !important;
+  background: transparent !important;
+  clear: both !important;
+}
+
+/* ── FIX 3: Mobile nav full screen overlay ── */
+@media (max-width: 768px) {
+  #mainNav {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(11,31,58,0.98) !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    z-index: 9999 !important;
+    padding: 2rem !important;
+    width: 100% !important;
+  }
+  #mainNav.open {
+    display: flex !important;
+  }
+  #mainNav a {
+    font-size: 1.1rem !important;
+    padding: 12px 28px !important;
+    border-radius: 10px !important;
+    color: #9db3d0 !important;
+    width: 100% !important;
+    text-align: center !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    white-space: nowrap !important;
+  }
+  #mainNav a.active,
+  #mainNav a:hover {
+    background: rgba(201,151,60,0.15) !important;
+    color: #c9973c !important;
+  }
+
+  /* Stats smaller on mobile */
+  #homeStats {
+    gap: 6px !important;
+    padding: 1rem !important;
+  }
+  #homeStats > div {
+    min-width: 68px !important;
+    padding: 8px 10px !important;
+  }
+  #homeStats > div > div:first-child {
+    font-size: 1.2rem !important;
+  }
+  #homeStats > div > div:last-child {
+    font-size: 0.58rem !important;
+  }
+
+  /* Cards full width */
+  .cards.three {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Search stacked */
+  .smart-search {
+    flex-direction: column !important;
+  }
+
+  /* Hero actions stacked */
+  .hero-actions {
+    flex-direction: column !important;
+  }
+  .hero-actions a,
+  .hero-actions .btn {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* Listing stack */
+  .listing-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Footer */
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── FIX 4: Community strip ── */
+.community-strip {
+  background: #0a1828;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 1.25rem 0;
+  text-align: center;
+}
+.community-strip p {
+  color: #8faac8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.community-strip p strong { color: #ffffff; }
+.strip-btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.strip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.strip-btn.tg { background: #229ED9; color: #ffffff; }
+.strip-btn.wa { background: #25D366; color: #ffffff; }
+
+/* ── FIX 5: Nav count badge ── */
+.nav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #059669;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
