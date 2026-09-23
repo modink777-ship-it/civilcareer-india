@@ -1546,3 +1546,35 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .smart-search input::placeholder{color:#6b7f95;font-weight:500}
 .smart-search input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea820;background:#fff}
 @media(max-width:760px){.smart-search input{height:44px}}
+
+/* USER REQUEST — focused homepage job cards */
+.job-summary-grid{align-items:stretch}
+.job-summary-card{
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding:22px!important;
+  background:#fff!important;
+  border:1px solid #dbe3ec!important;
+  border-top:3px solid #d4b06a!important;
+  border-radius:16px!important;
+  box-shadow:0 8px 24px rgba(11,20,36,.06)!important;
+}
+.job-summary-card:hover{border-color:#c7d2df!important;box-shadow:0 16px 36px rgba(11,31,58,.11)!important}
+.job-summary-card .cc-job-title-row{margin:0 0 8px!important}
+.job-summary-card .cc-job-title-row h3{font-size:20px!important;line-height:1.28!important;margin:0!important}
+.job-summary-company{font-size:15px!important;color:#51647c!important;font-weight:750!important;margin-bottom:18px!important}
+.job-summary-meta{display:flex!important;flex-direction:column!important;gap:9px!important;margin:0 0 22px!important;padding:14px!important;border:1px solid #e5ebf2!important;border-radius:11px!important;background:#f8fafc!important}
+.job-summary-meta span{font-size:13px!important;color:#425873!important;font-weight:650!important;background:transparent!important;border:0!important;padding:0!important}
+.job-summary-actions{margin-top:auto!important;display:grid!important;grid-template-columns:1fr auto auto!important;gap:8px!important;align-items:center!important;padding-top:18px!important;border-top:1px solid #edf1f5!important}
+.job-summary-actions .cc-view-btn,.job-summary-actions .btn-apply,.job-summary-actions .btn-save{min-height:42px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:9px!important;font-weight:800!important;font-size:13px!important;padding:9px 12px!important;white-space:nowrap!important}
+.job-summary-actions .cc-view-btn{border:0!important;background:transparent!important;color:#155ea8!important;cursor:pointer!important}
+.job-summary-actions .btn-apply{background:#1d72ee!important;color:#fff!important;text-decoration:none!important}
+.job-summary-actions .btn-save{border:1px solid #d6e0eb!important;background:#fff!important;color:#155ea8!important;cursor:pointer!important}
+.job-summary-actions .btn-save:hover{background:#f4f8fc!important}
+.job-summary-card.card-closed{opacity:.78}
+.how-section{margin-top:0}
+@media(max-width:760px){
+  .job-summary-actions{grid-template-columns:1fr 1fr!important}
+  .job-summary-actions .btn-save{grid-column:1/-1}
+}

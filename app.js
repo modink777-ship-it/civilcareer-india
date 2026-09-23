@@ -72,40 +72,24 @@ function companyLogoMarkup(j){
   return `<div class="company-logo-wrap" aria-label="${esc(name)} logo">${src?`<img class="company-logo-img" src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">`:''}<span class="company-logo-fallback" ${src?'hidden':''}>${esc(initials)}</span></div>`;
 }
 function jobCard(j,gov=false){
-  const closed=isClosed(j),verified=j.last_verified&&!closed,saved=getSaved().has(j.id);
-  const isNew=j.created_at&&(new Date()-new Date(j.created_at))<3*86400000;
-  const daysLeft=j.deadline&&!closed?Math.ceil((new Date(j.deadline+'T23:59:59')-new Date())/86400000):null;
-  const urgClass=closed?'card-closed':daysLeft!==null&&daysLeft<=3?'card-urgent':daysLeft!==null&&daysLeft<=7?'card-soon':'card-fresh';
-  const waText=encodeURIComponent((j.role||'Job')+' at '+(j.company||'Organization')+'\n'+(j.location?j.location+'\n':'')+(j.source_url?'Apply: '+j.source_url:''));
-  const tags=[j.experience_level,j.qualification,j.employment_type].filter(Boolean).slice(0,3);
-  return `<article class="job-card cc-modern-job-card ${urgClass}">
-    <div class="cc-job-head">
-      ${companyLogoMarkup(j)}
-      <div class="cc-job-company">
-        <div class="cc-company-name">${esc(j.company||'Organization')}</div>
-        <div class="cc-job-context">${esc(j.location||j.location_display||'India')} ${j.created_at?`<span>· ${timeAgo(j.created_at)}</span>`:''}</div>
-      </div>
-      <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★':'☆'}</button>
-    </div>
+  const closed=isClosed(j),saved=getSaved().has(j.id);
+  const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
+  const applyUrl=j.apply_url||j.source_url||'';
+  const waText=encodeURIComponent((j.role||'Job')+' at '+(j.company||'Organization')+'\n'+(j.location?j.location+'\n':'')+(applyUrl?'Apply: '+applyUrl:''));
+  return `<article class="job-card cc-modern-job-card job-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
     <div class="cc-job-title-row">
       <h3>${esc(j.role||'Opportunity')}</h3>
-      <div class="cc-statuses">
-        <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Application Closed':j.featured?'Featured':verified?'Verified':gov?'Government':'Civil Engineering'}</span>
-        ${isNew?'<span class="new-badge">NEW</span>':''}
-      </div>
     </div>
-    <div class="cc-job-meta">
-      ${j.location?`<span>${esc(j.location)}</span>`:''}
-      ${j.employment_type?`<span>${esc(j.employment_type)}</span>`:''}
-      ${j.deadline?`<span>${closed?'Closed':'Deadline'} ${date(j.deadline)}</span>`:''}
+    <div class="cc-company-name job-summary-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
+    <div class="cc-job-meta job-summary-meta">
+      <span>📍 ${esc(j.location||j.location_display||'India')}</span>
+      <span>◷ ${esc(j.experience_level||'Experience not specified')}</span>
+      <span>↗ Posted ${esc(posted)}</span>
     </div>
-    ${tags.length?`<div class="cc-job-tags">${tags.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}
-    ${j.salary||SALARY_HINTS[classifyJob(j)]?`<div class="cc-job-salary">${esc(j.salary||SALARY_HINTS[classifyJob(j)])}</div>`:''}
-    <p class="card-copy">${esc(short(j.description||'Check the official source for the latest details.',170))}</p>
-    <div class="cc-job-footer">
-      <button data-job="${j.id}" class="cc-view-btn">View Details</button>
-      <a class="btn-wa cc-share" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" aria-label="Share job">Share</a>
-      ${verified?`<span class="cc-verified-note">Verified ${date(j.last_verified)}</span>`:''}
+    <div class="cc-job-footer job-summary-actions">
+      <button data-job="${j.id}" class="cc-view-btn">View Job →</button>
+      ${applyUrl?`<a class="btn-apply" href="${esc(applyUrl)}" target="_blank" rel="noopener">Apply ↗</a>`:`<button class="btn-apply" data-job="${j.id}">Apply ↗</button>`}
+      <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★ Save':'☆ Save'}</button>
     </div>
   </article>`
 }
