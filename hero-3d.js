@@ -11,7 +11,7 @@
 
   function initHero() {
     var hero = document.querySelector('.hero');
-    if (!hero || hero.classList.contains('cc-video-hero') || hero.querySelector('.hero-3d-canvas')) return;
+    if (!hero || hero.querySelector('.hero-3d-canvas')) return;
     if (window.innerWidth < 480) return;
 
     var canvas = document.createElement('canvas');
