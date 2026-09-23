@@ -457,7 +457,7 @@ function openProfileSetup(){
   overlay.innerHTML=`<div class="profile-modal-inner">
     <div class="profile-modal-header">
       <h2>🎯 Your Job Profile</h2>
-      <button class="profile-close" onclick="document.getElementById('profileModal').close()">✕</button>
+      <button class="profile-close" onclick="closeProfileModal()">✕</button>
     </div>
     <div class="profile-tabs">
       <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
@@ -660,10 +660,14 @@ function renderDiscoveryResults(results){
     return;
   }
   window._ccDiscoveryResults=results;
-  root.innerHTML=results.map((r,i)=>{
-    const duplicate=discoveryDuplicate(r);
-    return `<article class="admin-discovery-result ${duplicate?'is-duplicate':''}"><div><h4>${esc(r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(r.score||0)}</span></h4><p>${esc(r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>${duplicate?`<div class="discovery-duplicate">Already in CivilCareer: ${esc(duplicate.role||'existing job')} — review instead of creating another copy.</div>`:''}</div><div class="admin-discovery-actions">${duplicate?`<button class="btn secondary" type="button" data-discovery-existing="${esc(duplicate.id)}">Review existing</button>`:`<button class="btn primary" type="button" data-discovery-extract="${i}">Create draft & review</button>`}<a class="btn secondary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`;
-  }).join('');
+  const ranked=results.map((r,i)=>({r,i,duplicate:discoveryDuplicate(r)}));
+  const fresh=ranked.filter(x=>!x.duplicate);
+  const dupes=ranked.filter(x=>x.duplicate);
+  if(!fresh.length){
+    root.innerHTML=`<div class="empty-state"><h3>All ${dupes.length} web leads are already on CivilCareer</h3><p>Only vacancies that are not on the website are listed here. Open an existing job to review or update it instead.</p></div>`;
+    return;
+  }
+  root.innerHTML=`${dupes.length?`<p class="discovery-dupe-note">${dupes.length} result${dupes.length===1?' was':'s were'} already on CivilCareer and ${dupes.length===1?'is':'are'} hidden below — only new vacancies are listed.</p>`:''}${fresh.map(x=>`<article class="admin-discovery-result"><div><h4>${esc(x.r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(x.r.score||0)}</span></h4><p>${esc(x.r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">${esc(x.r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${x.i}">Create draft & review</button><a class="btn secondary" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('')}${dupes.length?`<details class="discovery-dupes"><summary>Already on CivilCareer (${dupes.length}) — click to review</summary>${dupes.map(x=>`<article class="admin-discovery-result is-duplicate"><div><h4>${esc(x.r.title||'Untitled vacancy')}</h4><a class="source-url" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">${esc(x.r.url)}</a><div class="discovery-duplicate">Already in CivilCareer: ${esc(x.duplicate.role||'existing job')}</div></div><div class="admin-discovery-actions"><button class="btn secondary" type="button" data-discovery-existing="${esc(x.duplicate.id)}">Review existing</button><a class="btn secondary" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('')}</details>`:''}`;
   $$('#discoveryResults [data-discovery-existing]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.discoveryExisting))));
   $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
@@ -796,7 +800,6 @@ function jobEditor(j={}){
           toast('✅ Job saved and posted to Telegram!');
         }catch(tgErr){
           toast('✅ Job saved. Telegram error: '+tgErr.message);
-          console.error('Telegram error:',tgErr);
         }
       } else if(!j.id){
         toast('Draft saved. Review it before publishing.');
@@ -849,7 +852,6 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/service-worker.js")
-      .then(() => console.log("SW registered"))
-      .catch((err) => console.error("SW error:", err));
+      .catch(() => {});
   });
 }

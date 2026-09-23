@@ -59,6 +59,34 @@
       }
     })();
 
+    /* ── 10D layers: distant skyline silhouette (depth 2) ── */
+    var skyline = [];
+    (function () {
+      var x = -0.05, h;
+      while (x < 1.1) {
+        h = 0.04 + rnd() * 0.13;
+        skyline.push({ x: x, w: 0.025 + rnd() * 0.05, h: h });
+        x += skyline[skyline.length - 1].w + 0.004 + rnd() * 0.012;
+      }
+    })();
+
+    /* ── 10D layers: topographic contour rings (depth 3) ── */
+    var contours = [];
+    (function () {
+      var ring;
+      for (ring = 0; ring < 4; ring++) {
+        contours.push({ r: 8 + ring * 5.5, ph: rnd() * 6.283, wob: 1.4 + rnd() * 1.8, a: 0.16 - ring * 0.03 });
+      }
+    })();
+
+    /* ── 10D layers: career data-paths (depth 9) — skill → job → career arcs ── */
+    var paths = [];
+    (function () {
+      for (var i = 0; i < 5; i++) {
+        paths.push({ x: 0.1 + rnd() * 0.8, amp: 0.10 + rnd() * 0.16, sp: 0.10 + rnd() * 0.16, ph: rnd() * 6.283, w: 0.9 + rnd() * 1.2 });
+      }
+    })();
+
     /* ── bokeh particles: 3 depth layers ── */
     var parts = [];
     (function () {
@@ -148,6 +176,110 @@
         ctx.beginPath(); ctx.arc(st.x * W, st.y * H, st.r, 0, 6.283); ctx.fill();
       }
       ctx.globalAlpha = 1;
+    }
+
+    /* ── 10D: distant skyline silhouette behind the wireframe city ── */
+    function drawSkyline() {
+      var i, b, base = H * 0.80 + (project ? 0 : 0);
+      var hz = project(0, 0, 30);
+      var horizon = hz ? hz.sy : H * 0.80;
+      ctx.beginPath();
+      ctx.moveTo(0, horizon);
+      for (i = 0; i < skyline.length; i++) {
+        b = skyline[i];
+        ctx.lineTo(b.x * W + mx * 6, horizon - b.h * H);
+        ctx.lineTo((b.x + b.w) * W + mx * 6, horizon - b.h * H);
+      }
+      ctx.lineTo(W, horizon);
+      ctx.strokeStyle = blue(0.14);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      var g = ctx.createLinearGradient(0, horizon - H * 0.16, 0, horizon);
+      g.addColorStop(0, 'rgba(21,94,168,0)');
+      g.addColorStop(1, 'rgba(21,94,168,0.05)');
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+
+    /* ── 10D: topographic survey contours on the ground plane ── */
+    function drawContours(t) {
+      var i, k, c, pt, prev;
+      ctx.beginPath();
+      for (i = 0; i < contours.length; i++) {
+        c = contours[i];
+        prev = null;
+        for (k = 0; k <= 40; k++) {
+          var ang = (k / 40) * 6.283;
+          var rr = c.r + Math.sin(ang * 3 + c.ph + t * 0.05) * c.wob;
+          pt = project(Math.cos(ang) * rr, 0.02, Math.sin(ang) * rr);
+          if (pt && prev) { ctx.moveTo(prev.sx, prev.sy); ctx.lineTo(pt.sx, pt.sy); }
+          prev = pt;
+        }
+      }
+      ctx.strokeStyle = blue(0.07);
+      ctx.stroke();
+    }
+
+    /* ── 10D: metro viaduct / bridge crossing the scene (depth 6) ── */
+    function drawBridge() {
+      var i, a, b2, piers = 5;
+      var x0 = -34, x1 = 34, z = -8;
+      var deckA = project(x0, 2.1, z), deckB = project(x1, 2.1, z);
+      if (!deckA || !deckB) return;
+      ctx.beginPath(); ctx.moveTo(deckA.sx, deckA.sy); ctx.lineTo(deckB.sx, deckB.sy);
+      ctx.strokeStyle = blue(0.20); ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath();
+      for (i = 0; i <= piers; i++) {
+        a = project(x0 + (x1 - x0) * (i / piers), 0, z);
+        b2 = project(x0 + (x1 - x0) * (i / piers), 2.1, z);
+        if (a && b2) { ctx.moveTo(a.sx, a.sy); ctx.lineTo(b2.sx, b2.sy); }
+      }
+      ctx.strokeStyle = blue(0.13); ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    /* ── 10D: highway with dashed lanes (depth 8) ── */
+    function drawRoad() {
+      var i, a, b2, seg;
+      ctx.beginPath();
+      for (i = -40; i < 40; i += 2) {
+        a = project(i, 0.01, 12); b2 = project(i + 1, 0.01, 12);
+        if (a && b2) { ctx.moveTo(a.sx, a.sy); ctx.lineTo(b2.sx, b2.sy); }
+      }
+      ctx.strokeStyle = blue(0.16); ctx.lineWidth = 1.1; ctx.stroke();
+      ctx.beginPath();
+      for (i = -40; i < 40; i += 2) {
+        a = project(i, 0.01, 15); b2 = project(i + 1, 0.01, 15);
+        if (a && b2) { ctx.moveTo(a.sx, a.sy); ctx.lineTo(b2.sx, b2.sy); }
+      }
+      ctx.strokeStyle = blue(0.10); ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    /* ── 10D: career intelligence data-paths — glowing arcs rising to UI (depth 9) ── */
+    function drawPaths(t) {
+      var i, p, k, prev, pt;
+      for (i = 0; i < paths.length; i++) {
+        p = paths[i];
+        prev = null;
+        ctx.beginPath();
+        for (k = 0; k <= 14; k++) {
+          var u = k / 14;
+          var x = p.x + Math.sin(t * p.sp + p.ph + u * 4) * p.amp * 0.4;
+          var y = 0.05 + u * 0.75;
+          pt = { sx: x * W + mx * (10 + u * 18), sy: H * (1 - y) };
+          if (prev) { ctx.moveTo(prev.sx, prev.sy); ctx.lineTo(pt.sx, pt.sy); }
+          prev = pt;
+        }
+        ctx.strokeStyle = 'rgba(29,114,238,' + (0.10 + 0.06 * Math.sin(t * p.sp * 2 + p.ph)).toFixed(3) + ')';
+        ctx.lineWidth = p.w;
+        ctx.stroke();
+        /* travelling node = a career opportunity moving up the path */
+        var uu = (t * p.sp * 0.35 + p.ph) % 1;
+        var nx = (p.x + Math.sin(t * p.sp + p.ph + uu * 4) * p.amp * 0.4) * W + mx * (10 + uu * 18);
+        var ny = H * (1 - (0.05 + uu * 0.75));
+        ctx.beginPath(); ctx.arc(nx, ny, 1.8, 0, 6.283);
+        ctx.fillStyle = 'rgba(103,183,242,' + (0.35 + 0.25 * Math.sin(t * 2 + p.ph)).toFixed(3) + ')';
+        ctx.fill();
+      }
     }
 
     /* ── shooting light streaks ── */
@@ -322,9 +454,14 @@
       aurora(t);
       drawStars(t);
       drawStreak(t, dt);
-      drawGrid();
-      for (var i = 0; i < buildings.length; i++) drawBuilding(buildings[i], t);
-      drawParts(t, dt);
+      drawSkyline();          /* depth 2: distant skyline */
+      drawContours(t);        /* depth 3: topographic survey rings */
+      drawGrid();             /* depth 4: structural grid */
+      drawBridge();           /* depth 6: metro viaduct */
+      for (var i = 0; i < buildings.length; i++) drawBuilding(buildings[i], t);  /* depth 5+7: towers + cranes */
+      drawRoad();             /* depth 8: highway lanes */
+      drawPaths(t);           /* depth 9: career data-paths */
+      drawParts(t, dt);       /* depth 9.5: floating intelligence particles */
       vignette();
     }
 

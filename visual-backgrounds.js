@@ -109,6 +109,9 @@
   function targets(){
     const active=document.querySelector('.page.active');
     if(!active)return [];
+    // Detail pages render their own full-height content card; a photo band here
+    // only creates dead space above the job details and overlaps the text.
+    if(['jobDetail','examDetail','materialDetail'].includes(active.dataset.page))return [];
     const hero=active.querySelector('.hero, .careerhub-hero');
     const pageHero=active.querySelector('.page-hero');
     if(hero||pageHero)return [hero,pageHero].filter(Boolean);

@@ -3,6 +3,27 @@
   const DISCOVERY_VERSION='v9';
   const norm=v=>String(v||'').toLowerCase().replace(/[^a-z0-9+.#\-\s]/g,' ').replace(/\s+/g,' ').trim();
   const words=v=>norm(v).split(' ').filter(x=>x.length>1);
+  /* Honest freshness (§13): dot classifies true post age. old>7d, recent>2d, fresh<=2d. */
+  function ageClass(v){
+    const t=new Date(v||0).getTime();
+    if(!Number.isFinite(t)||!t)return'';
+    const d=Date.now()-t;
+    if(d<0||d>7*86400000)return'old';
+    if(d>2*86400000)return'recent';
+    return'fresh';
+  }
+  /* §18 closing-soon: deadline may be YYYY-MM-DD (end of that day) or a full ISO
+     timestamp. Only active jobs whose deadline is genuinely within 7 days —
+     never jobs with no deadline at all. */
+  function closingSoon(j){
+    if(!j||!j.deadline||!active(j))return false;
+    const raw=String(j.deadline);
+    const d=/T/.test(raw)?new Date(raw):new Date(raw+'T23:59:59');
+    const t=d.getTime();
+    if(!Number.isFinite(t))return false;
+    const msLeft=t-Date.now();
+    return msLeft>0&&msLeft<=7*86400000;
+  }
   const list=v=>Array.isArray(v)?v:String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
   const jobText=j=>norm([
     j.role,j.role_normalized,j.company,j.recruitment_authority,j.discipline,j.description,j.responsibilities,
@@ -70,10 +91,11 @@
     const closed=!active(j),saved=getSaved().has(j.id),loc=jobLocs(j).join(' · ')||j.location_display||j.location||'Location in source';
     const apply=j.application_url||j.apply_url||j.source_url||'';
     return `<article class="job-card discovery-job-card ${closed?'is-closed':''}">
-      <div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date">${ago(pubDate(j))}</span></div>
+      <div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date"><i class="age-dot ${ageClass(pubDate(j))}" aria-hidden="true"></i>${ago(pubDate(j))}</span></div>
       <h3>${esc(j.role||'Civil Engineering Opportunity')}</h3>
       <div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div>
       <div class="card-meta"><span>📍 ${esc(loc)}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div>
+      ${(j.salary||(j.salary_min&&j.salary_max))?`<div class="card-pay"><span class="salary-badge">₹ ${esc(j.salary||`${j.salary_min} – ${j.salary_max}`)}</span>${closingSoon(j)?'<span class="deadline-badge">⏳ Closes soon</span>':''}</div>`:(closingSoon(j)?'<div class="card-pay"><span class="deadline-badge">⏳ Closes soon</span></div>':'')}
       <p class="card-copy">${esc(short(j.description||'Verify the complete details at the original source.'))}</p>
       <div class="card-actions"><a class="detail-link" href="${esc(jobPath(j))}" data-dynamic-route="true">View Details</a>${!closed&&apply?`<a class="btn-apply" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">Apply ↗</a>`:''}<button class="btn-save ${saved?'saved':''}" data-save-job="${esc(j.id)}" title="${saved?'Remove saved job':'Save job'}">${saved?'★ Saved':'☆ Save'}</button></div>
     </article>`;
@@ -292,3 +314,31 @@ function renderNationalLanding(data){
   bindCards();
 }
 async function routeNationalLanding(){const data=ccLandingFromPath(location.pathname);if(!data)return false;renderNationalLanding(data);document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page==='nationalLanding'));return true;}
+
+/* V10: honor ?role= / ?experience= deep links (intent chips) on /private-jobs.
+   Waits for the filter options to be populated, applies matches, then re-renders. */
+(function(){
+  function applyIntentParams(){
+    if(!location.pathname.startsWith('/private-jobs'))return;
+    const p=new URLSearchParams(location.search);
+    const role=p.get('role'),exp=p.get('experience');
+    if(!role&&!exp)return;
+    const rEl=document.getElementById('privateRole'),eEl=document.getElementById('privateExperience');
+    let touched=false;
+    if(role&&rEl&&rEl.options.length>1){
+      const hit=[...rEl.options].find(o=>o.value.toLowerCase()===role.toLowerCase());
+      if(hit){rEl.value=hit.value;touched=true}
+    }
+    if(exp&&eEl&&eEl.options.length>1){
+      const hit=[...eEl.options].find(o=>o.value.toLowerCase()===exp.toLowerCase());
+      if(hit){eEl.value=hit.value;touched=true}
+    }
+    if(touched&&typeof renderPrivate==='function')renderPrivate();
+  }
+  const t=setInterval(function(){
+    const rEl=document.getElementById('privateRole');
+    if(rEl&&rEl.options.length>1){clearInterval(t);applyIntentParams()}
+  },250);
+  setTimeout(function(){clearInterval(t)},10000);
+  window.addEventListener('popstate',applyIntentParams);
+})();

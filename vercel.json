@@ -586,6 +586,18 @@
       "destination": "/job-alerts.html"
     },
     {
+      "source": "/career-guides",
+      "destination": "/career-guides.html"
+    },
+    {
+      "source": "/career-tools",
+      "destination": "/career-tools.html"
+    },
+    {
+      "source": "/exam-guides",
+      "destination": "/exam-guides.html"
+    },
+    {
       "source": "/jobs/:slug",
       "destination": "/api/jobs?slug=:slug&render=html"
     },
@@ -634,20 +646,20 @@
       "destination": "/index.html"
     },
     {
-      "source": "/career-tools",
-      "destination": "/career-tools.html"
-    },
-    {
-      "source": "/exam-guides",
-      "destination": "/exam-guides.html"
-    },
-    {
-      "source": "/career-guides",
-      "destination": "/career-guides.html"
-    },
-    {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/jobs/:slug*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/exams/:slug*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/study-materials/:slug*",
+      "destination": "/index.html"
     }
   ],
   "headers": [
