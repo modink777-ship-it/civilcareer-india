@@ -253,40 +253,54 @@ function setLiveStat(id,value){
   el.textContent=n.toLocaleString('en-IN');
 }
 
+function normalizeApiList(value, keys=[]){
+  if(Array.isArray(value))return value;
+  for(const key of keys){if(Array.isArray(value?.[key]))return value[key];}
+  if(Array.isArray(value?.data))return value.data;
+  return [];
+}
+function jobIsLive(j){
+  const status=String(j?.status||'').toLowerCase();
+  if(['expired','closed','inactive','rejected'].includes(status))return false;
+  const end=j?.valid_through||j?.expires_at||j?.deadline||j?.application_end;
+  return !end || new Date(String(end).length===10?end+'T23:59:59':end).getTime()>=Date.now();
+}
+function normalizedSector(j){
+  return String(j?.sector||j?.category||j?.job_type||'').toLowerCase();
+}
+function isGovernmentJob(j){
+  const sec=normalizedSector(j);
+  const text=String([j?.company,j?.recruitment_authority,j?.role,j?.description].filter(Boolean).join(' ')).toLowerCase();
+  return sec.includes('government')||sec.includes('public sector')||sec==='psu'||/central government|state government|government of india|public sector undertaking|\bpsu\b/.test(text);
+}
 function updateHeroLiveStats(){
-  const isLive=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));
-  const privateJobs=jobs.filter(j=>(j.sector||'Private')==='Private');
-  const govtJobs=jobs.filter(j=>['Government','Public Sector'].includes(j.sector));
-  const privateLive=privateJobs.filter(isLive);
-  const govtLive=govtJobs.filter(isLive);
-  setLiveStat('heroStatJobs',privateLive.length||privateJobs.length);
-  setLiveStat('heroStatGovt',govtLive.length||govtJobs.length);
-  setLiveStat('heroStatExams',exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
+  const liveJobs=jobs.filter(jobIsLive);
+  const govtJobs=liveJobs.filter(isGovernmentJob);
+  const liveExams=exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date()));
+  setLiveStat('heroStatJobs',liveJobs.length);
+  setLiveStat('heroStatGovt',govtJobs.length);
+  setLiveStat('heroStatExams',liveExams.length);
   setLiveStat('heroStatResources',materials.length);
 }
-
 async function refreshLiveStats(){
   updateHeroLiveStats();
-  // Retry independently so the homepage stats recover if the initial
-  // parallel data request is slow while the job cards have already rendered.
-  for(let attempt=0;attempt<4;attempt++){
-    if(jobs.length||exams.length||materials.length){
-      updateHeroLiveStats();
-      if(jobs.length) return;
-    }
-    try{
-      const [jr,er,mr]=await Promise.allSettled([
-        api('/api/jobs'),
-        api('/api/exams'),
-        api('/api/materials')
-      ]);
-      if(jr.status==='fulfilled' && Array.isArray(jr.value?.jobs)) jobs=jr.value.jobs;
-      if(er.status==='fulfilled' && Array.isArray(er.value?.exams)) exams=er.value.exams;
-      if(mr.status==='fulfilled' && Array.isArray(mr.value?.materials)) materials=mr.value.materials;
-      updateHeroLiveStats();
-      if(jobs.length) return;
-    }catch(_){}
-    await new Promise(r=>setTimeout(r,800));
+  const endpoints=[
+    ['/api/jobs?stats_refresh='+Date.now(), 'jobs', ['jobs']],
+    ['/api/exams?stats_refresh='+Date.now(), 'exams', ['exams','items']],
+    ['/api/materials?stats_refresh='+Date.now(), 'materials', ['materials','items','resources']]
+  ];
+  for(let attempt=0;attempt<3;attempt++){
+    const results=await Promise.allSettled(endpoints.map(x=>api(x[0],{headers:{'cache-control':'no-cache'}})));
+    results.forEach((r,i)=>{
+      if(r.status!=='fulfilled')return;
+      const list=normalizeApiList(r.value,endpoints[i][2]);
+      if(endpoints[i][1]==='jobs' && list.length)jobs=list;
+      if(endpoints[i][1]==='exams' && list.length)exams=list;
+      if(endpoints[i][1]==='materials' && list.length)materials=list;
+    });
+    updateHeroLiveStats();
+    if(jobs.length||exams.length||materials.length)return;
+    await new Promise(r=>setTimeout(r,1000));
   }
 }
 
@@ -383,18 +397,21 @@ function matchScore(job){
     } else weaknesses.push('Experience mismatch');
   } else score+=15;
 
-  // Salary match (10%)
-  const prefSalMin=parseFloat(userPrefs.salary_min)||0;
-  if(prefSalMin&&job.salary_min){
-    if(parseFloat(job.salary_min)>=prefSalMin*0.85){score+=10;reasons.push('Salary meets preference');}
-    else weaknesses.push('Salary below preference');
-  } else score+=10;
+  // Career goal + sector match (15%)
+  const prefSector=userPrefs.sector_choice||userPrefs.sectors||'Private';
+  const jobSector=String(job.sector||'Private');
+  const govt=['Government','Public Sector'].includes(jobSector);
+  const mnc=String(job.company||'').toLowerCase().match(/tata|larsen|l&t|gmr|jacobs|aurecon|wsp|cushman|mott|afcons|gammon|adani|jll|turner|bechtel|siemens/);
+  const sectorOk=prefSector==='Private' ? (!govt) : prefSector==='Government' ? govt : (prefSector==='MNC' ? !!mnc : true);
+  if(sectorOk){score+=10;reasons.push('Sector matches your preference');}else weaknesses.push('Sector differs from preference');
+  const goal=userPrefs.career_goal||'Job search';
+  const goalOk=(goal==='Government recruitment'&&govt)||(goal==='Job search'&&!govt)||(goal==='Exams'&&false)||(goal==='Skill development');
+  if(goal==='Skill development'){score+=5;reasons.push('Career goal: skill development');}
+  else if(goalOk){score+=5;reasons.push('Career goal matches');}
+  else weaknesses.push('Career goal differs');
 
-  // Sector match (5%)
-  const prefSector=userPrefs.sectors||'Both';
-  if(prefSector==='Both'||prefSector===job.sector||(prefSector==='Government'&&['Government','Public Sector'].includes(job.sector))){
-    score+=5;
-  }
+  // Sector match (legacy compatibility)
+
 
   return {score:Math.min(score,100),reasons,weaknesses};
 }
@@ -403,31 +420,48 @@ function matchScore(job){
 function renderForYou(){
   const container=$('forYouJobs');
   if(!container)return;
-  const hasProfile=userPrefs.target_roles||userPrefs.preferred_locations;
+  const hasProfile=userPrefs.target_roles||userPrefs.preferred_locations||userPrefs.career_goal;
   if(!hasProfile){
-    container.innerHTML=`<div class="foryou-empty">
+    container.innerHTML=`<div class="foryou-empty cc-for-you-empty">
       <div class="foryou-icon">🎯</div>
-      <h3>Set up your job profile</h3>
-      <p>Tell us what you're looking for and we'll find the best matches for you.</p>
-      <button class="btn primary" onclick="openProfileSetup()">Set Up Profile — Free</button>
+      <p class="eyebrow">PERSONALIZED FOR YOU</p>
+      <h3>Tell us what you want from CivilCareer</h3>
+      <p>Choose your role, location, experience, sector and career goal. We'll use your choices to organize relevant opportunities.</p>
+      <button class="btn primary" onclick="openProfileSetup()">Personalize For You — Free</button>
     </div>`;
     return;
   }
 
-  // Score all jobs
+  const goal=userPrefs.career_goal||'Job search';
   const scored=jobs
     .filter(j=>!jobInteractions[j.id]||jobInteractions[j.id]==='saved')
     .map(j=>({...j,_match:matchScore(j)}))
-    .filter(j=>j._match&&j._match.score>=50)
+    .filter(j=>j._match&&j._match.score>=35)
     .sort((a,b)=>b._match.score-a._match.score)
-    .slice(0,20);
+    .slice(0,12);
 
-  if(!scored.length){
-    container.innerHTML=`<div class="foryou-empty"><p>No strong matches yet. Add more jobs or update your profile.</p><button class="btn primary" onclick="openProfileSetup()">Update Profile</button></div>`;
-    return;
+  let html=`<div class="cc-for-you-summary">
+    <div><p class="eyebrow">YOUR FOR YOU</p><h2>Opportunities selected around your profile</h2>
+    <p>${esc(userPrefs.target_roles||'Civil engineering')} · ${esc(userPrefs.preferred_locations||'India-wide')} · ${esc(userPrefs.experience_band||'All experience')} · ${esc(userPrefs.sector_choice||'Private')} · ${esc(goal)}</p></div>
+    <button class="btn secondary" onclick="openProfileSetup()">Edit preferences</button>
+  </div>`;
+
+  if(scored.length){
+    html+=`<div class="cards three">${scored.map(j=>matchJobCard(j,j._match)).join('')}</div>`;
+  }else{
+    html+=`<div class="foryou-empty"><h3>No close job matches yet</h3><p>Try a broader location, role or sector.</p><button class="btn primary" onclick="openProfileSetup()">Update preferences</button></div>`;
   }
 
-  container.innerHTML=scored.map(j=>matchJobCard(j,j._match)).join('');
+  if(goal==='Exams'){
+    const liveExams=exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).slice(0,8);
+    if(liveExams.length) html+=`<div class="cc-for-you-secondary"><p class="eyebrow">EXAMS FOR YOU</p><h3>Civil engineering examinations</h3><div class="cards three">${liveExams.map(examCard).join('')}</div></div>`;
+  }
+  if(goal==='Skill development'){
+    const resources=materials.slice(0,8);
+    if(resources.length) html+=`<div class="cc-for-you-secondary"><p class="eyebrow">LEARNING FOR YOU</p><h3>Resources to build your skills</h3><div class="cards three">${resources.map(materialCard).join('')}</div></div>`;
+  }
+
+  container.innerHTML=html;
   bindCards();
 }
 
@@ -483,76 +517,135 @@ function openProfileSetup(){
     overlay.onclick=e=>{if(e.target===overlay)closeProfileModal();};
     document.body.appendChild(overlay);
   }
-  const prefs=userPrefs,prof=userProfile;
-  overlay.innerHTML=`<div class="profile-modal-inner">
+  const prefs=userPrefs||{};
+  const roles=(prefs.target_roles||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const locations=(prefs.preferred_locations||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const selectedGoal=prefs.career_goal||'Job search';
+  overlay.innerHTML=`<div class="profile-modal-inner cc-personalize-modal">
     <div class="profile-modal-header">
-      <h2>🎯 Your Job Profile</h2>
-      <button class="profile-close" onclick="closeProfileModal()">✕</button>
+      <div>
+        <p class="eyebrow">FOR YOU</p>
+        <h2>Personalize around your career</h2>
+      </div>
+      <button class="profile-close" onclick="closeProfileModal()" aria-label="Close">✕</button>
     </div>
-    <div class="profile-tabs">
-      <button class="ptab active" onclick="showPTab('basics',this)">👤 About Me</button>
-      <button class="ptab" onclick="showPTab('prefs',this)">🎯 Preferences</button>
-    </div>
-    <div id="ptab-basics" class="ptab-content">
-      <label>Your name<input id="pName" value="${esc(prof.name||'')}" placeholder="e.g. Modin Kumar"></label>
-      <label>Current role<input id="pJobTitle" value="${esc(prof.job_title||'')}" placeholder="e.g. Planning Engineer"></label>
-      <label>Years of experience<input id="pExp" type="number" value="${prof.experience_years||''}" placeholder="e.g. 5"></label>
-      <label>Education<input id="pEdu" value="${esc(prof.education||'')}" placeholder="e.g. B.E. Civil Engineering"></label>
-      <label>Your skills (comma separated)<textarea id="pSkills" placeholder="Primavera P6, AutoCAD, MS Project">${esc(prof.skills||'')}</textarea></label>
-    </div>
-    <div id="ptab-prefs" class="ptab-content" style="display:none">
-      <label>Target job roles<input id="pTargetRoles" value="${esc(prefs.target_roles||'')}" placeholder="Planning Engineer, Site Engineer"></label>
-      <label>Skills to match<input id="pSkillsWanted" value="${esc(prefs.skills_wanted||'')}" placeholder="Primavera, AutoCAD, MS Project"></label>
-      <label>Preferred locations<input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Bengaluru, Hyderabad, Gulf"></label>
-      <label>Experience range (years)
-        <div style="display:flex;gap:.5rem">
-          <input id="pExpMin" type="number" value="${prefs.experience_min||''}" placeholder="Min" style="flex:1">
-          <input id="pExpMax" type="number" value="${prefs.experience_max||''}" placeholder="Max" style="flex:1">
+    <p class="cc-personalize-lead">Tell CivilCareer what matters to you. We'll use these choices to organize jobs, government recruitment, exams and resources around your goals.</p>
+
+    <div class="cc-pref-step">
+      <span class="cc-pref-number">01</span>
+      <div class="cc-pref-body">
+        <h3>🎯 Role</h3>
+        <p>What roles are you targeting?</p>
+        <div class="cc-choice-grid" id="ccRoleChoices">
+          ${['Site Engineer','Structural Engineer','Quantity Surveyor','Planning Engineer','BIM Engineer','QA/QC Engineer','Civil Engineer','Project Engineer'].map(x=>`<button type="button" class="cc-choice ${roles.includes(x)?'selected':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('')}
         </div>
-      </label>
-      <label>Min salary (₹/year)<input id="pSalMin" type="number" value="${prefs.salary_min||''}" placeholder="e.g. 500000"></label>
-      <label>Sector<select id="pSector">
-        <option ${(prefs.sectors||'Both')==='Both'?'selected':''}>Both</option>
-        <option ${prefs.sectors==='Private'?'selected':''}>Private</option>
-        <option ${prefs.sectors==='Government'?'selected':''}>Government</option>
-      </select></label>
+        <input id="pTargetRoles" value="${esc(prefs.target_roles||'')}" placeholder="Or type roles, separated by commas">
+      </div>
     </div>
-    <button class="btn primary wide" style="margin-top:1rem;width:100%" onclick="saveProfile()">💾 Save & Find Matches</button>
+
+    <div class="cc-pref-step">
+      <span class="cc-pref-number">02</span>
+      <div class="cc-pref-body">
+        <h3>📍 Location</h3>
+        <p>Choose preferred cities/states or India-wide.</p>
+        <div class="cc-choice-grid" id="ccLocationChoices">
+          ${['India-wide','Bengaluru','Mumbai','Delhi NCR','Hyderabad','Chennai','Pune','Karnataka'].map(x=>`<button type="button" class="cc-choice ${locations.includes(x)?'selected':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('')}
+        </div>
+        <input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Or type cities/states, separated by commas">
+      </div>
+    </div>
+
+    <div class="cc-pref-step">
+      <span class="cc-pref-number">03</span>
+      <div class="cc-pref-body">
+        <h3>💼 Experience</h3>
+        <p>Which stage describes you?</p>
+        <div class="cc-choice-grid" id="ccExperienceChoices">
+          ${['Fresher','1–3 years','3–7 years','7+ years'].map(x=>`<button type="button" class="cc-choice ${prefs.experience_band===x?'selected':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="cc-pref-step">
+      <span class="cc-pref-number">04</span>
+      <div class="cc-pref-body">
+        <h3>🏢 Sector</h3>
+        <p>Where do you want to look?</p>
+        <div class="cc-choice-grid" id="ccSectorChoices">
+          ${['Private','MNC','Government'].map(x=>`<button type="button" class="cc-choice ${prefs.sector_choice===x?'selected':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="cc-pref-step">
+      <span class="cc-pref-number">05</span>
+      <div class="cc-pref-body">
+        <h3>📚 Career goal</h3>
+        <p>What do you want CivilCareer to prioritize?</p>
+        <div class="cc-choice-grid" id="ccGoalChoices">
+          ${['Job search','Government recruitment','Exams','Skill development'].map(x=>`<button type="button" class="cc-choice ${selectedGoal===x?'selected':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <button class="btn primary wide cc-personalize-save" id="ccSavePreferences" type="button">Save & Show My For You →</button>
+    <p class="cc-local-note">Free to use. Your choices stay on this device unless you choose to sync them with an account.</p>
   </div>`;
+
   overlay.style.display='flex';
+  document.body.classList.add('modal-open');
+
+  function bindChoices(id,inputId){
+    const box=$(id); if(!box)return;
+    $$('#'+id+' .cc-choice').forEach(btn=>{
+      btn.onclick=()=>{
+        btn.classList.toggle('selected');
+        const values=$$('#'+id+' .cc-choice.selected').map(x=>x.dataset.value);
+        $(inputId).value=values.join(', ');
+      };
+    });
+  }
+  bindChoices('ccRoleChoices','pTargetRoles');
+  bindChoices('ccLocationChoices','pLocations');
+
+  ['ccExperienceChoices','ccSectorChoices','ccGoalChoices'].forEach(id=>{
+    $$('#'+id+' .cc-choice').forEach(btn=>{
+      btn.onclick=()=>{
+        $$('#'+id+' .cc-choice').forEach(x=>x.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+    });
+  });
+
+  $('ccSavePreferences').onclick=()=>{
+    const roleText=$('pTargetRoles').value.trim();
+    const locText=$('pLocations').value.trim();
+    const exp=$$('#ccExperienceChoices .cc-choice.selected')[0]?.dataset.value||'Fresher';
+    const sector=$$('#ccSectorChoices .cc-choice.selected')[0]?.dataset.value||'Private';
+    const goal=$$('#ccGoalChoices .cc-choice.selected')[0]?.dataset.value||'Job search';
+
+    const expMap={'Fresher':[0,0],'1–3 years':[1,3],'3–7 years':[3,7],'7+ years':[7,20]};
+    const [emin,emax]=expMap[exp]||[0,20];
+
+    userPrefs={
+      ...userPrefs,
+      target_roles:roleText||'Civil Engineer',
+      preferred_locations:locText||'India-wide',
+      experience_min:emin,
+      experience_max:emax,
+      experience_band:exp,
+      sector_choice:sector,
+      sectors:sector==='MNC'?'Private':sector,
+      career_goal:goal
+    };
+    saveProfileLocal();
+    closeProfileModal();
+    toast('Your For You profile is saved. Personalizing CivilCareer…');
+    navigate('mycareer');
+    renderForYou();
+  };
 }
 
-async function handleMatFile(input){
-  const file=input.files[0];
-  if(!file)return;
-  if(file.size>10*1024*1024){toast('File too large. Max 10MB.');input.value='';return;}
-  $('matFileName').textContent=file.name;
-  $('matUploadProgress').style.display='block';
-  $('matUploadProgress').textContent='Reading file…';
-  try{
-    const base64=await new Promise((res,rej)=>{
-      const r=new FileReader();
-      r.onload=e=>res(e.target.result.split(',')[1]);
-      r.onerror=rej;
-      r.readAsDataURL(file);
-    });
-    $('matUploadProgress').textContent='Uploading to storage…';
-    const resp=await api('/api/materials',{
-      method:'POST',
-      key:adminKey,
-      body:JSON.stringify({_upload:true,file_name:file.name,file_data:base64,file_type:file.type})
-    });
-    if(resp.url){
-      $('matFileUrl').value=resp.url;
-      $('matUrlInput').value=resp.url;
-      $('matUploadProgress').textContent='✅ Uploaded: '+file.name;
-      $('matUploadProgress').style.color='#10b981';
-    }
-  }catch(e){
-    $('matUploadProgress').textContent='Upload failed: '+e.message;
-    $('matUploadProgress').style.color='#ef4444';
-  }
-}
 function closeProfileModal(){
   const ov=$('profileOverlay');
   if(ov)ov.style.display='none';
@@ -848,7 +941,15 @@ function materialEditor(m={}){$('editorTitle').textContent=m.id?'Edit material':
     <label>PDF direct URL (if you have direct link)<input type="url" name="pdf_url" value="${val(m.pdf_url)}" placeholder="https://example.com/file.pdf"></label>
     <label>Subject / Topic<input name="subject" value="${val(m.subject)}" placeholder="e.g. Structural Engineering, Interview Questions, GATE Civil"></label><label>Preview URL<input type="url" name="preview_url" value="${val(m.preview_url)}"></label><label>Page count<input type="number" name="page_count" value="${val(m.page_count)}"></label><button class="btn primary">Save material</button></form>`;openEditor();$('materialEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);d.access_type='Free';if(m.id)d.id=m.id;await api('/api/materials',{method:m.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Material saved.');await loadData();loadAdmin()}}
 function openEditor(){$('editorDialog').showModal()}
-$$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$('language').onclick=()=>{lang=lang==='en'?'kn':'en';localStorage.setItem('cc_lang',lang);translate();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('searchOpen').onclick=()=>{$('globalQuery').focus();scrollTo({top:document.querySelector('.search-wrap').offsetTop-90,behavior:'smooth'})};
+$$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$('language').onclick=()=>{lang=lang==='en'?'kn':'en';localStorage.setItem('cc_lang',lang);translate();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('searchOpen').onclick=()=>{
+  const focusSearch=()=>{
+    const q=$('globalQuery');
+    const wrap=document.querySelector('.search-wrap');
+    if(q){q.focus();q.select();}
+    if(wrap)scrollTo({top:wrap.getBoundingClientRect().top+scrollY-90,behavior:'smooth'});
+  };
+  if(route!=='home'){navigate('home');setTimeout(focusSearch,120)}else focusSearch();
+};
 const sug=['Civil Engineer','Site Engineer','Planning Engineer','Quantity Surveyor','BIM Engineer','Structural Engineer','Government Civil Jobs','SSC JE Civil','ESE Civil','Bengaluru','Mumbai','Hyderabad'];$('globalQuery').oninput=e=>{const q=e.target.value.toLowerCase();const a=sug.filter(x=>x.toLowerCase().includes(q)).slice(0,5);$('suggestions').innerHTML=a.map(x=>`<button type="button">${x}</button>`).join('');$('suggestions').classList.toggle('show',q.length>0&&a.length>0);$$('#suggestions button').forEach(b=>b.onclick=()=>{$('globalQuery').value=b.textContent;$('suggestions').classList.remove('show')})};$('smartSearch').onsubmit=e=>{e.preventDefault();$('suggestions').classList.remove('show');search($('globalQuery').value,$('globalLocation').value)};
 if($('privateScopeChips'))$$('#privateScopeChips button').forEach(b=>b.onclick=()=>{$$('#privateScopeChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});['privateRole','privateExperience','privateType','privateSort'].forEach(id=>$(id).onchange=renderPrivate);['privateLocation'].forEach(id=>$(id).oninput=renderPrivate);['govStatus','govSort'].forEach(id=>$(id)&&$(id).addEventListener('change',renderGovernment));
 $('privateSort')&&$('privateSort').addEventListener('change',renderPrivate);
@@ -891,13 +992,8 @@ function openAuth(mode){
   const title=document.getElementById('myCareerAuthTitle');
   const text=document.getElementById('myCareerAuthText');
   if(!modal)return;
-  if(mode==='register'){
-    title.textContent='Create your CivilCareer account';
-    text.textContent='Create a free profile to personalize jobs, government opportunities, exams and resources.';
-  }else{
-    title.textContent='Welcome back to CivilCareer';
-    text.textContent='Sign in to access your personalized CivilCareer experience.';
-  }
+  title.textContent='Save your For You profile';
+  text.textContent='Your preferences already work on this device. Sign in only if you want to sync them across devices.';
   modal.hidden=false;
   document.body.classList.add('modal-open');
 }

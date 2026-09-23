@@ -193,3 +193,77 @@ img, svg { max-width: 100%; height: auto; }
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =========================================================
+   MOBILE HEADER + LIVE STATS + FOR YOU
+   ========================================================= */
+@media (max-width:760px){
+  .site-header .nav{
+    position:relative!important;
+    height:64px!important;
+    width:100%!important;
+    margin:0!important;
+    padding:0 12px!important;
+    display:flex!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+  }
+  .site-header .menu-btn{
+    display:grid!important;
+    order:1!important;
+    place-items:center!important;
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    padding:8px!important;
+    margin:0!important;
+    z-index:3!important;
+  }
+  .site-header .logo{
+    position:absolute!important;
+    left:50%!important;
+    transform:translateX(-50%)!important;
+    order:2!important;
+    margin:0!important;
+    font-size:20px!important;
+    z-index:2!important;
+  }
+  .site-header .nav-tools{
+    order:3!important;
+    margin-left:auto!important;
+    z-index:3!important;
+  }
+  .site-header .nav-tools .icon-btn{
+    display:inline-flex!important;
+    min-width:42px!important;
+    height:42px!important;
+    padding:0 10px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:0!important;
+  }
+  .site-header .nav-tools .icon-btn::after{
+    content:'⌕';
+    font-size:23px!important;
+    line-height:1!important;
+  }
+  .site-header .about-link,.site-header .lang-btn{display:none!important}
+
+  /* Keep the live platform stats visible on phones. */
+  .hero .hero-panel,.hero-live-panel{
+    display:block!important;
+    width:100%!important;
+    margin-top:22px!important;
+  }
+  .hero-grid{
+    grid-template-columns:1fr!important;
+    gap:22px!important;
+  }
+  .live-stat-grid{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+  }
+  .live-stat b{font-size:25px!important}
+  .live-stat span{font-size:11px!important}
+  .live-panel-note{font-size:12px!important;line-height:1.45!important}
+}
