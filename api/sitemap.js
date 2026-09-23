@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
     // Keep this below 50,000 URLs, the standard sitemap URL limit.
     // If CivilCareer ever grows beyond that, Phase 2 can add a sitemap index.
     const response = await supa(
-      'jobs?select=id,slug,role,created_at,updated_at,published_at,expires_at,valid_through,date_posted' +
+      'jobs?select=id,slug,role,created_at,date_posted,expires_at' +
       '&published=eq.true' +
       '&order=created_at.desc' +
       '&limit=5000'
@@ -111,18 +111,15 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok) {
       const detail = await response.text();
-      throw new Error(
-        `Supabase returned ${response.status}: ${detail}`
+      console.warn(
+        `Sitemap job query failed (${response.status}); returning static sitemap only: ${detail.slice(0, 500)}`
       );
-    }
+    } else {
+      const jobs = await response.json();
+      const now = Date.now();
 
-    const jobs = await response.json();
-    const now = Date.now();
-
-    for (const job of jobs) {
-      const expiry =
-        job.expires_at ||
-        job.valid_through;
+      for (const job of jobs) {
+        const expiry = job.expires_at;
 
       if (expiry) {
         const expiryTime = new Date(expiry).getTime();
@@ -135,21 +132,20 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      const lastmod =
-        job.updated_at ||
-        job.published_at ||
-        job.date_posted ||
-        job.created_at ||
-        '';
+        const lastmod =
+          job.date_posted ||
+          job.created_at ||
+          '';
 
-      urls.push(
-        addUrl(
-          `${SITE_URL}/jobs/${encodeURIComponent(jobSlug(job))}`,
-          '0.8',
-          'daily',
-          lastmod
-        )
-      );
+        urls.push(
+          addUrl(
+            `${SITE_URL}/jobs/${encodeURIComponent(jobSlug(job))}`,
+            '0.8',
+            'daily',
+            lastmod
+          )
+        );
+      }
     }
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
