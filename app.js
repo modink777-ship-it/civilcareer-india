@@ -76,23 +76,42 @@ function jobCard(j,gov=false){
   const closed=isClosed(j),saved=getSaved().has(j.id);
   const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
   const applyUrl=j.apply_url||j.source_url||'';
-  const waText=encodeURIComponent((j.role||'Job')+' at '+(j.company||'Organization')+'\n'+(j.location?j.location+'\n':'')+(applyUrl?'Apply: '+applyUrl:''));
+  const role=String(j.role||'Opportunity');
+  const company=String(j.company||j.recruitment_authority||'Organization');
+  const location=String(j.location||j.location_display||'India');
+  const experience=String(j.experience_level||'Experience not specified');
+  const desc=compactJobDescription(j);
+  const tags=[];
+  if(j.discipline)tags.push(j.discipline);
+  if(j.specialization)tags.push(j.specialization);
+  if(j.employment_type)tags.push(j.employment_type);
+  if(j.work_mode)tags.push(j.work_mode);
+  if(j.qualification&&tags.length<3)tags.push(j.qualification);
+  const tagHtml=tags.slice(0,3).map(x=>`<span class="homepage-job-tag">${esc(x)}</span>`).join('');
+  const initials=company.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'CC';
   return `<article class="job-card cc-modern-job-card job-summary-card homepage-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
-    <div class="cc-job-title-row">
-      <h3>${esc(j.role||'Opportunity')}</h3>
+    <div class="homepage-job-top">
+      <span class="homepage-job-status ${closed?'closed':''}"><i></i>${closed?'Closed':'Active'}</span>
+      <span class="homepage-job-posted">◷ Posted ${esc(posted)}</span>
+      <span class="homepage-job-match">Civil Job</span>
     </div>
-    <div class="cc-company-name job-summary-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
-    <div class="cc-job-meta job-summary-meta">
-      <span>📍 ${esc(j.location||j.location_display||'India')}</span>
-      <span>◷ ${esc(j.experience_level||'Experience not specified')}</span>
-      <span>↗ Posted ${esc(posted)}</span>
+    <div class="homepage-job-company">
+      <div class="homepage-job-logo">${esc(initials)}</div>
+      <div class="cc-company-name job-summary-company">${esc(company)}</div>
     </div>
+    <div class="cc-job-title-row"><h3>${esc(role)}</h3></div>
+    <div class="homepage-job-meta">
+      <span>📍 ${esc(location)}</span>
+      <span>💼 ${esc(experience)}</span>
+    </div>
+    ${tagHtml?`<div class="homepage-job-tags">${tagHtml}</div>`:''}
+    ${desc?`<p class="homepage-job-description">${esc(desc)}</p>`:''}
     <div class="cc-job-footer job-summary-actions">
-      <button data-job="${j.id}" class="cc-view-btn">View Details →</button>
+      <a class="cc-view-btn" href="${esc(jobPath(j))}" data-dynamic-route="true">View Details →</a>
       ${applyUrl?`<a class="btn-apply" href="${esc(applyUrl)}" target="_blank" rel="noopener">Apply ↗</a>`:`<button class="btn-apply" data-job="${j.id}">Apply ↗</button>`}
       <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★ Save':'☆ Save'}</button>
     </div>
-  </article>`
+  </article>`;
 }
 function examCard(x){const closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date(),title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,copy=x.overview||(lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en);const daysLeft=x.application_end&&!closed?Math.ceil((new Date(x.application_end+'T23:59:59')-new Date())/86400000):null;return `<article class="exam-card"><div class="card-top"><span class="pill ${closed?'closed':x.last_verified?'verified':''}">${closed?'Application Closed':x.status||'Update'}</span>${x.application_end?`<span class="verified-date">Deadline ${date(x.application_end)}</span>`:''}${daysLeft!==null?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}</div><h3>${esc(title)}</h3><div class="organization">${esc(x.authority||'Conducting authority')}${x.vacancy_count?` · ${esc(x.vacancy_count)} vacancies`:''}</div><p class="card-copy">${esc(short(copy||'Check the official notification for complete recruitment details.'))}</p><div class="card-actions"><button data-exam="${x.id}">View Complete Details</button>${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Official PDF ↗</a>`:''}</div></article>`}
 function materialCard(m){const title=lang==='kn'&&m.title_kn?m.title_kn:m.title_en;return `<article class="material-card"><div class="card-top"><span class="pill verified">${esc(m.access_type||'Free')}</span><span class="verified-date">${m.page_count?m.page_count+' pages':'Resource'}</span></div><h3>${esc(title)}</h3><div class="organization">${esc(m.category||m.exam_code||'Study resource')}</div><p class="card-copy">${esc(short(m.description_en||'Organized learning resource.'))}</p><div class="card-actions"><button data-material-id="${m.id}">Preview</button><a href="${esc(m.file_url)}" target="_blank" rel="noopener">Open Resource ↗</a></div></article>`}
