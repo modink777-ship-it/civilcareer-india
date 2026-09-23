@@ -404,6 +404,11 @@ function renderForYou(){
   bindCards();
 }
 
+function compactJobDescription(j){
+  const raw=String(j.description||j.summary||'').replace(/\\s+/g,' ').trim();
+  if(!raw)return '';
+  return raw.length>190?raw.slice(0,187).replace(/\\s+\\S*$/,'')+'…':raw;
+}
 function matchJobCard(j,match){
   const color=match.score>=80?'#10b981':match.score>=60?'#f59e0b':'#6b7280';
   const saved=jobInteractions[j.id]==='saved';

@@ -336,3 +336,213 @@ tr:nth-child(even) td{background:#FAF9F5!important}
   .foryou-title-row{align-items:flex-start;flex-direction:column}
   .foryou-title-row .btn{width:100%}
 }
+
+/* =========================================================
+   FINAL UI FIX V4 — COMPACT JOB CARDS
+   ========================================================= */
+.cards.list{
+  gap:16px!important;
+}
+.job-card{
+  padding:18px!important;
+  border-radius:16px!important;
+  min-height:0!important;
+}
+.cards.list .job-card{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:0!important;
+}
+.cards.list .job-card .card-top,
+.cards.list .job-card .job-card-top{
+  margin-bottom:9px!important;
+}
+.cards.list .job-card h3{
+  font-size:20px!important;
+  line-height:1.25!important;
+  margin:8px 0 8px!important;
+  letter-spacing:-.3px!important;
+}
+.cards.list .job-card .organization{
+  font-size:13px!important;
+  margin-bottom:7px!important;
+}
+.cards.list .job-card .card-meta{
+  gap:9px!important;
+  margin:7px 0!important;
+  font-size:12px!important;
+}
+.cards.list .job-card .tags,
+.cards.list .job-card .job-tags,
+.cards.list .job-card .match-reasons{
+  gap:6px!important;
+  margin:8px 0!important;
+}
+.cards.list .job-card .tag,
+.cards.list .job-card .skill-tag,
+.cards.list .job-card .reason-tag{
+  font-size:11px!important;
+  padding:5px 8px!important;
+}
+.cards.list .job-card p{
+  font-size:13px!important;
+  line-height:1.5!important;
+  margin:9px 0!important;
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  overflow:hidden!important;
+}
+.cards.list .job-card .card-actions{
+  margin-top:12px!important;
+  padding-top:12px!important;
+  gap:8px!important;
+}
+.cards.list .job-card .card-actions button,
+.cards.list .job-card .card-actions a{
+  min-height:40px!important;
+  padding:0 13px!important;
+  font-size:12px!important;
+}
+@media(min-width:900px){
+  .cards.list .job-card{
+    padding:17px 18px!important;
+  }
+}
+
+/* =========================================================
+   LIVE STATS — HIGH CONTRAST
+   ========================================================= */
+.hero-live-panel,
+.hero-live-panel *{
+  text-shadow:none!important;
+}
+.hero-live-panel{
+  background:#FFFEFA!important;
+  color:#182335!important;
+}
+.hero-live-panel .panel-label{
+  color:#0B1424!important;
+}
+.hero-live-panel .live-panel-note,
+.hero-live-panel .live-panel-note *{
+  color:#465467!important;
+  opacity:1!important;
+}
+.hero-live-panel .live-stat{
+  background:#F5F7FA!important;
+  border:1px solid #DCE3EA!important;
+}
+.hero-live-panel .live-stat b{
+  color:#0B1424!important;
+}
+.hero-live-panel .live-stat span{
+  color:#465467!important;
+}
+.hero-live-panel .live-dot{
+  background:#F4FBF7!important;
+  color:#16866A!important;
+}
+
+/* General dark-on-light readability for hero-adjacent utility text */
+.page-hero + .container,
+.foryou-header + .foryou-content{
+  color:#465467!important;
+}
+
+/* =========================================================
+   PAGE HERO ALIGNMENT — CENTERED SITE CONTAINER
+   ========================================================= */
+.page-hero{
+  box-sizing:border-box!important;
+  width:min(100%,1180px)!important;
+  max-width:1180px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding-left:24px!important;
+  padding-right:24px!important;
+}
+.page-hero.container{
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.page-hero .container{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+@media(max-width:760px){
+  .page-hero{
+    width:100%!important;
+    padding-left:18px!important;
+    padding-right:18px!important;
+  }
+}
+
+/* =========================================================
+   SEARCH / FILTER PANEL — HERO DARK THEME
+   ========================================================= */
+.filters{
+  background:linear-gradient(145deg,#0B1424 0%,#13243A 100%)!important;
+  color:#F7F4EC!important;
+  border-color:#2A3B52!important;
+  box-shadow:0 18px 45px rgba(11,20,36,.18)!important;
+}
+.filters h3,
+.filters .filter-title h3{
+  color:#FFFDF7!important;
+}
+.filters label{
+  color:#D8E1EB!important;
+}
+.filters input,
+.filters select{
+  background:#F8FAFC!important;
+  color:#0B1424!important;
+  border-color:#6A7C91!important;
+}
+.filters input::placeholder{
+  color:#738196!important;
+}
+.filters .btn.secondary{
+  background:#FFFDF7!important;
+  color:#0B1424!important;
+  border-color:#D8BC7E!important;
+}
+.filters .filter-title button{
+  color:#FFFDF7!important;
+}
+.active-filters{
+  color:#465467!important;
+}
+.mobile-filter-btn{
+  background:#0B1424!important;
+  color:#FFFDF7!important;
+  border-color:#2A3B52!important;
+}
+@media(max-width:800px){
+  .filters{
+    background:linear-gradient(145deg,#0B1424 0%,#13243A 100%)!important;
+  }
+  .filters .filter-title{
+    border-bottom-color:#2A3B52!important;
+  }
+}
+
+.search-page,
+[data-page="search"] .container{
+  color:#465467;
+}
+[data-page="search"] .page-hero + .container{
+  padding-top:22px!important;
+}
+
+/* Never restore construction/photo backgrounds on these page heroes. */
+.page-hero,.careerhub-hero{
+  background-image:none!important;
+}
+.cc-bg-layer,.cc-bg-label{
+  display:none!important;
+}
