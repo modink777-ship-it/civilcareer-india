@@ -233,6 +233,15 @@ async function renderJobPage(req, res) {
       job = await getJobById(slug);
     }
 
+    // Client-generated URLs end with the database id (role-company-<id>). Older
+    // rows can lack a matching stored slug, so fall back to that trailing id.
+    if (!job) {
+      const tail = slug.split('-').pop();
+      if (tail && tail !== slug && /^[0-9a-f-]{36}$/i.test(tail)) {
+        job = await getJobById(tail);
+      }
+    }
+
     if (!job) {
       res.setHeader('X-Robots-Tag', 'noindex, follow');
       return res.status(404).send(`<!doctype html>
@@ -328,6 +337,9 @@ async function renderJobPage(req, res) {
 <meta name="description" content="${escapeHtml(description)}">
 <meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
+
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/css-fixes.css">
 
 <meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
@@ -1124,6 +1136,42 @@ function makeSlug(role, company, id) {
   return `${base || 'job'}-${id || Date.now()}`;
 }
 
+function normalizeMatch(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/https?:\/\/(www\.)?/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Matches an existing active job by source URL or by role+company so the
+// admin sees "already exists" before a second copy is saved.
+async function findDuplicateJob(job) {
+  try {
+    const r = await supa('jobs?select=id,role,company,source_url,apply_url&published=eq.true&limit=1000');
+    if (!r.ok) return null;
+    const rows = await r.json();
+
+    const incomingUrl = normalizeMatch(job.source_url || job.apply_url).replace(/\/$/, '');
+    if (incomingUrl) {
+      const byUrl = rows.find((row) => {
+        const rowUrl = normalizeMatch(row.source_url || row.apply_url).replace(/\/$/, '');
+        return rowUrl && (rowUrl === incomingUrl || rowUrl.includes(incomingUrl) || incomingUrl.includes(rowUrl));
+      });
+      if (byUrl) return byUrl;
+    }
+
+    const incomingTitle = normalizeMatch(`${job.role || ''} ${job.company || ''}`);
+    if (incomingTitle) {
+      return rows.find((row) => normalizeMatch(`${row.role || ''} ${row.company || ''}`) === incomingTitle) || null;
+    }
+
+    return null;
+  } catch (_) {
+    return null; // never block saving because the duplicate check failed
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
@@ -1206,6 +1254,19 @@ module.exports = async function handler(req, res) {
       const { id, key, ...rest } = body;
       cleanDates(rest);
       cleanArrays(rest);
+
+      // Duplicate guard — tell the admin when the vacancy is already listed
+      // instead of silently creating a second copy.
+      if (!rest.confirm_duplicate) {
+        const dupe = await findDuplicateJob(rest);
+        if (dupe) {
+          return res.status(409).json({
+            error: `This job already exists on CivilCareer as "${dupe.role || dupe.id}" (${dupe.company || 'same employer'}).`,
+            existing_id: dupe.id,
+          });
+        }
+      }
+
       if (typeof rest.published !== 'boolean') rest.published = true;
       if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
       if (!rest.created_at) rest.created_at = new Date().toISOString();
