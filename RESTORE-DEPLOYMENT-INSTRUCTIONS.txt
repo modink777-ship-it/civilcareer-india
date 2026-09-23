@@ -1,0 +1,7 @@
+CivilCareer India — Restore deployment
+
+IMPORTANT: Upload/extract the CONTENTS of this archive into the Vercel/GitHub project ROOT. Do not keep the civilcareer-india-main folder as an extra parent directory.
+
+This package restores the existing project without broad refactoring. The existing vercel.json already rewrites /submit-resource to /index.html and routes the main SPA paths.
+
+After replacing the project files, redeploy on Vercel.
