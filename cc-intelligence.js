@@ -249,7 +249,7 @@
         const d = radarData(); if (!d) return;
         const cell = (n, l, href, hot) => `<a class="cc-radar-cell${hot ? ' hot' : ''}" href="${href}" data-dynamic-route="true"><b>${n}</b><span>${l}</span></a>`;
         anchor.insertAdjacentHTML('afterbegin',
-          `<div class="cc-radar" id="ccRadar" aria-label="Career radar">${cell(d.newToday, 'New today', '/private-jobs')}${cell(d.closing, 'Closing soon', '/private-jobs', d.closing > 0)}${cell(d.govt, 'Government', '/government-jobs')}${cell(d.freshers, 'For freshers', '/private-jobs?experience=Fresher')}${cell(d.highMatch, 'Private jobs', '/private-jobs')}</div>`);
+          ``);
       }
     }
   }

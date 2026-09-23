@@ -190,3 +190,6 @@ tr:nth-child(even) td{background:#FAF9F5!important}
   .hero,.page-hero,.careerhub-hero{background:linear-gradient(150deg,var(--cc-navy),#17273D)!important}
   .job-card,.quick-card,.material-card,.exam-card{box-shadow:0 8px 24px rgba(11,20,36,.07)!important}
 }
+
+/* Homepage radar/stat strip intentionally removed. */
+.cc-radar,#ccRadar{display:none!important;}
