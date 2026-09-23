@@ -1408,7 +1408,9 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 
 /* §54 Engineering-grid motif — quiet, never over content */
 .section.soft,.how-section,.portal-highlights{
-  
+  background-image:
+    linear-gradient(var(--cc-grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--cc-grid) 1px,transparent 1px);
   background-size:44px 44px;
 }
 .page-hero:after{
