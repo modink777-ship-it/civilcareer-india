@@ -1,0 +1,21 @@
+
+/* CivilCareer cleanup: remove requested homepage sections */
+.opportunity-landscape,
+.where-civil-careers-grow,
+.important-dates,
+.examination-updates,
+.company-landscape,
+.indian-companies,
+.indian-mncs,
+.global-mncs,
+.india-wide,
+.closing-soon,
+.government-exams {
+  display: none !important;
+}
+
+/* Keep construction imagery confined to the hero. */
+main:not(.hero) [style*="background-image"],
+section:not(.hero) [style*="background-image"] {
+  background-image: none !important;
+}
