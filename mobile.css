@@ -1,0 +1,195 @@
+
+/* CivilCareer mobile-first usability layer */
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+img, svg { max-width: 100%; height: auto; }
+
+@media (max-width: 760px) {
+  :root { --mobile-gutter: 14px; }
+
+  body { font-size: 15px; }
+  .container {
+    width: auto !important;
+    max-width: none !important;
+    margin-inline: var(--mobile-gutter) !important;
+    padding-inline: 0 !important;
+  }
+
+  header, .site-header, nav {
+    max-width: 100vw;
+  }
+
+  /* Prevent desktop navigation from overflowing */
+  .site-header .container,
+  header .container {
+    min-height: 64px !important;
+  }
+  nav, .nav-links, .main-nav {
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav::-webkit-scrollbar, .nav-links::-webkit-scrollbar, .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hero: remove excessive desktop spacing */
+  .hero, .page-hero, .hero-section {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 54px 18px 38px !important;
+  }
+  .hero h1, .page-hero h1, .hero-section h1 {
+    font-size: clamp(36px, 11vw, 58px) !important;
+    line-height: .98 !important;
+    max-width: 100% !important;
+  }
+  .hero p, .page-hero p, .hero-section p {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    max-width: 100% !important;
+  }
+
+  /* Search */
+  .smart-search {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .smart-search label,
+  .smart-search input,
+  .smart-search button,
+  .search-wrap .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .smart-search button {
+    min-height: 48px !important;
+  }
+
+  /* Section spacing */
+  .section { padding-block: 30px !important; }
+  .section-head {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: flex-start !important;
+  }
+  .section-head h2 {
+    font-size: 30px !important;
+    line-height: 1.05 !important;
+  }
+
+  /* Job cards */
+  .cards.three, .cards {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .job-summary-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  #homePrivate .homepage-summary-card,
+  #homeGovernment .homepage-summary-card,
+  .job-summary-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+    padding: 16px !important;
+    border-radius: 15px !important;
+  }
+  .homepage-job-top {
+    grid-template-columns: auto 1fr !important;
+  }
+  .homepage-job-match { display: none !important; }
+  .homepage-job-meta {
+    flex-direction: column !important;
+    gap: 5px !important;
+  }
+  .homepage-job-meta span {
+    max-width: 100% !important;
+  }
+  .homepage-job-tags {
+    flex-wrap: wrap !important;
+  }
+  .homepage-job-tag { max-width: 100% !important; }
+
+  .job-summary-actions,
+  .homepage-summary-card .job-summary-actions {
+    grid-template-columns: 1fr 1fr auto !important;
+  }
+  .job-summary-actions > * {
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Filters/chips become horizontal touch scrollers */
+  .filters, .filter-bar, .tabs, .chips, .filter-chips {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filters::-webkit-scrollbar, .filter-bar::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar, .chips::-webkit-scrollbar,
+  .filter-chips::-webkit-scrollbar { display:none; }
+  .filters > *, .filter-bar > *, .tabs > *, .chips > * {
+    flex: 0 0 auto !important;
+  }
+
+  /* Modals */
+  .modal, .overlay > *, .profile-modal-inner, .job-detail-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+    border-radius: 16px !important;
+  }
+
+  /* Live stats */
+  .live-stat-grid, .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .live-stat, .stat-card {
+    min-width: 0 !important;
+    padding: 14px !important;
+  }
+
+  /* Tables and dense data */
+  .table-wrap, .data-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms */
+  form { max-width: 100%; }
+  input, select, textarea {
+    font-size: 16px !important; /* prevents iOS zoom */
+    min-height: 46px;
+  }
+
+  /* Footer */
+  footer .container {
+    padding-block: 24px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .job-summary-actions,
+  .homepage-summary-card .job-summary-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .job-summary-actions .btn-save {
+    grid-column: 1 / -1;
+  }
+  .live-stat-grid, .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
