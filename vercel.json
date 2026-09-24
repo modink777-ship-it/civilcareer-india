@@ -642,6 +642,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/career-paths",
+      "destination": "/index.html"
+    },
+    {
       "source": "/career-hub",
       "destination": "/index.html"
     },

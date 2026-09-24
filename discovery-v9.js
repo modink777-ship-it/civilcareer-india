@@ -87,17 +87,50 @@
     const count=Object.values(jobInteractions||{}).filter(v=>v==='saved').length;
     $$('[data-saved-count]').forEach(el=>el.textContent=count?String(count):'');
   }
+  /* COMPACT INTELLIGENCE CARD (FIX-2026-09-24) — replaces the old long-copy card.
+     Same action contract as before: View (data-job → openJob chain), Apply (data-apply-job,
+     tracked), Save (data-save-job → toggleSave). No description text inside the card:
+     all detail lives in the dedicated page / explorer side panel. */
   function enhancedJobCard(j,gov=false){
-    const closed=!active(j),saved=getSaved().has(j.id),loc=jobLocs(j).join(' · ')||j.location_display||j.location||'Location in source';
+    gov=gov||(typeof isGovJob==='function'?isGovJob(j):['Government','Public Sector'].includes(j.sector));
+    const closed=!active(j),saved=getSaved().has(j.id);
+    const loc=jobLocs(j).join(' · ')||j.location_display||j.location||j.city||j.state||'Location in source';
     const apply=j.application_url||j.apply_url||j.source_url||'';
-    return `<article class="job-card discovery-job-card ${closed?'is-closed':''}">
-      <div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date"><i class="age-dot ${ageClass(pubDate(j))}" aria-hidden="true"></i>${ago(pubDate(j))}</span></div>
-      <h3>${esc(j.role||'Civil Engineering Opportunity')}</h3>
-      <div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div>
-      <div class="card-meta"><span>📍 ${esc(loc)}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div>
-      ${(j.salary||(j.salary_min&&j.salary_max))?`<div class="card-pay"><span class="salary-badge">₹ ${esc(j.salary||`${j.salary_min} – ${j.salary_max}`)}</span>${closingSoon(j)?'<span class="deadline-badge">⏳ Closes soon</span>':''}</div>`:(closingSoon(j)?'<div class="card-pay"><span class="deadline-badge">⏳ Closes soon</span></div>':'')}
-      <p class="card-copy">${esc(short(j.description||'Verify the complete details at the original source.'))}</p>
-      <div class="card-actions"><a class="detail-link" href="${esc(jobPath(j))}" data-dynamic-route="true">View Details</a>${!closed&&apply?`<a class="btn-apply" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">Apply ↗</a>`:''}<button class="btn-save ${saved?'saved':''}" data-save-job="${esc(j.id)}" title="${saved?'Remove saved job':'Save job'}">${saved?'★ Saved':'☆ Save'}</button></div>
+    const initials=typeof companyInitials==='function'?companyInitials(j.company||j.recruitment_authority||'CC'):'CC';
+    const cm=typeof civilMatch==='function'?civilMatch(j):null;
+    const proj=typeof projectTypeOf==='function'?projectTypeOf(j):'';
+    const work=typeof workTypeOf==='function'?workTypeOf(j):'';
+    const sal=typeof salaryText==='function'?salaryText(j):(j.salary||(j.salary_min&&j.salary_max?`${j.salary_min} – ${j.salary_max}`:''));
+    const verified=j.last_verified&&!closed;
+    const posted=pubDate(j)?ago(pubDate(j)):(j.last_verified?`Verified ${String(j.last_verified).slice(0,10)}`:'');
+    const isNew=j.created_at&&(Date.now()-new Date(j.created_at))<3*86400000;
+    return `<article class="job-card discovery-job-card cc-compact-card ${closed?'is-closed card-closed':''}" data-explorer-job="${esc(j.id)}" data-job-id="${esc(j.id)}">
+      <div class="cc-compact-top">
+        <span class="cc-card-logo" aria-hidden="true">${esc(initials)}</span>
+        <div class="cc-compact-id">
+          <h3 class="cc-compact-title">${esc(j.role||j.role_normalized||'Civil Engineering Opportunity')}</h3>
+          <div class="cc-compact-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
+        </div>
+        ${cm?`<span class="cc-match-pct" title="Based on your For You profile">${cm.score}%</span>`:''}
+      </div>
+      <div class="cc-compact-meta">
+        <span title="Location">📍 ${esc(loc)}</span>
+        ${sal?`<span title="Salary">₹ ${esc(sal)}</span>`:''}
+        ${(j.experience_level||jobExps(j).length)?`<span title="Experience">⏱ ${esc(j.experience_level||jobExps(j)[0])}</span>`:''}
+        ${proj?`<span title="Project type">🏗 ${esc(proj)}</span>`:''}
+        ${work?`<span title="Work type">🧰 ${esc(work)}</span>`:''}
+        ${closingSoon(j)?'<span class="deadline-badge">⏳ Closes soon</span>':''}
+      </div>
+      <div class="cc-compact-status">
+        <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Expired':j.featured?'Featured':verified?'Verified':'Active'}</span>
+        <span class="cc-posted-ago">${esc(posted)}</span>
+        ${isNew?'<span class="new-badge">NEW</span>':''}
+      </div>
+      <div class="cc-compact-actions">
+        <button data-job="${esc(j.id)}" class="cc-view-btn">View</button>
+        ${!closed&&apply?`<a class="btn-apply cc-apply-btn" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">Apply ↗</a>`:''}
+        <button class="btn-save cc-save ${saved?'saved':''}" data-save-job="${esc(j.id)}" title="${saved?'Remove saved job':'Save job'}" aria-label="${saved?'Remove saved job':'Save job'}">${saved?'★':'☆'}</button>
+      </div>
     </article>`;
   }
   jobCard=enhancedJobCard;
@@ -209,13 +242,11 @@
     bindCards();updateSavedCount();
   };
 
-  // Fix the profile form fields/close behavior while keeping the existing local-only model.
-  const oldSaveProfile=saveProfile;
-  saveProfile=function(){
-    userProfile={...userProfile,name:$('pName')?.value||'',job_title:$('pJobTitle')?.value||'',experience_years:parseFloat($('pExp')?.value)||null,education:$('pEdu')?.value||'',skills:$('pSkills')?.value||''};
-    userPrefs={...userPrefs,target_roles:$('pTargetRoles')?.value||'',skills_wanted:$('pSkillsWanted')?.value||'',preferred_locations:$('pLocations')?.value||'',experience_min:parseFloat($('pExpMin')?.value)||null,experience_max:parseFloat($('pExpMax')?.value)||null,salary_min:parseFloat($('pSalMin')?.value)||null,sectors:$('pSector')?.value||'Both'};
-    saveProfileLocal();closeProfileModal();toast('Profile saved! Finding your matches…');navigate('foryou');renderForYou();
-  };
+  /* Profile save (FIX-2026-09-24): app.js's saveProfile now persists the expanded
+     civil engineering profile (role/project/stage/work/env + skill chips) on top of
+     the legacy fields. The old override here read pTargetRoles/pSkillsWanted/pSkills
+     — fields that no longer exist — and silently wiped saved preferences, so it was
+     removed. app.js's implementation is the single live save path. */
 
   // Improve the matching text and include structured V8 fields.
   const oldMatchScore=matchScore;

@@ -96,6 +96,8 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .field-grid textarea{resize:vertical;min-height:90px}
 .field-grid .btn-save{grid-column:1/-1;padding:11px;background:#c9973c;color:#0b1f3a;border:none;border-radius:9px;font-weight:800;font-size:.95rem;cursor:pointer;font-family:inherit;margin-top:8px}
 .save-status{font-size:.83rem;padding:10px 14px;border-radius:8px;display:none;margin-top:8px;grid-column:1/-1}
+.gov-only-field{transition:opacity .15s}
+.gov-only-field.hint{position:relative}
 .save-status.show{display:block}
 .save-status.success{background:rgba(5,150,105,.15);color:#6ee7b7}
 .save-status.error{background:rgba(220,38,38,.15);color:#fca5a5}
@@ -188,7 +190,6 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 @media(max-width:560px){.review-modal{padding:16px}.review-modal .rm-actions{flex-direction:column}}
 
 </style>
-  <link rel="stylesheet" href="/premium-theme.css?v=20260924-100">
 </head>
 
 <body>
@@ -1296,7 +1297,7 @@ function jobEditor(j={}){
 
 <label>
 Sector
-<select name="sector">
+<select name="sector" id="adminSectorSelect">
 
 <option ${
   (j.sector||'Private')==='Private'
@@ -1397,7 +1398,7 @@ value="${val(j.salary)}"
 placeholder="e.g. ₹4-7 LPA">
 </label>
 
-<label>
+<label class="gov-only-field">
 Vacancies
 <input
 type="number"
@@ -1406,7 +1407,7 @@ value="${val(j.vacancy_count)}"
 placeholder="e.g. 50">
 </label>
 
-<label>
+<label class="gov-only-field">
 Application starts
 <input
 type="date"
@@ -1414,7 +1415,7 @@ name="application_start"
 value="${val(j.application_start)}">
 </label>
 
-<label>
+<label class="gov-only-field">
 Application deadline
 <input
 type="date"
@@ -1422,7 +1423,7 @@ name="deadline"
 value="${val(j.deadline)}">
 </label>
 
-<label>
+<label class="gov-only-field">
 Age limit
 <input
 name="age_limit"
@@ -1430,7 +1431,7 @@ value="${val(j.age_limit)}"
 placeholder="e.g. 18-35">
 </label>
 
-<label>
+<label class="gov-only-field">
 Application fee
 <input
 name="application_fee"
@@ -1461,7 +1462,7 @@ Expired
 </select>
 </label>
 
-<label>
+<label class="gov-only-field">
 Last verified
 <input
 type="date"
@@ -1480,7 +1481,7 @@ value="${val(j.skills)}"
 placeholder="AutoCAD, STAAD Pro, estimation, site supervision">
 </label>
 
-<label class="wide">
+<label class="wide gov-only-field">
 Recruitment authority
 <input
 name="recruitment_authority"
@@ -1498,7 +1499,7 @@ required
 placeholder="https://...">
 </label>
 
-<label class="wide">
+<label class="wide gov-only-field">
 Online apply URL
 <input
 type="url"
@@ -1540,11 +1541,31 @@ Save & Publish
 
   $('editorDialog').showModal();
 
+  /* ── Dynamic sector fields: Government shows recruitment fields,
+     Private hides them. Switching back and forth is fully reversible. ── */
+  function syncAdminSectorFields(){
+    const sel=$('adminSectorSelect');
+    if(!sel)return;
+    const isGov=/gov|public/i.test(sel.value);
+    document.querySelectorAll('#jobEdit .gov-only-field').forEach(l=>{
+      l.style.display=isGov?'':'none';
+    });
+  }
+  window.syncAdminSectorFields=syncAdminSectorFields;
+  $('adminSectorSelect').addEventListener('change',syncAdminSectorFields);
+  syncAdminSectorFields();
+
   $('jobEdit').onsubmit=async e=>{
 
     e.preventDefault();
 
     const d=formObject(e.target);
+
+    /* Private jobs: drop government-recruitment values instead of saving
+       stale/empty ones. Government/Public Sector keeps every field. */
+    if(!/gov|public/i.test(d.sector)){
+      ['application_start','deadline','age_limit','application_fee','last_verified','recruitment_authority','application_url'].forEach(n=>{delete d[n];});
+    }
 
     d.published=true;
 

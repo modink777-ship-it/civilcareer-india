@@ -181,8 +181,10 @@
   function radarData() {
     if (typeof jobs === 'undefined') return null;
     const now = Date.now();
-    const priv = jobs.filter(j => (j.sector || 'Private') === 'Private' && active(j));
-    const govt = jobs.filter(j => ['Government', 'Public Sector'].includes(j.sector) && active(j));
+    const privOf = j => (typeof sectorOf === 'function') ? sectorOf(j) === 'Private' : ((j.sector || 'Private') === 'Private');
+    const govOf = j => (typeof isGovJob === 'function') ? isGovJob(j) : ['Government', 'Public Sector'].includes(j.sector);
+    const priv = jobs.filter(j => privOf(j) && active(j));
+    const govt = jobs.filter(j => govOf(j) && active(j));
     const day = 86400000;
     const within = (j, n) => { const t = new Date(pubDate(j) || 0).getTime(); return Number.isFinite(t) && now - t <= n * day; };
     const closing = j => {
@@ -249,7 +251,7 @@
         const d = radarData(); if (!d) return;
         const cell = (n, l, href, hot) => `<a class="cc-radar-cell${hot ? ' hot' : ''}" href="${href}" data-dynamic-route="true"><b>${n}</b><span>${l}</span></a>`;
         anchor.insertAdjacentHTML('afterbegin',
-          ``);
+          `<div class="cc-radar" id="ccRadar" aria-label="Career radar">${cell(d.newToday, 'New today', '/private-jobs')}${cell(d.closing, 'Closing soon', '/private-jobs', d.closing > 0)}${cell(d.govt, 'Government', '/government-jobs')}${cell(d.freshers, 'For freshers', '/private-jobs?experience=Fresher')}${cell(d.highMatch, 'Private jobs', '/private-jobs')}</div>`);
       }
     }
   }
@@ -259,7 +261,7 @@
     if (!host || host.querySelector('.cc-brief')) return;
     const j = (typeof window.__ccCurrentJob !== 'undefined') ? window.__ccCurrentJob : null;
     if (!j) return;
-    host.insertAdjacentHTML('beforeend', `<div class="detail full cc-brief"><b></b><div class="detail-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">${jobBrief(j)}</div></div>`);
+    host.insertAdjacentHTML('beforeend', `<div class="detail full cc-brief"><b>AI Job Brief</b><div class="detail-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">${jobBrief(j)}</div></div>`);
   }
 
   let wired = false;
@@ -293,9 +295,9 @@
       let i = 0;
       setInterval(() => { if (document.activeElement !== qEl && !qEl.value) qEl.placeholder = examples[i++ % examples.length]; }, 4000);
     }
-    setInterval(() => { try { injectHomeSections(); decorateMatches(document.querySelector('.page.active')); } catch (e) {} }, 1200);
+    setInterval(() => { try { injectHomeSections(); briefOnDetail(); decorateMatches(document.querySelector('.page.active')); } catch (e) {} }, 1200);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.CivilCareerIntelligence = { parseQuery, matchJob, radarData, searchJobsFallback, applyToFilters };
+  window.CivilCareerIntelligence = { parseQuery, matchJob, radarData, jobBrief, searchJobsFallback, applyToFilters };
 })();

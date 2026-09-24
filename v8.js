@@ -11,32 +11,132 @@ function ago(v){if(!v)return'';const t=new Date(v).getTime();if(!Number.isFinite
 function emailList(t){return[...new Set((String(t||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}/gi)||[]).filter(e=>/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,63}$/.test(e)))]}
 function setOpts(id,vals,label){const el=$(id),keep=el.value,counts={};vals.filter(Boolean).forEach(v=>counts[v]=(counts[v]||0)+1);el.innerHTML=`<option value="">${label}</option>`+Object.keys(counts).sort().map(v=>`<option value="${esc(v)}">${esc(v)} (${counts[v]})</option>`).join('');if([...el.options].some(o=>o.value===keep))el.value=keep}
 function jobLocs(j){return arr(j.locations,j.location_display||j.location)}function jobQuals(j){return arr(j.qualifications,j.qualification)}function jobExps(j){return arr(j.experience_ranges,j.experience_level)}function jobTypes(j){return arr(j.employment_types,j.employment_type)}
-function activePrivate(){return jobs.filter(j=>(j.sector||'Private')==='Private'&&active(j))}
-function refreshPrivateOptions(){const a=activePrivate(),country=$('privateCountry').value,state=$('privateState').value;setOpts('privateCountry',a.map(j=>j.country||'India'),'All countries');setOpts('privateState',a.filter(j=>!country||(j.country||'India')===country).map(j=>j.state),'All states / regions');setOpts('privateCity',a.filter(j=>(!country||(j.country||'India')===country)&&(!state||j.state===state)).flatMap(j=>[j.city,j.district]),'All cities / districts');setOpts('privateRole',a.map(j=>j.role_normalized||j.role),'All roles');setOpts('privateExperience',a.flatMap(jobExps),'All experience levels');setOpts('privateType',a.flatMap(jobTypes),'All employment types')}
+/* Sector is normalized (fixes 'private','PRIVATE','Private Sector','MNC' records
+   disappearing). Missing sector defaults to Private so records never vanish. */
+function activePrivate(){return jobs.filter(j=>(typeof sectorOf==='function'?sectorOf(j)==='Private':(String(j.sector||'Private').toLowerCase().includes('private')||String(j.sector||'Private').toLowerCase().includes('mnc')||!String(j.sector||'').trim()))&&!jobExpired(j))}
+function jobExpired(j){if(j.status==='Expired')return true;if(j.expires_at&&new Date(j.expires_at)<=new Date())return true;if(j.deadline){const raw=String(j.deadline),d=/T/.test(raw)?new Date(raw):new Date(raw+'T23:59:59');if(Number.isFinite(d.getTime())&&d<=new Date())return true}return false}
+function refreshPrivateOptions(){const a=activePrivate(),country=$('privateCountry').value,state=$('privateState').value;setOpts('privateCountry',a.map(j=>j.country||'India'),'All countries');setOpts('privateState',a.filter(j=>!country||(j.country||'India')===country).map(j=>j.state),'All states / regions');setOpts('privateCity',a.filter(j=>(!country||(j.country||'India')===country)&&(!state||j.state===state)).flatMap(j=>[j.city,j.district]),'All cities / districts');setOpts('privateRole',a.map(j=>j.role_normalized||j.role),'All roles');setOpts('privateQualification',a.flatMap(jobQuals),'All qualifications');setOpts('privateExperience',a.flatMap(jobExps),'All experience levels');setOpts('privateType',a.flatMap(jobTypes),'All employment types')}
 function chipBox(ids,target,render){const a=ids.map(id=>$(id)).filter(x=>x&&x.value);$(target).innerHTML=a.map(x=>`<button data-clear-filter="${x.id}">${esc(x.options?.[x.selectedIndex]?.text.replace(/ \(\d+\)$/,'')||x.value)} ×</button>`).join('');$$(`#${target} [data-clear-filter]`).forEach(b=>b.onclick=()=>{$(b.dataset.clearFilter).value='';render()})}
-renderPrivate=function(){refreshPrivateOptions();let a=activePrivate();const scope=document.querySelector('#privateScopeChips .active')?.dataset.scope||'all';const c=$('privateCountry').value,s=$('privateState').value,city=$('privateCity').value,r=$('privateRole').value,e=$('privateExperience').value,t=$('privateType').value,days=+$('privatePosted').value;if(scope==='state')a=a.filter(j=>j.country==='India'||!j.country).filter(j=>!!j.state);if(scope==='city')a=a.filter(j=>j.country==='India'||!j.country).filter(j=>!!j.city||!!j.district);if(scope==='global')a=a.filter(j=>(j.country||'India')!=='India');a=a.filter(j=>!c||(j.country||'India')===c).filter(j=>!s||j.state===s).filter(j=>!city||j.city===city||j.district===city||jobLocs(j).some(x=>x.includes(city))).filter(j=>!r||(j.role_normalized||j.role)===r).filter(j=>!e||jobExps(j).includes(e)).filter(j=>!t||jobTypes(j).includes(t)).filter(j=>!days||Date.now()-new Date(pubDate(j))<=days*86400000);a.sort($('privateSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));$('privateCount').textContent=`${a.length} active opportunit${a.length===1?'y':'ies'}`;$('privateJobs').innerHTML=a.length?a.map(x=>jobCard(x)).join(''):`<div class="empty-state"><h3>No matching opportunities found.</h3><p>Remove one filter, clear all filters, or view all active jobs.</p><button class="btn secondary" id="emptyClear">Clear all filters</button></div>`;chipBox(['privateCountry','privateState','privateCity','privateRole','privateExperience','privateType'],'privateFilterChips',renderPrivate);if($('emptyClear'))$('emptyClear').onclick=clearPrivate;bindCards();updateFilterUrl()}
-function clearPrivate(){['privateCountry','privateState','privateCity','privateRole','privateExperience','privateType','privatePosted'].forEach(id=>$(id).value='');renderPrivate()}
-function govScopeOf(j){const level=String(j.government_level||j.gov_level||'').toLowerCase();if(level==='central'||level==='state')return level;const t=[j.recruitment_authority,j.company,j.discipline,j.description].join(' ').toLowerCase();const central=['upsc','ssc','cpwd','cwc','nhai','bro','mes','indian railways','railway board','central government','central public works','border roads','national highways','ministry of','central water'].some(x=>t.includes(x));if(central)return'central';if(j.state||j.state_region||j.region)return'state';return'central'}
-renderGovernment=function(){let a=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)),status=$('govStatus').value,scope=document.querySelector('#govScopeChips .active')?.dataset.scope||'all';if(scope!=='all')a=a.filter(j=>govScopeOf(j)===scope);if($('govState')&&$('govState').options.length<=1)$('govState').innerHTML='<option value="">All states / regions</option>'+INDIA_STATES.map(s=>`<option>${s}</option>`).join('');const state=($('govState')&&$('govState').value||'').toLowerCase(),loc=($('govLocation')&&$('govLocation').value||'').toLowerCase(),qual=($('govQualification')&&$('govQualification').value||'').toLowerCase(),edu=($('govEdu')&&$('govEdu').value||'').toLowerCase();a=a.filter(j=>!state||[j.state,j.state_region,j.location_display,j.location,j.city].filter(Boolean).join(' ').toLowerCase().includes(state)).filter(j=>!loc||[j.city,j.district,j.location_display,j.location].join(' ').toLowerCase().includes(loc)).filter(j=>!qual||jobQuals(j).join(' ').toLowerCase().includes(qual)).filter(j=>!edu||jobQuals(j).join(' ').toLowerCase().includes(edu));if($('govStatus')&&$('govStatus').value)a=a.filter(j=>$('govStatus').value==='closed'?!active(j):active(j));a.sort($('govSort')&&$('govSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));$('governmentCount').textContent=`${a.length} active government civil opportunit${a.length===1?'y':'ies'}`;$('governmentJobs').innerHTML=a.length?a.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');chipBox(['govState','govLocation','govQualification','govStatus'],'govFilterChips',renderGovernment);bindCards()}
-jobCard=function(j,gov=false){
-  const closed=isClosed(j),saved=getSaved().has(j.id);
-  const posted=j.created_at?timeAgo(j.created_at):'Recently posted';
-  const applyUrl=j.apply_url||j.source_url||'';
-  return `<article class="job-card cc-modern-job-card job-summary-card homepage-summary-card ${closed?'card-closed':''} ${gov?'government-job-card':''}">
-    <div class="cc-job-title-row"><h3>${esc(j.role||'Opportunity')}</h3></div>
-    <div class="cc-company-name job-summary-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
-    <div class="cc-job-meta job-summary-meta">
-      <span>📍 ${esc(j.location||j.location_display||'India')}</span>
-      <span>◷ ${esc(j.experience_level||'Experience not specified')}</span>
-      <span>↗ Posted ${esc(posted)}</span>
-    </div>
-    <div class="cc-job-footer job-summary-actions">
-      <button data-job="${j.id}" class="cc-view-btn">View Details →</button>
-      ${applyUrl?`<a class="btn-apply" href="${esc(applyUrl)}" target="_blank" rel="noopener">Apply ↗</a>`:`<button class="btn-apply" data-job="${j.id}">Apply ↗</button>`}
-      <button class="btn-save cc-save" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★ Save':'☆ Save'}</button>
-    </div>
-  </article>`
+
+/* ── Explorer wiring (FIX-2026-09-24): quick filters, mirrors, salary select,
+   sort and the LEFT list / RIGHT detail panel. State lives in ccQuick so quick
+   chips compose with (instead of fight) the dropdown filters. ── */
+const ccQuick={key:'',val:''};
+window.ccQuick=ccQuick;
+const CC_QUICK_MAP={
+  fresher:{apply:()=>{const e=$('privateExperience');if(e.options.length>1)e.value=[...e.options].find(o=>/fresher/i.test(o.value))?.value||'';ccQuick.key='fresher';}},
+  '30k':{apply:()=>{const sel=$('privateSalaryMinSel');if(sel)sel.value='30000';syncPrivateSalary();ccQuick.key='30k'}},
+  site:{apply:()=>{ccQuick.key='site';ccQuick.val='site'}},
+  design:{apply:()=>{ccQuick.key='design';ccQuick.val='design'}},
+  govt:{apply:()=>{ccQuick.key='';ccQuick.val='';if(typeof navigate==='function')navigate('government')}},
+  mnc:{apply:()=>{ccQuick.key='mnc';ccQuick.val='mnc'}},
+  blr:{apply:()=>{ccQuick.key='blr';ccQuick.val=''}},
+  remote:{apply:()=>{ccQuick.key='remote';ccQuick.val='remote'}}
+};
+function ccQuickFilter(j){
+  if(!ccQuick.key)return true;
+  const k=ccQuick.key;
+  /* Freshers: keep jobs that advertise fresher/0–1 yrs, keep jobs with NO stated
+     experience, but drop jobs explicitly asking for 3+ years. */
+  if(k==='fresher'){
+    const et=ccLo([j.experience_level,(jobExps(j)||[]).join(' ')].join(' '));
+    if(/fresher|entry[ -]level|\b0\s*[-–]\s*1\b/.test(et))return true;
+    const m=et.match(/(\d+)\s*[-–]?\s*\+?\s*year/);
+    return m?+m[1]<=2:true;
+  }
+  if(k==='30k')return true; /* handled via the real hidden salary filter */
+  const text=normText([j.role,j.role_normalized,j.company,j.recruitment_authority,j.description,j.skills,j.location,j.location_display,(j.locations||[]).join(' '),j.city,j.state,j.discipline].flat().filter(Boolean).join(' '));
+  if(k==='site')return /\bsite\b|construction site|on[- ]?site|\bfield\b/.test(text);
+  if(k==='design')return /\bdesign\b|design office|design engineer|structural|geotech|bim|autocad|staad|etabs|revit|civil 3d/.test(text);
+  if(k==='mnc')return /\bmnc\b|multinational|global company|global engineering/.test(text)||/\bmnc\b|multinational/.test(ccLo(j.company||''));
+  if(k==='remote')return /remote|work from home|wfh/.test(text);
+  if(k==='blr')return /bengaluru|bangalore/.test(text);
+  return true;
 }
+function ccLo(v){return String(v||'').toLowerCase()}
+function syncPrivateSalary(){const sel=$('privateSalaryMinSel'),hid=$('privateSalary');if(!sel||!hid)return;const v=+$sel.value;hid.value=v?String(v*12):''}
+function syncPrivateMirrors(){const s=$('privateState'),m=$('privateStateMirror'),c=$('privateCity'),cm=$('privateCityMirror');if(m&&s&&m.value!==s.value)m.value=s.value;if(cm&&c&&cm.value!==c.value)cm.value=c.value}
+function wireExplorer(){
+  if(window.__ccExplorerWired)return;window.__ccExplorerWired=true;
+  /* Quick chips */
+  $$('#explorerQuick button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.quick;
+    if(ccQuick.key===k&&(k==='site'||k==='design'||k==='mnc'||k==='remote'||k==='blr')){ccQuick.key='';ccQuick.val='';b.classList.remove('active');renderPrivate();return}
+    if(k==='blr'){ccQuick.key='blr';ccQuick.val='';b.classList.add('active');renderPrivate();return}
+    (CC_QUICK_MAP[k]||{apply(){}}).apply();
+    $$('#explorerQuick button').forEach(x=>x.classList.toggle('active',x===b));
+    renderPrivate();
+  });
+  /* Salary quick-select → hidden yearly filter */
+  $('privateSalaryMinSel')&&($('privateSalaryMinSel').onchange=()=>{syncPrivateSalary();renderPrivate()});
+  /* Mirror selects in the drawer: two-way sync with the toolbar, re-render */
+  ['privateStateMirror','privateCityMirror'].forEach(id=>{const el=$(id);if(el&&!el.dataset.ccWired){el.dataset.ccWired='1';el.onchange=()=>{const main=id==='privateStateMirror'?'privateState':'privateCity';const m=$(main);if(m){m.value=el.value;m.onchange&&m.onchange()}}}});
+  $('privateSalaryMinSel')&&($('privateSalaryMinSel').dataset.ccWired='1');
+}
+function wireExplorer2(){
+  if(window.__ccExplorerWired2)return;window.__ccExplorerWired2=true;
+  $('privateSort')&&($('privateSort').onchange=renderPrivate);
+  ['privateCountry','privateState','privateCity','privateRole','privateQualification','privateExperience','privateType','privatePosted'].forEach(id=>{const el=$(id);if(el&&!el.dataset.ccWired){el.dataset.ccWired='1';el.onchange=renderPrivate}});
+  /* LEFT card click → RIGHT detail panel */
+  document.addEventListener('click',e=>{
+    const card=e.target.closest('[data-explorer-job]');
+    if(!card)return;
+    if(e.target.closest('a,button'))return;
+   renderJobDetailPanel(card.dataset.explorerJob);
+  });
+  document.addEventListener('click',g=>{const c=g.target.closest('#jobDetailPanel [data-panel-close]');if(c){$('jobDetailPanel').hidden=true;}});
+  window.renderJobDetailPanel=renderJobDetailPanel;
+}
+function renderJobDetailPanel(jobId){
+  const panel=$('jobDetailPanel');if(!panel)return;
+  $$('.jobs-column [data-explorer-job]').forEach(c=>c.classList.toggle('cc-selected',String(c.dataset.explorerJob)===String(jobId))); /* highlight selected card */
+  const j=jobs.find(x=>String(x.id)===String(jobId))||window.__ccAllJobs?.find(x=>String(x.id)===String(jobId));
+  if(!j)return;
+  const cm=typeof civilMatch==='function'?civilMatch(j):null;
+  const loc=jobLocs(j).join(' · ')||j.location_display||j.location||j.city||j.state||'Not specified in the listing.';
+  const apply=j.application_url||j.apply_url||j.source_url||'';
+  const skillLinks=s=>{const raw=skillsOf(s);return raw.length?raw.map(s2=>{const hasMat=(typeof materials!=='undefined')&&materials.some(m=>normText([m.title_en,m.category,m.subject,m.description_en].join(' ')).includes(normText(s2)));return hasMat?`<a href="/study-materials" data-route="materials" class="cc-skill-link" title="Free ${esc(s2)} resources in Study Materials">${esc(s2)}</a>`:`<span>${esc(s2)}</span>`}).join(', '):''};
+  const facet=(f)=>`<span class="why-facet ${f.s==='✓'?'hit':f.s==='△'?'part':''}" title="${esc(f.why)}">${f.k} ${f.s}</span>`;
+  panel.innerHTML=`
+    <div class="cc-panel-head">
+      <div class="cc-panel-kicker">JOB DETAILS ${closedOf(j)?' · EXPIRED':''}</div>
+      <button class="cc-panel-close" data-panel-close aria-label="Close details">×</button>
+    </div>
+    <h2 class="cc-panel-title">${esc(j.role||j.role_normalized||'Opportunity')}</h2>
+    <div class="cc-panel-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
+    <div class="cc-panel-meta">
+      <span>📍 ${esc(loc)}</span>
+      ${cm?`<span class="cc-match-pct big">${cm.score}% match</span>`:''}
+    </div>
+    ${cm?`<div class="why-match-box"><b>WHY YOU MATCH</b><div class="why-facets">${cm.facets.map(facet).join('')}</div>${cm.skillMiss.length?`<div class="why-missing">Missing skill${cm.skillMiss.length>1?'s':''}: ${cm.skillMiss.slice(0,3).map(s=>`<b>${esc(s)}</b>`).join(', ')}${materials&&materials.length?' — matching free resources are linked in Skills below.':''}</div>`:''}</div>`:''}
+    <div class="cc-detail-grid">
+      ${j.project_type||projectTypeOf(j)?`<div><b>PROJECT</b>${esc(j.project_type||projectTypeOf(j))}</div>`:''}
+      ${j.work_type||workTypeOf(j)?`<div><b>WORK TYPE</b>${esc(j.work_type||workTypeOf(j))}</div>`:''}
+      <div><b>RESPONSIBILITIES</b>${j.responsibilities?richText(j.responsibilities):'Not specified in the listing.'}</div>
+      <div><b>REQUIREMENTS</b>${j.requirements?richText(j.requirements):j.description?richText(short(j.description,300)):'Not specified in the listing.'}</div>
+      <div><b>QUALIFICATION</b>${esc(jobQuals(j).join(' · ')||'Not specified in the listing.')}</div>
+      ${salaryText(j)?`<div><b>SALARY</b>${esc(salaryText(j))}</div>`:''}
+      <div class="full"><b>SKILLS</b>${skillLinks(j.skills||j.skills_required||'')||esc(jobQuals(j).join(' · '))||'Not specified in the listing.'}</div>
+      <div class="full"><b>SOURCE / VERIFICATION</b>${j.source_url?`<a href="${esc(j.source_url)}" target="_blank" rel="noopener">Open original source ↗</a>`:'Not specified'}${j.last_verified?`<span class="cc-verified-note">Last verified ${esc(date(j.last_verified))}</span>`:''}</div>
+    </div>
+    ${apply?`<a class="btn primary cc-panel-apply" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">APPLY NOW ↗</a>`:`<p class="cc-panel-apply-note">No application link was published with this listing — check the original source.</p>`}
+    <div class="cc-panel-save"><button class="btn-save ${getSaved().has(j.id)?'saved':''}" data-save-job="${esc(j.id)}">${getSaved().has(j.id)?'★ Saved':'☆ Save'}</button></div>
+  `;
+  panel.hidden=false;
+  bindCards();
+  $$('[data-apply-job]').forEach(a=>a.onclick=()=>{saveInteractionLocal(a.dataset.applyJob,'applied');track('job_apply',a.dataset.applyJob)});
+  /* In-panel route links must go through the SPA router */
+  panel.querySelectorAll('a[data-route]').forEach(a=>a.onclick=e2=>{e2.preventDefault();navigate(a.dataset.route)});
+  window.__ccPanelJobId=jobId;
+}
+function closedOf(j){return typeof jobExpired==='function'?jobExpired(j):isClosed(j)}
+renderPrivate=function(){refreshPrivateOptions();syncPrivateMirrors();let a=activePrivate();const scope=document.querySelector('#privateScopeChips .active')?.dataset.scope||'all';const c=$('privateCountry').value,s=$('privateState').value,city=$('privateCity').value,r=$('privateRole').value,q=$('privateQualification').value,e=$('privateExperience').value,t=$('privateType').value,days=+$('privatePosted').value,min=+$('privateSalary').value;/* State/city scopes must not drop jobs whose optional location fields are missing —
+   an all-India job still belongs in every scope. */
+if(scope==='state')a=a.filter(j=>(j.country==='India'||!j.country)&&(!!j.state||!!jobLocs(j).length));if(scope==='city')a=a.filter(j=>(j.country==='India'||!j.country)&&(!!j.city||!!j.district||!!jobLocs(j).length));a=a.filter(j=>!c||(j.country||'India')===c).filter(j=>!s||j.state===s||jobLocs(j).some(x=>x.toLowerCase().includes(String(s).toLowerCase()))).filter(j=>!city||j.city===city||j.district===city||jobLocs(j).some(x=>x.toLowerCase().includes(String(city).toLowerCase()))).filter(j=>!r||(j.role_normalized||j.role)===r).filter(j=>!q||jobQuals(j).includes(q)).filter(j=>!e||jobExps(j).includes(e)).filter(j=>!t||jobTypes(j).includes(t)).filter(j=>!days||Date.now()-new Date(pubDate(j))<=days*86400000).filter(j=>!min||Number(j.salary_max||j.salary_min||0)>=min).filter(ccQuickFilter);a.sort($('privateSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):$('privateSort').value==='oldest'?(x,y)=>new Date(pubDate(x))-new Date(pubDate(y)):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));const totalPrivate=activePrivate().length;$('privateCount').textContent=`${a.length} active opportunit${a.length===1?'y':'ies'}`;$('privateJobs').innerHTML=a.length?a.map(x=>jobCard(x)).join(''):`<div class="empty-state"><h3>${totalPrivate?'No jobs match these filters':'No private jobs are currently available'}</h3><p>${totalPrivate?`${totalPrivate} private job${totalPrivate===1?' exists':'s exist'} but none pass the selected filters. Remove one filter or clear all.`:'Verified private-sector opportunities will appear here as they are published.'}</p><button class="btn secondary" id="emptyClear">Clear all filters</button></div>`;chipBox(['privateCountry','privateState','privateCity','privateRole','privateQualification','privateExperience','privateType'],'privateFilterChips',renderPrivate);if($('emptyClear'))$('emptyClear').onclick=clearPrivate;bindCards();updateFilterUrl()}
+function clearPrivate(){['privateCountry','privateState','privateCity','privateRole','privateQualification','privateExperience','privateType','privatePosted','privateSalary'].forEach(id=>{if($(id))$(id).value=''});if($('privateSalaryMinSel'))$('privateSalaryMinSel').value='';ccQuick.key='';ccQuick.val='';$$('#explorerQuick button').forEach(x=>x.classList.remove('active'));syncPrivateMirrors();renderPrivate()}
+function govScopeOf(j){const level=String(j.government_level||j.gov_level||'').toLowerCase();if(level==='central'||level==='state')return level;const t=[j.recruitment_authority,j.company,j.discipline,j.description].join(' ').toLowerCase();const central=['upsc','ssc','cpwd','cwc','nhai','bro','mes','indian railways','railway board','central government','central public works','border roads','national highways','ministry of','central water'].some(x=>t.includes(x));if(central)return'central';if(j.state||j.state_region||j.region)return'state';return'central'}
+renderGovernment=function(){let a=jobs.filter(j=>typeof isGovJob==='function'?isGovJob(j):['Government','Public Sector'].includes(j.sector)),status=$('govStatus').value,scope=document.querySelector('#govScopeChips .active')?.dataset.scope||'all';if(scope!=='all')a=a.filter(j=>govScopeOf(j)===scope);if($('govState')&&$('govState').options.length<=1)$('govState').innerHTML='<option value="">All states / regions</option>'+INDIA_STATES.map(s=>`<option>${s}</option>`).join('');const state=($('govState')&&$('govState').value||'').toLowerCase(),loc=($('govLocation')&&$('govLocation').value||'').toLowerCase(),qual=($('govQualification')&&$('govQualification').value||'').toLowerCase(),edu=($('govEdu')&&$('govEdu').value||'').toLowerCase();a=a.filter(j=>!state||[j.state,j.state_region,j.location_display,j.location,j.city].filter(Boolean).join(' ').toLowerCase().includes(state)).filter(j=>!loc||[j.city,j.district,j.location_display,j.location].join(' ').toLowerCase().includes(loc)).filter(j=>!qual||jobQuals(j).join(' ').toLowerCase().includes(qual)).filter(j=>!edu||jobQuals(j).join(' ').toLowerCase().includes(edu));if($('govStatus')&&$('govStatus').value)a=a.filter(j=>$('govStatus').value==='closed'?!active(j):active(j));a.sort($('govSort')&&$('govSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>new Date(pubDate(y))-new Date(pubDate(x)));$('governmentCount').textContent=`${a.length} active government civil opportunit${a.length===1?'y':'ies'}`;$('governmentJobs').innerHTML=a.length?a.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');chipBox(['govState','govLocation','govQualification','govStatus'],'govFilterChips',renderGovernment);bindCards()}
+jobCard=function(j,gov=false){gov=gov||(typeof isGovJob==='function'?isGovJob(j):['Government','Public Sector'].includes(j.sector));const closed=!active(j),loc=jobLocs(j).join(' · ')||j.location_display||j.location;return`<article class="job-card"><div class="card-top"><span class="pill ${closed?'closed':j.featured?'featured':'verified'}">${closed?'Expired':j.featured?'Featured':'Active'}</span><span class="verified-date">${ago(pubDate(j))}</span></div><h3>${esc(j.role)}</h3><div class="organization">${esc(j.company||j.recruitment_authority||'Organization')}</div><div class="card-meta"><span>${esc(loc||'Location in source')}</span>${jobQuals(j).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}${jobExps(j).slice(0,1).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p class="card-copy">${esc(short(j.description||'Verify details at the original source.'))}</p><div class="card-actions"><button data-job="${j.id}">View Details</button></div></article>`}
 function activateDynamic(name,path,push=true){route=name;$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===name));if(push)history.pushState({},'',path);scrollTo(0,0)}
 function jobPath(j){return`/jobs/${j.slug||String(j.role||'job').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+j.id}`}
 function materialPath(m){return`/study-materials/${String(m.slug||m.title_en||'resource').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)}-${m.id}`}
@@ -59,7 +159,11 @@ jobEditor = function(j = {}) {
     <form class="panel-form" id="jobEdit">
       <div class="field-grid">
         <label>Sector (Private / Government)
-          <input name="sector" value="${val(j.sector || 'Private')}" placeholder="Private or Government">
+          <select name="sector" id="v8SectorSelect">
+            <option ${(j.sector||'Private')==='Private'?'selected':''}>Private</option>
+            <option ${j.sector==='Government'?'selected':''}>Government</option>
+            <option ${j.sector==='Public Sector'?'selected':''}>Public Sector</option>
+          </select>
         </label>
         <label>Job Title / Role
           <input name="role" value="${val(j.role_normalized || j.role)}" placeholder="e.g. Civil Site Engineer">
@@ -134,10 +238,30 @@ jobEditor = function(j = {}) {
 
   openEditor();
 
+  /* Government-only fields disappear for Private jobs and return when the
+     sector is switched back — the form dynamically matches the sector. */
+  const govOnlyLabels=['Application Deadline','Application Email','Keep email private'];
+  function syncV8SectorFields(){
+    const sec=$('v8SectorSelect');if(!sec)return;
+    const isGov=/gov|public/i.test(sec.value);
+    $('#jobEdit [name="deadline"]')?.closest('label')?.classList.toggle('cc-gov-only-hidden',!isGov);
+    $('#jobEdit [name="application_email"]')?.closest('label')?.classList.toggle('cc-gov-only-hidden',!isGov);
+    $('#jobEdit [name="application_email_private"]')?.closest('label')?.classList.toggle('cc-gov-only-hidden',!isGov);
+  }
+  window.syncV8SectorFields=syncV8SectorFields;
+  $('v8SectorSelect')?.addEventListener('change',syncV8SectorFields);
+  syncV8SectorFields();
+
   $('jobEdit').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
     const d = formObject(f);
+    /* Hide (not delete) government fields for private jobs so their values
+       are simply not sent rather than wiped on an existing record. */
+    const secSel=f.querySelector('[name="sector"]');
+    if(secSel && !/gov|public/i.test(secSel.value)){
+      ['deadline','application_email','application_email_private'].forEach(n=>{delete d[n];});
+    }
 
     d.qualifications = arr(f.qualifications.value);
     d.locations = arr(f.locations.value);
@@ -182,13 +306,13 @@ jobEditor = function(j = {}) {
 function updateFilterUrl() {
   if (route !== 'private') return;
   const p = new URLSearchParams();
-  [['country', 'privateCountry'], ['state', 'privateState'], ['city', 'privateCity'], ['role', 'privateRole'], ['experience', 'privateExperience']].forEach(([k, id]) => {
+  [['country', 'privateCountry'], ['state', 'privateState'], ['city', 'privateCity'], ['role', 'privateRole'], ['qualification', 'privateQualification'], ['experience', 'privateExperience']].forEach(([k, id]) => {
     if ($(id).value) p.set(k, $(id).value);
   });
   history.replaceState({}, '', `/private-jobs${p.toString() ? '?' + p : ''}`);
 }
 
-['privateCountry','privateState','privateCity','privateRole','privateExperience','privateType','privatePosted'].forEach(id => $(id).onchange = renderPrivate);
+['privateCountry', 'privateState', 'privateCity', 'privateRole', 'privateQualification', 'privateExperience', 'privateType', 'privatePosted', 'privateSalary'].forEach(id => $(id).onchange = renderPrivate);
 $('clearPrivateFilters').onclick = clearPrivate;
 $('clearGovFilters').onclick = () => {
   ['govState','govLocation','govQualification','govEdu'].forEach(id => {if($(id))$(id).value='';});
@@ -267,7 +391,7 @@ openJob=function(j,push=true){
   ccSeoMeta({title,description,type:closed?'Article':'JobPosting',published:pubDate(j),modified:j.updated_at||j.last_verified||pubDate(j),robots:closed?'noindex,follow':'index,follow',breadcrumbs:[{name:'Home',path:'/'},{name:govJob(j)?'Government Jobs':'Civil Jobs',path:govJob(j)?'/government-jobs':'/private-jobs'},{name:j.role||'Job',path:jobPath(j)}]});
   return result;
 };
-function govJob(j){return ['Government','Public Sector'].includes(j.sector)}
+function govJob(j){return typeof isGovJob==='function'?isGovJob(j):['Government','Public Sector'].includes(j.sector)}
 
 const oldOpenExamSeo=openExam;
 openExam=function(x,push=true){
@@ -335,8 +459,9 @@ document.addEventListener('click',e=>{
 });
 
 onpopstate = routeV8;
+wireExplorer();wireExplorer2();
 setTimeout(() => {
-  refreshPrivateOptions();
+  refreshPrivateOptions();syncPrivateMirrors();
   renderPrivate();
   renderGovernment();
   routeV8();
