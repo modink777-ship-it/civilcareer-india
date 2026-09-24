@@ -1,5 +1,5 @@
 
-const CACHE = 'civilcareer-shell-v1';
+const CACHE = 'civilcareer-shell-v2-premium-fixes';
 const SHELL = [
   '/',
   '/index.html',

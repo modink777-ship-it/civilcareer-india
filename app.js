@@ -122,7 +122,7 @@ function bindCards(){
     toast(saved?'Job saved! ★':'Bookmark removed.');
   });
 }function empty(title,text){return `<div class="empty-state"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`}
-function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>(j.sector||'Private')==='Private'&&live(j)).slice(0,3),g=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty('Opportunities are being added','Verified civil engineering jobs will appear here as they are published.');$('homeGovernment').innerHTML=g.length?g.map(x=>jobCard(x,true)).join(''):empty('Recruitment updates are being added','Civil-focused Central and State opportunities will appear here after verification.');const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);$('closingSoon').innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||'Opportunity')}</span></div><span>${date(j.deadline)}</span></div>`).join(''):'<div class="compact-item"><span>No active deadlines published.</span></div>';$('homeExams').innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||'Examination update')}</span></div><span>${x.application_end?date(x.application_end):'Official dates'}</span></div>`).join('')||'<div class="compact-item"><span>Exam updates are being added.</span></div>';$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards();translate();renderUrgencyStrip();}
+function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>isPrivateJob(j)&&live(j)).slice(0,3),g=jobs.filter(j=>isGovernmentJob(j)&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty('Opportunities are being added','Verified civil engineering jobs will appear here as they are published.');$('homeGovernment').innerHTML=g.length?g.map(x=>jobCard(x,true)).join(''):empty('Recruitment updates are being added','Civil-focused Central and State opportunities will appear here after verification.');const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);$('closingSoon').innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||'Opportunity')}</span></div><span>${date(j.deadline)}</span></div>`).join(''):'<div class="compact-item"><span>No active deadlines published.</span></div>';$('homeExams').innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||'Examination update')}</span></div><span>${x.application_end?date(x.application_end):'Official dates'}</span></div>`).join('')||'<div class="compact-item"><span>Exam updates are being added.</span></div>';$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards();translate();renderUrgencyStrip();}
 
 function renderUrgencyStrip(){
   const strip=$('urgencyStrip'),el=$('urgencyJobs');
@@ -142,7 +142,7 @@ function privateScopeMatch(j){
   return true;
 }
 function renderPrivate(){
-  let a=jobs.filter(j=>(j.sector||'Private')==='Private').filter(privateScopeMatch);
+  let a=jobs.filter(isPrivateJob).filter(privateScopeMatch);
   const role=($('privateRole')?.value||'').toLowerCase();
   const exp=($('privateExperience')?.value||'').toLowerCase();
   const state=($('privateState')?.value||'').toLowerCase();
@@ -170,11 +170,11 @@ function renderPrivate(){
     el.innerHTML=`<option value="">${placeholder}</option>`+[...new Set(items.filter(Boolean).map(String))].sort().map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
     el.dataset.ready='1';
   };
-  fill('privateRole',jobs.filter(j=>(j.sector||'Private')==='Private').map(j=>j.role),'Role');
-  fill('privateExperience',jobs.filter(j=>(j.sector||'Private')==='Private').map(j=>j.experience_level),'Experience');
+  fill('privateRole',jobs.filter(isPrivateJob).map(j=>j.role),'Role');
+  fill('privateExperience',jobs.filter(isPrivateJob).map(j=>j.experience_level),'Experience');
   fill('privateState',INDIA_STATES,'State');
-  fill('privateCity',[...INDIA_CITIES,...GULF_CITIES,...INTL_CITIES],'City');
-  fill('privateType',jobs.filter(j=>(j.sector||'Private')==='Private').map(j=>j.employment_type),'Employment');
+  fill('privateCity',[...INDIA_CITIES,...GULF_CITIES],'City');
+  fill('privateType',jobs.filter(isPrivateJob).map(j=>j.employment_type),'Employment');
 
   $('privateCount').textContent=`${a.length} active opportunit${a.length===1?'y':'ies'}`;
   $('privateJobs').innerHTML=a.length?a.map(x=>jobCard(x,false)).join(''):empty('No matching jobs','Try changing one of the filters.');
@@ -182,7 +182,7 @@ function renderPrivate(){
   bindCards();
 }
 function renderGovernment(){
-  let a=jobs.filter(j=>['Government','Public Sector'].includes(j.sector));
+  let a=jobs.filter(isGovernmentJob);
   const loc=($('govLocation')?.value||'').toLowerCase();
   const edu=($('govEdu')?.value||'').toLowerCase();
   const dist=($('govDistrict')?.value||'').toLowerCase();
@@ -290,6 +290,7 @@ function jobIsLive(j){
 function normalizedSector(j){
   return String(j?.sector||j?.category||j?.job_type||'').toLowerCase();
 }
+function isPrivateJob(j){ const sec=normalizedSector(j); if(isGovernmentJob(j)) return false; return !sec || sec.includes('private') || sec.includes('mnc') || sec==='company'; }
 function isGovernmentJob(j){
   const sec=normalizedSector(j);
   const text=String([j?.company,j?.recruitment_authority,j?.role,j?.description].filter(Boolean).join(' ')).toLowerCase();
@@ -332,8 +333,8 @@ function updateStats(){
 }
 function updateNavCounts(){
   const isLive=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));
-  const priv=jobs.filter(j=>(j.sector||'Private')==='Private'&&isLive(j)).length;
-  const govt=jobs.filter(j=>['Government','Public Sector'].includes(j.sector)&&isLive(j)).length;
+  const priv=jobs.filter(j=>isPrivateJob(j)&&isLive(j)).length;
+  const govt=jobs.filter(j=>isGovernmentJob(j)&&isLive(j)).length;
   $$('a[data-route="private"]').forEach(a=>{if(priv>0)a.setAttribute('data-count',priv)});
   $$('a[data-route="government"]').forEach(a=>{if(govt>0)a.setAttribute('data-count',govt)});
   if($('statJobs'))$('statJobs').textContent=String(priv);
@@ -769,14 +770,22 @@ function normDiscovery(v){
 }
 function discoveryDuplicate(item){
   const iu=normDiscovery(item?.url).replace(/\/$/,'');
-  const it=normDiscovery(item?.title);
+  const title=normDiscovery(item?.title);
+  const company=normDiscovery(item?.company);
+  const location=normDiscovery(item?.location);
   return jobs.find(j=>{
-    const ju=normDiscovery(j.source_url||j.apply_url).replace(/\/$/,'');
-    if(iu && ju && (iu===ju || iu.includes(ju) || ju.includes(iu))) return true;
-    const jt=normDiscovery(`${j.role||''} ${j.company||''} ${j.location||''}`);
-    return it && jt && (jt.includes(it) || it.includes(it.split(' ').slice(0,5).join(' ')));
+    const ju=normDiscovery(j.source_url||j.apply_url||j.application_url).replace(/\/$/,'');
+    if(iu && ju && iu===ju)return true;
+    const jt=normDiscovery(j.role||'');
+    const jc=normDiscovery(j.company||j.recruitment_authority||'');
+    const jl=normDiscovery(j.location||j.location_display||j.city||j.state||'');
+    const titleHit=title && jt && (title===jt || title.includes(jt) || jt.includes(title));
+    const companyHit=!company || !jc || company===jc || company.includes(jc) || jc.includes(company);
+    const locationHit=!location || !jl || location.split(' ').some(w=>w.length>3&&jl.includes(w));
+    return titleHit && companyHit && locationHit;
   }) || null;
 }
+
 function renderDiscoveryDrafts(){
   const root=$('discoveryDrafts'); if(!root)return;
   const drafts=(jobs||[]).filter(j=>!j.published || String(j.status||'').toLowerCase()==='draft')
@@ -800,22 +809,15 @@ function renderDiscoveryDrafts(){
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!root)return;
-  if(!results.length){
-    root.innerHTML='<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';
-    return;
-  }
+  if(!results.length){root.innerHTML='<div class="empty-state"><h3>No useful web leads found</h3><p>Try a broader civil-engineering query or another location.</p></div>';return;}
   window._ccDiscoveryResults=results;
-  const ranked=results.map((r,i)=>({r,i,duplicate:discoveryDuplicate(r)}));
-  const fresh=ranked.filter(x=>!x.duplicate);
-  const dupes=ranked.filter(x=>x.duplicate);
-  if(!fresh.length){
-    root.innerHTML=`<div class="empty-state"><h3>All ${dupes.length} web leads are already on CivilCareer</h3><p>Only vacancies that are not on the website are listed here. Open an existing job to review or update it instead.</p></div>`;
-    return;
-  }
-  root.innerHTML=`${dupes.length?`<p class="discovery-dupe-note">${dupes.length} result${dupes.length===1?' was':'s were'} already on CivilCareer and ${dupes.length===1?'is':'are'} hidden below — only new vacancies are listed.</p>`:''}${fresh.map(x=>`<article class="admin-discovery-result"><div><h4>${esc(x.r.title||'Untitled vacancy')} <span class="admin-discovery-score">Match ${Number(x.r.score||0)}</span></h4><p>${esc(x.r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><a class="source-url" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">${esc(x.r.url)}</a></div><div class="admin-discovery-actions"><button class="btn primary" type="button" data-discovery-extract="${x.i}">Create draft & review</button><a class="btn secondary" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('')}${dupes.length?`<details class="discovery-dupes"><summary>Already on CivilCareer (${dupes.length}) — click to review</summary>${dupes.map(x=>`<article class="admin-discovery-result is-duplicate"><div><h4>${esc(x.r.title||'Untitled vacancy')}</h4><a class="source-url" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">${esc(x.r.url)}</a><div class="discovery-duplicate">Already in CivilCareer: ${esc(x.duplicate.role||'existing job')}</div></div><div class="admin-discovery-actions"><button class="btn secondary" type="button" data-discovery-existing="${esc(x.duplicate.id)}">Review existing</button><a class="btn secondary" href="${esc(x.r.url)}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('')}</details>`:''}`;
+  const ranked=results.map((r,i)=>({r,i,duplicate:discoveryDuplicate(r)||((r.isExisting&&r.existingId)?jobs.find(j=>String(j.id)===String(r.existingId)):null)}));
+  const fresh=ranked.filter(x=>!x.duplicate),dupes=ranked.filter(x=>x.duplicate);
+  root.innerHTML=`<div class="discovery-result-summary"><strong>${results.length} web result${results.length===1?'':'s'}</strong><span>${fresh.length} new · ${dupes.length} already listed</span></div>${ranked.map(x=>`<article class="admin-discovery-result ${x.duplicate?'is-duplicate':''}"><div><h4>${esc(x.r.title||'Untitled vacancy')} ${x.duplicate?'<span class="admin-discovery-existing-badge">Already listed</span>':'<span class="admin-discovery-new-badge">New lead</span>'}</h4><p>${esc(x.r.snippet||'Web result — open the original source and verify the vacancy details.')}</p><div class="discovery-meta">${esc([x.r.company,x.r.location,x.r.source].filter(Boolean).join(' · '))}</div><a class="source-url" href="${esc(x.r.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.r.url||'Open source')}</a></div><div class="admin-discovery-actions">${x.duplicate?`<button class="btn secondary" type="button" data-discovery-existing="${esc(x.duplicate.id)}">Review existing</button>`:`<button class="btn primary" type="button" data-discovery-extract="${x.i}">Create draft & review</button>`}<a class="btn secondary" href="${esc(x.r.url||'#')}" target="_blank" rel="noopener noreferrer">Open source</a></div></article>`).join('')}`;
   $$('#discoveryResults [data-discovery-existing]').forEach(b=>b.onclick=()=>jobEditor(jobs.find(j=>String(j.id)===String(b.dataset.discoveryExisting))));
   $$('#discoveryResults [data-discovery-extract]').forEach(b=>b.onclick=()=>discoverExtract(Number(b.dataset.discoveryExtract)));
 }
+
 async function discoverJobs(){
   const btn=$('discoverySearchBtn');
   if(!btn)return;
@@ -928,10 +930,18 @@ function jobEditor(j={}){
     <button class="btn primary wide">Save opportunity</button>
   </div><div class="form-status"></div></form>`;
   openEditor();
+  const governmentOnly=['application_start','deadline','age_limit','application_fee','last_verified','recruitment_authority','apply_url'];
+  const syncGovernmentFields=()=>{
+    const isGov=['government','public sector'].includes(String($('jobEdit')?.querySelector('[name=sector]')?.value||'').toLowerCase());
+    governmentOnly.forEach(name=>{const input=$('jobEdit')?.querySelector(`[name=\"${name}\"]`);const field=input?.closest('label');if(field)field.hidden=!isGov;});
+  };
+  $('jobEdit')?.querySelector('[name=sector]')?.addEventListener('change',syncGovernmentFields);
+  syncGovernmentFields();
   $('jobEdit').onsubmit=async e=>{
     e.preventDefault();
     const d=formObject(e.target);
     d.featured=e.target.featured.checked;
+    if(String(d.sector||'Private').toLowerCase()==='private'){['application_start','deadline','age_limit','application_fee','last_verified','recruitment_authority','application_url','apply_url'].forEach(k=>delete d[k]);}
     if(!d.status)d.status=j._discoveryDraft?'Draft':'Active';
     d.published=j._discoveryDraft ? d.status==='Active' : true;
     if(j.id)d.id=j.id;
@@ -964,13 +974,8 @@ function materialEditor(m={}){$('editorTitle').textContent=m.id?'Edit material':
     <label>Subject / Topic<input name="subject" value="${val(m.subject)}" placeholder="e.g. Structural Engineering, Interview Questions, GATE Civil"></label><label>Preview URL<input type="url" name="preview_url" value="${val(m.preview_url)}"></label><label>Page count<input type="number" name="page_count" value="${val(m.page_count)}"></label><button class="btn primary">Save material</button></form>`;openEditor();$('materialEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);d.access_type='Free';if(m.id)d.id=m.id;await api('/api/materials',{method:m.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Material saved.');await loadData();loadAdmin()}}
 function openEditor(){$('editorDialog').showModal()}
 $$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$('language').onclick=()=>{lang=lang==='en'?'kn':'en';localStorage.setItem('cc_lang',lang);translate();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('searchOpen').onclick=()=>{
-  const focusSearch=()=>{
-    const q=$('globalQuery');
-    const wrap=document.querySelector('.search-wrap');
-    if(q){q.focus();q.select();}
-    if(wrap)scrollTo({top:wrap.getBoundingClientRect().top+scrollY-90,behavior:'smooth'});
-  };
-  if(route!=='home'){navigate('home');setTimeout(focusSearch,120)}else focusSearch();
+  navigate('search');
+  setTimeout(()=>{const q=$('advancedQuery')||$('globalQuery');if(q){q.focus();q.select();}},120);
 };
 const sug=['Civil Engineer','Site Engineer','Planning Engineer','Quantity Surveyor','BIM Engineer','Structural Engineer','Government Civil Jobs','SSC JE Civil','ESE Civil','Bengaluru','Mumbai','Hyderabad'];$('globalQuery').oninput=e=>{const q=e.target.value.toLowerCase();const a=sug.filter(x=>x.toLowerCase().includes(q)).slice(0,5);$('suggestions').innerHTML=a.map(x=>`<button type="button">${x}</button>`).join('');$('suggestions').classList.toggle('show',q.length>0&&a.length>0);$$('#suggestions button').forEach(b=>b.onclick=()=>{$('globalQuery').value=b.textContent;$('suggestions').classList.remove('show')})};$('smartSearch').onsubmit=e=>{e.preventDefault();$('suggestions').classList.remove('show');search($('globalQuery').value,$('globalLocation').value)};
 if($('privateScopeChips'))$$('#privateScopeChips button').forEach(b=>b.onclick=()=>{
