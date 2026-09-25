@@ -97,13 +97,13 @@
     const loc=jobLocs(j).join(' · ')||j.location_display||j.location||j.city||j.state||'Location in source';
     const apply=j.application_url||j.apply_url||j.source_url||'';
     const initials=typeof companyInitials==='function'?companyInitials(j.company||j.recruitment_authority||'CC'):'CC';
-    const cm=typeof civilMatch==='function'?civilMatch(j):null;
     const proj=typeof projectTypeOf==='function'?projectTypeOf(j):'';
     const work=typeof workTypeOf==='function'?workTypeOf(j):'';
     const sal=typeof salaryText==='function'?salaryText(j):(j.salary||(j.salary_min&&j.salary_max?`${j.salary_min} – ${j.salary_max}`:''));
     const verified=j.last_verified&&!closed;
     const posted=pubDate(j)?ago(pubDate(j)):(j.last_verified?`Verified ${String(j.last_verified).slice(0,10)}`:'');
     const isNew=j.created_at&&(Date.now()-new Date(j.created_at))<3*86400000;
+    const viewed=typeof viewedLabel==='function'?viewedLabel(j.id):'';
     return `<article class="job-card discovery-job-card cc-compact-card ${closed?'is-closed card-closed':''}" data-explorer-job="${esc(j.id)}" data-job-id="${esc(j.id)}">
       <div class="cc-compact-top">
         <span class="cc-card-logo" aria-hidden="true">${esc(initials)}</span>
@@ -111,7 +111,6 @@
           <h3 class="cc-compact-title">${esc(j.role||j.role_normalized||'Civil Engineering Opportunity')}</h3>
           <div class="cc-compact-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
         </div>
-        ${cm?`<span class="cc-match-pct" title="Based on your For You profile">${cm.score}%</span>`:''}
       </div>
       <div class="cc-compact-meta">
         <span title="Location">📍 ${esc(loc)}</span>
@@ -125,6 +124,7 @@
         <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Expired':j.featured?'Featured':verified?'Verified':'Active'}</span>
         <span class="cc-posted-ago">${esc(posted)}</span>
         ${isNew?'<span class="new-badge">NEW</span>':''}
+        ${viewed?`<span class="cc-viewed-badge">${esc(viewed)}</span>`:''}
       </div>
       <div class="cc-compact-actions">
         <button data-job="${esc(j.id)}" class="cc-view-btn">View</button>
@@ -155,8 +155,8 @@
     q=String(q||'').trim();loc=String(loc||'').trim();
     const rows=[];
     jobs.forEach(j=>{const s=scoreJob(j,q,loc);if((!q&&!loc)||s.score>0)rows.push({kind:['Government','Public Sector'].includes(j.sector)?'Government Job':'Civil Job',title:j.role||'Civil Engineering Opportunity',sub:j.company||j.recruitment_authority||j.location,job:j,score:s.score,reasons:s.reasons,url:jobPath(j)});});
-    exams.forEach(x=>{const text=norm([x.code,x.title_en,x.title_kn,x.authority,x.post_names,x.notification_number,x.overview,x.eligibility_en].join(' '));const qt=expandedTokens(q);const hit=!q||qt.some(t=>text.includes(t));if(hit&&!loc)rows.push({kind:'Exam',title:`${x.code||''}${x.code?' — ':''}${x.title_en||'Government Exam'}`,sub:x.authority||'Examination update',exam:x,score:q?(qt.filter(t=>text.includes(t)).length*12+20):20,url:`/exams/${x.slug||String(x.code||x.title_en||'exam').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`});});
-    materials.forEach(m=>{const text=norm([m.title_en,m.title_kn,m.category,m.exam_code,m.subject,m.description_en].join(' '));const qt=expandedTokens(q);const hit=!q||qt.some(t=>text.includes(t));if(hit&&!loc)rows.push({kind:'Resource',title:m.title_en||m.title||'Study resource',sub:m.category||m.exam_code||'Free resource',material:m,score:q?(qt.filter(t=>text.includes(t)).length*10+15):15,url:materialPath(m)});});
+    exams.forEach(x=>{const text=norm([x.code,x.title_en,x.authority,x.post_names,x.notification_number,x.overview,x.eligibility_en].join(' '));const qt=expandedTokens(q);const hit=!q||qt.some(t=>text.includes(t));if(hit&&!loc)rows.push({kind:'Exam',title:`${x.code||''}${x.code?' — ':''}${x.title_en||'Government Exam'}`,sub:x.authority||'Examination update',exam:x,score:q?(qt.filter(t=>text.includes(t)).length*12+20):20,url:`/exams/${x.slug||String(x.code||x.title_en||'exam').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`});});
+    materials.forEach(m=>{const text=norm([m.title_en,m.category,m.exam_code,m.subject,m.description_en].join(' '));const qt=expandedTokens(q);const hit=!q||qt.some(t=>text.includes(t));if(hit&&!loc)rows.push({kind:'Resource',title:m.title_en||m.title||'Study resource',sub:m.category||m.exam_code||'Free resource',material:m,score:q?(qt.filter(t=>text.includes(t)).length*10+15):15,url:materialPath(m)});});
     const filtered=rows.filter(r=>type==='all'||(type==='jobs'&&/Job$/.test(r.kind))||(type==='exams'&&r.kind==='Exam')||(type==='resources'&&r.kind==='Resource'));
     filtered.sort((a,b)=>sort==='newest'?(new Date(pubDate(b.job)||b.exam?.created_at||b.material?.created_at||0)-new Date(pubDate(a.job)||a.exam?.created_at||a.material?.created_at||0)):b.score-a.score);
     saveRecentSearch(q,loc);

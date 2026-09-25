@@ -123,14 +123,9 @@
 /* ═══════════════════════════════════════════════
    ROLE-HEAD CATEGORY TILES
 ═══════════════════════════════════════════════ */
-.role-heads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;padding:.5rem 0}
-.role-tile{display:flex;flex-direction:column;align-items:center;gap:.4rem;background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;padding:1.25rem 1rem;cursor:pointer;text-align:center;transition:all .2s;width:100%}
-.role-tile:hover{border-color:#0b1f3a;background:#f4f6fb;box-shadow:0 4px 16px rgba(11,31,58,0.1);transform:translateY(-2px)}
-.role-tile-icon{font-size:1.75rem;line-height:1}
-.role-tile-label{font-size:.82rem;font-weight:700;color:#0b1f3a;line-height:1.25}
-.role-tile-count{font-size:.7rem;color:#7a8499;background:#f0f2f8;padding:2px 8px;border-radius:10px}
-.category-back{background:#f4f6fb;border:1.5px solid #dde3ef;border-radius:8px;padding:7px 14px;font-size:.82rem;font-weight:600;color:#0b1f3a;cursor:pointer;margin-bottom:1rem;display:inline-flex;align-items:center;gap:4px;transition:background .2s}
-.category-back:hover{background:#e4e8f0}
+/* Role-tile / category-back styles were removed together with the obsolete
+   category-based private-jobs renderer (FIX-2026-09-25). The Civil Job Explorer
+   in v8.js is the only private-jobs renderer. */
 
 /* ═══════════════════════════════════════════════
    AUTHORITY / DEPARTMENT GROUPS (GOVT JOBS)
@@ -181,7 +176,6 @@
    MOBILE RESPONSIVE
 ═══════════════════════════════════════════════ */
 @media(max-width:600px){
-  .role-heads-grid{grid-template-columns:repeat(2,1fr)}
   .exam-quick-info{grid-template-columns:repeat(2,1fr)}
   .exam-detail-header{flex-direction:column}
   .auth-group-header{flex-direction:column;align-items:flex-start;gap:.25rem}
@@ -485,9 +479,6 @@ nav a[data-count]::after{background:var(--fresh-green)!important;color:#fff!impo
 .countdown-badge{background:#fdf6e9!important;color:#8a6414!important}
 .countdown-badge.urgent{background:#fef2f2!important;color:#991b1b!important}
 
-/* Role tiles */
-.role-tile:hover{border-color:var(--fresh-green)!important}
-.role-tile-count{background:#e8f1fa!important;color:#155a99!important}
 
 /* Auth group header */
 .auth-group-header{border-left-color:var(--fresh-green)!important}
@@ -650,7 +641,6 @@ nav a[data-count]::after{
 
 /* Match score row */
 .match-score-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-.match-pct{font-size:1.1rem;font-weight:900;letter-spacing:-0.02em}
 .match-label{font-size:.75rem;font-weight:600;color:#5a6478}
 
 /* Match reason tags */
@@ -993,8 +983,7 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .hero-panel{background:rgba(22,42,66,.62)!important;border:1px solid rgba(255,255,255,.22)!important;border-left:3px solid #1d72ee!important;backdrop-filter:blur(12px);box-shadow:0 22px 60px rgba(0,0,0,.22)!important}.hero-panel blockquote,.hero-panel p{color:#fff!important}.panel-label{color:#7fc5f0!important}.hero-mini-stats span{color:#c8d5e2!important}.hero-mini-stats b{color:#fff!important}
 .page-hero:before{z-index:1!important;background:linear-gradient(90deg,rgba(5,18,36,.93) 0%,rgba(7,24,46,.76) 52%,rgba(7,24,46,.48) 100%)!important}
 .page-hero>*{position:relative;z-index:3!important}
-.page-hero .cc-bg-label,.hero .cc-bg-label{position:absolute!important;left:24px;bottom:18px;z-index:4!important;color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
-@media(max-width:760px){.hero:after{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68)),linear-gradient(0deg,rgba(5,18,36,.76),rgba(5,18,36,.1))}.page-hero:before{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68))!important}.cc-bg-layer{background-position:center}.page-hero .cc-bg-label,.hero .cc-bg-label{left:16px;bottom:12px}}
+@media(max-width:760px){.hero:after{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68)),linear-gradient(0deg,rgba(5,18,36,.76),rgba(5,18,36,.1))}.page-hero:before{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68))!important}.cc-bg-layer{background-position:center}}
 @media(prefers-reduced-motion:reduce){.cc-bg-layer{transition:none!important;transform:none!important}}
 
 /* Background visual for utility/form/article pages without a dedicated hero. */
@@ -1256,8 +1245,7 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .careerhub-hero>.container{position:relative!important;z-index:3!important}
 .careerhub-hero .careerhub-actions .btn.secondary{background:rgba(255,255,255,.10)!important;color:#fff!important;border-color:rgba(255,255,255,.48)!important}
 .careerhub-hero .careerhub-actions .btn.secondary:hover{background:rgba(255,255,255,.18)!important}
-.careerhub-hero .cc-bg-label{position:absolute!important;left:24px;bottom:18px;z-index:4!important;color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
-@media(max-width:760px){.careerhub-hero .cc-bg-label{left:16px;bottom:12px}.careerhub-hero{padding:55px 0 42px!important}}
+@media(max-width:760px){.careerhub-hero{padding:55px 0 42px!important}}
 
 
 /* Defensive cleanup for Career Hub: its own hero owns the background. */
@@ -1304,17 +1292,10 @@ footer{border-top:1px solid rgba(255,255,255,.08)}
 .hero .hero-lines{z-index:1!important}
 .hero .hero-grid{z-index:3!important}
 .hero .container,.page-hero .container{position:relative!important;z-index:3!important;}
-.page-hero>*:not(.cc-bg-layer):not(.cc-bg-label){position:relative!important;z-index:3!important;}
-/* Labels */
-.page-hero .cc-bg-label,.hero .cc-bg-label{
-  position:absolute!important;left:24px;bottom:18px;z-index:4!important;
-  color:rgba(255,255,255,.55)!important;font-size:9px!important;font-weight:850!important;
-  letter-spacing:.18em;text-transform:uppercase;pointer-events:none;
-}
+.page-hero>*:not(.cc-bg-layer){position:relative!important;z-index:3!important;}
 @media(max-width:760px){
   .hero:after{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68)),linear-gradient(0deg,rgba(5,18,36,.76),rgba(5,18,36,.1))}
   .page-hero:before{background:linear-gradient(90deg,rgba(5,18,36,.94),rgba(7,24,46,.68))!important}
-  .page-hero .cc-bg-label,.hero .cc-bg-label{left:16px;bottom:12px}
 }
 @media(prefers-reduced-motion:reduce){
   .cc-bg-layer{transition:none!important;transform:none!important;}
@@ -1626,8 +1607,8 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .filter-note{margin:12px 0 0;font-size:11.5px;color:var(--cc-slate);line-height:1.5}
 
 /* ── LEFT list / RIGHT detail explorer layout ── */
-.jobs-explorer{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
-.jobs-column{gap:12px}
+.jobs-explorer{display:grid;grid-template-columns:minmax(0,432px) minmax(0,1fr);gap:22px;align-items:start}
+.jobs-column{gap:12px;grid-auto-rows:1fr;align-items:stretch}
 .job-detail-panel{position:sticky;top:104px;max-height:calc(100vh - 124px);overflow-y:auto;padding:22px;border:1px solid var(--cc-border);border-left:3px solid var(--cc-gold);border-radius:14px;background:#fff;box-shadow:var(--cc-shadow-md)}
 .cc-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .cc-panel-kicker{font-size:10.5px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
@@ -1636,8 +1617,6 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .cc-panel-title{margin:2px 0 4px;font-size:22px;letter-spacing:-.4px}
 .cc-panel-company{color:var(--cc-slate);font-weight:650;font-size:14px}
 .cc-panel-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 4px;font-size:13px;color:#41546b}
-.cc-match-pct{display:inline-flex;align-items:center;justify-content:center;min-width:40px;padding:3px 8px;border-radius:999px;background:var(--teal);color:#fff;font-size:11.5px;font-weight:850}
-.cc-match-pct.big{min-width:0;font-size:12px;background:var(--cc-gold);color:#3d2c05}
 .cc-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
 .cc-detail-grid>div{padding:11px 13px;border:1px solid var(--cc-border);border-radius:9px;background:#fbfcfe;font-size:13px;line-height:1.55;color:#41546b}
 .cc-detail-grid>div.full{grid-column:1/-1}
@@ -1655,18 +1634,19 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .cc-compact-top{display:flex;align-items:flex-start;gap:11px}
 .cc-card-logo{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:var(--navy);color:var(--cc-gold);font-size:14px;font-weight:850;letter-spacing:.02em}
 .cc-compact-id{flex:1;min-width:0}
-.cc-compact-title{margin:0!important;font-size:15.5px!important;line-height:1.3!important;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-compact-title{margin:0!important;font-size:16px!important;line-height:1.3!important;letter-spacing:-.2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cc-compact-company{margin-top:2px;font-size:12.5px;color:var(--cc-slate);font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cc-compact-meta{display:flex;gap:6px;flex-wrap:wrap;margin:11px 0 0}
 .cc-compact-meta span{padding:3px 8px;border:1px solid #e6ecf2;border-radius:6px;background:#f7fafc;font-size:11px;font-weight:650;color:#41546b}
-.cc-compact-status{display:flex;align-items:center;gap:9px;margin-top:10px}
+.cc-compact-status{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}
 .cc-posted-ago{font-size:11px;color:var(--cc-slate)}
-.cc-compact-actions{display:flex;gap:8px;align-items:center;margin-top:11px;padding-top:11px;border-top:1px solid var(--cc-border)}
+.cc-compact-actions{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:11px;border-top:1px solid var(--cc-border)}
 .cc-view-btn{flex:1;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:7px;padding:8px 0;font-size:12.5px;font-weight:800;cursor:pointer;transition:.15s}
 .cc-view-btn:hover{background:var(--navy);color:#fff}
 .cc-apply-btn{flex:1;text-align:center;border-radius:7px!important;padding:8px 0!important;font-size:12.5px!important}
 .cc-save{margin-left:auto}
-.jobs-column .cc-compact-card,.cards.list .cc-compact-card{max-width:560px}
+.jobs-column .cc-compact-card{width:100%;min-height:250px}
+.cards.list .cc-compact-card{max-width:560px}
 .cc-compact-card.cc-selected{border-color:var(--cc-gold)!important;box-shadow:0 0 0 3px rgba(201,151,60,.18),var(--cc-shadow-sm)!important}
 .cc-compact-card.is-closed,.cc-compact-card.card-closed{opacity:.62}
 
@@ -1683,7 +1663,6 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 /* ── For You (profile summary, match cards) ── */
 .foryou-profile-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border:1px solid var(--cc-border);border-left:3px solid var(--cc-gold);border-radius:10px;background:var(--cc-ivory);font-size:13px;color:#41546b}
 .match-score-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.match-pct{font-size:19px;font-weight:850;letter-spacing:-.4px}
 .match-label{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cc-slate)}
 
 /* ── Homepage: For You promo + career map ── */
@@ -1695,22 +1674,9 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .foryou-home-facets span{padding:8px 14px;border:1px solid var(--cc-border);border-radius:999px;background:#fff;font-size:12.5px;font-weight:700;color:var(--navy);box-shadow:var(--cc-shadow-sm)}
 @media(max-width:860px){.foryou-home-grid{grid-template-columns:1fr;gap:26px}}
 
-.career-map-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.cm-col{padding:16px 14px;border:1px solid var(--cc-border);border-radius:12px;background:#fff;transition:.18s}
-.cm-col:hover{box-shadow:var(--cc-shadow-md);transform:translateY(-2px)}
-.cm-col-gov{border-color:#d8ceb4;background:linear-gradient(180deg,#fffdf8,#fff)}
-.cm-head{display:flex;align-items:center;gap:8px;margin-bottom:11px;padding-bottom:10px;border-bottom:2px solid var(--cc-gold-soft);color:var(--navy);font-size:14.5px;font-weight:820}
-.cm-head span{font-size:16px}
-.cm-item{display:block;margin:5px 0;padding:6px 9px;border-radius:7px;color:#41546b;font-size:12.5px;font-weight:650;text-decoration:none;transition:.13s}
-.cm-item:hover{background:var(--cc-gold-soft);color:var(--navy)}
-.career-map-page .cm-band{margin:26px 0 30px;padding:18px 22px;border:1px solid var(--cc-border);border-left:4px solid var(--cc-gold);border-radius:12px;background:#fff}
-.cm-band-title{margin:0;font-size:15px;font-weight:850;letter-spacing:.14em;color:var(--navy)}
-.career-map-page .career-map-grid{margin-top:16px}
-.cm-help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:34px}
-.cm-help-grid>div{padding:18px;border:1px solid var(--cc-border);border-radius:11px;background:var(--cc-ivory);font-size:13px;color:#41546b}
-.cm-help-grid b{display:block;margin-bottom:6px;color:var(--navy);font-size:13.5px}
-@media(max-width:1050px){.career-map-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.career-map-grid{grid-template-columns:repeat(2,1fr)}.cm-help-grid{grid-template-columns:1fr}}
+/* The Career Map presentation (cm-col / cm-band / cm-help-grid) was removed
+   from the homepage and the Career Paths page (FIX-2026-09-25). The civil roles
+   it listed still power For You, matching, filters and search. */
 
 /* ── Profile modal (civil profile chips/tabs) ── */
 .cp-skills{margin:14px 0;border:1px solid var(--cc-border);border-radius:10px;padding:12px 14px}
@@ -1754,7 +1720,28 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
   .explorer-quick{overflow-x:auto;flex-wrap:nowrap}
   .explorer-quick button{white-space:nowrap;flex:0 0 auto}
   .cc-detail-grid{grid-template-columns:1fr}
-  .cc-compact-title{white-space:normal}
   .jobs-column .cc-compact-card,.cards.list .cc-compact-card{max-width:none}
   .stat-num{font-size:24px}
+}
+
+/* ── Two-pane jobs workspace (FIX-2026-09-25) ──
+   Every card in the left list shares one height, actions are pinned to the card
+   bottom, the filter bar sticks under the header, and the job list and the
+   selected-job panel each scroll on their own. No match percentage is shown. */
+.cc-compact-card{display:flex;flex-direction:column}
+.cc-compact-company{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.cc-viewed-badge{margin-left:auto;font-size:10.5px;font-weight:750;color:var(--teal);white-space:nowrap}
+.cc-match-qualitative{color:var(--teal);font-weight:750}
+.stat-num.stat-error{font-size:15px;font-weight:750;letter-spacing:0;color:#f2cdbd}
+.field-note{margin:2px 0 10px;font-size:12px;line-height:1.5;color:var(--cc-slate)}
+.match-fit{font-size:12.5px;font-weight:800;color:var(--teal)}
+@media(min-width:981px){
+  .explorer-toolbar{position:sticky;top:74px;z-index:25}
+  .jobs-column{max-height:calc(100vh - 150px);overflow-y:auto;padding-right:6px}
+  .jobs-column::-webkit-scrollbar{width:8px}
+  .jobs-column::-webkit-scrollbar-thumb{background:#cfd9e3;border-radius:4px}
+}
+@media(max-width:700px){
+  .jobs-column{grid-auto-rows:auto}
+  .jobs-column .cc-compact-card{min-height:0}
 }

@@ -39,8 +39,7 @@ function classifyJob(j){
   for(const h of ROLE_HEADS.slice(0,-1))if(h.keys.some(k=>t.includes(k)))return h.id;
   return 'other';
 }
-let activePrivateCategory='';
-const $=id=>document.getElementById(id),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let jobs=[],exams=[],materials=[],route='home',adminKey='',lang=localStorage.getItem('cc_lang')||'en';
+const $=id=>document.getElementById(id),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let jobs=[],exams=[],materials=[],route='home',adminKey='',lang='en';
 
 /* ═══════════════════════════════════════════════════════════
    SHARED NORMALIZATION HELPERS (FIX-2026-09-24)
@@ -107,16 +106,49 @@ function workTypeOf(j){
 }
 function getSaved(){return new Set(JSON.parse(localStorage.getItem('cc_saved')||'[]'))}
 function toggleSave(id){const s=getSaved();s.has(id)?s.delete(id):s.add(id);localStorage.setItem('cc_saved',JSON.stringify([...s]))}
+
+/* ── VIEWED JOBS (FIX-2026-09-25) ───────────────────────────────
+   A job becomes “viewed” only when the user explicitly opens it — never merely
+   because it appears in a list, and never because it was the default selection
+   in the detail panel. Guests use localStorage; signed-in users reuse the same
+   store, so no login is required to track views. Only {jobId: viewedAt} is kept
+   — the job object itself is never persisted here. */
+function viewedMap(){try{return JSON.parse(localStorage.getItem('cc_viewed')||'{}')}catch{return{}}}
+function markViewed(jobId){
+  if(!jobId)return;
+  try{
+    const m=viewedMap();
+    if(!m[jobId]){
+      m[jobId]=new Date().toISOString();
+      const keys=Object.keys(m);
+      if(keys.length>400)keys.sort((a,b)=>String(m[a]).localeCompare(String(m[b]))).slice(0,keys.length-400).forEach(k=>delete m[k]);
+      localStorage.setItem('cc_viewed',JSON.stringify(m));
+    }
+  }catch{}
+}
+function isViewed(jobId){return !!viewedMap()[jobId]}
+function viewedLabel(jobId){
+  const at=viewedMap()[jobId];if(!at)return'';
+  const d=new Date(at);if(isNaN(d.getTime()))return'✓ Viewed';
+  const days=Math.floor((Date.now()-d.getTime())/86400000);
+  if(days<=0)return'✓ Viewed · Today';
+  if(days===1)return'✓ Viewed · Yesterday';
+  if(days<30)return`✓ Viewed · ${days} days ago`;
+  return'✓ Viewed';
+}
+window.markViewed=markViewed;window.isViewed=isViewed;window.viewedLabel=viewedLabel;
 const pathRoute={'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/career-paths':'careerpaths','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/search':'search','/admin':'admin'};const routePath=Object.fromEntries(Object.entries(pathRoute).map(([a,b])=>[b,a]));
-const kn={'Private Jobs':'ಖಾಸಗಿ ಉದ್ಯೋಗಗಳು','Govt Civil Jobs':'ಸರ್ಕಾರಿ ಸಿವಿಲ್ ಉದ್ಯೋಗಗಳು','Exams':'ಪರೀಕ್ಷೆಗಳು','Study Materials':'ಅಧ್ಯಯನ ಸಾಮಗ್ರಿಗಳು','Post a Job':'ಉದ್ಯೋಗ ಪ್ರಕಟಿಸಿ','Submit Resource':'ಸಂಪನ್ಮೂಲ ಸಲ್ಲಿಸಿ','About':'ನಮ್ಮ ಬಗ್ಗೆ','Safety:':'ಸುರಕ್ಷತೆ:','Never pay for a job. Always verify the original notification.':'ಉದ್ಯೋಗಕ್ಕಾಗಿ ಎಂದಿಗೂ ಹಣ ಪಾವತಿಸಬೇಡಿ. ಮೂಲ ಅಧಿಕೃತ ಅಧಿಸೂಚನೆಯನ್ನು ಸದಾ ಪರಿಶೀಲಿಸಿ.','Civil Engineering Careers + Karnataka Government Jobs':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ವೃತ್ತಿಗಳು + ಕರ್ನಾಟಕ ಸರ್ಕಾರಿ ಉದ್ಯೋಗಗಳು','Build Your Career.':'ನಿಮ್ಮ ವೃತ್ತಿಜೀವನವನ್ನು ರೂಪಿಸಿಕೊಳ್ಳಿ.','Find Your Opportunity.':'ನಿಮ್ಮ ಅವಕಾಶವನ್ನು ಕಂಡುಕೊಳ್ಳಿ.','Civil engineering jobs across India and beyond. Karnataka government jobs and exams across departments. Trusted resources, organized in one place.':'ಭಾರತ ಮತ್ತು ವಿದೇಶಗಳ ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಉದ್ಯೋಗಗಳು, ಕರ್ನಾಟಕ ಸರ್ಕಾರಿ ಉದ್ಯೋಗಗಳು ಮತ್ತು ಪರೀಕ್ಷೆಗಳು ಹಾಗೂ ವಿಶ್ವಾಸಾರ್ಹ ಅಧ್ಯಯನ ಸಂಪನ್ಮೂಲಗಳು — ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ.','Find Civil Engineering Jobs':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಉದ್ಯೋಗಗಳನ್ನು ಹುಡುಕಿ','Explore Govt Civil Jobs':'ಸರ್ಕಾರಿ ಸಿವಿಲ್ ಉದ್ಯೋಗಗಳನ್ನು ಅನ್ವೇಷಿಸಿ','Explore CivilCareer':'CivilCareer ಅನ್ವೇಷಿಸಿ','Focused paths. Reliable starting points.':'ಕೇಂದ್ರೀಕೃತ ಮಾರ್ಗಗಳು. ವಿಶ್ವಾಸಾರ್ಹ ಆರಂಭ.','Civil Engineering Jobs':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಉದ್ಯೋಗಗಳು','Government Civil Jobs':'ಸರ್ಕಾರಿ ಸಿವಿಲ್ ಉದ್ಯೋಗಗಳು','Government Exams':'ಸರ್ಕಾರಿ ಪರೀಕ್ಷೆಗಳು','Free Study Materials':'ಉಚಿತ ಅಧ್ಯಯನ ಸಾಮಗ್ರಿಗಳು','We Organize.':'ನಾವು ಕ್ರಮಬದ್ಧಗೊಳಿಸುತ್ತೇವೆ.','You Verify.':'ನೀವು ಪರಿಶೀಲಿಸುತ್ತೀರಿ.','We Organize. You Verify.':'ನಾವು ಕ್ರಮಬದ್ಧಗೊಳಿಸುತ್ತೇವೆ. ನೀವು ಪರಿಶೀಲಿಸುತ್ತೀರಿ.','Latest opportunities':'ಇತ್ತೀಚಿನ ಅವಕಾಶಗಳು','Public recruitment':'ಸರ್ಕಾರಿ ನೇಮಕಾತಿ','Important dates':'ಮುಖ್ಯ ದಿನಾಂಕಗಳು','Closing soon':'ಶೀಘ್ರ ಮುಕ್ತಾಯ','Examination updates':'ಪರೀಕ್ಷಾ ಮಾಹಿತಿ','Learning library':'ಅಧ್ಯಯನ ಗ್ರಂಥಾಲಯ','Trust and safety':'ವಿಶ್ವಾಸ ಮತ್ತು ಸುರಕ್ಷತೆ','Never pay for a job':'ಉದ್ಯೋಗಕ್ಕಾಗಿ ಎಂದಿಗೂ ಹಣ ಪಾವತಿಸಬೇಡಿ','Verify the notification':'ಅಧಿಸೂಚನೆಯನ್ನು ಪರಿಶೀಲಿಸಿ','Protect personal information':'ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ರಕ್ಷಿಸಿ','For employers':'ಉದ್ಯೋಗದಾತರಿಗೆ','Reach civil engineering professionals.':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ವೃತ್ತಿಪರರನ್ನು ತಲುಪಿ.','Post a Civil Engineering Job':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಉದ್ಯೋಗ ಪ್ರಕಟಿಸಿ','Private-sector opportunities':'ಖಾಸಗಿ ವಲಯದ ಅವಕಾಶಗಳು','Government civil recruitment':'ಸರ್ಕಾರಿ ಸಿವಿಲ್ ನೇಮಕಾತಿ','All departments. Multiple qualifications. One place to start.':'ಎಲ್ಲಾ ಇಲಾಖೆಗಳು. ಹಲವು ಅರ್ಹತೆಗಳು. ಒಂದೇ ಆರಂಭಿಕ ಸ್ಥಳ.','Dates, eligibility and official sources':'ದಿನಾಂಕಗಳು, ಅರ್ಹತೆ ಮತ್ತು ಅಧಿಕೃತ ಮೂಲಗಳು','Civil Engineering Exams':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಪರೀಕ್ಷೆಗಳು','Open learning library':'ಮುಕ್ತ ಅಧ್ಯಯನ ಗ್ರಂಥಾಲಯ','Prepare smarter with organized resources for civil engineering and competitive examinations.':'ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್ ಮತ್ತು ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳ ಕ್ರಮಬದ್ಧ ಸಂಪನ್ಮೂಲಗಳೊಂದಿಗೆ ಪರಿಣಾಮಕಾರಿಯಾಗಿ ಸಿದ್ಧರಾಗಿ.','Search':'ಹುಡುಕಿ','Location':'ಸ್ಥಳ','Browse Civil Jobs →':'ಸಿವಿಲ್ ಉದ್ಯೋಗಗಳನ್ನು ನೋಡಿ →','Browse Government Jobs →':'ಸರ್ಕಾರಿ ಉದ್ಯೋಗಗಳನ್ನು ನೋಡಿ →','Explore Exams →':'ಪರೀಕ್ಷೆಗಳನ್ನು ನೋಡಿ →','Start Learning →':'ಅಧ್ಯಯನ ಪ್ರಾರಂಭಿಸಿ →','Report Suspicious Content':'ಶಂಕಿತ ವಿಷಯವನ್ನು ವರದಿ ಮಾಡಿ','Submit for Review':'ಪರಿಶೀಲನೆಗೆ ಸಲ್ಲಿಸಿ','Report a Problem':'ಸಮಸ್ಯೆಯನ್ನು ವರದಿ ಮಾಡಿ','Submit a Study Resource':'ಅಧ್ಯಯನ ಸಂಪನ್ಮೂಲ ಸಲ್ಲಿಸಿ'};
-function translate(root=document){root.querySelectorAll('*').forEach(el=>{if(el.id==='language'||el.children.length)return;if(!el.dataset.en)el.dataset.en=el.textContent.trim();if(kn[el.dataset.en])el.textContent=lang==='kn'?kn[el.dataset.en]:el.dataset.en});$('language').textContent=lang==='kn'?'EN':'KN';document.documentElement.lang=lang==='kn'?'kn':'en'}
+/* English-only (FIX-2026-09-25): the Kannada dictionary, language toggle and
+   kn-IN locale switching have been removed. Kept as a no-op so existing
+   callers (navigate/renderHome/boot) need no changes. */
+function translate(){document.documentElement.lang='en';try{localStorage.removeItem('cc_lang')}catch{}}
 function toast(msg){const x=$('toast');x.textContent=msg;x.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove('show'),2800)}function device(){const w=innerWidth;return w<600?'Mobile':w<1000?'Tablet':'Desktop'}function visitor(){let id=localStorage.getItem('cc_vid');if(!id){id=crypto.randomUUID();localStorage.setItem('cc_vid',id)}return id}async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{'content-type':'application/json',...(opt.key?{'x-owner-key':opt.key}:{}),...(opt.headers||{})}}),text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{}if(!r.ok){const e=Error(data.error||data.details||`Request failed (${r.status})`);e.status=r.status;throw e}return data}function track(type='pageview',label=''){api('/api/analytics',{method:'POST',body:JSON.stringify({visitor_id:visitor(),event_type:type,event_label:label,path:location.pathname,referrer:document.referrer,device_type:device()})}).catch(()=>{})}
 function navigate(next,push=true){route=next in routePath?next:'home';$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===route));$$('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===route));$('mainNav').classList.remove('open');$('menuBtn').setAttribute('aria-expanded','false');if(push&&location.pathname!==routePath[route])history.pushState({},'',routePath[route]);setMeta();scrollTo({top:0,behavior:'smooth'});if(route==='private')renderPrivate();if(route==='government')renderGovernment();if(route==='exams')renderExams();if(route==='materials')renderMaterials();if(route==='foryou')renderForYou();if(route==='careerpaths')renderCareerMapPage?.();if(route==='admin')showAdmin();translate();track()}
 /* Career Paths page (FIX-2026-09-24): the /career-paths section markup lives in
    index.html; navigate() calls this hook so the route activates like any page. */
 function renderCareerMapPage(){}
-const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies, Indian MNCs and global engineering firms.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, Karnataka government recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
-function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString(lang==='kn'?'kn-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
+const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies, Indian MNCs and global engineering firms.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, government civil recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
+function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
 function companyInitials(name){
   const words=String(name||'Company').trim().split(/\s+/).filter(Boolean);
   return (words.length===1?words[0].slice(0,2):words.slice(0,2).map(x=>x[0]).join('')).toUpperCase().slice(0,2);
@@ -142,7 +174,6 @@ function jobCard(j,gov=false){
   gov=gov||isGovJob(j);
   const closed=isClosed(j),verified=j.last_verified&&!closed,saved=getSaved().has(j.id);
   const isNew=j.created_at&&(new Date()-new Date(j.created_at))<3*86400000;
-  const cm=typeof civilMatch==='function'?civilMatch(j):null;
   const initials=companyInitials(j.company||j.recruitment_authority||'CC');
   const proj=projectTypeOf(j),work=workTypeOf(j),sal=salaryText(j);
   return `<article class="job-card cc-compact-card ${closed?'card-closed':''}" data-explorer-job="${j.id}" data-job-id="${j.id}">
@@ -152,7 +183,6 @@ function jobCard(j,gov=false){
         <h3 class="cc-compact-title">${esc(j.role||'Opportunity')}</h3>
         <div class="cc-compact-company">${esc(j.company||j.recruitment_authority||'Organization')}</div>
       </div>
-      ${cm?`<span class="cc-match-pct" title="Based on your For You profile">${cm.score}%</span>`:''}
     </div>
     <div class="cc-compact-meta">
       <span title="Location">📍 ${esc(j.location||j.location_display||'India')}</span>
@@ -173,8 +203,8 @@ function jobCard(j,gov=false){
     </div>
   </article>`
 }
-function examCard(x){const closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date(),title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,copy=x.overview||(lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en);const daysLeft=x.application_end&&!closed?Math.ceil((new Date(x.application_end+'T23:59:59')-new Date())/86400000):null;return `<article class="exam-card"><div class="card-top"><span class="pill ${closed?'closed':x.last_verified?'verified':''}">${closed?'Application Closed':x.status||'Update'}</span>${x.application_end?`<span class="verified-date">Deadline ${date(x.application_end)}</span>`:''}${daysLeft!==null?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}</div><h3>${esc(title)}</h3><div class="organization">${esc(x.authority||'Conducting authority')}${x.vacancy_count?` · ${esc(x.vacancy_count)} vacancies`:''}</div><p class="card-copy">${esc(short(copy||'Check the official notification for complete recruitment details.'))}</p><div class="card-actions"><button data-exam="${x.id}">View Complete Details</button>${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Official PDF ↗</a>`:''}</div></article>`}
-function materialCard(m){const title=lang==='kn'&&m.title_kn?m.title_kn:m.title_en;return `<article class="material-card"><div class="card-top"><span class="pill verified">${esc(m.access_type||'Free')}</span><span class="verified-date">${m.page_count?m.page_count+' pages':'Resource'}</span></div><h3>${esc(title)}</h3><div class="organization">${esc(m.category||m.exam_code||'Study resource')}</div><p class="card-copy">${esc(short(m.description_en||'Organized learning resource.'))}</p><div class="card-actions"><button data-material-id="${m.id}">Preview</button><a href="${esc(m.file_url)}" target="_blank" rel="noopener">Open Resource ↗</a></div></article>`}
+function examCard(x){const closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date(),title=x.title_en,copy=x.overview||x.eligibility_en;const daysLeft=x.application_end&&!closed?Math.ceil((new Date(x.application_end+'T23:59:59')-new Date())/86400000):null;return `<article class="exam-card"><div class="card-top"><span class="pill ${closed?'closed':x.last_verified?'verified':''}">${closed?'Application Closed':x.status||'Update'}</span>${x.application_end?`<span class="verified-date">Deadline ${date(x.application_end)}</span>`:''}${daysLeft!==null?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}</div><h3>${esc(title)}</h3><div class="organization">${esc(x.authority||'Conducting authority')}${x.vacancy_count?` · ${esc(x.vacancy_count)} vacancies`:''}</div><p class="card-copy">${esc(short(copy||'Check the official notification for complete recruitment details.'))}</p><div class="card-actions"><button data-exam="${x.id}">View Complete Details</button>${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Official PDF ↗</a>`:''}</div></article>`}
+function materialCard(m){const title=m.title_en;return `<article class="material-card"><div class="card-top"><span class="pill verified">${esc(m.access_type||'Free')}</span><span class="verified-date">${m.page_count?m.page_count+' pages':'Resource'}</span></div><h3>${esc(title)}</h3><div class="organization">${esc(m.category||m.exam_code||'Study resource')}</div><p class="card-copy">${esc(short(m.description_en||'Organized learning resource.'))}</p><div class="card-actions"><button data-material-id="${m.id}">Preview</button><a href="${esc(m.file_url)}" target="_blank" rel="noopener">Open Resource ↗</a></div></article>`}
 function bindCards(){
   $$('[data-job]').forEach(b=>b.onclick=()=>openJob(jobs.find(x=>x.id===b.dataset.job)||window.__ccAllJobs?.find(x=>x.id===b.dataset.job)));
   $$('[data-exam]').forEach(b=>b.onclick=()=>openExam(exams.find(x=>x.id===b.dataset.exam)));
@@ -199,70 +229,12 @@ function renderUrgencyStrip(){
   el.innerHTML=urgent.map(j=>`<button class="urgency-job" data-job="${j.id}"><b>${esc(j.role||'Opportunity')}</b><span>${esc(j.company||j.location||'')}</span><span class="urg-tag">Closes today</span></button>`).join('');
   bindCards();
 }
-function renderPrivate(){
-  let a=jobs.filter(j=>sectorOf(j)==='Private');
-  const totalPrivate=a.length; // remember how many valid private jobs exist before filters
-if($('privateState')&&!$('privateState').options.length){
-  $('privateState').innerHTML='<option value="">All states</option>'+INDIA_STATES.map(s=>`<option>${s}</option>`).join('');
-}
-if($('privateCity')&&!$('privateCity').options.length){
-  $('privateCity').innerHTML='<option value="">All cities</option>'+[...INDIA_CITIES,...GULF_CITIES,...INTL_CITIES].map(c=>`<option>${c}</option>`).join('');
-}
-const role=($('privateRole')&&$('privateRole').value||'').toLowerCase();
-  const loc=($('privateLocation')&&$('privateLocation').value||'').toLowerCase();
-  const exp=($('privateExperience')&&$('privateExperience').value||'').toLowerCase();
-  const qual=($('privateQualification')&&$('privateQualification').value||'').toLowerCase();
-  const timePeriod=$('privateSort')&&$('privateSort').value||'';
-  const now=new Date();
-
-  // Time filter
-  if(['24h','3d','7d','14d','30d','week','month'].includes(timePeriod)){
-    const days={'24h':1,'3d':3,'7d':7,'14d':14,'30d':30,'week':7,'month':30};
-    const cut=new Date(now.getTime()-days[timePeriod]*86400000);
-    a=a.filter(j=>j.created_at&&new Date(j.created_at)>=cut);
-  } else if(timePeriod==='closing_soon'){
-    a=a.filter(j=>j.deadline&&!isClosed(j));
-    a.sort((x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'));
-  } else if(timePeriod==='oldest'){
-    a.sort((x,y)=>String(x.created_at).localeCompare(String(y.created_at)));
-  } else {
-    a.sort((x,y)=>String(y.created_at).localeCompare(String(x.created_at)));
-  }
-
-  a=a.filter(j=>!role||String(j.role).toLowerCase().includes(role))
-     .filter(j=>!loc||String(j.location).toLowerCase().includes(loc))
-     .filter(j=>!exp||String(j.experience_level).toLowerCase()===exp)
-     .filter(j=>!qual||String(j.qualification).toLowerCase().includes(qual));
-
-  if($('privateType')&&$('privateType').value)a=a.filter(j=>j.employment_type===$('privateType').value);
-
-  // Category view
-  if(!activePrivateCategory){
-    // Show category tiles
-    const counts={};
-    a.forEach(j=>{const c=classifyJob(j);counts[c]=(counts[c]||0)+1});
-    const tiles=ROLE_HEADS.filter(h=>counts[h.id]).map(h=>`
-      <button class="role-tile" onclick="activePrivateCategory='${h.id}';renderPrivate()">
-        <span class="role-tile-icon">${h.icon}</span>
-        <span class="role-tile-label">${h.label}</span>
-        <span class="role-tile-count">${counts[h.id]} job${counts[h.id]>1?'s':''}</span>
-      </button>`).join('');
-    $('privateJobs').innerHTML=`<div class="role-heads-grid">${tiles||empty('No private jobs are currently available','Verified private-sector civil engineering opportunities will appear here as they are published.')}</div>`;
-    $('privateCount').textContent=totalPrivate?`${totalPrivate} private job${totalPrivate===1?'':'s'} available — select a category to browse`:'No private jobs are currently available';
-    bindCards();
-    return;
-  }
-
-  // Filter by selected category
-  const head=ROLE_HEADS.find(h=>h.id===activePrivateCategory)||ROLE_HEADS.at(-1);
-  a=a.filter(j=>classifyJob(j)===activePrivateCategory);
-
-  $('privateCount').textContent=`${a.length} ${head.label} job${a.length===1?'':'s'}`;
-
-  const backBtn=`<button class="category-back" onclick="activePrivateCategory='';renderPrivate()">← All Categories</button>`;
-  $('privateJobs').innerHTML=backBtn+(a.length?a.map(x=>jobCard(x)).join(''):empty('No jobs in this category','Check back soon or browse another category.'));
-  bindCards();
-}
+/* CANONICAL PRIVATE JOBS (FIX-2026-09-25): the Civil Job Explorer assigned in
+   v8.js is the single private-jobs renderer. The former category-tile renderer
+   (role tiles → per-category list) has been removed. This stub only covers the
+   first paint before v8.js boots, and any case where v8.js fails to load, so the
+   Jobs page can never throw. */
+function renderPrivate(){}
 
 function renderGovernment(){
   let a=jobs.filter(j=>isGovJob(j));
@@ -286,14 +258,14 @@ const dep=($('govDepartment')&&$('govDepartment').value||'').toLowerCase();
   if($('govStatus')&&$('govStatus').value)a=a.filter(j=>$('govStatus').value==='closed'?isClosed(j):!isClosed(j));
   a.sort($('govSort')&&$('govSort').value==='deadline'?(x,y)=>(x.deadline||'9999').localeCompare(y.deadline||'9999'):(x,y)=>String(y.created_at).localeCompare(String(x.created_at)));
 
-  $('governmentCount').textContent=`${a.length} Karnataka government opportunit${a.length===1?'y':'ies'}`;
+  $('governmentCount').textContent=`${a.length} government civil opportunit${a.length===1?'y':'ies'}`;
 
   // Group by recruitment authority
   const groups={};
   a.forEach(j=>{const auth=j.recruitment_authority||j.company||'Other';if(!groups[auth])groups[auth]=[];groups[auth].push(j)});
 
   if(Object.keys(groups).length===0){
-    $('governmentJobs').innerHTML=empty('No matching government recruitment','Verified Karnataka government opportunities will appear here as they are published.');
+    $('governmentJobs').innerHTML=empty('No matching government recruitment','Verified Central and State government opportunities will appear here as they are published.');
   } else if(Object.keys(groups).length===1||dist||dep||edu||org||loc||qual){
     $('governmentJobs').innerHTML=a.map(x=>jobCard(x,true)).join('');
   } else {
@@ -309,12 +281,12 @@ const dep=($('govDepartment')&&$('govDepartment').value||'').toLowerCase();
   bindCards();
 }
 
-function renderExams(code=''){const a=exams.filter(x=>!code||x.code.toUpperCase().includes(code));$('examCards').innerHTML=a.length?a.map(examCard).join(''):empty('Exam updates are being added','Karnataka government examination details will appear here after source verification.');bindCards()}
+function renderExams(code=''){const a=exams.filter(x=>!code||x.code.toUpperCase().includes(code));$('examCards').innerHTML=a.length?a.map(examCard).join(''):empty('Exam updates are being added','Civil-focused government examination details will appear here after source verification.');bindCards()}
 function renderMaterials(cat=''){const a=materials.filter(m=>!cat||String(m.category).includes(cat)||String(m.exam_code).includes(cat));$('materialCards').innerHTML=a.length?a.map(materialCard).join(''):empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards()}
 function openJob(j){if(!j)return;const gov=isGovJob(j),closed=isClosed(j);$('detailTitle').textContent=j.role;$('detailBody').innerHTML=`<div class="detail-grid"><div class="detail"><b>${gov?'Organization':'Company'}</b>${esc(j.company||'Check original source')}</div><div class="detail"><b>Location</b>${esc(j.location||'Check original source')}</div><div class="detail"><b>Qualification</b>${esc(j.qualification||'Check official notification for the latest details.')}</div><div class="detail"><b>Experience</b>${esc(j.experience_level||'Not specified')}</div><div class="detail"><b>Employment type</b>${esc(j.employment_type||'Not specified')}</div><div class="detail"><b>${gov?'Pay scale':'Salary'}</b>${esc(j.salary||'Not provided')}</div>${gov?`<div class="detail"><b>Vacancies</b>${esc(j.vacancy_count||'Check official notification')}</div><div class="detail"><b>Age limit</b>${esc(j.age_limit||'Check official notification')}</div><div class="detail"><b>Application fee</b>${esc(j.application_fee||'Check official notification')}</div><div class="detail"><b>Application starts</b>${date(j.application_start)}</div>`:''}<div class="detail"><b>Application deadline</b>${j.deadline?date(j.deadline):'Check original source'}</div><div class="detail"><b>Status</b>${closed?'Application Closed':j.status||'Active'}</div><div class="detail full"><b>Description</b>${esc(j.description||'Check the original source for complete details.')}</div><div class="detail full"><b>Application method</b>${esc(j.application_method||'Use the original source')}</div></div><div class="card-actions">${j.source_url?`<a href="${esc(j.source_url)}" target="_blank" rel="noopener">${gov?'View Official Notification':'View Original Job'} ↗</a>`:''}${j.last_verified?`<span class="verified-date">Last verified: ${date(j.last_verified)}</span>`:''}</div>`;navigate('examDetail');}
 function richText(v){return esc(v||'').replace(/\n/g,'<br>')}function examSection(title,value){return value?`<section class="exam-detail-section"><h3>${esc(title)}</h3><div class="exam-detail-copy">${richText(value)}</div></section>`:''}
-function openExam(x){if(!x)return;const title=lang==='kn'&&x.title_kn?x.title_kn:x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('detailTitle').textContent=title;$('detailBody').innerHTML=`<article class="exam-detail-page"><div class="exam-detail-status"><span class="pill ${closed?'closed':'verified'}">${closed?'Application Closed':esc(x.status||'Open')}</span>${x.last_verified?`<span>Last verified ${date(x.last_verified)}</span>`:''}</div>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Recruitment Overview</h3><div class="exam-overview"><div><b>Organization</b>${esc(x.authority||'Check official notification')}</div><div><b>Notification number</b>${esc(x.notification_number||'Not stated')}</div><div><b>Post names</b>${esc(x.post_names||x.code||'See official notification')}</div><div><b>Total vacancies</b>${esc(x.vacancy_count||'Not stated')}</div><div><b>Qualification</b>${esc(lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en||'See official notification')}</div><div><b>Job location</b>${esc(x.job_location||'Karnataka')}</div><div><b>Application mode</b>${esc(x.application_mode||'See official notification')}</div><div><b>Last date to apply</b>${date(x.application_end)}</div></div></section>${examSection('Important Dates',x.important_dates_details||[['Application start',date(x.application_start)],['Application deadline',date(x.application_end)],['Exam date',date(x.exam_date)]].map(a=>a.join(': ')).join('\n'))}${examSection('Post-wise Vacancy Details',x.vacancy_breakdown)}${examSection('Eligibility and Qualification',lang==='kn'&&x.eligibility_kn?x.eligibility_kn:x.eligibility_en)}${examSection('Age Limit and Relaxation',x.age_limit)}${examSection('Pay Scale',x.pay_scale)}${examSection('Application Fees',x.application_fee)}${examSection('Selection Procedure',x.selection_process)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('How to Apply',x.how_to_apply)}${examSection('Attempts',x.attempts)}${examSection('Physical Standards',x.physical_standards)}${examSection('Helpline',x.helpline)}${examSection('Other Important Information',x.other_information)}${examSection('Frequently Asked Questions',x.frequently_asked_questions)}<section class="exam-detail-section official-links"><h3>Important Official Links</h3><div class="card-actions">${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank" rel="noopener">Apply on Official Portal ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Download Official Notification ↗</a>`:''}${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank" rel="noopener">Official Website ↗</a>`:''}</div></section><div class="callout"><b>We Organize. You Verify.</b><br>CivilCareer is independent and is not a government authority. Read the official notification before applying or paying an official application fee.</div></article>`;navigate('examDetail');}
-function openMaterial(m){if(typeof openMaterialDedicated==='function')return openMaterialDedicated(m);$('detailTitle').textContent=lang==='kn'&&m.title_kn?m.title_kn:m.title_en;$('detailBody').innerHTML=`<p>${esc(m.description_en||'Open the resource to review its contents.')}</p><div class="callout">Only use materials shared by their owner or with appropriate permission.</div><div class="card-actions"><a href="${esc(m.file_url||m.pdf_url||m.preview_url||'#')}" target="_blank" rel="noopener">Open Resource ↗</a></div>`;navigate('examDetail');}
+function openExam(x){if(!x)return;const title=x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('detailTitle').textContent=title;$('detailBody').innerHTML=`<article class="exam-detail-page"><div class="exam-detail-status"><span class="pill ${closed?'closed':'verified'}">${closed?'Application Closed':esc(x.status||'Open')}</span>${x.last_verified?`<span>Last verified ${date(x.last_verified)}</span>`:''}</div>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Recruitment Overview</h3><div class="exam-overview"><div><b>Organization</b>${esc(x.authority||'Check official notification')}</div><div><b>Notification number</b>${esc(x.notification_number||'Not stated')}</div><div><b>Post names</b>${esc(x.post_names||x.code||'See official notification')}</div><div><b>Total vacancies</b>${esc(x.vacancy_count||'Not stated')}</div><div><b>Qualification</b>${esc(x.eligibility_en||'See official notification')}</div><div><b>Job location</b>${esc(x.job_location||'Karnataka')}</div><div><b>Application mode</b>${esc(x.application_mode||'See official notification')}</div><div><b>Last date to apply</b>${date(x.application_end)}</div></div></section>${examSection('Important Dates',x.important_dates_details||[['Application start',date(x.application_start)],['Application deadline',date(x.application_end)],['Exam date',date(x.exam_date)]].map(a=>a.join(': ')).join('\n'))}${examSection('Post-wise Vacancy Details',x.vacancy_breakdown)}${examSection('Eligibility and Qualification',x.eligibility_en)}${examSection('Age Limit and Relaxation',x.age_limit)}${examSection('Pay Scale',x.pay_scale)}${examSection('Application Fees',x.application_fee)}${examSection('Selection Procedure',x.selection_process)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('How to Apply',x.how_to_apply)}${examSection('Attempts',x.attempts)}${examSection('Physical Standards',x.physical_standards)}${examSection('Helpline',x.helpline)}${examSection('Other Important Information',x.other_information)}${examSection('Frequently Asked Questions',x.frequently_asked_questions)}<section class="exam-detail-section official-links"><h3>Important Official Links</h3><div class="card-actions">${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank" rel="noopener">Apply on Official Portal ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Download Official Notification ↗</a>`:''}${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank" rel="noopener">Official Website ↗</a>`:''}</div></section><div class="callout"><b>We Organize. You Verify.</b><br>CivilCareer is independent and is not a government authority. Read the official notification before applying or paying an official application fee.</div></article>`;navigate('examDetail');}
+function openMaterial(m){if(typeof openMaterialDedicated==='function')return openMaterialDedicated(m);$('detailTitle').textContent=m.title_en;$('detailBody').innerHTML=`<p>${esc(m.description_en||'Open the resource to review its contents.')}</p><div class="callout">Only use materials shared by their owner or with appropriate permission.</div><div class="card-actions"><a href="${esc(m.file_url||m.pdf_url||m.preview_url||'#')}" target="_blank" rel="noopener">Open Resource ↗</a></div>`;navigate('examDetail');}
 function animateCount(el,target,duration=1500){
   if(!el)return;
   let start=0;const step=target/(duration/16);
@@ -324,10 +296,17 @@ function animateCount(el,target,duration=1500){
     else el.textContent=Math.floor(start)+'+';
   },16);
 }
+/* Live statistics: Loading… → real count → “Unable to load”. A genuinely empty
+   database still shows a real 0; only a failed request shows a failure state. */
+function statUnavailable(id){
+  const el=$(id);if(!el)return false;
+  const f=window.__ccLoadFailed||{};
+  const map={statJobs:f.jobs,statGovt:f.jobs,statExams:f.exams,statRes:f.materials};
+  if(map[id]){el.textContent='Unable to load';el.classList.add('stat-error');el.setAttribute('title','Could not reach the statistics API. Refresh to retry.');return true}
+  el.classList.remove('stat-error');el.removeAttribute('title');return false;
+}
 function updateStats(){
-  /* Live statistics: loading → real counts. Never leaves permanent dashes.
-     If the API fails, show 0 (honest) rather than '—'. */
-  const setStat=(id,val)=>{const el=$(id);if(el)el.textContent=String(val)};
+  const setStat=(id,val)=>{if(!statUnavailable(id)){const el=$(id);if(el)el.textContent=String(val)}};
   const priv=jobs.filter(j=>sectorOf(j)==='Private').length;
   const govt=jobs.filter(j=>isGovJob(j)).length;
   const openExams=exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length;
@@ -335,18 +314,26 @@ function updateStats(){
   setStat('statExams',openExams);setStat('statRes',materials.length);
   updateNavCounts();
 }
-/* Called immediately on boot so stats never sit on '—' while the API loads. */
-function statsLoading(){$('statJobs')&&($('statJobs').textContent='Loading…');$('statGovt')&&($('statGovt').textContent='Loading…');$('statExams')&&($('statExams').textContent='Loading…');$('statRes')&&($('statRes').textContent='Loading…');setTimeout(()=>{$('statJobs')&&/^Loading/.test($('statJobs').textContent)&&($('statJobs').textContent='0');$('statGovt')&&/^Loading/.test($('statGovt').textContent)&&($('statGovt').textContent='0');$('statExams')&&/^Loading/.test($('statExams').textContent)&&($('statExams').textContent='0');$('statRes')&&/^Loading/.test($('statRes').textContent)&&($('statRes').textContent='0')},12000)}
+/* Called immediately on boot so stats never sit on a stale value while loading.
+   If the request never resolves, the count degrades to an explicit failure state
+   rather than a misleading 0. */
+function statsLoading(){
+  ['statJobs','statGovt','statExams','statRes'].forEach(id=>{const el=$(id);if(el){el.textContent='Loading…';el.classList.remove('stat-error')}});
+  clearTimeout(window.__ccStatsTimer);
+  window.__ccStatsTimer=setTimeout(()=>{
+    ['statJobs','statGovt','statExams','statRes'].forEach(id=>{const el=$(id);if(el&&/^Loading/.test(el.textContent)){el.textContent='Unable to load';el.classList.add('stat-error')}});
+  },15000);
+}
 function updateNavCounts(){
   const isLive=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));
   const priv=jobs.filter(j=>sectorOf(j)==='Private'&&isLive(j)).length;
   const govt=jobs.filter(j=>isGovJob(j)&&isLive(j)).length;
   $$('a[data-route="private"]').forEach(a=>{if(priv>0)a.setAttribute('data-count',priv)});
   $$('a[data-route="government"]').forEach(a=>{if(govt>0)a.setAttribute('data-count',govt)});
-  if($('statJobs'))$('statJobs').textContent=String(priv);
-  if($('statGovt'))$('statGovt').textContent=String(govt);
-  if($('statExams'))$('statExams').textContent=String(exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
-  if($('statRes'))$('statRes').textContent=String(materials.length);
+  if(!statUnavailable('statJobs')&&$('statJobs'))$('statJobs').textContent=String(priv);
+  if(!statUnavailable('statGovt')&&$('statGovt'))$('statGovt').textContent=String(govt);
+  if(!statUnavailable('statExams')&&$('statExams'))$('statExams').textContent=String(exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
+  if(!statUnavailable('statRes')&&$('statRes'))$('statRes').textContent=String(materials.length);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -525,15 +512,13 @@ function renderForYou(){
 }
 
 function matchJobCard(j,match){
-  const color=match.score>=80?'#10b981':match.score>=60?'#f59e0b':'#6b7280';
   const saved=getSaved().has(j.id)||jobInteractions[j.id]==='saved';
   const cm=match.facets?match:null;
   const facets=cm?cm.facets:[];
   const skillMiss=cm?cm.skillMiss:[];
-  return `<article class="job-card match-card" data-explorer-job="${j.id}" style="border-top:3px solid ${color}">
+  return `<article class="job-card match-card" data-explorer-job="${j.id}">
     <div class="match-score-row">
-      <span class="match-pct" style="color:${color}">${match.score}% Match</span>
-      <span class="match-label">${match.score>=80?'Strong match':match.score>=60?'Good match':'Partial match'}</span>
+      <span class="match-label">Recommended for your profile</span>
     </div>
     <h3>${esc(j.role||'Opportunity')}</h3>
     <div class="organization">${esc(j.company||'Organization')}</div>
@@ -542,7 +527,7 @@ function matchJobCard(j,match){
       ${j.location?`<span>📍 ${esc(j.location)}</span>`:''}
       ${j.experience_level?`<span>⏱ ${esc(j.experience_level)}</span>`:''}
     </div>
-    ${facets.length?`<div class="why-match-box"><b>WHY YOU MATCH</b><div class="why-facets">${facets.map(f=>`<span class="why-facet" title="${esc(f.why)}">${f.k} ${f.s==='✓'?'✓':f.s==='△'?'△':'–'}</span>`).join('')}</div>${skillMiss.length?`<div class="why-missing">Missing skill${skillMiss.length>1?'s':''}: ${skillMiss.slice(0,3).map(s=>`<b>${esc(s)}</b>`).join(', ')}${skillMiss.some(s=>s==='Primavera')?' — see free Primavera resources in Study Materials':''}</div>`:''}</div>`:''}
+    ${facets.length?`<div class="why-match-box"><b>WHY THIS JOB FITS</b><div class="why-facets">${facets.map(f=>`<span class="why-facet" title="${esc(f.why)}">${f.k} ${f.s==='✓'?'✓':f.s==='△'?'△':'–'}</span>`).join('')}</div>${skillMiss.length?`<div class="why-missing">Skill gap${skillMiss.length>1?'s':''}: ${skillMiss.slice(0,3).map(s=>`<b>${esc(s)}</b>`).join(', ')} — recommended skill${skillMiss.length>1?'s':''} to strengthen this application.</div>`:''}</div>`:''}
     <div class="card-actions">
       <button data-job="${j.id}">View Details</button>
       <button class="btn-save ${saved?'saved':''}" onclick="trackJob('${j.id}','${saved?'unsave':'saved'}',this)">${saved?'★ Saved':'☆ Save'}</button>
@@ -693,7 +678,9 @@ function saveProfile(){
   renderForYou();
 }
 
-async function loadData(){const [j,e,m]=await Promise.allSettled([api('/api/jobs'),api('/api/exams'),api('/api/materials')]);jobs=j.status==='fulfilled'?j.value.jobs||[]:[];exams=e.status==='fulfilled'?e.value.exams||[]:[];materials=m.status==='fulfilled'?m.value.materials||[]:[];window.__ccAllJobs=jobs;normalizeJobs();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
+/* Live statistics (FIX-2026-09-25): a failed endpoint is remembered so the UI can
+   show “Unable to load” instead of silently pretending the count is 0. */
+async function loadData(){clearTimeout(window.__ccStatsTimer);const [j,e,m]=await Promise.allSettled([api('/api/jobs'),api('/api/exams'),api('/api/materials')]);const okJobs=j.status==='fulfilled',okExams=e.status==='fulfilled',okMats=m.status==='fulfilled';window.__ccLoadFailed={jobs:!okJobs,exams:!okExams,materials:!okMats};jobs=okJobs?j.value.jobs||[]:[];exams=okExams?e.value.exams||[]:[];materials=okMats?m.value.materials||[]:[];window.__ccAllJobs=jobs;normalizeJobs();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
 /* Normalize every loaded record in place so inconsistent sector strings, missing
    optional location fields and similar data quirks never break rendering. */
 function normalizeJobs(){
@@ -967,15 +954,15 @@ function jobEditor(j={}){
     }catch(err){toast(err.message)}
   }
 }
-function examEditor(x={}){$('editorTitle').textContent=x.id?'Edit recruitment':'Review AI recruitment draft';$('editorBody').innerHTML=`<form class="panel-form" id="examEdit"><div class="field-grid"><label>Exam / recruitment code *<input name="code" value="${val(x.code)}" required></label><label>Authority / organization<input name="authority" value="${val(x.authority)}"></label><label class="wide">Professional listing title *<input name="title_en" value="${val(x.title_en)}" placeholder="KPSC KAS Recruitment 2026 — Apply Online for 319 Group A & B Posts" required></label><label class="wide">Kannada title<input name="title_kn" value="${val(x.title_kn)}"></label><label>Notification number<input name="notification_number" value="${val(x.notification_number)}"></label><label>Category<input name="category" value="${val(x.category)}"></label><label>Vacancies<input type="number" name="vacancy_count" value="${val(x.vacancy_count)}"></label><label>Status<input name="status" value="${val(x.status||'Open')}"></label><label>Notification date<input type="date" name="notification_date" value="${val(x.notification_date)}"></label><label>Application starts<input type="date" name="application_start" value="${val(x.application_start)}"></label><label>Application deadline<input type="date" name="application_end" value="${val(x.application_end)}"></label><label>Exam date<input type="date" name="exam_date" value="${val(x.exam_date)}"></label><label>Last verified<input type="date" name="last_verified" value="${val(x.last_verified||new Date().toISOString().slice(0,10))}"></label><label>Job location<input name="job_location" value="${val(x.job_location)}"></label><label>Application mode<input name="application_mode" value="${val(x.application_mode)}"></label><label class="wide">Post names<input name="post_names" value="${val(x.post_names)}"></label><label class="wide">Overview<textarea name="overview">${val(x.overview)}</textarea></label><label class="wide">Eligibility and qualification<textarea name="eligibility_en">${val(x.eligibility_en)}</textarea></label><label class="wide">Kannada eligibility<textarea name="eligibility_kn">${val(x.eligibility_kn)}</textarea></label><label class="wide">Post-wise vacancy details<textarea name="vacancy_breakdown">${val(x.vacancy_breakdown)}</textarea></label><label class="wide">Important dates details<textarea name="important_dates_details">${val(x.important_dates_details)}</textarea></label><label class="wide">Age limit and relaxation<textarea name="age_limit">${val(x.age_limit)}</textarea></label><label class="wide">Pay scale<textarea name="pay_scale">${val(x.pay_scale)}</textarea></label><label class="wide">Application fee<textarea name="application_fee">${val(x.application_fee)}</textarea></label><label class="wide">Selection process<textarea name="selection_process">${val(x.selection_process)}</textarea></label><label class="wide">Exam pattern<textarea name="exam_pattern">${val(x.exam_pattern)}</textarea></label><label class="wide">Syllabus<textarea name="syllabus">${val(x.syllabus)}</textarea></label><label class="wide">How to apply<textarea name="how_to_apply">${val(x.how_to_apply)}</textarea></label><label class="wide">Attempts<textarea name="attempts">${val(x.attempts)}</textarea></label><label class="wide">Physical standards<textarea name="physical_standards">${val(x.physical_standards)}</textarea></label><label class="wide">Helpline<input name="helpline" value="${val(x.helpline)}"></label><label class="wide">Other important information<textarea name="other_information">${val(x.other_information)}</textarea></label><label class="wide">Frequently asked questions<textarea name="frequently_asked_questions">${val(x.frequently_asked_questions)}</textarea></label><label class="wide">Official notification PDF URL<input type="url" name="official_notification_url" value="${val(x.official_notification_url)}"></label><label class="wide">Official application URL<input type="url" name="apply_url" value="${val(x.apply_url)}"></label><label class="wide">Official website URL<input type="url" name="official_website_url" value="${val(x.official_website_url)}"></label><button class="btn primary wide">Verify and publish recruitment</button></div><div class="form-status"></div></form>`;openEditor();$('examEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);if(x.id)d.id=x.id;try{await api('/api/exams',{method:x.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Recruitment published.');await loadData();loadAdmin()}catch(err){toast(err.message)}}}
-function materialEditor(m={}){$('editorTitle').textContent=m.id?'Edit material':'Add material';$('editorBody').innerHTML=`<form class="panel-form" id="materialEdit"><label>Title *<input name="title_en" value="${val(m.title_en)}" required></label><label>Kannada title<input name="title_kn" value="${val(m.title_kn)}"></label><label>Category<input name="category" value="${val(m.category)}"></label><label>Description<textarea name="description_en">${val(m.description_en)}</textarea></label><label>Author<input name="author" value="${val(m.author)}"></label><label>Upload PDF file<div class="upload-area"><input type="file" id="matFileInput" accept=".pdf,application/pdf" onchange="handleMatFile(this)"><label for="matFileInput" class="upload-btn">📂 Choose PDF file</label><span id="matFileName" class="file-chosen">No file chosen</span></div></label>
+function examEditor(x={}){$('editorTitle').textContent=x.id?'Edit recruitment':'Review AI recruitment draft';$('editorBody').innerHTML=`<form class="panel-form" id="examEdit"><div class="field-grid"><label>Exam / recruitment code *<input name="code" value="${val(x.code)}" required></label><label>Authority / organization<input name="authority" value="${val(x.authority)}"></label><label class="wide">Professional listing title *<input name="title_en" value="${val(x.title_en)}" placeholder="KPSC KAS Recruitment 2026 — Apply Online for 319 Group A & B Posts" required></label><label>Notification number<input name="notification_number" value="${val(x.notification_number)}"></label><label>Category<input name="category" value="${val(x.category)}"></label><label>Vacancies<input type="number" name="vacancy_count" value="${val(x.vacancy_count)}"></label><label>Status<input name="status" value="${val(x.status||'Open')}"></label><label>Notification date<input type="date" name="notification_date" value="${val(x.notification_date)}"></label><label>Application starts<input type="date" name="application_start" value="${val(x.application_start)}"></label><label>Application deadline<input type="date" name="application_end" value="${val(x.application_end)}"></label><label>Exam date<input type="date" name="exam_date" value="${val(x.exam_date)}"></label><label>Last verified<input type="date" name="last_verified" value="${val(x.last_verified||new Date().toISOString().slice(0,10))}"></label><label>Job location<input name="job_location" value="${val(x.job_location)}"></label><label>Application mode<input name="application_mode" value="${val(x.application_mode)}"></label><label class="wide">Post names<input name="post_names" value="${val(x.post_names)}"></label><label class="wide">Overview<textarea name="overview">${val(x.overview)}</textarea></label><label class="wide">Eligibility and qualification<textarea name="eligibility_en">${val(x.eligibility_en)}</textarea></label><label class="wide">Post-wise vacancy details<textarea name="vacancy_breakdown">${val(x.vacancy_breakdown)}</textarea></label><label class="wide">Important dates details<textarea name="important_dates_details">${val(x.important_dates_details)}</textarea></label><label class="wide">Age limit and relaxation<textarea name="age_limit">${val(x.age_limit)}</textarea></label><label class="wide">Pay scale<textarea name="pay_scale">${val(x.pay_scale)}</textarea></label><label class="wide">Application fee<textarea name="application_fee">${val(x.application_fee)}</textarea></label><label class="wide">Selection process<textarea name="selection_process">${val(x.selection_process)}</textarea></label><label class="wide">Exam pattern<textarea name="exam_pattern">${val(x.exam_pattern)}</textarea></label><label class="wide">Syllabus<textarea name="syllabus">${val(x.syllabus)}</textarea></label><label class="wide">How to apply<textarea name="how_to_apply">${val(x.how_to_apply)}</textarea></label><label class="wide">Attempts<textarea name="attempts">${val(x.attempts)}</textarea></label><label class="wide">Physical standards<textarea name="physical_standards">${val(x.physical_standards)}</textarea></label><label class="wide">Helpline<input name="helpline" value="${val(x.helpline)}"></label><label class="wide">Other important information<textarea name="other_information">${val(x.other_information)}</textarea></label><label class="wide">Frequently asked questions<textarea name="frequently_asked_questions">${val(x.frequently_asked_questions)}</textarea></label><label class="wide">Official notification PDF URL<input type="url" name="official_notification_url" value="${val(x.official_notification_url)}"></label><label class="wide">Official application URL<input type="url" name="apply_url" value="${val(x.apply_url)}"></label><label class="wide">Official website URL<input type="url" name="official_website_url" value="${val(x.official_website_url)}"></label><button class="btn primary wide">Verify and publish recruitment</button></div><div class="form-status"></div></form>`;openEditor();$('examEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);if(x.id)d.id=x.id;try{await api('/api/exams',{method:x.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Recruitment published.');await loadData();loadAdmin()}catch(err){toast(err.message)}}}
+function materialEditor(m={}){$('editorTitle').textContent=m.id?'Edit material':'Add material';$('editorBody').innerHTML=`<form class="panel-form" id="materialEdit"><label>Title *<input name="title_en" value="${val(m.title_en)}" required></label><label>Category<input name="category" value="${val(m.category)}"></label><label>Description<textarea name="description_en">${val(m.description_en)}</textarea></label><label>Author<input name="author" value="${val(m.author)}"></label><label>Upload PDF file<div class="upload-area"><input type="file" id="matFileInput" accept=".pdf,application/pdf" onchange="handleMatFile(this)"><label for="matFileInput" class="upload-btn">📂 Choose PDF file</label><span id="matFileName" class="file-chosen">No file chosen</span></div></label>
     <div id="matUploadProgress" style="display:none;font-size:.8rem;color:#10b981;padding:.5rem;background:#ecfdf5;border-radius:6px;margin:.5rem 0">Uploading…</div>
     <input type="hidden" id="matFileUrl" name="mat_file_url" value="${val(m.file_url||m.pdf_url||'')}">
     <label>Or paste a public file URL<input type="url" name="file_url" id="matUrlInput" value="${val(m.file_url||'')}" placeholder="https://drive.google.com/... or Dropbox link"></label>
     <label>PDF direct URL (if you have direct link)<input type="url" name="pdf_url" value="${val(m.pdf_url)}" placeholder="https://example.com/file.pdf"></label>
     <label>Subject / Topic<input name="subject" value="${val(m.subject)}" placeholder="e.g. Structural Engineering, Interview Questions, GATE Civil"></label><label>Preview URL<input type="url" name="preview_url" value="${val(m.preview_url)}"></label><label>Page count<input type="number" name="page_count" value="${val(m.page_count)}"></label><button class="btn primary">Save material</button></form>`;openEditor();$('materialEdit').onsubmit=async e=>{e.preventDefault();const d=formObject(e.target);d.access_type='Free';if(m.id)d.id=m.id;await api('/api/materials',{method:m.id?'PATCH':'POST',key:adminKey,body:JSON.stringify(d)});$('editorDialog').close();toast('Material saved.');await loadData();loadAdmin()}}
 function openEditor(){$('editorDialog').showModal()}
-$$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$('language').onclick=()=>{lang=lang==='en'?'kn':'en';localStorage.setItem('cc_lang',lang);translate();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$$('.route').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});onpopstate=()=>navigate(pathRoute[location.pathname]||'home',false);$('menuBtn').onclick=()=>{const n=$('mainNav'),open=n.classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',open)};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 /* ── GLOBAL SEARCH OVERLAY (FIX-2026-09-24) ──
    One consistent search across every SPA page and route. The nav Search
    button opens the overlay on any page (home, jobs, government, exams,

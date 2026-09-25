@@ -5,7 +5,7 @@
      sector/freshness/education) → existing structured filters.
      Low-confidence parses fall back to keyword search. No AI needed.
    - Career Radar · Skill Radar · Career Map (data-driven).
-   - Explainable match score on cards (§9): reasons, never mysterious.
+   - Qualitative “fits your profile” indicator on cards (§9): reasons in the tooltip, never a numeric score.
    - Deterministic "Job Brief" on detail pages (§8): every fact comes
      from the job record; missing fields render an honest fallback.
    No new Vercel functions, no paid services, no keys in the browser.
@@ -108,7 +108,9 @@
         if (hit) eEl.value = hit.value;
       }
     }
-    if (p.minSalary) { const el = document.getElementById('privateSalary'); if (el) el.value = String(p.minSalary * 100000); }
+    /* The explorer salary filter compares a MONTHLY figure (FIX-2026-09-25),
+       so an LPA query is converted to its monthly equivalent. */
+    if (p.minSalary) { const el = document.getElementById('privateSalary'); if (el) el.value = String(Math.round(p.minSalary * 100000 / 12)); }
     if (p.freshness) { const el = document.getElementById('privatePosted'); if (el) el.value = String(p.freshness); }
     if (typeof renderPrivate === 'function') renderPrivate();
     return true;
@@ -173,7 +175,9 @@
       if (!j || !userProfile().role) return;
       const m = matchJob(j);
       const head = card.querySelector('.card-top');
-      if (head) head.insertAdjacentHTML('beforeend', `<span class="cc-match" title="${esc(m.why.join(' · ') || 'Based on your profile')}">${m.score}%<small>match</small></span>`);
+      /* No match percentage is shown anywhere in the jobs UI (FIX-2026-09-25).
+         The underlying score still ranks results; the badge is qualitative. */
+      if (head) head.insertAdjacentHTML('beforeend', `<span class="cc-match cc-match-qualitative" title="${esc(m.why.join(' · ') || 'Based on your profile')}">✓ Fits your profile</span>`);
     });
   }
 
@@ -202,26 +206,10 @@
     };
   }
 
-  /* ═══════════ CAREER MAP (§12) — curated paths, no fake salaries ═══════════ */
-  const MAPS = {
-    site: ['Civil Engineering Graduate', 'Site Engineer', 'Senior Site Engineer', 'Project Engineer', 'Project Manager'],
-    design: ['Civil Engineering Graduate', 'Design Engineer', 'Structural Engineer', 'Senior Structural Engineer'],
-    qs: ['Civil Graduate / Diploma', 'QS / Estimation Engineer', 'Billing Engineer', 'Contracts & Commercial Manager']
-  };
-  const MAP_SKILLS = {
-    'Site Engineer': 'AutoCAD · surveying · QA/QC basics',
-    'Senior Site Engineer': 'execution ownership · subcontractor handling',
-    'Project Engineer': 'planning · billing · coordination',
-    'Project Manager': 'Primavera/MS Project · contracts · HSE',
-    'Design Engineer': 'AutoCAD · STAAD.Pro / ETABS basics',
-    'Structural Engineer': 'STAAD.Pro · ETABS · IS codes',
-    'Senior Structural Engineer': 'peer review · detailing · audits',
-    'QS / Estimation Engineer': 'BOQ · rate analysis · measurement',
-    'Billing Engineer': 'RA bills · reconciliation',
-    'Contracts & Commercial Manager': 'tendering · claims · cost control',
-    'Civil Engineering Graduate': 'fundamentals · AutoCAD · internship',
-    'Civil Graduate / Diploma': 'fundamentals · estimation basics'
-  };
+  /* The curated Career Map data structures that used to live here were removed
+     with the Career Map presentation (FIX-2026-09-25). The underlying civil
+     roles remain available through the For You profile, job filters, search and
+     the job data itself. */
 
   /* ═══════════ JOB BRIEF (§8) — deterministic, honest fallbacks ═══════════ */
   const NS = 'Not specified in the job posting.';

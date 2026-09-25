@@ -1,5 +1,8 @@
 // CivilCareer India — PWA Service Worker
-const CACHE_NAME = "civilcareer-v16-homeclean-20260924";
+// FIX-2026-09-25: the obsolete duplicate worker (sw.js) and the dead
+// styles-patch.css precache entry were removed. This is the only service
+// worker registered ("+registration from app.js+" → /service-worker.js).
+const CACHE_NAME = "civilcareer-v17-explorer-20260925";
 
 const STATIC_ASSETS = [
   "/",
@@ -10,11 +13,11 @@ const STATIC_ASSETS = [
   "/about",
   "/manifest.json",
   "/styles.css",
-  "/styles-patch.css",
   "/app.js",
+  "/v8.js",
   "/discovery-v9.js",
-  "/visual-backgrounds.js",
-  "/v8.js"
+  "/cc-intelligence.js",
+  "/visual-backgrounds.js"
 ];
 
 self.addEventListener("install", (event) => {

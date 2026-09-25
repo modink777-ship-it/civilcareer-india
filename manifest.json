@@ -64,9 +64,9 @@
       ]
     },
     {
-      "name": "Karnataka Govt Jobs",
+      "name": "Government Civil Jobs",
       "short_name": "Govt Jobs",
-      "description": "Browse Karnataka government recruitment",
+      "description": "Browse Central and State government civil recruitment",
       "url": "/government-jobs",
       "icons": [
         {
@@ -78,7 +78,7 @@
     {
       "name": "Exams",
       "short_name": "Exams",
-      "description": "Karnataka competitive exams calendar",
+      "description": "Civil engineering exams calendar",
       "url": "/exams",
       "icons": [
         {

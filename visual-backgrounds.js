@@ -86,21 +86,10 @@
     ]
   };
 
-  const titleSets={
-    home:['RESIDENTIAL','CONCRETE & REINFORCEMENT','INDUSTRIAL / EPC','COMMERCIAL','STEEL & STRUCTURAL','PROJECT DELIVERY'],
-    private:['RESIDENTIAL','COMMERCIAL','INDUSTRIAL / EPC','SITE EXECUTION','STRUCTURAL STEEL'],
-    government:['EARTHWORK & EXCAVATION','CONCRETE WORKS','REINFORCEMENT','PROJECT DELIVERY','INDUSTRIAL / INFRA'],
-    exams:['REINFORCEMENT','CONCRETE','STEEL','EARTHWORK','STRUCTURAL ENGINEERING'],
-    materials:['REBAR & DETAILING','STEEL WORK','CONCRETE','SITE PRACTICE','STRUCTURAL WORK'],
-    foryou:['RESIDENTIAL','INDUSTRIAL / EPC','PROJECT DELIVERY','REINFORCEMENT'],
-    post:['PROJECT DELIVERY','INDUSTRIAL / EPC','COMMERCIAL'],
-    resource:['REBAR & DETAILING','CONCRETE','STEEL'],
-    about:['RESIDENTIAL','CONCRETE','INDUSTRIAL / EPC'],
-    search:['PROJECT DELIVERY','RESIDENTIAL','REINFORCEMENT'],
-    report:['STEEL WORK','COMMERCIAL','CONCRETE'],
-    careerhub:['RESIDENTIAL','CONCRETE & REINFORCEMENT','INDUSTRIAL / EPC','COMMERCIAL','STEEL & STRUCTURAL'],
-    admin:['INDUSTRIAL / EPC','REINFORCEMENT','PROJECT DELIVERY']
-  };
+  /* FIX-2026-09-25: the rotating photo-band captions (“INDUSTRIAL / EPC” and
+     friends) were injected as a .cc-bg-label span inside the hero, which left
+     stray caption text sitting at the bottom edge of the hero. The caption layer
+     and its data have been removed — the photo rotator is unchanged. */
 
   const layers=new Map();
   let activeRoute='';
@@ -158,10 +147,6 @@
       incoming.classList.add('is-active');
       outgoing.classList.remove('is-active');
     });
-    document.querySelectorAll('.cc-bg-label').forEach(label=>{
-      const labels=titleSets[route]||titleSets.home;
-      label.textContent=labels[next%labels.length];
-    });
   }
   function build(route){
     clearLayers();
@@ -172,11 +157,6 @@
       a.style.backgroundImage='url("'+sets[route][0]+'")';
       b.style.backgroundImage='url("'+sets[route][1%sets[route].length]+'")';
       a.classList.add('is-active');
-      const label=document.createElement('span');
-      label.className='cc-bg-label';
-      label.textContent=(titleSets[route]||titleSets.home)[0];
-      label.setAttribute('aria-hidden','true');
-      parent.appendChild(label);
     });
     if(timer)clearInterval(timer);
     if(!reduced){

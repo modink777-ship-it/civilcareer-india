@@ -51,10 +51,45 @@ The importer reads JobPosting JSON-LD and public page metadata. It works best wi
 
 Opening `index.html` directly shows sample listings. The import and shared database features work after deployment because they require the serverless `/api` routes and environment variables.
 
-## Files
+## Project files
 
-- `index.html` — responsive public site and owner import screen
-- `api/extract.js` — secure public-page vacancy parser
-- `api/jobs.js` — owner-protected publishing and public listing API
-- `supabase.sql` — database schema
-- `vercel.json` — deployment configuration
+**Front end (no build step — plain scripts, loaded in this order by `index.html`)**
+
+- `index.html` — app shell, all SPA routes, SEO metadata
+- `app.js` — data loading, normalisation helpers, home/government/exams/materials/For You,
+  global search overlay, viewed + saved jobs, admin shell
+- `v8.js` — **the canonical Civil Job Explorer** (private-jobs renderer), government renderer,
+  dedicated job/exam/material pages, admin job editor
+- `discovery-v9.js` — compact live job card, relevance search, profile save
+- `cc-intelligence.js` — natural-language search, career radar, qualitative fit badge
+- `visual-backgrounds.js` — decorative photo rotator
+- `hero-3d.js`, `next-phase.js` — hero visual, career hub
+- `styles.css` — the single stylesheet (design tokens, layout, components, responsive)
+- `service-worker.js` — the only registered service worker
+- `mobile.css` is gone; all responsive rules live in `styles.css`.
+
+**Server (Vercel serverless, Node)**
+
+- `api/jobs.js` — public listing API + owner-protected publishing + HTML job page
+- `api/exams.js`, `api/materials.js` — content APIs
+- `api/extract.js`, `api/agent.js` — free-first AI extraction chain
+- `api/analytics.js`, `api/subscribe.js`, `api/telegram.js`, `api/reports.js`,
+  `api/employer-submissions.js`, `api/resource-submissions.js`, `api/sitemap.js`
+- `lib/discovery-core.js`, `lib/discovery-sources.js`, `lib/supabase.js` — server-only helpers
+- `supabase.sql` + `supabase-v7…v10.sql` — database schema and migrations
+- `scripts/scrape-jobs.js` + `.github/workflows/job-scraper.yml` — daily discovery cron
+- `vercel.json` — routes, rewrites, security headers, cron
+
+## Documentation
+
+- `README.md` — this file (setup, environment variables, owner workflow)
+- `DEPLOY.md` — deployment steps
+- `CHANGELOG.md` — what changed in each build
+- `CLEANUP-NOTES.md` — what was removed, consolidated and fixed in the 2026-09-25 cleanup
+
+## Notes for this build
+
+The site is **English-only** and **India-wide**. Match percentages are not displayed anywhere;
+For You explains fit qualitatively (`✓` / `△` facet list plus skill gaps). The Career Map
+presentation and the "How to Choose" section have been removed, but every civil role remains
+available for For You, matching, filters and search.
