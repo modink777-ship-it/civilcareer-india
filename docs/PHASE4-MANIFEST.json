@@ -1,0 +1,14 @@
+{
+  "phase": "4",
+  "name": "CivilCareer Phase 4 \u2014 Data Quality",
+  "base": "Phase 3 performance package",
+  "changed_files": [
+    "api/jobs.js",
+    "lib/discovery-core.js",
+    "tests/phase4-data-quality.test.js",
+    "docs/PHASE4-DATA-QUALITY.md"
+  ],
+  "database_migration": false,
+  "production_data_changed": false,
+  "paid_services_added": false
+}

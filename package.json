@@ -1,0 +1,13 @@
+{
+  "name": "civilcareer-india",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "scripts": {
+    "check:syntax": "node scripts/launch-check.js --syntax",
+    "check:launch": "node scripts/launch-check.js",
+    "test": "node --test tests/*.test.js"
+  }
+}

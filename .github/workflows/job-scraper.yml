@@ -1,0 +1,56 @@
+name: Civil job discovery (every 4 hours)
+
+# CivilCareer's discovery model: pull civil-engineering vacancies for India
+# from job platforms (LinkedIn/Naukri/Indeed-class searches, Google Jobs,
+# Adzuna, The Muse, India job feeds, Google/Bing news vacancy adverts) AND
+# directly from the career pages of ~35 top Indian construction, EPC,
+# infrastructure and real-estate companies.
+#
+# Every run writes only UNPUBLISHED drafts. Nothing reaches the public site
+# until the owner reviews it in Admin → Discovery and publishes it.
+#
+# This workflow runs every 4 hours. Vercel's own cron is kept as a once-a-day
+# safety net because Vercel limits sub-daily schedules to paid plans, and
+# GitHub's scheduler can be delayed or disabled after 60 days of repository
+# inactivity.
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC
+  workflow_dispatch:         # manual trigger from the Actions tab
+
+concurrency:
+  group: civil-job-discovery
+  cancel-in-progress: false   # never abandon a run halfway
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run civil-only India discovery
+        run: node scripts/scrape-jobs.js
+        env:
+          # Deployment origin that hosts /api/jobs
+          SITE_URL: ${{ secrets.SITE_URL }}
+          # Trigger credential — CRON_SECRET is preferred
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          OWNER_KEY: ${{ secrets.OWNER_KEY }}
+          # Optional 4-hourly summary (sent only when drafts were found)
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Civil job discovery run" >> "$GITHUB_STEP_SUMMARY"
+          echo "Time: $(date -u +'%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Drafts are waiting in Admin → Discovery for review." >> "$GITHUB_STEP_SUMMARY"

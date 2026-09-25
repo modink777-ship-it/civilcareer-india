@@ -1,0 +1,13 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.join(__dirname,'..');
+const account=fs.readFileSync(path.join(root,'account.js'),'utf8');
+const api=fs.readFileSync(path.join(root,'api/account.js'),'utf8');
+const sql=fs.readFileSync(path.join(root,'supabase-v11-account-layer.sql'),'utf8');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+assert(account.includes('/api/auth-config')&&account.includes('/api/account'),'browser account layer must use server endpoints');
+assert(!account.includes('SUPABASE_SERVICE_ROLE_KEY'),'service role key must never appear in browser code');
+assert(api.includes('/auth/v1/user')&&api.includes('SUPABASE_SERVICE_ROLE_KEY'),'server must verify auth and use service role server-side');
+assert(sql.includes('references auth.users(id)'),'account tables must bind to Supabase Auth users');
+assert(sql.includes('enable row level security'),'account tables require RLS');
+assert(/account\.js\?v=\d{8}-\d+/.test(html),'account layer must be loaded by the SPA with a cache-busting version');
+console.log('Phase 5 account tests passed.');

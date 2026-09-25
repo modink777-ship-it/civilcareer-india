@@ -1,0 +1,12 @@
+const assert=require('assert');
+const fs=require('fs');
+const alerts=fs.readFileSync('api/alerts.js','utf8');
+const sql=fs.readFileSync('supabase-v12-alerts-retention.sql','utf8');
+assert(alerts.includes("POST")&&alerts.includes('job_alert_deliveries'),'alerts API exists');
+assert(alerts.includes("['all','private','government']"),'alert types bounded');
+assert(alerts.includes("['daily','weekly']"),'frequency bounded');
+assert(alerts.includes("String(req.query?.action||'')==='evaluate'"),'evaluation endpoint exists');
+assert(sql.includes('create table if not exists public.job_alert_deliveries'),'delivery queue migration exists');
+assert(sql.includes('unique(alert_id,job_id)'),'duplicate delivery prevention exists');
+assert(sql.includes('alter table public.job_alerts add column if not exists user_id'),'account link migration exists');
+console.log('phase7 alerts tests: 7 passed');

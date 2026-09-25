@@ -1,0 +1,710 @@
+{
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/civil-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quantity-surveyor-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/planning-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/structural-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bim-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qa-qc-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/estimation-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/project-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-bengaluru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-mumbai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-delhi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-hyderabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-chennai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-pune",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-ahmedabad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-kolkata",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-kochi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-noida",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-gurugram",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/junior-engineer-jobs-in-jaipur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/exams/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/job-alerts",
+      "destination": "/job-alerts.html"
+    },
+    {
+      "source": "/career-guides",
+      "destination": "/career-guides.html"
+    },
+    {
+      "source": "/career-tools",
+      "destination": "/career-tools.html"
+    },
+    {
+      "source": "/exam-guides",
+      "destination": "/exam-guides.html"
+    },
+    {
+      "source": "/jobs/:slug",
+      "destination": "/api/jobs?slug=:slug&render=html"
+    },
+    {
+      "source": "/for-you",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/private-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/government-jobs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/exams",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/study-materials",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/post-a-job",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/submit-resource",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/report",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/search",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/career-paths",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/career-hub",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/jobs/:slug*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/exams/:slug*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/study-materials/:slug*",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "0"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://api.groq.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/jobs?discovery=cron",
+      "schedule": "30 0 * * *"
+    }
+  ]
+}

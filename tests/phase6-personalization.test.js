@@ -1,0 +1,12 @@
+const fs = require('fs');
+const assert = require('assert');
+const account = fs.readFileSync('api/account.js','utf8');
+const app = fs.readFileSync('app.js','utf8');
+assert(account.includes('recommendations=[]'), 'account API should build recommendations');
+assert(account.includes('candidate_profiles?user_id='), 'recommendations must use candidate profile');
+assert(account.includes('savedSet') && account.includes('appliedSet'), 'recommendations must exclude saved/applied jobs');
+assert(account.includes('reasons'), 'recommendations should expose explainable reasons');
+assert(!account.includes('match_percentage'), 'recommendations must not expose match percentages');
+assert(app.includes('window.__ccRecommendations'), 'For You should consume authenticated recommendations');
+assert(app.includes('server-generated feed'), 'For You should distinguish the authenticated server feed');
+console.log('phase6 personalization tests: PASS');
