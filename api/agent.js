@@ -1,109 +1,558 @@
-/**
- * CivilCareer — AI Agent API (combined profile + interactions)
- * GET  /api/agent?type=profile   → get user profile + prefs
- * PUT  /api/agent?type=profile   → save user profile + prefs
- * GET  /api/agent?type=jobs      → get job interactions
- * POST /api/agent?type=jobs      → save/update interaction
- * DELETE /api/agent?type=jobs    → remove interaction
- */
 const SUPA = process.env.SUPABASE_URL;
-const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY;
+
+const SITE_URL = (
+  process.env.SITE_URL ||
+  'https://civilcareer-india-two.vercel.app'
+).replace(/\/+$/, '');
+
+const { runConfiguredSources } = require('../lib/discovery-sources');
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripHtml(value) {
+  return String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function truncate(value, max = 160) {
+  const text = stripHtml(value);
+  return text.length <= max
+    ? text
+    : `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (_) {}
+
+    return value
+      .split(',')
+      .map(v => v.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+async function getJobBySlug(slug) {
+  const response = await supa(
+    `jobs?select=*&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Supabase job lookup failed: ${response.status}`);
+  }
+
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+function isExpired(job) {
+  const value = job.valid_through || job.expires_at || job.deadline;
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time < Date.now();
+}
+
+function isPubliclyVisible(job) {
+  if (!job) return false;
+  if (job.published === false) return false;
+  const status = String(job.status || '').trim().toLowerCase();
+  if (['draft', 'pending review', 'archived', 'deleted'].includes(status)) return false;
+  if (isExpired(job)) return false;
+  return true;
+}
+
+async function getJobById(id) {
+  const response = await supa(
+    `jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Supabase job ID lookup failed: ${response.status}`);
+  }
+
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+function buildJobPosting(job, canonical) {
+  const locationText =
+    job.location_display ||
+    [job.city, job.district, job.state, job.country]
+      .filter(Boolean)
+      .join(', ') ||
+    job.location ||
+    '';
+
+  const employer =
+    job.company ||
+    job.recruitment_authority ||
+    'Employer';
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'JobPosting',
+    title: job.role || 'Civil Engineering Job',
+    description:
+      stripHtml(job.description) ||
+      `Civil engineering opportunity at ${employer}.`,
+    url: canonical,
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: employer,
+    },
+  };
+
+  const datePosted =
+    job.date_posted ||
+    job.published_at ||
+    job.posted_at ||
+    job.created_at;
+
+  if (datePosted) schema.datePosted = datePosted;
+
+  const validThrough =
+    job.valid_through ||
+    job.expires_at ||
+    job.deadline;
+
+  if (validThrough) schema.validThrough = validThrough;
+
+  if (job.company_url) {
+    schema.hiringOrganization.sameAs = job.company_url;
+  }
+
+  if (locationText) {
+    schema.jobLocation = {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: '',
+        addressLocality: job.city || job.district || '',
+        addressRegion: job.state || '',
+        addressCountry: job.country || 'IN',
+      },
+    };
+  }
+
+  const employmentTypes = asArray(job.employment_types);
+  if (employmentTypes.length === 1) {
+    schema.employmentType = employmentTypes[0];
+  } else if (job.employment_type) {
+    schema.employmentType = job.employment_type;
+  }
+
+  if (job.salary_min || job.salary_max) {
+    schema.baseSalary = {
+      '@type': 'MonetaryAmount',
+      currency: job.salary_currency || 'INR',
+      value: {
+        '@type': 'QuantitativeValue',
+        ...(job.salary_min != null ? { minValue: job.salary_min } : {}),
+        ...(job.salary_max != null ? { maxValue: job.salary_max } : {}),
+        unitText: 'MONTH',
+      },
+    };
+  }
+
+  if (job.application_url) {
+    schema.directApply = true;
+  }
+
+  const qualifications = asArray(job.qualifications);
+  if (qualifications.length) {
+    schema.qualifications = qualifications.join(', ');
+  }
+
+  return schema;
+}
+
+function jobSlug(job) {
+  if (job.slug) return String(job.slug);
+
+  const role = String(job.role || 'job')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `${role || 'job'}-${job.id}`;
+}
+
+async function renderJobPage(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).send('Method not allowed');
+  }
+
+  if (!SUPA || !KEY) {
+    return res.status(500).send('Server configuration is missing');
+  }
+
+  const slug = String(req.query?.slug || '').trim();
+
+  if (!slug) {
+    return res.status(400).send('Missing job slug');
+  }
+
+  try {
+    let job = await getJobBySlug(slug);
+
+    if (!job && /^[0-9a-f-]{36}$/i.test(slug)) {
+      job = await getJobById(slug);
+    }
+
+    if (!job) {
+      const tail = slug.split('-').pop();
+      if (tail && tail !== slug && /^[0-9a-f-]{36}$/i.test(tail)) {
+        job = await getJobById(tail);
+      }
+    }
+
+    if (!job || !isPubliclyVisible(job)) {
+      res.setHeader('X-Robots-Tag', 'noindex, follow');
+      return res.status(404).send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Job Not Found | CivilCareer</title>
+</head>
+<body>
+<main>
+<h1>Job not found</h1>
+<p>This CivilCareer opportunity may have been removed or the link may be incorrect.</p>
+<p><a href="${SITE_URL}/private-jobs">Browse Civil Engineering Jobs</a></p>
+</main>
+</body>
+</html>`);
+    }
+
+    const actualSlug = jobSlug(job);
+    const canonical = `${SITE_URL}/jobs/${encodeURIComponent(actualSlug)}`;
+
+    const role = job.role || 'Civil Engineering Job';
+    const company = job.company || job.recruitment_authority || 'Employer';
+
+    const location =
+      job.location_display ||
+      [job.city, job.district, job.state, job.country]
+        .filter(Boolean)
+        .join(', ') ||
+      job.location ||
+      '';
+
+    const title = `${role} at ${company} | CivilCareer`;
+    const expired = isExpired(job);
+    const robotsDirective = expired ? 'noindex,follow' : 'index,follow';
+
+    const description = truncate(
+      job.description ||
+      `${role} opportunity at ${company}${location ? ` in ${location}` : ''}. Find civil engineering career opportunities on CivilCareer.`
+    );
+
+    const postingSchema = buildJobPosting(job, canonical);
+
+    const qualifications = asArray(job.qualifications);
+    const employmentTypes = asArray(job.employment_types);
+    const skills = asArray(job.skills);
+
+    const responsibilities = stripHtml(job.responsibilities);
+
+    const salary =
+      job.salary ||
+      (
+        job.salary_min != null || job.salary_max != null
+          ? `${job.salary_min ?? ''}${job.salary_min != null && job.salary_max != null ? ' - ' : ''}${job.salary_max ?? ''} ${job.salary_currency || 'INR'}`
+          : ''
+      );
+
+    const postedDate =
+      job.date_posted ||
+      job.published_at ||
+      job.posted_at ||
+      job.created_at;
+
+    const deadline =
+      job.valid_through ||
+      job.expires_at ||
+      job.deadline;
+
+    const applyUrl =
+      job.application_url ||
+      job.source_url ||
+      '';
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
+    res.setHeader('X-Robots-Tag', robotsDirective);
+    if (postedDate) {
+      res.setHeader('Last-Modified', new Date(postedDate).toUTCString());
+    }
+
+    return res.status(200).send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>${escapeHtml(title)}</title>
+<meta name="description" content="${escapeHtml(description)}">
+<meta name="robots" content="${robotsDirective}">
+<link rel="canonical" href="${escapeHtml(canonical)}">
+
+<link rel="stylesheet" href="/styles.css">
+
+<meta property="og:site_name" content="CivilCareer">
+<meta property="og:title" content="${escapeHtml(title)}">
+<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${escapeHtml(canonical)}">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${escapeHtml(title)}">
+<meta name="twitter:description" content="${escapeHtml(description)}">
+
+<script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
+<script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {'@type':'ListItem','position':1,'name':'Home','item':SITE_URL},
+    {'@type':'ListItem','position':2,'name':'Civil Engineering Jobs','item':`${SITE_URL}/private-jobs`},
+    {'@type':'ListItem','position':3,'name':role,'item':canonical}
+  ]
+})}</script>
+</head>
+<body>...`);
+  } catch (error) {
+    console.error('job-page error:', error);
+    return res.status(500).send('Unable to load this job right now.');
+  }
+}
 
 function supa(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
     ...opts,
     headers: {
-      apikey: KEY, Authorization: `Bearer ${KEY}`,
+      apikey: KEY,
+      Authorization: `Bearer ${KEY}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation', ...opts.headers,
+      Prefer: 'return=representation',
+      ...(opts.headers || {}),
     },
   });
 }
 
+function getKey(req) {
+  return req.headers['x-owner-key'] || '';
+}
+
+function isAdmin(req) {
+  return getKey(req) === process.env.OWNER_KEY;
+}
+
+function cleanDates(obj) {
+  const dateFields = [
+    'application_start','deadline','posted_at','published_at',
+    'expires_at','last_verified','last_verified_at','updated_at','created_at',
+  ];
+  for (const field of dateFields) {
+    if (obj[field] === '') obj[field] = null;
+  }
+  return obj;
+}
+
+function cleanArrays(obj) {
+  const arrayFields = [
+    'skills','qualifications','employment_types',
+    'experience_ranges','application_emails','locations',
+  ];
+  for (const field of arrayFields) {
+    if (obj[field] === '') obj[field] = [];
+    if (typeof obj[field] === 'string') {
+      try {
+        const parsed = JSON.parse(obj[field]);
+        if (Array.isArray(parsed)) obj[field] = parsed;
+      } catch (e) {}
+    }
+  }
+  return obj;
+}
+
+function makeSlug(role, company, id) {
+  const base = `${role || 'job'}-${company || 'company'}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+  return `${base || 'job'}-${id || Date.now()}`;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-session-id');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const sessionId = req.headers['x-session-id'];
-  if (!sessionId) return res.status(400).json({ error: 'Missing session ID' });
-
-  const url = new URL(req.url, `https://${req.headers.host}`);
-  const type = url.searchParams.get('type') || 'profile';
-  let body = req.body || {};
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
-
-  // ── PROFILE ────────────────────────────────────────────────────────
-  if (type === 'profile') {
-    if (req.method === 'GET') {
-      const [pr, pf] = await Promise.all([
-        supa(`user_profiles?session_id=eq.${encodeURIComponent(sessionId)}&limit=1`),
-        supa(`job_preferences?session_id=eq.${encodeURIComponent(sessionId)}&limit=1`)
-      ]);
-      return res.status(200).json({
-        profile: pr.ok ? (await pr.json())[0] || null : null,
-        preferences: pf.ok ? (await pf.json())[0] || null : null
-      });
+  if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
+    if (!process.env.OWNER_KEY) {
+      return res.status(503).json({ ok: false, error: 'Admin authentication is not configured on this deployment' });
     }
-    if (req.method === 'PUT' || req.method === 'POST') {
-      const { profile = {}, preferences = {} } = body;
-      const now = new Date().toISOString();
-      const pr = await supa('user_profiles', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ ...profile, session_id: sessionId, updated_at: now })
-      });
-      const pf = await supa('job_preferences', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ ...preferences, session_id: sessionId, updated_at: now })
-      });
-      if (!pr.ok || !pf.ok) {
-        const e = !pr.ok ? await pr.text() : await pf.text();
-        return res.status(500).json({ error: e });
+    if (!isAdmin(req)) {
+      return res.status(401).json({ ok: false, error: 'Invalid owner key' });
+    }
+    return res.status(200).json({ ok: true, authenticated: true });
+  }
+
+  if (!SUPA || !KEY) {
+    return res.status(500).json({ error: 'Supabase server configuration is missing' });
+  }
+
+  if (req.method === 'GET') {
+    if (String(req.query?.discovery || '') === 'cron' && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) {
+      try {
+        const result = await runPublicDiscovery({ q: 'civil engineering jobs India', location: 'India', type: 'all' });
+        return res.status(200).json({ ok: true, ...result });
+      } catch (err) {
+        return res.status(502).json({ ok: false, error: 'Scheduled discovery failed', details: err.message });
       }
-      const sp = await pr.json(); const sf = await pf.json();
-      return res.status(200).json({ success: true,
-        profile: Array.isArray(sp) ? sp[0] : sp,
-        preferences: Array.isArray(sf) ? sf[0] : sf });
+    }
+    if (String(req.query?.render || '') === 'html') return renderJobPage(req, res);
+
+    const slug = typeof req.query?.slug === 'string' ? req.query.slug.trim() : '';
+    const id = typeof req.query?.id === 'string' ? req.query.id.trim() : '';
+
+    let query;
+    if (slug) {
+      query = `jobs?slug=eq.${encodeURIComponent(slug)}` + (isAdmin(req) ? '' : '&published=eq.true') + '&limit=1';
+    } else if (id) {
+      query = `jobs?id=eq.${encodeURIComponent(id)}` + (isAdmin(req) ? '' : '&published=eq.true') + '&limit=1';
+    } else {
+      query = isAdmin(req) ? 'jobs?order=created_at.desc' : 'jobs?published=eq.true&order=created_at.desc';
+    }
+
+    try {
+      const r = await supa(query);
+      if (!r.ok) {
+        const detail = await r.text();
+        return res.status(500).json({ error: 'Failed to load jobs', details: detail });
+      }
+      let jobs = await r.json();
+      if (!isAdmin(req) && Array.isArray(jobs)) {
+        jobs = jobs.filter(job => isPubliclyVisible(job));
+      }
+      if (slug || id) return res.status(200).json({ job: jobs[0] || null });
+      return res.status(200).json({ jobs });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to load jobs', details: err.message });
     }
   }
 
-  // ── JOB INTERACTIONS ───────────────────────────────────────────────
-  if (type === 'jobs') {
-    if (req.method === 'GET') {
-      const action = url.searchParams.get('action');
-      const q = action
-        ? `job_interactions?session_id=eq.${encodeURIComponent(sessionId)}&action=eq.${action}&order=created_at.desc`
-        : `job_interactions?session_id=eq.${encodeURIComponent(sessionId)}&order=created_at.desc`;
-      const r = await supa(q);
-      return res.status(200).json({ interactions: r.ok ? await r.json() : [] });
+  if (!isAdmin(req)) {
+    return res.status(401).json({ error: 'Invalid owner key' });
+  }
+
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); }
+    catch (e) { return res.status(400).json({ error: 'Invalid JSON body' }); }
+  }
+
+  if (req.method === 'POST' && String(req.query?.discovery || '') === '1') {
+    try {
+      const result = await runPublicDiscovery({ q: body.q, location: body.location, type: body.type });
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(502).json({ error: 'Discovery search failed', details: err.message, sourceStats: err.sourceStats || {} });
     }
-    if (req.method === 'POST') {
-      const { job_id, action, notes } = body;
-      if (!job_id || !action) return res.status(400).json({ error: 'Missing job_id or action' });
-      const r = await supa('job_interactions', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ session_id: sessionId, job_id, action, notes: notes||null,
-          created_at: new Date().toISOString() })
-      });
-      if (!r.ok) { const e = await r.text(); return res.status(500).json({ error: e }); }
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const { id, key, ...rest } = body;
+      cleanDates(rest);
+      cleanArrays(rest);
+
+      if (typeof rest.published !== 'boolean') rest.published = true;
+      if (!rest.status) rest.status = rest.published ? 'Active' : 'Pending Review';
+      if (!rest.created_at) rest.created_at = new Date().toISOString();
+      if (!rest.slug) rest.slug = makeSlug(rest.role, rest.company, Date.now());
+
+      const r = await supa('jobs', { method: 'POST', body: JSON.stringify(rest) });
+      if (!r.ok) {
+        const detail = await r.text();
+        return res.status(500).json({ error: 'Job could not be saved', details: detail });
+      }
       const data = await r.json();
-      return res.status(200).json({ success: true, interaction: Array.isArray(data) ? data[0] : data });
-    }
-    if (req.method === 'DELETE') {
-      const { job_id } = body;
-      if (!job_id) return res.status(400).json({ error: 'Missing job_id' });
-      const r = await supa(
-        `job_interactions?session_id=eq.${encodeURIComponent(sessionId)}&job_id=eq.${job_id}`,
-        { method: 'DELETE' }
-      );
-      if (!r.ok) return res.status(500).json({ error: 'Delete failed' });
-      return res.status(200).json({ success: true });
+      return res.status(201).json({ success: true, job: Array.isArray(data) ? data[0] : data });
+    } catch (err) {
+      return res.status(500).json({ error: 'Job could not be saved', details: err.message });
     }
   }
 
-  res.status(400).json({ error: 'Unknown type' });
+  if (req.method === 'PATCH') {
+    try {
+      const { id, key, ...rest } = body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      cleanDates(rest);
+      cleanArrays(rest);
+      const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(rest) });
+      if (!r.ok) {
+        const detail = await r.text();
+        return res.status(500).json({ error: 'Job could not be updated', details: detail });
+      }
+      const data = await r.json();
+      return res.status(200).json({ success: true, job: Array.isArray(data) ? data[0] : data });
+    } catch (err) {
+      return res.status(500).json({ error: 'Job could not be updated', details: err.message });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const { id } = body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!r.ok) {
+        const detail = await r.text();
+        return res.status(500).json({ error: 'Job could not be deleted', details: detail });
+      }
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: 'Job could not be deleted', details: err.message });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 };
