@@ -705,6 +705,10 @@
     {
       "path": "/api/jobs?discovery=cron",
       "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/exam-alerts",
+      "schedule": "30 0 * * 1"
     }
   ]
 }

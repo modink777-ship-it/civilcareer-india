@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agent-reach": {
+      "command": "agent-reach",
+      "args": ["serve", "--mcp"],
+      "description": "Gives Claude Code live web browsing: job sites, government portals, YouTube. Use during development to read real page data."
+    }
+  }
+}

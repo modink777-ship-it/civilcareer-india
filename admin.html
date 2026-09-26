@@ -487,6 +487,49 @@ Show expired
     <code>/api/agent-reach-ingest</code>. Everything arrives as <strong style="color:#fbbf24">Pending Review</strong> —
     Agent Reach never publishes directly. Verify the original source, edit if needed, then publish explicitly.
   </p>
+
+  <!-- BLOCK A — Exam Alerts Scanner -->
+  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
+    <h3 style="color:#c9973c">🔔 Exam Alerts Scanner</h3>
+    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Scrapes UPSC, SSC, RRB and Employment News for new civil exam notifications</p>
+    <p style="color:#6a8aaa;font-size:.76rem;margin-bottom:12px">Runs automatically every Monday · results go to Exams tab for review</p>
+    <div class="admin-actions" style="margin-bottom:0">
+      <button id="arExamScanBtn" class="btn-gold" onclick="arRunExamScan()">▶ Scan Now</button>
+    </div>
+    <div id="arExamScanStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
+    <div id="arExamScanResults" style="display:none;margin-top:10px"></div>
+  </div>
+
+  <!-- BLOCK B — YouTube Transcriber -->
+  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
+    <h3 style="color:#c9973c">🎬 YouTube Study Materials</h3>
+    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:12px">Paste a YouTube URL — transcript is extracted and saved as a draft</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      <input id="arYtUrl" type="url" placeholder="https://youtube.com/watch?v=…"
+        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
+      <input id="arYtTitle" type="text" placeholder="Custom title (optional)"
+        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
+      <select id="arYtCategory"
+        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
+        <option value="">Auto-detect category</option>
+        <option value="GATE / ESE Prep">GATE / ESE Prep</option>
+        <option value="SSC JE / RRB JE">SSC JE / RRB JE</option>
+        <option value="Structural Engineering">Structural Engineering</option>
+        <option value="Transportation">Transportation</option>
+        <option value="Geotechnical">Geotechnical</option>
+        <option value="Fluid Mechanics">Fluid Mechanics</option>
+        <option value="Surveying">Surveying</option>
+        <option value="Quantity Surveying">Quantity Surveying</option>
+        <option value="Civil Engineering">Civil Engineering</option>
+      </select>
+    </div>
+    <div class="admin-actions" style="margin-bottom:0">
+      <button id="arYtBtn" class="btn-gold" onclick="arRunYtTranscribe()">▶ Transcribe</button>
+    </div>
+    <div id="arYtStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
+    <div id="arYtPreview" style="display:none;margin-top:10px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;font-size:.82rem;color:#94a3b8"></div>
+  </div>
+
   <div class="admin-actions">
     <button class="btn-ghost" onclick="loadAgentReach()">Refresh</button>
     <label class="check">
@@ -3234,6 +3277,118 @@ document
   });
 
 /* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
+
+/* ── Exam Alerts Scanner ─────────────────────────────────────────── */
+
+async function arRunExamScan() {
+  const btn = $('arExamScanBtn');
+  const status = $('arExamScanStatus');
+  const results = $('arExamScanResults');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
+  status.style.display = 'block';
+  status.textContent = 'Connecting to government portals…';
+  results.style.display = 'none';
+  results.innerHTML = '';
+
+  try {
+    const data = await api('/api/exam-alerts', { key: adminKey });
+
+    status.textContent = `✅ Done in ${data.durationMs ? (data.durationMs / 1000).toFixed(1) + 's' : '—'} · ${data.totalNew} new exam${data.totalNew !== 1 ? 's' : ''} added`;
+
+    if (data.sources && data.sources.length) {
+      results.style.display = 'block';
+      results.innerHTML = data.sources.map(s =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.8rem">
+          <span style="color:#94a3b8">${esc(s.name)}</span>
+          <span style="color:${s.error ? '#fca5a5' : '#6ee7b7'}">
+            ${s.error ? '⚠ ' + esc(s.error) : `${s.found} found · ${s.saved} saved`}
+          </span>
+        </div>`
+      ).join('');
+    }
+
+    if (data.totalNew > 0) {
+      // Refresh exams array so Exams tab shows new drafts
+      try {
+        exams = (await api('/api/exams', { key: adminKey })).exams || [];
+        loadAdminExams();
+      } catch (_) { /* non-fatal */ }
+    }
+
+    toast(`Exam scan complete — ${data.totalNew} new draft${data.totalNew !== 1 ? 's' : ''} added.`);
+  } catch (err) {
+    status.textContent = '❌ ' + (err.message || 'Scan failed');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Scan Now';
+  }
+}
+
+/* ── YouTube Transcriber ─────────────────────────────────────────── */
+
+async function arRunYtTranscribe() {
+  const urlInput  = $('arYtUrl');
+  const titleInput = $('arYtTitle');
+  const catSelect  = $('arYtCategory');
+  const btn        = $('arYtBtn');
+  const status     = $('arYtStatus');
+  const preview    = $('arYtPreview');
+
+  const url = (urlInput.value || '').trim();
+  if (!url) {
+    status.style.display = 'block';
+    status.textContent = '⚠ Please enter a YouTube URL first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Transcribing…';
+  status.style.display = 'block';
+  status.textContent = 'Fetching captions from YouTube…';
+  preview.style.display = 'none';
+  preview.innerHTML = '';
+
+  try {
+    const body = { url };
+    if (titleInput.value.trim()) body.title = titleInput.value.trim();
+    if (catSelect.value) body.category = catSelect.value;
+
+    const data = await api('/api/youtube-materials', {
+      method: 'POST',
+      key: adminKey,
+      body: JSON.stringify(body),
+    });
+
+    const s = data.stats || {};
+    status.textContent = '✅ Transcript saved as draft';
+    preview.style.display = 'block';
+    preview.innerHTML =
+      `<strong style="color:#e2e8f0">${esc(s.title)}</strong><br>` +
+      `<span style="color:#64748b">Channel: </span><span>${esc(s.channel)}</span>&ensp;` +
+      `<span style="color:#64748b">Duration: </span><span>${esc(s.duration)}</span>&ensp;` +
+      `<span style="color:#64748b">Words: </span><span>${(s.transcriptWords || 0).toLocaleString()}</span>`;
+
+    // Clear inputs
+    urlInput.value = '';
+    titleInput.value = '';
+    catSelect.value = '';
+
+    // Refresh materials tab
+    try {
+      materials = (await api('/api/materials', { key: adminKey })).materials || [];
+      loadAdminMaterials();
+    } catch (_) { /* non-fatal */ }
+
+    toast('Transcript saved — check Materials tab for draft.');
+  } catch (err) {
+    status.textContent = '❌ ' + (err.message || 'Transcription failed');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Transcribe';
+  }
+}
 </script>
 
 </body>
