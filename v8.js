@@ -240,6 +240,9 @@ function ensurePager(id,afterId){
   try{
     const data=await fetchExplorerJobs('private',page); ccPrivatePage=page;
     const list=data.jobs||[]; window.__ccPrivateJobs=list;
+    /* Re-render the filter bar now that real data exists — the first render
+       ran before any jobs were loaded, so city/state options would be empty. */
+    renderPrivateFilterBar();
     list.forEach(j=>{if(!j.id)j.id=String(j.source_url||j.role||'job')});
     const meta=data.meta||{page,total:list.length,pages:1,has_next:false};
     const total=Number(meta.total||list.length);
@@ -261,6 +264,7 @@ async function renderGovernment(page=1){
   try{
     const data=await fetchExplorerJobs('government',page); ccGovernmentPage=page;
     const list=data.jobs||[]; window.__ccGovernmentJobs=list;
+    renderGovFilterBar();
     list.forEach(j=>{if(!j.id)j.id=String(j.source_url||j.role||'job')});
     const meta=data.meta||{page,total:list.length,pages:1,has_next:false};
     const total=Number(meta.total||list.length);
