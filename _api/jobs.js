@@ -106,12 +106,11 @@ function isExpired(job) {
    quality, ingestion and duplicate-group metadata never reach candidates,
    and private application emails are withheld when flagged private. */
 const PUBLIC_JOB_FIELDS = [
-  'id','role','company','company_name','company_url','location','location_display','locations',
+  'id','role','company','company_url','location','location_display','locations',
   'city','district','state','country','description','responsibilities','skills','qualifications',
   'qualification','qualification_notes','experience_min','experience_max','experience_level',
   'experience_ranges','employment_type','employment_types','salary','salary_min','salary_max',
-  'salary_currency','sector','project_type','specialization','category','date_posted','posted_date',
-  'posted_at','published_at','valid_through','expires_at','deadline','application_url','apply_url',
+  'salary_currency','sector','date_posted','posted_at','published_at','expires_at','deadline','application_url','apply_url',
   'source_url','source','verification_status','last_verified','last_verified_at','employer_verification_status','employer_profile_id','recruitment_authority',
   'vacancy_count','age_limit','application_fee','application_start','slug','status','created_at','updated_at'
 ];

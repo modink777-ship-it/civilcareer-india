@@ -17,7 +17,7 @@ function supa(path, opts={}) {
   });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     const r = await supa('exams?published=eq.true&order=created_at.desc');
     if (!r.ok) return res.status(500).json({ error: 'Failed to load exams' });
@@ -63,3 +63,5 @@ export default async function handler(req, res) {
 
   res.status(405).json({ error: 'Method not allowed' });
 }
+
+module.exports = handler;
