@@ -6,7 +6,6 @@ const INDIA_STATES=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhatt
 
 const INDIA_CITIES=['Bengaluru','Mumbai','Delhi','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad','Surat','Jaipur','Lucknow','Kanpur','Nagpur','Visakhapatnam','Indore','Thane','Bhopal','Vadodara','Ludhiana','Agra','Nashik','Faridabad','Meerut','Rajkot','Varanasi','Srinagar','Aurangabad','Dhanbad','Amritsar','Prayagraj','Ranchi','Coimbatore','Jodhpur','Madurai','Raipur','Kochi','Chandigarh','Guwahati','Bhubaneswar','Thiruvananthapuram','Gurugram','Noida','Ghaziabad','Navi Mumbai','Patna','Mysuru','Mangaluru','Hubballi','Belagavi','Vijayapura','Davanagere','Ballari','Shivamogga','Tumakuru','Raichur','Kalaburagi'];
 
-const GULF_CITIES=['Dubai','Abu Dhabi','Sharjah','Doha','Riyadh','Jeddah','Muscat','Kuwait City','Manama','Bahrain'];
 
 const INTL_CITIES=['Singapore','Kuala Lumpur','London','New York','Toronto','Sydney','Melbourne'];
 
@@ -147,7 +146,7 @@ function navigate(next,push=true){route=next in routePath?next:'home';$$('.page'
 /* Career Paths page (FIX-2026-09-24): the /career-paths section markup lives in
    index.html; navigate() calls this hook so the route activates like any page. */
 function renderCareerMapPage(){}
-const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies, Indian MNCs and global engineering firms.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, government civil recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
+const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies and Indian MNCs.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, government civil recruitment, exams and resources.'],admin:['CivilCareer Admin','Protected CivilCareer administration.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
 function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
 function companyInitials(name){
   const words=String(name||'Company').trim().split(/\s+/).filter(Boolean);
@@ -206,7 +205,13 @@ function jobCard(j,gov=false){
 function examCard(x){const closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date(),title=x.title_en,copy=x.overview||x.eligibility_en;const daysLeft=x.application_end&&!closed?Math.ceil((new Date(x.application_end+'T23:59:59')-new Date())/86400000):null;return `<article class="exam-card"><div class="card-top"><span class="pill ${closed?'closed':x.last_verified?'verified':''}">${closed?'Application Closed':x.status||'Update'}</span>${x.application_end?`<span class="verified-date">Deadline ${date(x.application_end)}</span>`:''}${daysLeft!==null?`<span class="countdown-badge ${daysLeft<=3?'urgent':''}">${daysLeft<=0?'Last day!':daysLeft+'d left'}</span>`:''}</div><h3>${esc(title)}</h3><div class="organization">${esc(x.authority||'Conducting authority')}${x.vacancy_count?` · ${esc(x.vacancy_count)} vacancies`:''}</div><p class="card-copy">${esc(short(copy||'Check the official notification for complete recruitment details.'))}</p><div class="card-actions"><button data-exam="${x.id}">View Complete Details</button>${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank" rel="noopener">Official PDF ↗</a>`:''}</div></article>`}
 function materialCard(m){const title=m.title_en;return `<article class="material-card"><div class="card-top"><span class="pill verified">${esc(m.access_type||'Free')}</span><span class="verified-date">${m.page_count?m.page_count+' pages':'Resource'}</span></div><h3>${esc(title)}</h3><div class="organization">${esc(m.category||m.exam_code||'Study resource')}</div><p class="card-copy">${esc(short(m.description_en||'Organized learning resource.'))}</p><div class="card-actions"><button data-material-id="${m.id}">Preview</button><a href="${esc(m.file_url)}" target="_blank" rel="noopener">Open Resource ↗</a></div></article>`}
 function bindCards(){
-  $$('[data-job]').forEach(b=>b.onclick=()=>openJob(jobs.find(x=>x.id===b.dataset.job)||window.__ccSearchJobs?.find(x=>x.id===b.dataset.job)||window.__ccAllJobs?.find(x=>x.id===b.dataset.job)));
+  const findJob=id=>jobs.find(x=>String(x.id)===String(id))
+    ||window.__ccSearchJobs?.find(x=>String(x.id)===String(id))
+    ||window.__ccAllJobs?.find(x=>String(x.id)===String(id))
+    ||window.__ccPrivateJobs?.find(x=>String(x.id)===String(id))
+    ||window.__ccGovernmentJobs?.find(x=>String(x.id)===String(id))
+    ||window.__ccRecommendations?.find(x=>String(x.id)===String(id));
+  $$('[data-job]').forEach(b=>b.onclick=()=>openJob(findJob(b.dataset.job)));
   $$('[data-exam]').forEach(b=>b.onclick=()=>openExam(exams.find(x=>x.id===b.dataset.exam)));
   $$('[data-material-id]').forEach(b=>b.onclick=()=>openMaterial(materials.find(x=>x.id===b.dataset.materialId)));
   $$('[data-save-job]').forEach(b=>b.onclick=()=>{
@@ -367,7 +372,7 @@ const CC_FORYOU_SKILLS=['AutoCAD','STAAD.Pro','ETABS','Revit','Civil 3D','Primav
    facet score stays below threshold (planning / QS / cost-control roles). */
 const FOR_YOU_ROLES_RE=/(quantity survey|\bqs\b|estimator|estimation|site engineer|planning|cost (engineer|consultant|controller)|project control|billing)/;
 const CC_FORYOU_STAGES=['Fresher','0–2 years','2–5 years','5–10 years','10+ years'];
-const CC_FORYOU_WORK=['Site','Office','Hybrid','Travel-heavy','Overseas Project'];
+const CC_FORYOU_WORK=['Site','Office','Hybrid','Travel-heavy'];
 const CC_FORYOU_ENV=['Construction Site','Design Office','Consultant','Contractor','PMC','EPC','Developer','Government Department'];
 
 function civilProfile(){try{return JSON.parse(localStorage.getItem('cc_civil_profile')||'{}')}catch{return{}}}
@@ -600,7 +605,7 @@ function openProfileSetup(){
       <label>Preferred location<input id="cpLocation" value="${esc(cp.location||prefs.preferred_locations||'')}" placeholder="Bengaluru, Karnataka, India"></label>
     </div>
     <div id="ptab-prefs" class="ptab-content" style="display:none">
-      <label>Preferred locations<input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Bengaluru, Hyderabad, Gulf"></label>
+      <label>Preferred locations<input id="pLocations" value="${esc(prefs.preferred_locations||'')}" placeholder="Bengaluru, Hyderabad, Chennai"></label>
       <label>Experience range (years)
         <div style="display:flex;gap:.5rem">
           <input id="pExpMin" type="number" value="${prefs.experience_min||''}" placeholder="Min" style="flex:1">

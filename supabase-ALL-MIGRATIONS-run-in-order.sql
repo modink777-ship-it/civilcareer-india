@@ -212,3 +212,22 @@ select 'agent-reach jobs.ingestion_source' as grp, case when exists (select 1 fr
 select 'agent-reach jobs.external_id' as grp, case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='jobs' and column_name='external_id') then 'exists' else 'MISSING' end as status;
 select 'v14 jobs.quality_flags' as grp, case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='jobs' and column_name='quality_flags') then 'exists' else 'MISSING' end as status;
 select 'v13 jobs.employer_verification_status' as grp, case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='jobs' and column_name='employer_verification_status') then 'exists' else 'MISSING' end as status;
+
+-- ═══════════ V15 PRODUCTION HARDENING ═══════════
+-- Additive only: no deletes and no published-content rewrites.
+alter table public.jobs add column if not exists expires_at timestamptz;
+update public.jobs
+set expires_at = (deadline::timestamptz + interval '1 day')
+where expires_at is null
+  and deadline is not null
+  and sector in ('Government','Public Sector');
+create index if not exists jobs_public_sector_lifecycle_idx on public.jobs (sector, published, expires_at, created_at desc);
+create index if not exists jobs_public_location_idx on public.jobs (state, city);
+create index if not exists jobs_review_ingestion_idx on public.jobs (review_state, ingestion_source, created_at desc);
+create index if not exists candidate_profiles_user_idx on public.candidate_profiles (user_id);
+create index if not exists candidate_saved_jobs_user_idx on public.candidate_saved_jobs (user_id, saved_at desc);
+create index if not exists candidate_job_events_user_idx on public.candidate_job_events (user_id, created_at desc);
+create index if not exists candidate_job_applications_user_idx on public.candidate_job_applications (user_id, updated_at desc);
+create index if not exists job_alerts_user_idx on public.job_alerts (user_id, active, frequency);
+create index if not exists exams_review_state_idx on public.exams (review_state, created_at desc);
+create index if not exists materials_review_state_idx on public.materials (review_state, created_at desc);
