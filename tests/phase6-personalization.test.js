@@ -1,6 +1,6 @@
 const fs = require('fs');
 const assert = require('assert');
-const account = fs.readFileSync('api/account.js','utf8');
+const account = fs.readFileSync('_api/account.js','utf8');
 const app = fs.readFileSync('app.js','utf8');
 assert(account.includes('recommendations=[]'), 'account API should build recommendations');
 assert(account.includes('candidate_profiles?user_id='), 'recommendations must use candidate profile');

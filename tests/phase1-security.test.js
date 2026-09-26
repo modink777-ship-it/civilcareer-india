@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const jobs = require('../api/jobs');
+const jobs = require('../_api/jobs');
 const security = require('../lib/security');
 const { publicJob } = jobs._internal;
 

@@ -12,14 +12,14 @@ test('launch preflight passes', () => {
 });
 
 test('health endpoint never exposes secret values', () => {
-  const code = fs.readFileSync(path.join(root, 'api/health.js'), 'utf8');
+  const code = fs.readFileSync(path.join(root, '_api/health.js'), 'utf8');
   assert.ok(code.includes('checks'));
   assert.ok(!code.includes('SUPABASE_SERVICE_ROLE_KEY: process.env'));
   assert.ok(!code.includes('OWNER_KEY: process.env'));
 });
 
 test('subscription endpoint validates input and does not leak upstream errors', () => {
-  const code = fs.readFileSync(path.join(root, 'api/subscribe.js'), 'utf8');
+  const code = fs.readFileSync(path.join(root, '_api/subscribe.js'), 'utf8');
   assert.match(code, /valid email address/i);
   assert.match(code, /Invalid alert preference/i);
   assert.match(code, /Unable to save your subscription right now/i);
@@ -27,7 +27,7 @@ test('subscription endpoint validates input and does not leak upstream errors', 
 });
 
 test('auth configuration is not cached', () => {
-  const code = fs.readFileSync(path.join(root, 'api/auth-config.js'), 'utf8');
+  const code = fs.readFileSync(path.join(root, '_api/auth-config.js'), 'utf8');
   assert.match(code, /Cache-Control/);
   assert.match(code, /no-store/);
 });

@@ -1,6 +1,6 @@
 const assert=require('assert');
 const fs=require('fs');
-const alerts=fs.readFileSync('api/alerts.js','utf8');
+const alerts=fs.readFileSync('_api/alerts.js','utf8');
 const sql=fs.readFileSync('supabase-v12-alerts-retention.sql','utf8');
 assert(alerts.includes("POST")&&alerts.includes('job_alert_deliveries'),'alerts API exists');
 assert(alerts.includes("['all','private','government']"),'alert types bounded');

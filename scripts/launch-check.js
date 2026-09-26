@@ -25,7 +25,7 @@ if (!Array.isArray(vercel.headers) || !vercel.headers.length) fail('vercel.json 
 if (!Array.isArray(vercel.rewrites) || !vercel.rewrites.some((r) => r.source === '/sitemap.xml')) fail('sitemap rewrite is missing');
 if (!Array.isArray(vercel.crons) || !vercel.crons.some((c) => c.path === '/api/jobs?discovery=cron')) warn('discovery cron is not declared in vercel.json');
 
-const requiredFiles = ['api/jobs.js', 'api/account.js', 'api/health.js', 'api/sitemap.js', 'lib/security.js', 'service-worker.js'];
+const requiredFiles = ['api/[[...path]].js', '_api/jobs.js', '_api/account.js', '_api/health.js', '_api/sitemap.js', 'lib/security.js', 'service-worker.js'];
 for (const file of requiredFiles) if (!fs.existsSync(path.join(root, file))) fail(`required launch file missing: ${file}`);
 
 const apiDir = path.join(root, 'api');
@@ -38,6 +38,7 @@ function walk(dir) {
   }
 }
 walk(apiDir);
+walk(path.join(root, '_api'));
 walk(path.join(root, 'lib'));
 walk(path.join(root, 'scripts'));
 walk(path.join(root, 'tests'));

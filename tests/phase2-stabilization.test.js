@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const jobs = require('../api/jobs.js')._internal;
+const jobs = require('../_api/jobs.js')._internal;
 
 test('job list query is paginated and bounded', () => {
   const q = jobs.buildJobListQuery({ page: 3, limit: 100, sector: 'Private', state: 'Karnataka', sort: 'new' });

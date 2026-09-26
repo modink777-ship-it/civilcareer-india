@@ -1,5 +1,5 @@
 const assert = require('assert');
-const jobs = require('../api/jobs');
+const jobs = require('../_api/jobs');
 const discovery = require('../lib/discovery-core');
 
 assert.strictEqual(jobs._internal.safeSourceUrl('https://example.com/jobs/1'), true);

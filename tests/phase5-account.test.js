@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.join(__dirname,'..');
 const account=fs.readFileSync(path.join(root,'account.js'),'utf8');
-const api=fs.readFileSync(path.join(root,'api/account.js'),'utf8');
+const api=fs.readFileSync(path.join(root,'_api/account.js'),'utf8');
 const sql=fs.readFileSync(path.join(root,'supabase-v11-account-layer.sql'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 assert(account.includes('/api/auth-config')&&account.includes('/api/account'),'browser account layer must use server endpoints');

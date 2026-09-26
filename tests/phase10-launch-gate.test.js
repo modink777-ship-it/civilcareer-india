@@ -7,8 +7,8 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const app = read('app.js');
 const v8 = read('v8.js');
-const jobsApi = read('api/jobs.js');
-const health = read('api/health.js');
+const jobsApi = read('_api/jobs.js');
+const health = read('_api/health.js');
 const robots = read('robots.txt');
 const sw = read('service-worker.js');
 
