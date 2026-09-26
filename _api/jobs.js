@@ -18,7 +18,7 @@ const SITE_URL = (
 ).replace(/\/+$/, '');
 
 const { runConfiguredSources } = require('../lib/discovery-sources');
-const { allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
+const { allowPublicCors, allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
 const { runCompanyCareerSources, COMPANIES: CAREER_COMPANIES } = require('../lib/company-careers');
 
 
@@ -1633,11 +1633,21 @@ module.exports = async function handler(req, res) {
     }
     return originalEnd(...args);
   };
-  if (!allowSameOrigin(req, res)) return;
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Public GET and OPTIONS use open CORS so any browser can access job data.
+  // Write methods (POST/PATCH/DELETE) still require the admin owner key below.
+  if (req.method === 'OPTIONS') {
+    allowPublicCors(req, res);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    return res.status(200).end();
+  }
+  if (req.method === 'GET') {
+    allowPublicCors(req, res);
+  } else {
+    // Write operations: enforce same-origin (blocks cross-site mutations)
+    if (!allowSameOrigin(req, res)) return;
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
+  }
 
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
     if (!process.env.OWNER_KEY) {
