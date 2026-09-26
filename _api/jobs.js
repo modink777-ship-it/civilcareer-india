@@ -246,8 +246,15 @@ function buildJobFilters(query, { admin = false } = {}) {
 
   const experience = String(query.experience || '').trim();
   if (experience) {
-    const match = experience.match(/(\d+(?:\.\d+)?)/);
-    if (match) filters.push(`experience_min=lte.${queryValue(match[1])}`);
+    /* “3+ years” keeps every job whose minimum requirement is ≤ 3 — and keeps
+       jobs with NO stated experience (null) so listings never vanish just for
+       missing data. Exact “Fresher” matches are kept too. */
+    if (/fresher/i.test(experience)) {
+      filters.push(`or=(experience_min=lte.1,experience_min.is.null,experience_level.ilike.${queryValue('*fresher*')})`);
+    } else {
+      const match = experience.match(/(\d+(?:\.\d+)?)/);
+      if (match) filters.push(`or=(experience_min=lte.${queryValue(match[1])},experience_min.is.null)`);
+    }
   }
 
   const postedDays = Number.parseInt(query.posted_days || '', 10);
