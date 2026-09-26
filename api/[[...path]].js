@@ -25,7 +25,9 @@ const handlers = {
   '/api/resource-submissions': () => require('../_api/resource-submissions'),
   '/api/sitemap': () => require('../_api/sitemap'),
   '/api/subscribe': () => require('../_api/subscribe'),
-  '/api/telegram': () => require('../_api/telegram'),
+  '/api/telegram':          () => require('../_api/telegram'),
+  '/api/exam-alerts':       () => require('../_api/exam-alerts'),
+  '/api/youtube-materials': () => require('../_api/youtube-materials'),
 };
 
 function sendJson(res, status, obj) {
