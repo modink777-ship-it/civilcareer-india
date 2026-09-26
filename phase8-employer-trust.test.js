@@ -1,0 +1,15 @@
+const assert=require('assert');
+const fs=require('fs');
+const path=require('path');
+const root=path.join(__dirname,'..');
+const api=fs.readFileSync(path.join(root,'_api','employers.js'),'utf8');
+const jobs=fs.readFileSync(path.join(root,'_api','jobs.js'),'utf8');
+const sql=fs.readFileSync(path.join(root,'supabase-v13-employer-trust.sql'),'utf8');
+assert(api.includes("status=eq.Verified"));
+assert(api.includes("x-owner-key"));
+assert(api.includes("official_url"));
+assert(jobs.includes("employer_verification_status"));
+assert(sql.includes('create table if not exists public.employer_profiles'));
+assert(sql.includes('employer_profile_id'));
+assert(sql.includes('alter table public.employer_submissions'));
+console.log('Phase 8 employer trust tests passed');
