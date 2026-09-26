@@ -1,217 +1,91 @@
 'use strict';
-
 const SUPA = process.env.SUPABASE_URL;
-const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const { requireOwner } = require('../lib/security');
 
 function db(path, opts = {}) {
-  return fetch(`${SUPA}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      apikey: KEY,
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(opts.headers || {}),
-    },
-  });
+  return fetch(`${SUPA}/rest/v1/${path}`, { ...opts, headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation', ...(opts.headers || {}) } });
+}
+function clean(v, n = 2000) { return String(v || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); }
+function videoId(url) { try { const u = new URL(url); const host = u.hostname.toLowerCase(); if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0]; if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'm.youtube.com') return u.searchParams.get('v') || u.pathname.match(/\/(?:shorts|embed)\/([^/?]+)/)?.[1] || ''; } catch {} return ''; }
+function category(title) { const t = String(title).toLowerCase(); if (/gate|ese/.test(t)) return 'GATE / ESE Prep'; if (/ssc\s*je|rrb\s*je/.test(t)) return 'SSC JE / RRB JE'; if (/structural|rcc/.test(t)) return 'Structural Engineering'; if (/highway|transport/.test(t)) return 'Transportation'; if (/geotechnical|soil/.test(t)) return 'Geotechnical'; if (/fluid|hydraulic/.test(t)) return 'Fluid Mechanics'; if (/survey/.test(t)) return 'Surveying'; if (/quantity|qs/.test(t)) return 'Quantity Surveying'; return 'Civil Engineering'; }
+function transcriptFromEvents(events) { const out=[]; for (const e of Array.isArray(events)?events:[]) { const segs=Array.isArray(e.segs)?e.segs:[]; const text=segs.map(s=>String(s.utf8||'')).join('').replace(/\s+/g,' ').trim(); if(text)out.push(text); } return out.join(' ').replace(/\s+([,.!?])/g,'$1').trim(); }
+function transcriptFromXml(xml) { return [...String(xml||'').matchAll(/<text[^>]*>([\s\S]*?)<\/text>/gi)].map(m=>m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"')).join(' ').replace(/\s+/g,' ').trim(); }
+
+async function fetchCaptionTrack(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 CivilCareer' }, signal: AbortSignal.timeout(7000) });
+  if (!r.ok) throw Error(`Caption service returned HTTP ${r.status}`);
+  const text = await r.text();
+  try { const j = JSON.parse(text); const transcript = transcriptFromEvents(j.events || []); if (transcript) return transcript; } catch {}
+  const transcript = transcriptFromXml(text);
+  if (transcript) return transcript;
+  throw Error('The caption track was empty.');
 }
 
-function isAdmin(req) {
-  return req.headers['x-owner-key'] === process.env.OWNER_KEY;
-}
-
-// Extract YouTube video ID from a URL
-function extractVideoId(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
-    const v = u.searchParams.get('v');
-    if (v) return v;
-    const embed = u.pathname.match(/\/embed\/([^/?]+)/);
-    if (embed) return embed[1];
-  } catch (_) { /* fall through */ }
-  const re = /(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/;
-  const m = re.exec(url);
-  return m ? m[1] : null;
-}
-
-// Auto-detect category from title text
-function detectCategory(text) {
-  const lower = (text || '').toLowerCase();
-  if (/gate|ese/.test(lower)) return 'GATE / ESE Prep';
-  if (/ssc\s?je|rrb\s?je/.test(lower)) return 'SSC JE / RRB JE';
-  if (/structural|rcc|reinforced|concrete/.test(lower)) return 'Structural Engineering';
-  if (/highway|transport|traffic/.test(lower)) return 'Transportation';
-  if (/geotechnical|soil\s?mechanics|foundation/.test(lower)) return 'Geotechnical';
-  if (/fluid\s?mechanics|hydraulic|hydrology/.test(lower)) return 'Fluid Mechanics';
-  if (/survey|levelling|theodolite/.test(lower)) return 'Surveying';
-  if (/quantity|qs|bill\s?of\s?quantities|boq/.test(lower)) return 'Quantity Surveying';
-  return 'Civil Engineering';
-}
-
-// Convert seconds to a human-readable duration
-function formatDuration(seconds) {
-  const s = parseInt(seconds, 10) || 0;
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}h ${m}m ${sec}s`;
-  if (m > 0) return `${m}m ${sec}s`;
-  return `${sec}s`;
-}
-
-// Parse YouTube json3 caption format into plain-text paragraphs (~300 words each)
-function captionsToText(json3) {
-  const events = (json3.events || []).filter(e => e.segs && e.segs.length);
-  const words = events
-    .flatMap(e => e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')))
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Split into ~300-word paragraphs
-  const wordArr = words.split(' ');
-  const paragraphs = [];
-  for (let i = 0; i < wordArr.length; i += 300) {
-    paragraphs.push(wordArr.slice(i, i + 300).join(' '));
+async function fallbackTimedText(id, lang = 'en') {
+  const urls = [
+    `https://www.youtube.com/api/timedtext?v=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}&kind=asr&fmt=srv3`,
+    `https://www.youtube.com/api/timedtext?v=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}&fmt=srv3`,
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 CivilCareer' }, signal: AbortSignal.timeout(5000) });
+      if (!r.ok) continue;
+      const text = transcriptFromXml(await r.text());
+      if (text) return text;
+    } catch {}
   }
-  return paragraphs.join('\n\n');
+  return '';
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'POST only.' });
-  }
-
-  if (!isAdmin(req)) {
-    return res.status(401).json({ ok: false, error: 'Admin key required.' });
-  }
-
-  if (!SUPA || !KEY) {
-    return res.status(500).json({ ok: false, error: 'Supabase configuration missing.' });
-  }
-
-  const body = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
-  const { url, title: customTitle, category: customCategory } = body;
-
-  if (!url) {
-    return res.status(400).json({ ok: false, error: 'Request body must include a `url` field.' });
-  }
-
-  const videoId = extractVideoId(url);
-  if (!videoId) {
-    return res.status(400).json({ ok: false, error: 'Could not extract a YouTube video ID from the URL provided.' });
-  }
-
-  // Step 1: Fetch the YouTube watch page
-  let pageHtml;
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+  if (!requireOwner(req, res)) return;
+  if (!SUPA || !KEY) return res.status(503).json({ error: 'Supabase server configuration is missing.' });
+  let body = req.body || {};
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return res.status(400).json({ error: 'Invalid JSON body' }); } }
+  const id = videoId(body.url);
+  if (!id) return res.status(400).json({ error: 'Enter a valid YouTube watch, shorts, embed or youtu.be URL.' });
   try {
-    const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      signal: AbortSignal.timeout(12000),
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; CivilCareer-Bot/1.0)',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    });
-    if (!pageRes.ok) throw new Error(`YouTube page returned HTTP ${pageRes.status}`);
-    pageHtml = await pageRes.text();
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: `Failed to fetch YouTube page: ${err.message}` });
+    const page = await fetch(`https://www.youtube.com/watch?v=${encodeURIComponent(id)}`, { headers: { 'User-Agent': 'Mozilla/5.0 CivilCareer' }, signal: AbortSignal.timeout(7000) });
+    if (!page.ok) throw Error(`YouTube returned HTTP ${page.status}`);
+    const html = await page.text();
+    const m = html.match(/ytInitialPlayerResponse\s*=\s*({[\s\S]*?});/);
+    let player = {};
+    if (m) { try { player = JSON.parse(m[1]); } catch {} }
+    const details = player.videoDetails || {};
+    const tracks = player.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+    let transcript = '';
+    if (tracks.length) {
+      const track = tracks.find(x => x.languageCode === 'en') || tracks.find(x => /^en(-|$)/i.test(x.languageCode || '')) || tracks[0];
+      const capUrl = track.baseUrl + (track.baseUrl.includes('?') ? '&' : '?') + 'fmt=json3';
+      transcript = await fetchCaptionTrack(capUrl);
+    }
+    if (!transcript) transcript = await fallbackTimedText(id, 'en');
+    if (!transcript) throw Error('This video does not expose public captions or a YouTube timed-text track. CivilCareer cannot create a reliable transcript from this video yet; use a video with captions/auto-captions or paste a transcript for review.');
+
+    const title = clean(details.title || body.title || `YouTube Civil Engineering video ${id}`, 300);
+    const channel = clean(details.author || '', 180);
+    const duration = Number(details.lengthSeconds || 0);
+    const words = transcript.split(/\s+/).filter(Boolean).length;
+    const payload = {
+      title_en: clean(body.title || title, 300),
+      description_en: clean(`${channel ? channel + ' · ' : ''}${duration ? `${duration}s · ` : ''}${words.toLocaleString('en-IN')} words`, 600),
+      content: transcript,
+      source_url: `https://www.youtube.com/watch?v=${id}`,
+      category: clean(body.category || category(title), 80),
+      type: 'Video Transcript',
+      published: false,
+      review_state: 'Pending Review',
+      auto_discovered: true,
+    };
+    const r = await db('materials', { method: 'POST', body: JSON.stringify(payload) });
+    if (!r.ok) { const e = await r.text(); throw Error(e.slice(0, 600) || 'Could not save transcript.'); }
+    const data = await r.json();
+    return res.status(201).json({ ok: true, stats: { videoId: id, title, channel, duration, transcriptWords: words }, material: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    const message = e.message || 'Transcript extraction failed.';
+    return res.status(/cannot create a reliable transcript|public captions|timed-text track/i.test(message) ? 422 : 500).json({ error: message });
   }
-
-  // Step 2: Extract ytInitialPlayerResponse JSON
-  const playerMatch = /ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\});\s*(?:var |window\.|<\/script>)/.exec(pageHtml);
-  if (!playerMatch) {
-    return res.status(500).json({ ok: false, error: 'Could not find player data on the YouTube page. The video may be private or unavailable.' });
-  }
-
-  let playerData;
-  try {
-    playerData = JSON.parse(playerMatch[1]);
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: 'Could not parse YouTube player data.' });
-  }
-
-  // Step 3: Extract video metadata
-  const videoDetails = playerData.videoDetails || {};
-  const ytTitle    = videoDetails.title || 'Untitled Video';
-  const ytChannel  = videoDetails.author || 'Unknown Channel';
-  const ytDuration = videoDetails.lengthSeconds || '0';
-
-  // Step 4: Find caption tracks
-  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-  if (!captionTracks.length) {
-    return res.status(500).json({ ok: false, error: 'No captions available for this video. Only videos with closed captions (CC) can be transcribed.' });
-  }
-
-  // Prefer English, fall back to first available
-  const track = captionTracks.find(t => t.languageCode === 'en') || captionTracks[0];
-  const captionUrl = track.baseUrl;
-
-  // Step 5: Fetch caption JSON
-  let json3;
-  try {
-    const captionRes = await fetch(`${captionUrl}&fmt=json3`, {
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!captionRes.ok) throw new Error(`Caption fetch returned HTTP ${captionRes.status}`);
-    json3 = await captionRes.json();
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: `Failed to fetch captions: ${err.message}` });
-  }
-
-  // Step 6: Parse captions into plain text
-  const transcriptText = captionsToText(json3);
-  const wordCount = transcriptText.split(/\s+/).filter(Boolean).length;
-
-  if (wordCount < 10) {
-    return res.status(500).json({ ok: false, error: 'Transcript is empty or too short to be useful.' });
-  }
-
-  const finalTitle    = customTitle || ytTitle;
-  const finalCategory = customCategory || detectCategory(finalTitle + ' ' + ytTitle);
-  const durationFmt   = formatDuration(ytDuration);
-
-  const description = `Channel: ${ytChannel} · Duration: ${durationFmt} · ~${wordCount.toLocaleString()} words`;
-
-  const payload = {
-    title: finalTitle.slice(0, 255),
-    description: description.slice(0, 600),
-    content: transcriptText,
-    source_url: `https://www.youtube.com/watch?v=${videoId}`,
-    category: finalCategory,
-    type: 'Video Transcript',
-    published: false,
-    review_state: 'Pending Review',
-    auto_discovered: true,
-  };
-
-  const ins = await db('materials', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-
-  if (!ins.ok) {
-    const errText = await ins.text();
-    return res.status(500).json({ ok: false, error: 'Database insert failed.', details: errText });
-  }
-
-  const [material] = await ins.json();
-
-  return res.status(201).json({
-    ok: true,
-    stats: {
-      videoId,
-      title: finalTitle,
-      channel: ytChannel,
-      duration: durationFmt,
-      transcriptWords: wordCount,
-    },
-    material,
-  });
 };

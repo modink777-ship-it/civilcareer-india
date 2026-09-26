@@ -1,7 +1,8 @@
+const { requireOwner } = require('../lib/security'); // admin requests authenticate with x-owner-key
 function send(res,status,body,headers={}){Object.entries(headers).forEach(([k,v])=>res.setHeader(k,v));res.status(status).json(body)}
 function config(){const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw Error('Database is not configured.');return{url,key}}
 async function db(path,opts={}){const{url,key}=config();const r=await fetch(`${url}/rest/v1/${path}`,{...opts,headers:{apikey:key,authorization:`Bearer ${key}`,'content-type':'application/json',prefer:'return=representation',...(opts.headers||{})}});const t=await r.text();if(!r.ok)throw Error(t||'Database request failed.');return t?JSON.parse(t):[]}
-function own(req){return Boolean(process.env.OWNER_KEY)&&req.headers['x-owner-key']===process.env.OWNER_KEY}
+
 function clean(v,max=500){return String(v??'').trim().slice(0,max)}
 function validUrl(v){try{return ['http:','https:'].includes(new URL(v).protocol)}catch{return false}}
 function publicProfile(x){return{id:x.id,company_name:x.company_name,official_url:x.official_url,description:x.description||'',locations:x.locations||[],industries:x.industries||[],verified_at:x.verified_at||null}}
@@ -12,7 +13,7 @@ module.exports=async(req,res)=>{res.setHeader('Cache-Control',req.method==='GET'
    const rows=await db(`employer_profiles?select=id,company_name,official_url,description,locations,industries,verified_at,status&${filter}&status=eq.Verified&order=company_name.asc&limit=20`);
    return send(res,200,{employers:rows.map(publicProfile)});
  }
- if(!own(req))return send(res,401,{error:'Incorrect owner key.'});
+ if(!requireOwner(req,res))return;
  if(req.method==='POST'){
    const b=req.body||{};const name=clean(b.company_name,200),url=clean(b.official_url,1000);if(!name||!validUrl(url))return send(res,400,{error:'Company name and a valid official URL are required.'});
    const row={company_name:name,official_url:url,description:clean(b.description,3000),locations:Array.isArray(b.locations)?b.locations.map(x=>clean(x,120)).filter(Boolean).slice(0,30):[],industries:Array.isArray(b.industries)?b.industries.map(x=>clean(x,120)).filter(Boolean).slice(0,20):[],status:['Pending','Verified','Rejected'].includes(b.status)?b.status:'Pending',verified_at:b.status==='Verified'?new Date().toISOString():null,notes:clean(b.notes,2000)};

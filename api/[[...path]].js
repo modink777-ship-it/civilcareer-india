@@ -18,6 +18,8 @@ const handlers = {
   '/api/employer-submissions': () => require('../_api/employer-submissions'),
   '/api/employers': () => require('../_api/employers'),
   '/api/exams': () => require('../_api/exams'),
+  '/api/exam-alerts': () => require('../_api/exam-alerts'),
+  '/api/youtube-materials': () => require('../_api/youtube-materials'),
   '/api/extract': () => require('../_api/extract'),
   '/api/health': () => require('../_api/health'),
   '/api/materials': () => require('../_api/materials'),
@@ -25,9 +27,7 @@ const handlers = {
   '/api/resource-submissions': () => require('../_api/resource-submissions'),
   '/api/sitemap': () => require('../_api/sitemap'),
   '/api/subscribe': () => require('../_api/subscribe'),
-  '/api/telegram':          () => require('../_api/telegram'),
-  '/api/exam-alerts':       () => require('../_api/exam-alerts'),
-  '/api/youtube-materials': () => require('../_api/youtube-materials'),
+  '/api/telegram': () => require('../_api/telegram'),
 };
 
 function sendJson(res, status, obj) {

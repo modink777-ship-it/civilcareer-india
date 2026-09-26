@@ -18,7 +18,7 @@ const SITE_URL = (
 ).replace(/\/+$/, '');
 
 const { runConfiguredSources } = require('../lib/discovery-sources');
-const { allowPublicCors, allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
+const { allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
 const { runCompanyCareerSources, COMPANIES: CAREER_COMPANIES } = require('../lib/company-careers');
 
 
@@ -161,6 +161,8 @@ function buildJobFilters(query, { admin = false } = {}) {
   if (!admin) {
     filters.push('published=eq.true');
     filters.push(`or=(expires_at.gte.${queryValue(new Date().toISOString())},expires_at.is.null)`);
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    filters.push(`or=(deadline.gte.${queryValue(todayStart.toISOString())},deadline.is.null)`);
   }
 
   if (admin && query.status) filters.push(`status=eq.${queryValue(query.status)}`);
@@ -1633,21 +1635,11 @@ module.exports = async function handler(req, res) {
     }
     return originalEnd(...args);
   };
-  // Public GET and OPTIONS use open CORS so any browser can access job data.
-  // Write methods (POST/PATCH/DELETE) still require the admin owner key below.
-  if (req.method === 'OPTIONS') {
-    allowPublicCors(req, res);
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-    return res.status(200).end();
-  }
-  if (req.method === 'GET') {
-    allowPublicCors(req, res);
-  } else {
-    // Write operations: enforce same-origin (blocks cross-site mutations)
-    if (!allowSameOrigin(req, res)) return;
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
-  }
+  if (!allowSameOrigin(req, res, { publicGet: true })) return;
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
     if (!process.env.OWNER_KEY) {
@@ -1705,7 +1697,7 @@ module.exports = async function handler(req, res) {
         const key = slug ? `slug=eq.${encodeURIComponent(slug)}` : `id=eq.${encodeURIComponent(id)}`;
         const filters = admin
           ? [key]
-          : [key, 'published=eq.true', `or=(expires_at.gte.${queryValue(new Date().toISOString())},expires_at.is.null)`];
+          : [key, 'published=eq.true', `or=(expires_at.gte.${queryValue(new Date().toISOString())},expires_at.is.null)`, `or=(deadline.gte.${queryValue(new Date(new Date().setHours(0,0,0,0)).toISOString())},deadline.is.null)`];
         const r = await supa(`jobs?select=${encodeURIComponent(admin ? '*' : PUBLIC_JOB_FIELDS.join(','))}&${filters.join('&')}&limit=1`);
         if (!r.ok) {
           const detail = await r.text();

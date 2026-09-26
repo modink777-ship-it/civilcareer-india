@@ -14,7 +14,7 @@ const profile=profiles[0]||null;
 let recommendations=[];
 try {
   const now=new Date().toISOString();
-  const jr=await rest(`jobs?select=id,slug,role,company,company_name,location,location_display,state,city,description,skills,qualification,experience_level,sector,employment_type,published_at,created_at,application_url,source_url,deadline,expires_at,verification_status,last_verified&published=eq.true&or=(expires_at.gte.${encodeURIComponent(now)},expires_at.is.null)&order=created_at.desc&limit=120`);
+  const jr=await rest(`jobs?select=id,slug,role,company,company_name,location,location_display,state,city,description,skills,qualification,experience_level,sector,employment_type,published_at,created_at,application_url,source_url,deadline,expires_at,verification_status,last_verified&published=eq.true&or=(expires_at.gte.${encodeURIComponent(now)},expires_at.is.null)&or=(deadline.gte.${encodeURIComponent(new Date(new Date().setHours(0,0,0,0)).toISOString())},deadline.is.null)&order=created_at.desc&limit=120`);
   const savedSet=new Set(saved.map(x=>String(x.job_id)));
   const appliedSet=new Set(applications.map(x=>String(x.job_id)));
   const text=v=>String(v||'').toLowerCase();

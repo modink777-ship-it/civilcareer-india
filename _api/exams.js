@@ -33,7 +33,9 @@ async function handler(req, res) {
   if (req.method === 'POST') {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     delete body.id;
-    body.published = true;
+    delete body.key;
+    body.published = false;
+    if (!body.review_state || body.review_state === 'Published') body.review_state = 'Pending Review';
     const r = await supa('exams', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
