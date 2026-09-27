@@ -26,6 +26,8 @@ const handlers = {
   '/api/sitemap': () => require('../_api/sitemap'),
   '/api/subscribe': () => require('../_api/subscribe'),
   '/api/telegram':          () => require('../_api/telegram'),
+   '/api/govt-discovery':     () => require('../_api/govt-discovery'),
+'/api/agent-reach-ingest': () => require('../_api/agent-reach-ingest'),
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
 };
