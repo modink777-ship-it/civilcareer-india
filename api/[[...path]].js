@@ -25,7 +25,7 @@ const handlers = {
   '/api/resource-submissions': () => require('../_api/resource-submissions'),
   '/api/sitemap': () => require('../_api/sitemap'),
   '/api/subscribe': () => require('../_api/subscribe'),
-  '/api/telegram':          () => require('../_api/telegram'),
+  '/api/telegram':                () => require('../_api/telegram'),   '/api/telegram/status':         () => require('../_api/telegram'),   '/api/telegram/bulk':           () => require('../_api/telegram'),   '/api/telegram/broadcast-all':  () => require('../_api/telegram'),
    '/api/govt-discovery':     () => require('../_api/govt-discovery'),
 '/api/agent-reach-ingest': () => require('../_api/agent-reach-ingest'),
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
