@@ -226,6 +226,8 @@ function buildExamPayload(item) {
   let title = String(item.title || '').replace(/\s*[-–|]\s*(adda247|sarkari result|careers360|free job alert|jagran josh|testbook|oliveboard|sarkari exam|shiksha|collegedunia|pw ?live|study for civil|times of india|hindustan times|india today|ndtv|business standard|economic times|moneycontrol)\s*$/i, '').replace(/\s+/g, ' ').trim();
   if (title.length > 255) title = title.slice(0, 252) + "…";
   const desc = String(item.description || title).replace(/\s+/g, ' ').trim().slice(0, 600);
+  /* Jobs-only: articles (salary insights, trends, syllabus, analysis) never become drafts. */
+  if (!isJobPosting(title + " " + desc)) return null;
   /* Authority / code / official website from known government bodies. */
   let code = null, authority = null, site = null;
   for (const [re, c, a, s] of AUTH_SITES) { if (re.test(rawText)) { code = c; authority = a; site = s; break; } }
@@ -370,6 +372,44 @@ async function buildCivilExamPayload(item, portal) {
     built.official_website_url = om[1].slice(0, 500);
   }
   return built;
+}
+
+// ── Jobs-only gate + deep detail extraction ────────────────────────────────
+const ARTICLE_RE = /salary|insight|trends?|highest[- ]pay|career options?|top d+|best books|syllabus|cut ?off|answer key|exam (?:analysis|review)|preparation (?:tips|strategy)|rank predictor|results? (?:out|declared)/i;
+const RECRUIT_RE = /recruitment|notification|vacanc|apply online|online form|application (?:start|begin|fee)|last date|bharti|d+s*(?:posts?|vacanc|openings?)/i;
+
+function isJobPosting(text) {
+  const s = String(text || "");
+  return RECRUIT_RE.test(s) && !ARTICLE_RE.test(s);
+}
+
+function extractDetailFields(html, text) {
+  const out = {};
+  const grab = (labels, max) => {
+    for (const lab of labels) {
+      const i = text.toLowerCase().indexOf(lab.toLowerCase());
+      if (i === -1) continue;
+      const seg = text.slice(i + lab.length, i + lab.length + 600).replace(/^s*[:-]*s*/, "").trim();
+      if (seg.length > 3) return seg.slice(0, max || 350);
+    }
+    return null;
+  };
+  out.overview = grab(["Job Overview", "About the Recruitment", "Overview"], 700) || text.slice(0, 400);
+  out.eligibility_en = grab(["Eligibility", "Educational Qualification"], 600);
+  out.age_limit = grab(["Age Limit", "Age as on"], 200);
+  out.pay_scale = grab(["Pay Scale", "Salary", "Pay Matrix", "Remuneration"], 200);
+  out.application_fee = grab(["Application Fee", "Exam Fee"], 200);
+  out.selection_process = grab(["Selection Process", "Selection Procedure"], 400);
+  out.how_to_apply = grab(["How to Apply", "Application Procedure"], 500);
+  out.notification_pdf_url = null;
+  out.apply_url = null;
+  for (const hm of html.matchAll(/href="([^"]+)"/gi)) {
+    const u = hm[1];
+    const ul = u.toLowerCase();
+    if (!out.notification_pdf_url && ul.includes(".pdf")) out.notification_pdf_url = u.slice(0, 500);
+    if (!out.apply_url && (ul.includes("gov.in") || ul.includes("nic.in")) && !ul.includes(".pdf")) out.apply_url = u.slice(0, 500);
+  }
+  return out;
 }
 
 module.exports = async function handler(req, res) {
