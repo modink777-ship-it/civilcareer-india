@@ -163,14 +163,19 @@ const RSS_FEEDS = [
 /* Insert an exam row, self-healing against schema drift: when PostgREST
    reports a missing column (PGRST204), drop it and retry so a scan still
    saves everything the table can actually store. */
+const droppedExamColumns = new Set();
+
 async function insertExam(payload) {
+  /* Columns already proven missing are skipped up-front, so only the first
+     item ever pays the retry cost. */
   let row = { ...payload };
+  for (const col of droppedExamColumns) delete row[col];
   for (let attempt = 0; attempt < 5; attempt++) {
     const ins = await db('exams', { method: 'POST', body: JSON.stringify(row) });
     if (ins.ok) return { ok: true };
     const text = await ins.text();
     const m = /Could not find the '([^']+)' column/.exec(text);
-    if (ins.status === 400 && m && row[m[1]] !== undefined) { delete row[m[1]]; continue; }
+    if (ins.status === 400 && m && row[m[1]] !== undefined) { droppedExamColumns.add(m[1]); delete row[m[1]]; continue; }
     return { ok: false, status: ins.status, text };
   }
   return { ok: false, status: 0, text: 'too many schema retries' };
