@@ -703,12 +703,12 @@
   ],
   "crons": [
     {
-      "path": "/api/jobs?discovery=cron",
-      "schedule": "30 0 * * *"
+      "path": "/api/exam-alerts",
+      "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/exam-alerts",
-      "schedule": "30 0 * * 1"
+      "path": "/api/govt-discovery",
+      "schedule": "0 3 * * *"
     }
   ]
 }

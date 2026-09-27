@@ -147,19 +147,21 @@ function googleNewsUrl(q) {
 
 // ── Additional aggregator RSS feeds ─────────────────────────────────────────
 
-const RSS_FEEDS = [
-  {
-    name: 'Sarkari Naukri',
-    url: 'https://www.sarkarinaukri.com/rss/government-jobs.xml',
-  },
-  {
-    name: 'SarkariResult',
-    url: 'https://www.sarkariresult.com/feed/',
-  },
-  {
-    name: 'FreshersWorld Govt Jobs',
-    url: 'https://www.freshersworld.com/jobs/rss',
-  },
+/* RSS + HTML portals. Every source is optional; failures are reported,
+   never fatal. All items pass through buildExamPayload (strict civil
+   gate + enrichment + dedupe) before insertion. */
+const PORTALS = [
+  { name: 'SarkariResult RSS', url: 'https://www.sarkariresult.com/feed/', kind: 'rss' },
+  { name: 'GovtJobGuru Openings', url: 'https://govtjobguru.in/government-jobs-openings/', kind: 'html',
+    re: 'govtjobguru\\.in/jobs/|\\.pdf($|\\?)|gov\\.in/|nic\\.in/' },
+  { name: 'FreeJobAlert Latest', url: 'https://www.freejobalert.com/', kind: 'html', re: '/articles/' },
+  { name: 'FreeJobAlert Govt Jobs', url: 'https://www.freejobalert.com/government-jobs/', kind: 'html', re: '/articles/' },
+  { name: 'IndGovtJobs', url: 'https://www.indgovtjobs.in/2015/10/Government-Jobs.html', kind: 'html',
+    re: 'indgovtjobs\\.in/\\d{4}/\\d{2}/' },
+  { name: 'AllGovtJobs Latest', url: 'https://allgovernmentjobs.in/latest-government-jobs', kind: 'html',
+    re: 'allgovernmentjobs\\.in/[a-z0-9][a-z0-9-]+/?$' },
+  { name: 'SarkariNaukriOfficial', url: 'https://www.sarkarinaukariofficial.com/latest-jobs/', kind: 'html',
+    re: 'sarkarinaukariofficial\\.com/[a-z0-9][a-z0-9-]+/?$' },
 ];
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -265,6 +267,109 @@ function buildExamPayload(item) {
     auto_discovered: true,
   };
 }
+// ── Portal harvesters ───────────────────────────────────────────────────────
+
+async function fetchPortalHtml(url) {
+  const r = await fetch(url, {
+    signal: AbortSignal.timeout(12000),
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-IN,en;q=0.9',
+    },
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+}
+
+/* Extract posting links from a listing page. Returns {title, link} pairs. */
+function extractPortalLinks(html, portal) {
+  const out = [];
+  const seen = new Set();
+  const rule = portal.re ? new RegExp(portal.re, "i") : null;
+  const linkRe = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = linkRe.exec(html)) !== null) {
+    let href = m[1];
+    const text = stripHtml(m[2]).replace(/\s+/g, " ").trim();
+    if (text.length < 20 || text.length > 220) continue;
+    if (!/^https?:\/\//.test(href)) { try { href = new URL(href, portal.url).href; } catch (_) { continue; } }
+    if (rule && !rule.test(href)) continue;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    out.push({ title: text, description: text, link: href, pubDate: "" });
+  }
+  return out;
+}
+async function harvestPortal(portal) {
+  const body = await fetchPortalHtml(portal.url);
+  if (portal.kind === "rss") return parseRss(body);
+  return extractPortalLinks(body, portal);
+}
+
+// ── Two-stage civil gate (free / safe / legal) ──────────────────────────────
+/* Only public listing pages are read, once a day, with a polite UA and
+   hard timeouts. We store the posting title, a short snippet and a link
+   back to the source (attribution) — never bulk content. Detail checks
+   are same-host only (no SSRF), PDFs are skipped, and the shared budget
+   keeps one scan inside the function time limit. Everything lands as
+   Pending Review: nothing is published without human approval. */
+const detailBudget = { left: 30 };
+
+function looksLikeRecruitment(txt) {
+  return /recruitment|notification|vacanc|apply online|online form|bharti|\\d+\\s*(posts?|vacanc)/i.test(String(txt || ""));
+}
+
+async function fetchDetailIfSafe(url, portal) {
+  if (detailBudget.left <= 0) return null;
+  try {
+    const u = new URL(url);
+    const origin = new URL(portal.url);
+    if (u.hostname !== origin.hostname) return null;      /* same-host only */
+    if (/\\.pdf($|\\?)/i.test(u.pathname)) return null;   /* skip PDFs */
+  } catch (_) { return null; }
+  detailBudget.left--;
+  try {
+    const r = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app; review-first aggregator)', 'Accept-Language': 'en-IN,en;q=0.9' },
+    });
+    if (!r.ok) return null;
+    if (!/text\/html/i.test(r.headers.get('content-type') || '')) return null;
+    const html = await r.text();
+    return { html, text: stripHtml(html).replace(/\s+/g, " ").slice(0, 20000) };
+  } catch (_) { return null; }
+}
+
+async function buildCivilExamPayload(item, portal) {
+  let built = buildExamPayload(item);
+  if (built) return built;
+  if (!looksLikeRecruitment((item.title || "") + " " + (item.description || ""))) return null;
+  const detail = await fetchDetailIfSafe(item.link, portal);
+  if (!detail) return null;
+  const lower = detail.text.toLowerCase();
+  const civ = lower.indexOf("civil");
+  if (civ === -1) return null;                             /* civil not confirmed */
+  const ctx = detail.text.slice(Math.max(0, civ - 400), civ + 900);
+  /* official government / notification-PDF link found on the detail page */
+    /* Official link: any href on the page pointing at a gov.in / nic.in
+       domain or a notification PDF. Plain string checks — no fancy regex. */
+    let om = null;
+    for (const hm of detail.html.matchAll(/href="([^"]+)"/gi)) {
+      const u = hm[1].toLowerCase();
+      if (u.includes('gov.in') || u.includes('nic.in') || u.includes('.pdf')) { om = hm[1]; break; }
+    }
+  const enriched = {
+    ...item,
+    description: `${item.description || ''} ${ctx}`.replace(/\s+/g, ' ').slice(0, 1200),
+  };
+  built = buildExamPayload(enriched);
+  if (built && om && !built.official_website_url) {
+    built.official_website_url = om[1].slice(0, 500);
+  }
+  return built;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -338,14 +443,14 @@ module.exports = async function handler(req, res) {
 
   // ── 2. Additional RSS feeds ─────────────────────────────────────────────
 
-  for (const feed of RSS_FEEDS) {
-    const result = { name: feed.name, found: 0, saved: 0, error: null };
+  /* Portals run in parallel; inserts stay sequential inside each portal. */
+  const portalResults = await Promise.all(PORTALS.map(async (portal) => {
+    const result = { name: portal.name, found: 0, saved: 0, error: null };
     try {
-      const items = await fetchRss(feed.url);
+      const items = await harvestPortal(portal);
       result.found = items.length;
-
       for (const item of items) {
-        const built = buildExamPayload(item);
+        const built = await buildCivilExamPayload(item, portal);
         if (!built) continue;
         if (existingTitles.has(built.title_en.toLowerCase())) continue;
         const payload = built;
@@ -364,8 +469,9 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       result.error = err.message;
     }
-    sourceResults.push(result);
-  }
+    return result;
+  }));
+  sourceResults.push(...portalResults);
 
   return res.status(200).json({
     ok: true,
