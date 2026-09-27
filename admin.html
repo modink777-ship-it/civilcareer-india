@@ -2975,10 +2975,10 @@ async function loadAgentReach(){
     /* Same for the shared materials global. */
 
     agentReachItems=[
-      ...jobs
+      ...(jr.jobs||[])
         .filter(j=>j.ingestion_source==='agent_reach')
         .map(j=>({...j,_arType:'job'})),
-      ...materials
+      ...(mr.materials||[])
         .filter(m=>m.ingestion_source==='agent_reach')
         .map(m=>({...m,_arType:'material'}))
     ];
