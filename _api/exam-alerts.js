@@ -114,9 +114,9 @@ function parseRss(xml) {
 
 async function fetchRss(url) {
   const r = await fetch(url, {
-    signal: AbortSignal.timeout(14000),
+    signal: AbortSignal.timeout(12000),
     headers: {
-      'User-Agent': 'CivilCareer-ExamBot/2.0 (+https://civilcareer-india-two.vercel.app)',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Accept': 'application/rss+xml, application/xml, text/xml, */*',
     },
   });
@@ -144,10 +144,6 @@ function googleNewsUrl(q) {
 // ── Additional aggregator RSS feeds ─────────────────────────────────────────
 
 const RSS_FEEDS = [
-  {
-    name: 'Employment News (Official)',
-    url: 'https://www.employmentnews.gov.in/rss/feed.aspx',
-  },
   {
     name: 'Sarkari Naukri',
     url: 'https://www.sarkarinaukri.com/rss/government-jobs.xml',

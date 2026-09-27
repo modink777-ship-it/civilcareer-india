@@ -1317,7 +1317,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     return true;
   });
 
-  const limited = typeFiltered.slice(0, 80);
+  const limited = typeFiltered.slice(0, 300);
 
   // Dedup against existing Supabase jobs (normalized URL or role+company)
   const existingResponse = await supa('jobs?select=id,source_url,role,company,created_at');
@@ -1340,7 +1340,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     return true;
   });
 
-  const drafts = fresh.slice(0, 40).map((item, index) => {
+  const drafts = fresh.slice(0, 150).map((item, index) => {
     const role    = discoveryRole(item.title);
     const company = item.company || discoveryCompany(item.title, item.snippet);
     // Full ISO timestamp when known; unknown-date drafts keep NULL (never "today")

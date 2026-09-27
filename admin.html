@@ -530,6 +530,18 @@ Show expired
     <div id="arYtPreview" style="display:none;margin-top:10px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;font-size:.82rem;color:#94a3b8"></div>
   </div>
 
+  <!-- BLOCK C — Telegram -->
+  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
+    <h3 style="color:#c9973c">📢 Telegram Channel</h3>
+    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:12px">Post published jobs to your Telegram channel. Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in Vercel environment variables.</p>
+    <div class="admin-actions" style="margin-bottom:0">
+      <button id="arTgStatusBtn" class="btn-ghost" onclick="arTelegramStatus()">⟳ Status</button>
+      <button id="arTgBulkBtn" class="btn-gold" onclick="arTelegramBulk()">▶ Post New Jobs</button>
+      <button id="arTgAllBtn" class="btn-ghost" onclick="arTelegramBroadcast()">▶ Broadcast ALL Jobs</button>
+    </div>
+    <div id="arTgStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
+  </div>
+
   <div class="admin-actions">
     <button class="btn-ghost" onclick="loadAgentReach()">Refresh</button>
     <label class="check">
@@ -1791,14 +1803,15 @@ ${j._keepUnpublished
         );
       }
 
-      if(!j.id){
+      if(!j.id&&saved.job&&saved.job.id){
 
+        /* Fire-and-forget Telegram post of the just-saved job. The server
+           marks the row and no-ops gracefully when Telegram env vars are
+           not configured. */
         fetch('/api/telegram',{
           method:'POST',
-          headers:{
-            'content-type':'application/json'
-          },
-          body:JSON.stringify({job:d})
+          headers:{'content-type':'application/json','x-owner-key':adminKey||''},
+          body:JSON.stringify({job_id:saved.job.id})
         }).catch(()=>{});
 
       }
@@ -3248,6 +3261,32 @@ $('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
 $('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
 
 let _reviewAgentId=null;
+
+/* TELEGRAM CONTROLS — flat routes only (two-level /api paths 404 on Vercel). */
+async function arTelegramCall(path,btn,confirmText){
+  if(confirmText&&!confirm(confirmText))return;
+  const st=$('arTgStatus');
+  const isStatus=path==='/api/telegram-status';
+  btn.disabled=true;const old=btn.textContent;btn.textContent='⏳ Working…';
+  if(st){st.style.display='block';st.style.color='#fcd34d';st.textContent='Calling Telegram…';}
+  try{
+    const d=await api(path,isStatus?{key:adminKey}:{method:'POST',key:adminKey,body:JSON.stringify({})});
+    if(st){
+      if(isStatus){
+        st.style.color=(d&&d.bot_configured===false)?'#fca5a5':'#86efac';
+        st.textContent=`Published jobs: ${d.total_published??'?'} · Posted: ${d.posted_to_telegram??'?'} · Pending: ${d.pending_telegram??'?'} · Bot: ${d.bot_configured?'configured':'NOT configured'} · Channel: ${d.channel_configured?'configured':'NOT configured'}`;
+      }else{
+        st.style.color='#86efac';
+        st.textContent=`Processed ${d.processed??0} — sent ${d.sent??0}, failed ${d.failed??0}${d.done?' · all done':''}${d.failed_list&&d.failed_list.length?' · failures: '+d.failed_list.slice(0,3).map(f=>f.job+': '+f.error).join('; '):''}`;
+      }
+    }
+  }catch(e){
+    if(st){st.style.display='block';st.style.color='#fca5a5';st.textContent='✗ '+(e.message||'Telegram call failed.');}
+  }finally{btn.disabled=false;btn.textContent=old;}
+}
+function arTelegramStatus(){arTelegramCall('/api/telegram-status',$('arTgStatusBtn'))}
+function arTelegramBulk(){arTelegramCall('/api/telegram-bulk',$('arTgBulkBtn'))}
+function arTelegramBroadcast(){arTelegramCall('/api/telegram-broadcast-all',$('arTgAllBtn'),'Broadcast EVERY published job to Telegram? This can take a long time (about 1.5 seconds per job).')}
 
 /* TABS */
 
