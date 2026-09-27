@@ -3349,6 +3349,11 @@ async function arRunExamScan() {
       ).join('');
     }
 
+    if (Array.isArray(data.insertErrors) && data.insertErrors.length) {
+      results.style.display = 'block';
+      results.innerHTML += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;color:#fca5a5\"><b>' + data.insertErrors.length + '+ insert failures (schema):</b><br>' + data.insertErrors.map(x => esc(x.item) + ' — ' + esc(String(x.detail).slice(0, 160))).join('<br>') + '</div>';
+    }
+
     if (data.totalNew > 0) {
       // Refresh exams array so Exams tab shows new drafts
       try {

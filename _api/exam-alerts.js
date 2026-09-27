@@ -160,6 +160,21 @@ const RSS_FEEDS = [
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
+/* Insert an exam row, self-healing against schema drift: when PostgREST
+   reports a missing column (PGRST204), drop it and retry so a scan still
+   saves everything the table can actually store. */
+async function insertExam(payload) {
+  let row = { ...payload };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ins = await db('exams', { method: 'POST', body: JSON.stringify(row) });
+    if (ins.ok) return { ok: true };
+    const text = await ins.text();
+    const m = /Could not find the '([^']+)' column/.exec(text);
+    if (ins.status === 400 && m && row[m[1]] !== undefined) { delete row[m[1]]; continue; }
+    return { ok: false, status: ins.status, text };
+  }
+  return { ok: false, status: 0, text: 'too many schema retries' };
+}
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -237,13 +252,13 @@ module.exports = async function handler(req, res) {
       };
 
       try {
-        const ins = await db('exams', { method: 'POST', body: JSON.stringify(payload) });
+        const ins = await insertExam(payload);
         if (ins.ok) {
           existingTitles.add(titleClean.toLowerCase());
           gnewsResult.saved++;
           totalNew++;
         } else if (insertErrors.length < 5) {
-          insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: (await ins.text()).slice(0, 300) });
+          insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
         }
       } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
     }
@@ -289,13 +304,13 @@ module.exports = async function handler(req, res) {
         };
 
         try {
-          const ins = await db('exams', { method: 'POST', body: JSON.stringify(payload) });
+          const ins = await insertExam(payload);
           if (ins.ok) {
             existingTitles.add(titleClean.toLowerCase());
             result.saved++;
             totalNew++;
           } else if (insertErrors.length < 5) {
-            insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: (await ins.text()).slice(0, 300) });
+            insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
           }
         } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
       }
