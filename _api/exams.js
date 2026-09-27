@@ -19,7 +19,9 @@ function supa(path, opts={}) {
 
 async function handler(req, res) {
   if (req.method === 'GET') {
-    const r = await supa('exams?published=eq.true&order=created_at.desc');
+    /* Admins (valid owner key) see every review state; the public sees only published. */
+    const admin = (req.headers['x-owner-key'] || req.query?.key) === process.env.OWNER_KEY;
+    const r = await supa(admin ? 'exams?order=created_at.desc' : 'exams?published=eq.true&order=created_at.desc');
     if (!r.ok) return res.status(500).json({ error: 'Failed to load exams' });
     const exams = await r.json();
     return res.status(200).json({ exams });

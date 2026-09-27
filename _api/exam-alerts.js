@@ -188,6 +188,7 @@ module.exports = async function handler(req, res) {
 
   const sourceResults = [];
   let totalNew = 0;
+  const insertErrors = [];
 
   // ── 1. Google News RSS — most reliable source ──────────────────────────
 
@@ -241,8 +242,10 @@ module.exports = async function handler(req, res) {
           existingTitles.add(titleClean.toLowerCase());
           gnewsResult.saved++;
           totalNew++;
+        } else if (insertErrors.length < 5) {
+          insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: (await ins.text()).slice(0, 300) });
         }
-      } catch (_) { /* per-item failures non-fatal */ }
+      } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
     }
   } catch (err) {
     gnewsResult.error = err.message;
@@ -291,8 +294,10 @@ module.exports = async function handler(req, res) {
             existingTitles.add(titleClean.toLowerCase());
             result.saved++;
             totalNew++;
+          } else if (insertErrors.length < 5) {
+            insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: (await ins.text()).slice(0, 300) });
           }
-        } catch (_) { /* per-item non-fatal */ }
+        } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
       }
     } catch (err) {
       result.error = err.message;
@@ -305,5 +310,6 @@ module.exports = async function handler(req, res) {
     totalNew,
     durationMs: Date.now() - startedAt,
     sources: sourceResults,
+    insertErrors,
   });
 };
