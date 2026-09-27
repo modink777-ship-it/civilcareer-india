@@ -1,5 +1,22 @@
 'use strict';
 
+/**
+ * CivilCareer — Exam Alerts Scanner
+ * GET /api/exam-alerts  (admin key or Vercel cron)
+ *
+ * WHY Google News RSS instead of scraping .gov.in:
+ *   Government websites (.gov.in, .nic.in) block server-side requests from
+ *   cloud functions — they return 403 or timeout. Google News RSS is publicly
+ *   accessible from any server, aggregates every major exam notification, and
+ *   is updated within minutes of publication.
+ *
+ * Sources used (all completely free, no API key):
+ *   1. Google News RSS — 8 targeted civil engineering exam queries
+ *   2. Employment News RSS — official Central Govt weekly gazette
+ *   3. Sarkari Naukri RSS — aggregates all state/central job notifications
+ *   4. SarkariResult RSS  — widely used for SSC/UPSC/RRB notifications
+ */
+
 const SUPA = process.env.SUPABASE_URL;
 const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
@@ -19,128 +36,133 @@ function db(path, opts = {}) {
 function isAdmin(req) {
   return req.headers['x-owner-key'] === process.env.OWNER_KEY;
 }
-
 function isCron(req) {
   return /vercel-cron/i.test(req.headers['user-agent'] || '');
 }
 
-// Keywords indicating a civil engineering exam
-const CIVIL_KEYWORDS = [
-  'civil', 'je', 'junior engineer', 'assistant engineer', 'gate', 'ese', 'ies',
-  'ssc je', 'rrb je', 'cpwd', 'pwd', 'nhai', 'irrigation', 'structural',
-  'highway', 'upsc', 'kpsc', 'mpsc', 'tnpsc', 'appsc', 'state psc',
-];
+// ── Civil exam keyword matching ─────────────────────────────────────────────
 
-function isCivilRelated(text) {
-  const lower = (text || '').toLowerCase();
-  return CIVIL_KEYWORDS.some(kw => lower.includes(kw));
+const EXAM_KW = [
+  'civil engineer', 'je civil', 'ae civil', 'junior engineer civil',
+  'assistant engineer', 'executive engineer', 'gate ce', 'gate civil',
+  'ese civil', 'ies civil', 'ssc je', 'rrb je civil',
+  'cpwd recruitment', 'pwd recruitment', 'nhai recruitment', 'cwc recruitment',
+  'kpsc civil', 'tspsc civil', 'appsc civil', 'tnpsc civil', 'mpsc civil',
+  'upsc ese', 'upsc ies',
+  'civil engineering recruitment', 'civil engineering vacancy',
+  'civil engineering notification', 'civil engineering exam',
+  'civil engineer vacancy', 'civil engineer notification',
+];
+const EXAM_KW_RE = new RegExp(EXAM_KW.join('|'), 'i');
+
+// Also catch broader terms if they appear alongside civil markers
+const BROAD_KW_RE = /recruitment|notification|vacancy|admit card|result|syllabus|exam date|apply online/i;
+const GOVT_KW_RE  = /upsc|ssc|rrb|kpsc|tspsc|appsc|tnpsc|mpsc|gpsc|rpsc|bpsc|hpsc|opsc|ukpsc|ppsc|jpsc|cgpsc/i;
+
+function isCivilExamRelated(text) {
+  const t = (text || '').toLowerCase();
+  return EXAM_KW_RE.test(t) || (BROAD_KW_RE.test(t) && GOVT_KW_RE.test(t));
 }
 
 function detectCategory(text) {
   const lower = (text || '').toLowerCase();
-  if (lower.includes('upsc') || lower.includes('ias') || lower.includes('ies') || lower.includes('ese')) return 'UPSC';
-  if (lower.includes('ssc je') || lower.includes('ssc-je') || lower.includes('staff selection')) return 'SSC';
-  if (lower.includes('rrb') || lower.includes('railway')) return 'RRB';
-  if (lower.includes('gate')) return 'GATE';
-  if (lower.match(/kpsc|mpsc|tnpsc|appsc|opsc|gpsc|rpsc|hpsc|uppsc|bpsc|state psc/)) return 'State PSC';
+  if (/gate/.test(lower)) return 'GATE';
+  if (/ese|ies|upsc/.test(lower)) return 'UPSC / ESE';
+  if (/ssc\s?je|ssc-je|staff selection/.test(lower)) return 'SSC JE';
+  if (/rrb|railway/.test(lower)) return 'RRB JE';
+  if (/kpsc/.test(lower)) return 'KPSC';
+  if (/tspsc/.test(lower)) return 'TSPSC';
+  if (/appsc/.test(lower)) return 'APPSC';
+  if (/tnpsc/.test(lower)) return 'TNPSC';
+  if (/mpsc/.test(lower)) return 'MPSC';
+  if (/[a-z]psc/.test(lower)) return 'State PSC';
   return 'Government';
 }
 
-function stripHtml(str) {
-  return String(str || '')
+// ── RSS parsing (pure regex — no dependencies) ──────────────────────────────
+
+function stripHtml(s) {
+  return String(s || '')
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
 }
 
-function truncate(str, max) {
-  const s = stripHtml(str);
-  return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + '…';
-}
+function trunc(s, n) { const v = stripHtml(s); return v.length <= n ? v : v.slice(0, n - 1).trimEnd() + '…'; }
 
-// Regex-based RSS parser — no cheerio dependency
 function parseRss(xml) {
   const items = [];
-  const itemRe = /<item[^>]*>([\s\S]*?)<\/item>/gi;
+  const re = /<item[^>]*>([\s\S]*?)<\/item>/gi;
   let m;
-  while ((m = itemRe.exec(xml)) !== null) {
+  while ((m = re.exec(xml)) !== null) {
     const block = m[1];
-    const get = (tag) => {
-      const r = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i');
-      const hit = r.exec(block);
-      return hit ? hit[1].trim() : '';
+    const tag = (name) => {
+      const r = new RegExp(`<${name}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`, 'i');
+      const h = r.exec(block);
+      return h ? h[1].trim() : '';
     };
     items.push({
-      title: get('title'),
-      description: get('description') || get('summary'),
-      link: get('link') || get('guid'),
-      pubDate: get('pubDate') || get('published') || get('dc:date'),
+      title:       tag('title'),
+      description: tag('description') || tag('summary'),
+      link:        tag('link') || tag('guid'),
+      pubDate:     tag('pubDate') || tag('published') || tag('dc:date'),
     });
   }
   return items;
 }
 
-const SOURCES = [
+async function fetchRss(url) {
+  const r = await fetch(url, {
+    signal: AbortSignal.timeout(14000),
+    headers: {
+      'User-Agent': 'CivilCareer-ExamBot/2.0 (+https://civilcareer-india-two.vercel.app)',
+      'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+    },
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return parseRss(await r.text());
+}
+
+// ── Google News RSS queries — very specific to avoid noise ──────────────────
+
+const GNEWS_QUERIES = [
+  'civil engineering recruitment 2025 India notification',
+  'SSC JE civil 2025 recruitment notification',
+  'GATE civil engineering 2025 2026 notification',
+  'KPSC TSPSC APPSC civil engineer vacancy 2025',
+  'TNPSC MPSC civil engineer recruitment 2025',
+  'UPSC ESE civil engineering 2026 notification',
+  'RRB JE civil engineering recruitment 2025',
+  'CPWD NHAI civil engineer vacancy 2025',
+];
+
+function googleNewsUrl(q) {
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`;
+}
+
+// ── Additional aggregator RSS feeds ─────────────────────────────────────────
+
+const RSS_FEEDS = [
   {
-    name: 'Employment News RSS',
+    name: 'Employment News (Official)',
     url: 'https://www.employmentnews.gov.in/rss/feed.aspx',
   },
   {
-    name: 'UPSC Active Exams',
-    url: 'https://upsc.gov.in/examinations/active-examinations',
-    // plain HTML page — we do a best-effort regex extraction
-    htmlMode: true,
+    name: 'Sarkari Naukri',
+    url: 'https://www.sarkarinaukri.com/rss/government-jobs.xml',
   },
   {
-    name: 'SSC Homepage',
-    url: 'https://ssc.nic.in/',
-    htmlMode: true,
-  },
-  {
-    name: 'Sarkari Result RSS',
+    name: 'SarkariResult',
     url: 'https://www.sarkariresult.com/feed/',
+  },
+  {
+    name: 'FreshersWorld Govt Jobs',
+    url: 'https://www.freshersworld.com/jobs/rss',
   },
 ];
 
-async function fetchSource(source) {
-  const ctrl = new AbortController();
-  const timer = AbortSignal.timeout(12000);
-  // Combine our abort with the timeout signal
-  const signal = AbortSignal.any
-    ? AbortSignal.any([ctrl.signal, timer])
-    : timer;
-
-  const r = await fetch(source.url, {
-    signal,
-    headers: { 'User-Agent': 'CivilCareer-ExamBot/1.0 (+https://civilcareer-india-two.vercel.app)' },
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.text();
-}
-
-// Scrape an HTML page for exam-looking links / headings as rough items
-function extractHtmlItems(html, baseUrl) {
-  const items = [];
-  // Extract anchor text + href from the page
-  const linkRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = linkRe.exec(html)) !== null) {
-    const href = m[1];
-    const text = stripHtml(m[2]);
-    if (!text || text.length < 10) continue;
-    let link = href;
-    if (link.startsWith('/')) {
-      try { link = new URL(href, baseUrl).href; } catch { link = href; }
-    }
-    items.push({ title: text, description: text, link, pubDate: '' });
-  }
-  return items;
-}
+// ── Main handler ─────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -149,11 +171,10 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!isAdmin(req) && !isCron(req)) {
-    return res.status(401).json({ ok: false, error: 'Admin key or cron user-agent required.' });
+    return res.status(401).json({ ok: false, error: 'Admin key required.' });
   }
-
   if (!SUPA || !KEY) {
-    return res.status(500).json({ ok: false, error: 'Supabase configuration missing.' });
+    return res.status(500).json({ ok: false, error: 'Supabase not configured.' });
   }
 
   const startedAt = Date.now();
@@ -161,72 +182,125 @@ module.exports = async function handler(req, res) {
   // Load existing exam titles to skip duplicates
   let existingTitles = new Set();
   try {
-    const r = await db('exams?select=title_en&limit=2000');
+    const r = await db('exams?select=title_en&limit=5000');
     if (r.ok) {
-      const rows = await r.json();
-      existingTitles = new Set((rows || []).map(e => (e.title_en || '').toLowerCase().trim()));
+      (await r.json()).forEach(e => {
+        if (e.title_en) existingTitles.add(e.title_en.toLowerCase().trim());
+      });
     }
   } catch (_) { /* non-fatal */ }
 
   const sourceResults = [];
   let totalNew = 0;
 
-  for (const source of SOURCES) {
-    const result = { name: source.name, found: 0, saved: 0, error: null };
+  // ── 1. Google News RSS — most reliable source ──────────────────────────
 
+  const gnewsResult = { name: 'Google News RSS (8 queries)', found: 0, saved: 0, error: null };
+  try {
+    const settled = await Promise.allSettled(
+      GNEWS_QUERIES.map(q => fetchRss(googleNewsUrl(q)))
+    );
+    const allItems = settled
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value);
+
+    gnewsResult.found = allItems.length;
+
+    // Deduplicate by link within this batch
+    const seenLinks = new Set();
+    for (const item of allItems) {
+      const link = (item.link || '').trim();
+      if (link && seenLinks.has(link)) continue;
+      if (link) seenLinks.add(link);
+
+      const titleClean = trunc(item.title, 255);
+      if (!titleClean) continue;
+      if (!isCivilExamRelated(titleClean + ' ' + item.description)) continue;
+      if (existingTitles.has(titleClean.toLowerCase())) continue;
+
+      const desc      = trunc(item.description || titleClean, 600);
+      const category  = detectCategory(titleClean + ' ' + desc);
+      const notifDate = (() => {
+        if (!item.pubDate) return new Date().toISOString().slice(0, 10);
+        const d = new Date(item.pubDate);
+        return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
+      })();
+
+      const payload = {
+        title_en:          titleClean,
+        description_en:    desc,
+        source_url:        link || null,
+        official_website_url: link || null,
+        category,
+        status:            'Open',
+        published:         false,
+        review_state:      'Pending Review',
+        notification_date: notifDate,
+        auto_discovered:   true,
+      };
+
+      try {
+        const ins = await db('exams', { method: 'POST', body: JSON.stringify(payload) });
+        if (ins.ok) {
+          existingTitles.add(titleClean.toLowerCase());
+          gnewsResult.saved++;
+          totalNew++;
+        }
+      } catch (_) { /* per-item failures non-fatal */ }
+    }
+  } catch (err) {
+    gnewsResult.error = err.message;
+  }
+  sourceResults.push(gnewsResult);
+
+  // ── 2. Additional RSS feeds ─────────────────────────────────────────────
+
+  for (const feed of RSS_FEEDS) {
+    const result = { name: feed.name, found: 0, saved: 0, error: null };
     try {
-      const body = await fetchSource(source);
-      const items = source.htmlMode
-        ? extractHtmlItems(body, source.url)
-        : parseRss(body);
+      const items = await fetchRss(feed.url);
+      result.found = items.length;
 
-      const civil = items.filter(it => isCivilRelated(it.title) || isCivilRelated(it.description));
-      result.found = civil.length;
-
-      for (const item of civil) {
-        const titleClean = stripHtml(item.title).slice(0, 255);
+      for (const item of items) {
+        const titleClean = trunc(item.title, 255);
         if (!titleClean) continue;
+        if (!isCivilExamRelated(titleClean + ' ' + item.description)) continue;
         if (existingTitles.has(titleClean.toLowerCase())) continue;
 
-        const descClean = truncate(item.description || item.title, 600);
-        const category  = detectCategory(titleClean + ' ' + descClean);
-        const sourceUrl = (item.link || source.url).slice(0, 2048);
-
-        let notifDate = null;
-        if (item.pubDate) {
+        const desc      = trunc(item.description || titleClean, 600);
+        const category  = detectCategory(titleClean + ' ' + desc);
+        const link      = (item.link || '').trim();
+        const notifDate = (() => {
+          if (!item.pubDate) return new Date().toISOString().slice(0, 10);
           const d = new Date(item.pubDate);
-          if (!isNaN(d.getTime())) notifDate = d.toISOString().slice(0, 10);
-        }
-        if (!notifDate) notifDate = new Date().toISOString().slice(0, 10);
+          return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
+        })();
 
         const payload = {
-          title_en: titleClean,
-          description_en: descClean,
-          source_url: sourceUrl,
+          title_en:          titleClean,
+          description_en:    desc,
+          source_url:        link || null,
+          official_website_url: link || null,
           category,
-          status: 'Active',
-          published: false,
-          review_state: 'Pending Review',
+          status:            'Open',
+          published:         false,
+          review_state:      'Pending Review',
           notification_date: notifDate,
-          auto_discovered: true,
+          auto_discovered:   true,
         };
 
         try {
-          const ins = await db('exams', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
+          const ins = await db('exams', { method: 'POST', body: JSON.stringify(payload) });
           if (ins.ok) {
             existingTitles.add(titleClean.toLowerCase());
-            result.saved += 1;
-            totalNew += 1;
+            result.saved++;
+            totalNew++;
           }
-        } catch (_) { /* skip failed insert */ }
+        } catch (_) { /* per-item non-fatal */ }
       }
     } catch (err) {
-      result.error = err.message || String(err);
+      result.error = err.message;
     }
-
     sourceResults.push(result);
   }
 
