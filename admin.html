@@ -2952,21 +2952,19 @@ async function loadAgentReach(){
   try{
 
     const [jr,mr]=await Promise.all([
-      api('/api/jobs?ingestion_source=agent_reach&limit=100',{key:adminKey}),
+      api('/api/jobs',{key:adminKey}),
       api('/api/materials',{key:adminKey})
     ]);
 
-    /* Shared jobs global is intentionally NOT overwritten: the filtered
-       inbox fetch returns only agent-reach rows, while other tabs rely
-       on the full list loaded elsewhere. */
+    jobs=jr.jobs||jobs;
 
-    /* Same for the shared materials global. */
+    materials=mr.materials||materials;
 
     agentReachItems=[
-      ...(jr.jobs||[])
+      ...jobs
         .filter(j=>j.ingestion_source==='agent_reach')
         .map(j=>({...j,_arType:'job'})),
-      ...(mr.materials||[])
+      ...materials
         .filter(m=>m.ingestion_source==='agent_reach')
         .map(m=>({...m,_arType:'material'}))
     ];
