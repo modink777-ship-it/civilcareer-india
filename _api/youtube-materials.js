@@ -84,10 +84,14 @@ async function fetchPlayerData(videoId) {
     videoId,
     context: {
       client: {
-        clientName: 'ANDROID',
-        clientVersion: '17.31.35',
-        androidSdkVersion: 30,
-        userAgent: 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip',
+        clientName: 'ANDROID_VR',
+        clientVersion: '1.60.19',
+        deviceMake: 'Oculus',
+        deviceModel: 'Quest 3',
+        osName: 'Android',
+        osVersion: '12L',
+        androidSdkVersion: 32,
+        userAgent: 'com.google.android.youtube/1.60.19 (Linux; U; Android 12L) gzip',
         hl: 'en',
         gl: 'IN',
         utcOffsetMinutes: 330,
@@ -105,7 +109,7 @@ async function fetchPlayerData(videoId) {
     signal: AbortSignal.timeout(15000),
     headers: {
       'Content-Type': 'application/json',
-      'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip',
+      'User-Agent': 'com.google.android.youtube/1.60.19 (Linux; U; Android 12L) gzip',
       'X-YouTube-Client-Name': '3',
       'X-YouTube-Client-Version': '17.31.35',
       'Origin': 'https://www.youtube.com',
@@ -138,7 +142,7 @@ async function fetchCaptionXml(trackUrl) {
 }
 
 function captionXmlToText(xml) {
-  const textRe = /<text[^>]*>([\s\S]*?)<\/text>/gi;
+  const textRe = /<(?:text|p)\b[^>]*>([\s\S]*?)<\/(?:text|p)>/gi;
   const parts = [];
   let m;
   while ((m = textRe.exec(xml)) !== null) {
