@@ -162,6 +162,10 @@ const PORTALS = [
     re: 'allgovernmentjobs\\.in/[a-z0-9][a-z0-9-]+/?$' },
   { name: 'SarkariNaukriOfficial', url: 'https://www.sarkarinaukariofficial.com/latest-jobs/', kind: 'html',
     re: 'sarkarinaukariofficial\\.com/[a-z0-9][a-z0-9-]+/?$' },
+  { name: 'SarkariExam', url: 'https://www.sarkariexam.com/', kind: 'html', re: 'sarkariexam\.com/[a-z0-9][a-z0-9-]+/?$' },
+  { name: 'Jagran Josh Govt', url: 'https://www.jagranjosh.com/articles/government-jobs-list', kind: 'html', re: 'jagranjosh\.com/articles/', ex: 'government-jobs-list' },
+  { name: 'Adda247 Govt Jobs', url: 'https://www.adda247.com/jobs/', kind: 'html', re: 'adda247\.com/(jobs|job-notification)/', ex: "adda247\\.com/jobs/?$" },
+  { name: 'Oliveboard Govt Blog', url: 'https://www.oliveboard.in/blog/category/government-jobs/', kind: 'html', re: 'oliveboard\.in/blog/' },
 ];
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -294,7 +298,8 @@ function extractPortalLinks(html, portal) {
     const text = stripHtml(m[2]).replace(/\s+/g, " ").trim();
     if (text.length < 20 || text.length > 220) continue;
     if (!/^https?:\/\//.test(href)) { try { href = new URL(href, portal.url).href; } catch (_) { continue; } }
-    if (rule && !rule.test(href)) continue;
+    if (rule && !rule.test(href)) continue;
+    if (portal.ex && new RegExp(portal.ex, "i").test(href)) continue;
     if (seen.has(href)) continue;
     seen.add(href);
     out.push({ title: text, description: text, link: href, pubDate: "" });
