@@ -25,9 +25,13 @@ const handlers = {
   '/api/resource-submissions': () => require('../_api/resource-submissions'),
   '/api/sitemap': () => require('../_api/sitemap'),
   '/api/subscribe': () => require('../_api/subscribe'),
-  '/api/telegram':                () => require('../_api/telegram'),   '/api/telegram/status':         () => require('../_api/telegram'),   '/api/telegram/bulk':           () => require('../_api/telegram'),   '/api/telegram/broadcast-all':  () => require('../_api/telegram'),
-   '/api/govt-discovery':     () => require('../_api/govt-discovery'),
-'/api/agent-reach-ingest': () => require('../_api/agent-reach-ingest'),
+  /* Telegram routes are FLAT on purpose: Vercel's catch-all here does not
+     reliably match two-level /api paths, so the handler branches on the
+     flat path name (telegram.js uses path.includes(...) internally). */
+  '/api/telegram':                () => require('../_api/telegram'),
+  '/api/telegram-status':         () => require('../_api/telegram'),
+  '/api/telegram-bulk':           () => require('../_api/telegram'),
+  '/api/telegram-broadcast-all':  () => require('../_api/telegram'),
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
 };

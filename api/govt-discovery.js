@@ -352,20 +352,24 @@ module.exports = async function govtDiscovery(req, res) {
   res.setHeader("Content-Type", "application/json");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  if (req.method === "GET") {
+  const ownerKey = process.env.OWNER_KEY || process.env.CIVILCAREER_OWNER_KEY || process.env.ADMIN_OWNER_KEY;
+  const isCron = /vercel-cron/i.test(String(req.headers["user-agent"] || ""));
+  const providedKey = req.body?.key || req.headers["x-owner-key"];
+  const authed = (ownerKey && providedKey === ownerKey) || isCron;
+
+  /* Plain GET is a status probe. The daily Vercel cron (vercel-cron UA on
+     GET — Vercel crons cannot send POST bodies or secrets) triggers a run. */
+  if (req.method === "GET" && !isCron) {
     const { data, error } = await supabase.from("jobs").select("id, role, company, created_at")
       .eq("source", "govt-discovery").order("created_at", { ascending: false }).limit(20);
     return res.status(200).json({
-      message: "POST with owner key to trigger a scrape run.",
+      message: "POST with owner key — or the daily Vercel cron — triggers a scrape run.",
       last_scraped: data || [], error: error?.message || null,
     });
   }
 
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const ownerKey = process.env.OWNER_KEY || process.env.CIVILCAREER_OWNER_KEY || process.env.ADMIN_OWNER_KEY;
-  const providedKey = req.body?.key || req.headers["x-owner-key"];
-  if (!ownerKey || providedKey !== ownerKey) return res.status(401).json({ error: "Unauthorized" });
+  if (req.method !== "GET" && req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!authed) return res.status(401).json({ error: "Unauthorized" });
 
   const scrapers = [scrapeSSC, scrapeUPSC, scrapeCPWD, scrapeNCS, scrapeEmploymentNews, scrapeNTPC, scrapeNBCC, scrapeRITES, scrapeKPSC, scrapeTSPSC, scrapeMPSC];
   const names   = ["SSC","UPSC","CPWD","NCS","EmploymentNews","NTPC","NBCC","RITES","KPSC","TSPSC","MPSC"];
@@ -383,6 +387,6 @@ module.exports = async function govtDiscovery(req, res) {
     ok: true, portals_scraped: portalSummary,
     total_raw: allJobs.length, inserted: inserted.length, skipped: skipped.length,
     inserted_titles: inserted,
-    note: "New jobs saved with is_published=false. Review in admin panel before publishing.",
+    note: "New jobs saved as Pending Review (published=false, ingestion_source=agent_reach). Review in the admin Agent Reach inbox before publishing.",
   });
 };
