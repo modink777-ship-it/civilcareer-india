@@ -60,8 +60,9 @@ const BROAD_KW_RE = /recruitment|notification|vacancy|admit card|result|syllabus
 const GOVT_KW_RE  = /upsc|ssc|rrb|kpsc|tspsc|appsc|tnpsc|mpsc|gpsc|rpsc|bpsc|hpsc|opsc|ukpsc|ppsc|jpsc|cgpsc/i;
 
 function isCivilExamRelated(text) {
-  const t = (text || '').toLowerCase();
-  return EXAM_KW_RE.test(t) || (BROAD_KW_RE.test(t) && GOVT_KW_RE.test(t));
+  /* STRICT: requires the standalone word "civil" (or an explicit civil role).
+     Generic exam news ("Indian Army SSC Tech") is rejected. */
+  return /\bcivil\b|junior engineer \(?civil|assistant engineer \(?civil|gate[ -]?ce\b/i.test(String(text || ''));
 }
 
 function detectCategory(text) {
@@ -135,6 +136,9 @@ const GNEWS_QUERIES = [
   'UPSC ESE civil engineering 2026 notification',
   'RRB JE civil engineering recruitment 2025',
   'CPWD NHAI civil engineer vacancy 2025',
+  'KPSC civil engineer recruitment Karnataka notification 2025',
+  'BWSSB PWD Karnataka civil engineer recruitment 2025',
+  'Karnataka NHAI junior engineer civil vacancy 2025',
 ];
 
 function googleNewsUrl(q) {
@@ -179,6 +183,87 @@ async function insertExam(payload) {
     return { ok: false, status: ins.status, text };
   }
   return { ok: false, status: 0, text: 'too many schema retries' };
+}
+// ── Draft enrichment: strict civil filter + auto-extracted fields ──────────
+
+const AUTH_SITES = [
+  [/\bupsc\b/i, 'UPSC', 'Union Public Service Commission', 'https://upsc.gov.in'],
+  [/\bssc\b/i, 'SSC', 'Staff Selection Commission', 'https://ssc.gov.in'],
+  [/\brrb\b|railway recruitment/i, 'RRB', 'Railway Recruitment Board', 'https://www.rrbcdg.gov.in'],
+  [/\bkpsc\b|karnataka (?:public service|\bpsc\b)/i, 'KPSC', 'Karnataka Public Service Commission', 'https://kpsc.kar.nic.in'],
+  [/\bbwssb\b/i, 'BWSSB', 'Bangalore Water Supply & Sewerage Board', 'https://bwssb.karnataka.gov.in'],
+  [/karnataka\s+pwd|\bkpwd\b|pwd karnataka/i, 'PWD Karnataka', 'Karnataka Public Works Department', 'https://pwd.karnataka.gov.in'],
+  [/\bnhai\b/i, 'NHAI', 'National Highways Authority of India', 'https://nhai.gov.in'],
+  [/\bnhidcl\b/i, 'NHIDCL', 'National Highways & Infrastructure Development Corporation Ltd', 'https://nhidcl.com'],
+  [/\bcpwd\b/i, 'CPWD', 'Central Public Works Department', 'https://cpwd.gov.in'],
+  [/\btspsc\b/i, 'TSPSC', 'Telangana State Public Service Commission', 'https://websitetssc.gov.in'],
+  [/\bappsc\b/i, 'APPSC', 'Andhra Pradesh Public Service Commission', 'https://psc.ap.gov.in'],
+  [/\btnpsc\b/i, 'TNPSC', 'Tamil Nadu Public Service Commission', 'https://www.tnpsc.gov.in'],
+  [/\bmpsc\b/i, 'MPSC', 'Maharashtra Public Service Commission', 'https://mpsc.gov.in'],
+  [/\bgpsc\b/i, 'GPSC', 'Gujarat Public Service Commission', 'https://gpsc.gujarat.gov.in'],
+  [/\brpsc\b/i, 'RPSC', 'Rajasthan Public Service Commission', 'https://rpsc.rajasthan.gov.in'],
+  [/\bpsc\b/i, 'PSC', 'State Public Service Commission', null],
+  [/\bcwc\b/i, 'CWC', 'Central Water Commission', 'https://cwc.gov.in'],
+];
+
+function normDdMmYyyy(s) {
+  const m = /(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(String(s || ''));
+  if (!m) return null;
+  let y = parseInt(m[3], 10); if (y < 100) y += 2000;
+  const d = new Date(Date.UTC(y, parseInt(m[2], 10) - 1, parseInt(m[1], 10)));
+  return (isNaN(d.getTime()) || d.getUTCFullYear() !== y) ? null : d.toISOString().slice(0, 10);
+}
+
+function buildExamPayload(item) {
+  const rawText = `${item.title || ''} ${item.description || ''}`;
+  /* STRICT civil-only: standalone word "civil" or an explicit civil role.
+     Anything else (Army/Navy/general tech posts) is rejected. */
+  if (!/\bcivil\b|junior engineer \(?civil|assistant engineer \(?civil|gate[ -]?ce\b/i.test(rawText)) return null;
+  /* Title: strip trailing aggregator/site names the RSS feeds append. */
+  let title = String(item.title || '').replace(/\s*[-–|]\s*(adda247|sarkari result|careers360|free job alert|jagran josh|testbook|oliveboard|sarkari exam|shiksha|collegedunia|pw ?live|study for civil|times of india|hindustan times|india today|ndtv|business standard|economic times|moneycontrol)\s*$/i, '').replace(/\s+/g, ' ').trim();
+  if (title.length > 255) title = title.slice(0, 252) + "…";
+  const desc = String(item.description || title).replace(/\s+/g, ' ').trim().slice(0, 600);
+  /* Authority / code / official website from known government bodies. */
+  let code = null, authority = null, site = null;
+  for (const [re, c, a, s] of AUTH_SITES) { if (re.test(rawText)) { code = c; authority = a; site = s; break; } }
+  /* Vacancy count: "1,748 Posts", "350 Vacancies", "120 openings"… */
+  let vacancy = null;
+  const vm = /(\d[\d,]{0,7})[^\d.]{0,30}?\b(vacanc\w*|posts?|openings?|positions?)\b/i.exec(rawText);
+  if (vm) { const n = parseInt(vm[1].replace(/,/g, ''), 10); if (n > 0 && n < 500000 && !(n >= 1900 && n <= 2100)) vacancy = n; }
+  /* Dates: only accept a dd-mm-yyyy that follows a known context phrase. */
+  const appEnd   = normDdMmYyyy((/(?:last date|closing date|apply (?:by|before))[^0-9]{0,40}(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})/i.exec(rawText) || [])[1]);
+  const appStart = normDdMmYyyy((/(?:apply online[^.]{0,40}(?:from|begins|starts)|application (?:start|begin)s?)[^0-9]{0,40}(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})/i.exec(rawText) || [])[1]);
+  const examDate = normDdMmYyyy((/(?:exam (?:date|on)|cbt[ -]?1)[^0-9]{0,40}(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})/i.exec(rawText) || [])[1]);
+  /* Post names: "Junior Engineer (Civil)", "AE Civil"… */
+  const posts = [];
+  const pre = /(?:junior|assistant|executive|deputy)\s+engineer\s*\(?\s*civil\s*\)?|\b[aj]e\s+civil\b|\bcivil\s+(?:engineer|assistant)\b/gi;
+  let pm; while ((pm = pre.exec(rawText)) !== null && posts.length < 4) { const v = pm[0].replace(/\s+/g, " ").trim(); if (!posts.includes(v)) posts.push(v); }
+  let notif = null;
+  if (item.pubDate) { const d = new Date(item.pubDate); if (!isNaN(d.getTime())) notif = d.toISOString().slice(0, 10); }
+  if (!notif) notif = new Date().toISOString().slice(0, 10);
+  const link = String(item.link || '').trim();
+  return {
+    title_en: title,
+    description_en: desc,
+    code, authority,
+    source_url: link || null,
+    /* Google News links are aggregator redirects — never present them as the
+       apply/official link. Only a mapped official site is offered. */
+    official_website_url: site,
+    apply_url: null,
+    category: detectCategory(title + " " + desc),
+    status: 'Open',
+    published: false,
+    review_state: 'Pending Review',
+    notification_date: notif,
+    application_start: appStart,
+    application_end: appEnd,
+    exam_date: examDate,
+    vacancy_count: vacancy,
+    post_names: posts.join(', ') || null,
+    last_verified: new Date().toISOString().slice(0, 10),
+    auto_discovered: true,
+  };
 }
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -230,42 +315,21 @@ module.exports = async function handler(req, res) {
       if (link && seenLinks.has(link)) continue;
       if (link) seenLinks.add(link);
 
-      const titleClean = trunc(item.title, 255);
-      if (!titleClean) continue;
-      if (!isCivilExamRelated(titleClean + ' ' + item.description)) continue;
-      if (existingTitles.has(titleClean.toLowerCase())) continue;
-
-      const desc      = trunc(item.description || titleClean, 600);
-      const category  = detectCategory(titleClean + ' ' + desc);
-      const notifDate = (() => {
-        if (!item.pubDate) return new Date().toISOString().slice(0, 10);
-        const d = new Date(item.pubDate);
-        return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
-      })();
-
-      const payload = {
-        title_en:          titleClean,
-        description_en:    desc,
-        source_url:        link || null,
-        official_website_url: link || null,
-        category,
-        status:            'Open',
-        published:         false,
-        review_state:      'Pending Review',
-        notification_date: notifDate,
-        auto_discovered:   true,
-      };
+        const built = buildExamPayload(item);
+        if (!built) continue;
+        if (existingTitles.has(built.title_en.toLowerCase())) continue;
+        const payload = built;
 
       try {
         const ins = await insertExam(payload);
         if (ins.ok) {
-          existingTitles.add(titleClean.toLowerCase());
+          existingTitles.add(payload.title_en.toLowerCase());
           gnewsResult.saved++;
           totalNew++;
         } else if (insertErrors.length < 5) {
-          insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
+          insertErrors.push({ item: payload.title_en.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
         }
-      } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
+      } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: payload.title_en.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
     }
   } catch (err) {
     gnewsResult.error = err.message;
@@ -281,43 +345,21 @@ module.exports = async function handler(req, res) {
       result.found = items.length;
 
       for (const item of items) {
-        const titleClean = trunc(item.title, 255);
-        if (!titleClean) continue;
-        if (!isCivilExamRelated(titleClean + ' ' + item.description)) continue;
-        if (existingTitles.has(titleClean.toLowerCase())) continue;
-
-        const desc      = trunc(item.description || titleClean, 600);
-        const category  = detectCategory(titleClean + ' ' + desc);
-        const link      = (item.link || '').trim();
-        const notifDate = (() => {
-          if (!item.pubDate) return new Date().toISOString().slice(0, 10);
-          const d = new Date(item.pubDate);
-          return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
-        })();
-
-        const payload = {
-          title_en:          titleClean,
-          description_en:    desc,
-          source_url:        link || null,
-          official_website_url: link || null,
-          category,
-          status:            'Open',
-          published:         false,
-          review_state:      'Pending Review',
-          notification_date: notifDate,
-          auto_discovered:   true,
-        };
+        const built = buildExamPayload(item);
+        if (!built) continue;
+        if (existingTitles.has(built.title_en.toLowerCase())) continue;
+        const payload = built;
 
         try {
           const ins = await insertExam(payload);
           if (ins.ok) {
-            existingTitles.add(titleClean.toLowerCase());
+            existingTitles.add(payload.title_en.toLowerCase());
             result.saved++;
             totalNew++;
           } else if (insertErrors.length < 5) {
-            insertErrors.push({ item: titleClean.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
+            insertErrors.push({ item: payload.title_en.slice(0, 80), status: ins.status, detail: String(ins.text).slice(0, 300) });
           }
-        } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: titleClean.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
+        } catch (err) { if (insertErrors.length < 5) insertErrors.push({ item: payload.title_en.slice(0, 80), detail: String(err.message).slice(0, 200) }); }
       }
     } catch (err) {
       result.error = err.message;
