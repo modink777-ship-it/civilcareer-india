@@ -305,27 +305,40 @@ async function scrapeMPSC() {
   return jobs;
 }
 
+/* The jobs table stores deadline as an ISO date; portals publish dd/mm/yyyy.
+   Anything unparseable becomes NULL instead of failing the whole row. */
+function normDate(value) {
+  const m = String(value || "").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (!m) return null;
+  let y = Number(m[3]); if (y < 100) y += 2000;
+  const d = new Date(Date.UTC(y, Number(m[2]) - 1, Number(m[1])));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
 async function upsertJobs(rawJobs) {
   const inserted = [], skipped = [];
   for (const raw of rawJobs) {
     if (!raw.title || raw.title.length < 8) continue;
     const slug = slugify(raw.title + "-" + (raw.company || "govt")) + "-" + Date.now();
     const { data: existing } = await supabase.from("jobs").select("id")
-      .ilike("title_en", `%${raw.title.slice(0, 40).trim()}%`)
+      .ilike("role", `%${raw.title.slice(0, 40).trim()}%`)
       .eq("company", raw.company || "")
       .gte("created_at", new Date(Date.now() - 60 * 86400000).toISOString())
       .limit(1);
     if (existing && existing.length > 0) { skipped.push(raw.title); continue; }
     const { error } = await supabase.from("jobs").insert({
-      title_en: raw.title.slice(0, 200),
+      role: raw.title.slice(0, 200),
       company: (raw.company || "Government").slice(0, 200),
       location: (raw.location || "India").slice(0, 200),
-      job_type: raw.job_type || "government",
+      sector: "Government",
+      status: "Active",
       source: "govt-discovery",
       source_url: raw.source_url || "",
-      description_en: (raw.description || "").slice(0, 2000),
-      deadline: raw.deadline || null,
-      is_published: false,
+      description: (raw.description || "").slice(0, 2000),
+      deadline: normDate(raw.deadline),
+      published: false,
+      review_state: "Pending Review",
+      ingestion_source: "agent_reach",
       slug,
     });
     if (error) skipped.push(`${raw.title} (${error.message})`);
@@ -340,7 +353,7 @@ module.exports = async function govtDiscovery(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method === "GET") {
-    const { data, error } = await supabase.from("jobs").select("id, title_en, company, created_at")
+    const { data, error } = await supabase.from("jobs").select("id, role, company, created_at")
       .eq("source", "govt-discovery").order("created_at", { ascending: false }).limit(20);
     return res.status(200).json({
       message: "POST with owner key to trigger a scrape run.",
