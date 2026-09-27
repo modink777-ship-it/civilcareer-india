@@ -420,7 +420,8 @@ Show expired
       Review Queue — Pending Drafts
       <span class="rq-count" id="reviewQueueCount">0</span>
     </p>
-    <div id="reviewQueueList">
+    <div id="rqBulkBar" style="display:none;gap:10px;align-items:center;margin:0 0 10px;flex-wrap:wrap"><label style="color:#94a3b8;font-size:.78rem"><input type="checkbox" id="rqSelAll" onchange="rqToggleAll(this.checked)"> Select all</label><button class="btn-reject" id="rqBulkReject" onclick="rqBulkReject()" style="display:none">Delete selected</button><span id="rqBulkStatus" style="color:#94a3b8;font-size:.78rem"></span></div>
+<div id="reviewQueueList">
       <p class="rq-empty">No pending drafts.</p>
     </div>
   </div>
@@ -2744,6 +2745,36 @@ function renderDiscoveryResults(results){
   window._discoveryResults=results;
 }
 
+/* ── Review-queue bulk selection ──────────────────────────────────────── */
+const rqSelected=new Set();
+function rqCheck(id,on){if(!id)return;on?rqSelected.add(id):rqSelected.delete(id);rqUpdateBulk();}
+function rqToggleAll(on){
+  document.querySelectorAll('#reviewQueueList input[data-rq-id]').forEach(cb=>{cb.checked=on;if(cb.dataset.rqId){on?rqSelected.add(cb.dataset.rqId):rqSelected.delete(cb.dataset.rqId)}});
+  rqUpdateBulk();
+}
+function rqUpdateBulk(){
+  const n=rqSelected.size,b=$('rqBulkReject');if(b)b.style.display=n?'':'none';
+  const st=$('rqBulkStatus');if(st)st.textContent=n?n+' selected':'';
+}
+async function rqBulkReject(){
+  const ids=[...rqSelected].filter(Boolean);
+  if(!ids.length)return;
+  if(!confirm('PERMANENTLY DELETE '+ids.length+' selected draft(s)? This cannot be undone.'))return;
+  const st=$('rqBulkStatus');let ok=0,fail=0;
+  for(const id of ids){
+    try{
+      await api('/api/jobs',{method:'DELETE',key:adminKey,body:JSON.stringify({id})});
+      ok++;rqSelected.delete(id);
+    }catch(e){fail++;}
+    if(st)st.textContent=ok+' done'+(fail?', '+fail+' failed':'')+' …';
+  }
+  rqUpdateBulk();
+  const kept=(window._reviewQueueData||[]).filter(r=>!ids.includes(r.id));
+  window._reviewQueueData=kept;
+  renderReviewQueue(kept);
+  $('reviewQueueCount').textContent=String(kept.length);
+  discoveryStatus('Bulk delete: '+ok+' removed'+(fail?', '+fail+' failed':'')+'.','show');
+}
 function renderReviewQueue(drafts){
   const section=$('reviewQueueSection');
   const list=$('reviewQueueList');
@@ -2751,10 +2782,14 @@ function renderReviewQueue(drafts){
   if(!drafts||!drafts.length){
     countEl.textContent='0';
     list.innerHTML='<p class="rq-empty">No pending drafts in the review queue for this search.</p>';
+    const bar=$('rqBulkBar');if(bar)bar.style.display='none';
+    rqSelected.clear();
     section.classList.add('show');
     return;
   }
   countEl.textContent=String(drafts.length);
+    const bar2=$('rqBulkBar');if(bar2)bar2.style.display='flex';
+    const allBox=$('rqSelAll');if(allBox)allBox.checked=false;
   list.innerHTML=drafts.map((r,i)=>{
     const tier=r.tier||(r.ageHours!=null&&r.ageHours<=24?'fresh24h':'backup30d');
     const tierBadge=tier==='fresh24h'?`<span style=\"font-size:.6rem;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F7E2; Fresh</span>`:`<span style=\"font-size:.6rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F554; Backup</span>`;
@@ -2764,7 +2799,7 @@ function renderReviewQueue(drafts){
     const dateLabel=hasAge?r.postedAt+(rawShort?' · '+rawShort:''):(rawShort||'Posting time: Unknown');
     return `<article class="discovery-result">
       <div style="min-width:0;flex:1">
-        <h4>${esc(r.title||'Untitled')}${tierBadge}
+        <h4><input type="checkbox" data-rq-id="${esc(r.id||'')}" onchange="rqCheck('${esc(r.id||'')}',this.checked)" style="margin-right:8px">${esc(r.title||'Untitled')}${tierBadge}
           <span style="font-size:.62rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Draft</span>
         </h4>
         <div class="dr-meta">
@@ -2992,6 +3027,19 @@ async function loadAgentReach(){
   }
 }
 
+let arView='review';
+const arSelected=new Set();
+function arSetView(v){arView=v;renderAgentReachInbox()}
+function arToggleAll(on){
+  document.querySelectorAll('#agentReachInbox input[data-ar-id]').forEach(cb=>{cb.checked=on;on?arSelected.add(cb.dataset.arId):arSelected.delete(cb.dataset.arId)});
+  arUpdateBulkButtons();
+}
+function arUpdateBulkButtons(){
+  const n=arSelected.size;
+  for(const id of ['arBulkPublish','arBulkReject','arBulkDelete']){const b=$(id);if(b)b.style.display=n?'':'none';}
+  const st=$('arBulkStatus');if(st)st.textContent=n?n+' selected':'';
+}
+function arCheck(id,on){on?arSelected.add(id):arSelected.delete(id);arUpdateBulkButtons()}
 function renderAgentReachInbox(){
 
   const showRejected=$('arShowRejected')&&$('arShowRejected').checked;
@@ -3004,11 +3052,19 @@ function renderAgentReachInbox(){
 
   $('agentReachInbox').innerHTML=`
 
-    <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 10px">
-      <strong>${pending}</strong> pending &middot;
-      <strong>${agentReachItems.filter(x=>x.review_state==='Published').length}</strong> published &middot;
-      <strong>${agentReachItems.filter(x=>x.review_state==='Rejected').length}</strong> rejected
-    </p>`
+        <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap" id="arTabs">
+      <button class="btn-ghost" data-arview="review" onclick="arSetView('review')">Review (${pending})</button>
+      <button class="btn-ghost" data-arview="published" onclick="arSetView('published')">Published (${agentReachItems.filter(x=>x.review_state==='Published').length})</button>
+      <button class="btn-ghost" data-arview="deleted" onclick="arSetView('deleted')">Deleted (${agentReachItems.filter(x=>x.review_state==='Rejected').length})</button>
+      <button class="btn-ghost" data-arview="all" onclick="arSetView('all')">All (${agentReachItems.length})</button>
+    </div>
+    <div id="arBulkBar" style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap;align-items:center">
+      <label style="color:#94a3b8;font-size:.78rem"><input type="checkbox" id="arSelAll" onchange="arToggleAll(this.checked)"> Select all shown</label>
+      <button class="btn-publish" id="arBulkPublish" onclick="arBulk('publish')" style="display:none">Publish selected</button>
+      <button class="btn-reject" id="arBulkReject" onclick="arBulk('reject')" style="display:none">Reject selected</button>
+      <button class="btn-delete" id="arBulkDelete" onclick="arBulk('delete')" style="display:none">Delete selected</button>
+      <span id="arBulkStatus" style="color:#94a3b8;font-size:.78rem"></span>
+    </div>`
 
     +(list.length
 
@@ -3203,6 +3259,26 @@ async function publishAgentReachItem(id){
   }
 }
 
+/* ── Bulk actions over selected Agent Reach items ─────────────────────── */
+async function arBulk(action){
+  const ids=[...arSelected];
+  if(!ids.length)return;
+  const verb=action==='publish'?'PUBLISH':action==='delete'?'PERMANENTLY DELETE':'REJECT';
+  if(!confirm(verb+' '+ids.length+' selected item(s)?'))return;
+  const st=$('arBulkStatus');
+  let ok=0,fail=0;
+  for(const id of ids){
+    try{
+      if(action==='publish')await publishAgentReachItem(id);
+      else if(action==='delete')await rejectAgentReachItem(id,true);
+      else await rejectAgentReachItem(id,false);
+      ok++;arSelected.delete(id);
+    }catch(e){fail++;}
+    if(st)st.textContent=ok+' done'+(fail?', '+fail+' failed':'')+' …';
+  }
+  arUpdateBulkButtons();renderAgentReachInbox();
+  toast(action[0].toUpperCase()+action.slice(1)+': '+ok+' ok'+(fail?', '+fail+' failed':''));
+}
 async function rejectAgentReachItem(id,deletePermanently){
 
   if(!confirm(deletePermanently?'Delete permanently? This cannot be undone.':'Reject this item? It stays in the database but is marked Rejected and never appears publicly.'))return;
