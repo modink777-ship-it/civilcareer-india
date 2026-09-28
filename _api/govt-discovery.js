@@ -380,9 +380,11 @@ module.exports = async function handler(req, res) {
           country:          'India',
           source_url:       item.link || null,
           application_url:  item.link || null,
-          source:           `GovtDiscovery — ${source.name}`,
+          /* gov_scope has no column in the jobs table (migrations never
+             added it), so writing it made every insert fail silently.
+             The scope now travels inside `source`, which does exist. */
+          source:           `GovtDiscovery — ${source.name} (${source.scope || detectGovScope(combined)})`,
           ingestion_source: 'govt_discovery',
-          gov_scope:        source.scope || detectGovScope(combined),
           deadline:         item.deadline || null,
           posted_at:        item.pubDate ? (new Date(item.pubDate).toISOString() || null) : null,
           published:        false,

@@ -9,15 +9,16 @@
  *
  * Inclusion rules (deliberately strict — the public jobs feed mixes in
  * private ads that carry a wrong `sector` value):
- *   1. sector = Government  AND
- *   2. it is a real government source — gov_scope set, ingested by the
- *      govt-discovery pipeline, gov.in / nic.in links, or a recognised
- *      government employer — AND
- *   3. it is civil-engineering relevant (same keyword set the discovery
- *      pipeline uses at ingestion).
+ *   1. the row is civil-engineering relevant (same keyword set the
+ *      discovery pipeline uses at ingestion)  AND
+ *   2. it comes from a real government source — a gov.in / nic.in / ncs.gov
+ *      link, the govt-discovery pipeline, or a recognised government
+ *      employer (department, PWD, PSU, railway, metro, SSC/PSC…).
  *
- * Private employers (Pvt Ltd / manpower / staffing / consultancy) are
- * dropped even when their sector flag says Government.
+ * The `sector` flag alone is never trusted: private employers (Pvt Ltd /
+ * manpower / staffing / consultancy) and job-board aggregators are dropped
+ * even when their sector says Government — which is exactly how the
+ * mislabelled adzuna.in ads ended up in the feed.
  */
 
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
@@ -26,7 +27,7 @@ const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUP
 const LIST_FIELDS = [
   'id', 'role', 'company', 'sector', 'location', 'location_display', 'state',
   'qualification', 'deadline', 'vacancy_count', 'application_url', 'apply_url',
-  'source_url', 'source', 'gov_scope', 'ingestion_source', 'slug', 'created_at',
+  'source_url', 'source', 'ingestion_source', 'slug', 'created_at', 'employment_type',
   'posted_at', 'status', 'description', 'recruitment_authority', 'application_start',
 ].join(',');
 
@@ -54,9 +55,18 @@ const PRIVATE_RE = /\b(pvt|private limited|pvt\.? ltd|limited|ltd\.?|llp|inc|man
 
 /* ── Real government signals ────────────────────────────────────────────── */
 
-const GOV_EMPLOYER_RE = /\b(government|govt|ministry|department of|public works|pwd|cpwd|ccwd|cwc|nhai|nhpc|nmdc|ongc|gail|bhel|ntpc|npcc|nbcc|wapcos|sail|ril|ircon|rites|irctc|rrb|rrc|railway|metro|dmrc|kmrl|cmrl|gmrc|bmrcl|upsc|ssc|psc|sssb|staff selection|public service commission|municipal|nagar (nigam|palika)|panchayat|jal (nigam|sansthan)|irrigation|water resources|military engineer|mes\b|bro\b|drdo|isro|csir|cimfr|crri|cco|niT\b|iit|cpwd|housing board|development authority|port trust|authority|corporation|board|sarpanch|kvs|nvs)\b/i;
+/* Unambiguous government names/terms — these win even when the employer
+   string also contains "Ltd" (NTPC Limited, NBCC (India) Limited…). */
+const GOV_EMPLOYER_RE = /\b(government|govt|ministry|department of|public works|pwd|cpwd|ccwd|cwc|nhai|nhpc|nmdc|ongc|gail|bhel|ntpc|npcc|nbcc|wapcos|sail|ril\b|ircon|rites|irctc|rrb|rrc|railway|rail vikas|metro|dmrc|kmrl|cmrl|gmrc|bmrcl|mrvc|krcl|upsc|ssc|psc\b|sssb|jkssb|staff selection|public service commission|municipal|nagar (nigam|palika|parishad)|panchayat|zilla parishad|jal (nigam|sansthan|shakti)|irrigation|water resources|public health engineering|military engineer|mes\b|bro\b|border roads|drdo|isro|csir|cimfr|crri|hofm|cpwd|housing board|development authority|port trust|sarpanch|kvs|nvs|public sector undertaking|undertaking|mahatma|vigyan|sansad|secretariat|raj bhavan)\b/i;
+
+/* Generic corporate-shell words — genuine government bodies use them, but so
+   do private firms, so they only count after the private check. */
+const BROAD_GOV_RE = /\b(corporation|corporations|board|authority|department|departments|council|nigam|sansthan|commission|commissionerate|works division|engineering (wing|cell)|institute|university|college)\b/i;
 
 const GOV_DOMAIN_RE = /(\.gov\.in|\.nic\.in|gov\.in\/|nic\.in\/|ncs\.gov|employmentnews)/i;
+
+/* Job boards / aggregators — commercial by definition, never government. */
+const AGGREGATOR_RE = /(adzuna|indeed|naukri|linkedin|shine\.com|timesjobs|monster\.com|foundit|apna\.co|hirist|instahyre|cutshort)/i;
 
 /* ── Department (tab) classification — civil-engineering oriented ───────── */
 
@@ -70,17 +80,21 @@ const DEPARTMENTS = [
   { key: 'institute', label: 'Institutes & Universities', re: /\b(iit|nit\b|iiit|iim\b|university|college|institute|aiims|kvs|nvs|sainik school|navodaya|csir|iiser|niT\b)\b/i },
 ];
 
+function govScopeOf(row) {
+  const src = String(row.source || '');
+  if (/\(central\)/i.test(src) || /central/i.test(src)) return 'central';
+  if (/\(state\)/i.test(src) || /state/i.test(src)) return 'state';
+  return null;
+}
+
 function classifyDepartment(job) {
   const hay = [job.company, job.role, job.recruitment_authority, job.source].filter(Boolean).join(' ');
   for (const d of DEPARTMENTS) {
     if (d.re.test(hay)) return d;
   }
-  if (String(job.gov_scope || '').toLowerCase() === 'central') {
-    return { key: 'central', label: 'Central Govt & CPWD' };
-  }
-  if (String(job.gov_scope || '').toLowerCase() === 'state') {
-    return { key: 'state', label: 'State PWD & Irrigation' };
-  }
+  const scope = govScopeOf(job);
+  if (scope === 'central') return { key: 'central', label: 'Central Govt & CPWD' };
+  if (scope === 'state') return { key: 'state', label: 'State PWD & Irrigation' };
   return { key: 'other', label: 'Other Govt Bodies' };
 }
 
@@ -158,12 +172,15 @@ function isGovtCivil(row) {
   const company = String(row.company || '');
   const hay = [row.company, row.role, row.qualification, row.description, row.source].filter(Boolean).join(' ');
   const url = [row.apply_url, row.application_url, row.source_url].filter(Boolean).join(' ');
+  const raw = `${url} ${row.source || ''}`;
 
   if (!CIVIL_RE.test(hay)) return false;            // civil relevance required
+  if (AGGREGATOR_RE.test(raw)) return false;        // job-board scrapes are never govt
   if (GOV_DOMAIN_RE.test(url)) return true;         // official government link
-  if (row.gov_scope || /govt_discovery/i.test(String(row.ingestion_source || ''))) return true;
+  if (/govt_discovery/i.test(String(row.ingestion_source || row.source || ''))) return true;
+  if (GOV_EMPLOYER_RE.test(hay)) return true;       // strong gov signal beats "Ltd"
   if (PRIVATE_RE.test(company)) return false;       // explicitly commercial employer
-  return GOV_EMPLOYER_RE.test(hay);
+  return BROAD_GOV_RE.test(hay);                    // department / board / corporation
 }
 
 function shape(row, now) {
@@ -192,7 +209,7 @@ function shape(row, now) {
     applyUrl: url,
     internalUrl: row.slug ? `/jobs/${row.slug}` : null,
     source: stripHtml(row.source),
-    govScope: row.gov_scope || null,
+    govScope: govScopeOf(row),
     postedAt: row.posted_at || row.created_at || null,
     scrapedAt: now,
   };
@@ -224,17 +241,32 @@ module.exports = async function handler(req, res) {
   const wantQuery = String(params.get('q') || '').trim().toLowerCase();
   const hideExpired = ['1', 'true', 'yes'].includes(String(params.get('hideExpired') || '').toLowerCase());
 
+  const SELECT = `select=${encodeURIComponent(LIST_FIELDS)}&published=eq.true&order=created_at.desc&limit=1000`;
+
+  /* Admin files civil recruitment as either "Government" or "Public Sector",
+     so both values are pulled; the filter below decides what is genuinely
+     government. If the `in.()` form is ever rejected, fall back to the
+     single-value form rather than failing the whole page. */
+  const QUERIES = [
+    `jobs?${SELECT}&sector=in.(${encodeURIComponent('"Government","Public Sector"')})`,
+    `jobs?${SELECT}&sector=eq.Government`,
+  ];
+
   try {
-    const r = await db(
-      `jobs?select=${encodeURIComponent(LIST_FIELDS)}&published=eq.true&sector=eq.Government&order=created_at.desc&limit=1000`
-    );
-    if (!r.ok) {
+    let list = null;
+    for (const q of QUERIES) {
+      const r = await db(q);
+      if (r.ok) {
+        const rows = await r.json();
+        list = Array.isArray(rows) ? rows : [];
+        break;
+      }
       const detail = await r.text();
-      console.error('govt-jobs query failed:', r.status, detail.slice(0, 200));
+      console.error('govt-jobs query failed:', r.status, String(detail).slice(0, 200));
+    }
+    if (list === null) {
       return res.status(500).json({ ok: false, error: 'Could not load government jobs.' });
     }
-    const rows = await r.json();
-    const list = Array.isArray(rows) ? rows : [];
     const now = new Date().toISOString();
 
     let jobs = list.filter(isGovtCivil).map((row) => shape(row, now));
