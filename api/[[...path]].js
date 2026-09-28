@@ -1,39 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════════
    CivilCareer — SINGLE API FUNCTION (Hobby-plan friendly)
-   Vercel's Hobby plan allows max 12 serverless functions per
-   deployment. Instead of one function per endpoint, this single
-   catch-all ([...path].js) receives every /api/* request and
-   dispatches it to the matching handler in /_api. One function,
-   all endpoints, identical behavior.
    ═══════════════════════════════════════════════════════════════════ */
 
 const handlers = {
-  '/api/jobs': () => require('../_api/jobs'),
-  '/api/account': () => require('../_api/account'),
-  '/api/alerts': () => require('../_api/alerts'),
-  '/api/agent': () => require('../_api/agent'),
-  '/api/agent-reach-ingest': () => require('../_api/agent-reach-ingest'),
-  '/api/analytics': () => require('../_api/analytics'),
-  '/api/auth-config': () => require('../_api/auth-config'),
-  '/api/employer-submissions': () => require('../_api/employer-submissions'),
-  '/api/employers': () => require('../_api/employers'),
-  '/api/exams': () => require('../_api/exams'),
-  '/api/extract': () => require('../_api/extract'),
-  '/api/health': () => require('../_api/health'),
-  '/api/materials': () => require('../_api/materials'),
-  '/api/reports': () => require('../_api/reports'),
-  '/api/resource-submissions': () => require('../_api/resource-submissions'),
-  '/api/sitemap': () => require('../_api/sitemap'),
-  '/api/subscribe': () => require('../_api/subscribe'),
-  '/api/telegram':          () => require('../_api/telegram'),
-  '/api/telegram-status':         () => require('../_api/telegram'),
-  '/api/telegram-bulk':           () => require('../_api/telegram'),
-  '/api/telegram-broadcast-all':  () => require('../_api/telegram'),
-  '/api/exam-alerts':       () => require('../_api/exam-alerts'),
-  '/api/youtube-materials': () => require('../_api/youtube-materials'),
-  '/api/govt-discovery':    () => require('../_api/govt-discovery'),
-  '/api/admin-jobs':        () => require('../_api/admin-jobs'),
-  '/api/civil-scraper':     () => require('../_api/civil-scraper'),
+  '/api/jobs':                    () => require('../_api/jobs'),
+  '/api/account':                 () => require('../_api/account'),
+  '/api/alerts':                  () => require('../_api/alerts'),
+  '/api/agent':                   () => require('../_api/agent'),
+  '/api/agent-reach-ingest':      () => require('../_api/agent-reach-ingest'),
+  '/api/analytics':               () => require('../_api/analytics'),
+  '/api/auth-config':             () => require('../_api/auth-config'),
+  '/api/employer-submissions':    () => require('../_api/employer-submissions'),
+  '/api/employers':               () => require('../_api/employers'),
+  '/api/exams':                   () => require('../_api/exams'),
+  '/api/extract':                 () => require('../_api/extract'),
+  '/api/health':                  () => require('../_api/health'),
+  '/api/materials':               () => require('../_api/materials'),
+  '/api/reports':                 () => require('../_api/reports'),
+  '/api/resource-submissions':    () => require('../_api/resource-submissions'),
+  '/api/sitemap':                 () => require('../_api/sitemap'),
+  '/api/subscribe':               () => require('../_api/subscribe'),
+  '/api/exam-alerts':             () => require('../_api/exam-alerts'),
+  '/api/youtube-materials':       () => require('../_api/youtube-materials'),
+  '/api/govt-discovery':          () => require('../_api/govt-discovery'),
+  '/api/telegram':                () => require('../_api/telegram'),
+  '/api/telegram/status':         () => require('../_api/telegram'),
+  '/api/telegram/bulk':           () => require('../_api/telegram'),
+  '/api/telegram/broadcast-all':  () => require('../_api/telegram'),
+  '/api/civil-scraper':           () => require('../_api/civil-scraper'),
+  '/api/admin-jobs':              () => require('../_api/admin-jobs'),
 };
 
 function sendJson(res, status, obj) {

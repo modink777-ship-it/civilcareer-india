@@ -1821,3 +1821,29 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .cc-compact-card .cc-compact-actions{margin-top:auto}
 #governmentJobs .job-card,#governmentJobs.cards.list .job-card{height:100%}
 #governmentJobs{align-items:stretch}
+
+/* ── Review Jobs System (admin panel) ───────────────────────────── */
+.rj-tabs{display:flex;gap:4px;margin-bottom:14px;background:#071828;padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+.rj-tabs button{padding:7px 14px;border-radius:7px;border:none;background:transparent;color:#6a8aaa;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.rj-tabs button.active{background:#c9973c;color:#0b1f3a}
+.rj-tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
+.rj-bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:10px;margin-bottom:10px}
+.rj-bulk-bar label{font-size:.8rem;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer}
+.rj-bulk-bar .rj-count{font-size:.78rem;color:#6a8aaa}
+.btn-publish-bulk{background:rgba(5,150,105,.15);color:#6ee7b7;border:1px solid rgba(5,150,105,.35);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.btn-publish-bulk:hover{background:rgba(5,150,105,.3)}
+.btn-reject-bulk{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.btn-reject-bulk:hover{background:rgba(220,38,38,.2)}
+.btn-delete-bulk{background:rgba(100,50,50,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.2);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.rj-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+.rj-item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:#c9973c}
+.rj-item-body{flex:1;min-width:0}
+.rj-item-body h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 3px;line-height:1.35}
+.rj-item-body p{font-size:.75rem;color:#6a8aaa;margin:0 0 6px}
+.rj-item-actions{display:flex;gap:6px;flex-wrap:wrap}
+.rj-search{width:100%;padding:9px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none;margin-bottom:12px}
+.rj-search:focus{border-color:#c9973c}
+.rj-scraper-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#071828;border:1px solid rgba(201,151,60,.2);border-radius:10px;margin-bottom:14px;align-items:center}
+.rj-scraper-bar span{font-size:.78rem;color:#6a8aaa;flex:1}
+.rj-tg-badge{font-size:.65rem;padding:2px 7px;border-radius:999px;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);font-weight:600;margin-left:6px}
+.rj-tg-badge.no{background:rgba(100,100,100,.1);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
