@@ -32,6 +32,8 @@ const handlers = {
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
   '/api/govt-discovery':    () => require('../_api/govt-discovery'),
+  '/api/admin-jobs':        () => require('../_api/admin-jobs'),
+  '/api/civil-scraper':     () => require('../_api/civil-scraper'),
 };
 
 function sendJson(res, status, obj) {
