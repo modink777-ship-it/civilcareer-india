@@ -245,7 +245,8 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
-  <button data-tab="reports">Reports</button>  <button data-tab="review-jobs">⚡ Review Jobs</button>
+  <button data-tab="reports">Reports</button>
+  <button data-tab="review-jobs">⚡ Review Jobs</button>
 </div>
 
 <div class="panel active" id="panel-analytics">
@@ -420,8 +421,7 @@ Show expired
       Review Queue — Pending Drafts
       <span class="rq-count" id="reviewQueueCount">0</span>
     </p>
-    <div id="rqBulkBar" style="display:none;gap:10px;align-items:center;margin:0 0 10px;flex-wrap:wrap"><label style="color:#94a3b8;font-size:.78rem"><input type="checkbox" id="rqSelAll" onchange="rqToggleAll(this.checked)"> Select all</label><button class="btn-reject" id="rqBulkReject" onclick="rqBulkReject()" style="display:none">Delete selected</button><span id="rqBulkStatus" style="color:#94a3b8;font-size:.78rem"></span></div>
-<div id="reviewQueueList">
+    <div id="reviewQueueList">
       <p class="rq-empty">No pending drafts.</p>
     </div>
   </div>
@@ -488,61 +488,6 @@ Show expired
     <code>/api/agent-reach-ingest</code>. Everything arrives as <strong style="color:#fbbf24">Pending Review</strong> —
     Agent Reach never publishes directly. Verify the original source, edit if needed, then publish explicitly.
   </p>
-
-  <!-- BLOCK A — Exam Alerts Scanner -->
-  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
-    <h3 style="color:#c9973c">🔔 Exam Alerts Scanner</h3>
-    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Scrapes UPSC, SSC, RRB and Employment News for new civil exam notifications</p>
-    <p style="color:#6a8aaa;font-size:.76rem;margin-bottom:12px">Runs automatically every Monday · results go to Exams tab for review</p>
-    <div class="admin-actions" style="margin-bottom:0">
-      <button id="arExamScanBtn" class="btn-gold" onclick="arRunExamScan()">▶ Scan Now</button>
-    </div>
-    <div id="arExamScanStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
-    <div id="arExamScanResults" style="display:none;margin-top:10px"></div>
-  </div>
-
-  <!-- BLOCK B — YouTube Transcriber -->
-  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
-    <h3 style="color:#c9973c">🎬 YouTube Study Materials</h3>
-    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:12px">Paste a YouTube URL — transcript is extracted and saved as a draft</p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-      <input id="arYtUrl" type="url" placeholder="https://youtube.com/watch?v=…"
-        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
-      <input id="arYtTitle" type="text" placeholder="Custom title (optional)"
-        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
-      <select id="arYtCategory"
-        style="background:#071828;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:.85rem;width:100%;box-sizing:border-box">
-        <option value="">Auto-detect category</option>
-        <option value="GATE / ESE Prep">GATE / ESE Prep</option>
-        <option value="SSC JE / RRB JE">SSC JE / RRB JE</option>
-        <option value="Structural Engineering">Structural Engineering</option>
-        <option value="Transportation">Transportation</option>
-        <option value="Geotechnical">Geotechnical</option>
-        <option value="Fluid Mechanics">Fluid Mechanics</option>
-        <option value="Surveying">Surveying</option>
-        <option value="Quantity Surveying">Quantity Surveying</option>
-        <option value="Civil Engineering">Civil Engineering</option>
-      </select>
-    </div>
-    <div class="admin-actions" style="margin-bottom:0">
-      <button id="arYtBtn" class="btn-gold" onclick="arRunYtTranscribe()">▶ Transcribe</button>
-    </div>
-    <div id="arYtStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
-    <div id="arYtPreview" style="display:none;margin-top:10px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;font-size:.82rem;color:#94a3b8"></div>
-  </div>
-
-  <!-- BLOCK C — Telegram -->
-  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
-    <h3 style="color:#c9973c">📢 Telegram Channel</h3>
-    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:12px">Post published jobs to your Telegram channel. Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in Vercel environment variables.</p>
-    <div class="admin-actions" style="margin-bottom:0">
-      <button id="arTgStatusBtn" class="btn-ghost" onclick="arTelegramStatus()">⟳ Status</button>
-      <button id="arTgBulkBtn" class="btn-gold" onclick="arTelegramBulk()">▶ Post New Jobs</button>
-      <button id="arTgAllBtn" class="btn-ghost" onclick="arTelegramBroadcast()">▶ Broadcast ALL Jobs</button>
-    </div>
-    <div id="arTgStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
-  </div>
-
   <div class="admin-actions">
     <button class="btn-ghost" onclick="loadAgentReach()">Refresh</button>
     <label class="check">
@@ -606,34 +551,49 @@ Notification reader
 <p style="color:#6a8aaa;font-size:.85rem">Loading reports…</p>
 </div>
 </div>
+
+<!-- ── Review Jobs Panel ───────────────────────────────────────────────── -->
 <div class="panel" id="panel-review-jobs">
-  <div class="rj-scraper-bar">
-    <span>Scrape civil engineering jobs from 9 portals → saved as pending review</span>
-    <button class="btn-gold" onclick="rjRunScraper()" id="rjScraperBtn">🔍 Run Scraper Now</button>
-    <button class="btn-ghost" onclick="rjLoadTab(rjActiveTab)" id="rjRefreshBtn">⟳ Refresh</button>
+
+  <!-- Toolbar: sub-tabs + search + scraper -->
+  <div class="rj-toolbar">
+    <div class="rj-subtabs">
+      <button class="active" data-rjtab="review"  onclick="rjSwitchTab('review')">Pending Review</button>
+      <button              data-rjtab="published" onclick="rjSwitchTab('published')">Published</button>
+      <button              data-rjtab="deleted"   onclick="rjSwitchTab('deleted')">Deleted</button>
+    </div>
+    <input class="rj-search" id="rjSearch" type="search" placeholder="🔍 Search by title…" oninput="rjOnSearch()">
+    <div class="rj-scraper-row">
+      <p>Scrape 9 portals for fresh civil engineering jobs</p>
+      <button class="rj-scraper-btn" id="rjScraperBtn" onclick="rjRunScraper()">⚡ Scrape Now</button>
+    </div>
   </div>
-  <div class="rj-tabs">
-    <button class="active" data-rjtab="review" onclick="rjLoadTab('review')">📋 Pending Review <span id="rjReviewCount"></span></button>
-    <button data-rjtab="published" onclick="rjLoadTab('published')">✅ Published <span id="rjPublishedCount"></span></button>
-    <button data-rjtab="deleted" onclick="rjLoadTab('deleted')">🗑️ Deleted <span id="rjDeletedCount"></span></button>
+
+  <!-- Bulk action bar -->
+  <div class="rj-bulk-bar" id="rjBulkBar">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;color:#6a8aaa;flex-shrink:0">
+      <input type="checkbox" id="rjSelectAll" onchange="rjToggleSelectAll()" style="accent-color:#c9973c;width:15px;height:15px"> Select all
+    </label>
+    <span class="rj-sel-count" id="rjSelCount">0 selected</span>
+    <button class="rj-bulk-btn publish" onclick="rjBulkAction('publish')" disabled id="rjBulkPublish">✓ Publish</button>
+    <button class="rj-bulk-btn reject"  onclick="rjBulkAction('reject')"  disabled id="rjBulkReject">✕ Reject</button>
+    <button class="rj-bulk-btn del"     onclick="rjBulkAction('delete')"  disabled id="rjBulkDelete">🗑 Delete</button>
+    <button class="rj-bulk-btn restore" onclick="rjBulkAction('restore')" disabled id="rjBulkRestore">↩ Restore</button>
   </div>
-  <input class="rj-search" id="rjSearch" placeholder="Search jobs by title…" oninput="rjFilterList()">
-  <div class="rj-bulk-bar">
-    <label><input type="checkbox" id="rjSelAll" onchange="rjToggleAll(this.checked)"> Select all</label>
-    <span class="rj-count" id="rjSelCount">0 selected</span>
-    <button class="btn-publish-bulk" onclick="rjBulkAction('publish')">✅ Publish</button>
-    <button class="btn-reject-bulk" onclick="rjBulkAction('reject')">✕ Reject</button>
-    <button class="btn-delete-bulk" onclick="rjBulkAction('delete')">🗑 Delete</button>
-    <button class="btn-ghost" onclick="rjBulkAction('restore')" style="font-size:.75rem">↩ Restore</button>
+
+  <!-- Job list -->
+  <div id="rjList"><div class="rj-loading">Loading jobs…</div></div>
+
+  <!-- Pagination -->
+  <div class="rj-pagination" id="rjPagination" style="display:none">
+    <button id="rjPrevBtn" onclick="rjChangePage(-1)" disabled>← Prev</button>
+    <span id="rjPageInfo">Page 1</span>
+    <button id="rjNextBtn" onclick="rjChangePage(1)" disabled>Next →</button>
   </div>
-  <div id="rjList"><p style="color:#6a8aaa;font-size:.85rem">Click a tab to load jobs.</p></div>
-  <div id="rjPager" style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap"></div>
-</div>
 
 </div>
-</div>
+<!-- ── /Review Jobs Panel ──────────────────────────────────────────────── -->
 
-<div class="toast" id="toast"></div>
 </div>
 </div>
 
@@ -1831,15 +1791,14 @@ ${j._keepUnpublished
         );
       }
 
-      if(!j.id&&saved.job&&saved.job.id){
+      if(!j.id){
 
-        /* Fire-and-forget Telegram post of the just-saved job. The server
-           marks the row and no-ops gracefully when Telegram env vars are
-           not configured. */
         fetch('/api/telegram',{
           method:'POST',
-          headers:{'content-type':'application/json','x-owner-key':adminKey||''},
-          body:JSON.stringify({job_id:saved.job.id})
+          headers:{
+            'content-type':'application/json'
+          },
+          body:JSON.stringify({job:d})
         }).catch(()=>{});
 
       }
@@ -2772,36 +2731,6 @@ function renderDiscoveryResults(results){
   window._discoveryResults=results;
 }
 
-/* ── Review-queue bulk selection ──────────────────────────────────────── */
-const rqSelected=new Set();
-function rqCheck(id,on){if(!id)return;on?rqSelected.add(id):rqSelected.delete(id);rqUpdateBulk();}
-function rqToggleAll(on){
-  document.querySelectorAll('#reviewQueueList input[data-rq-id]').forEach(cb=>{cb.checked=on;if(cb.dataset.rqId){on?rqSelected.add(cb.dataset.rqId):rqSelected.delete(cb.dataset.rqId)}});
-  rqUpdateBulk();
-}
-function rqUpdateBulk(){
-  const n=rqSelected.size,b=$('rqBulkReject');if(b)b.style.display=n?'':'none';
-  const st=$('rqBulkStatus');if(st)st.textContent=n?n+' selected':'';
-}
-async function rqBulkReject(){
-  const ids=[...rqSelected].filter(Boolean);
-  if(!ids.length)return;
-  if(!confirm('PERMANENTLY DELETE '+ids.length+' selected draft(s)? This cannot be undone.'))return;
-  const st=$('rqBulkStatus');let ok=0,fail=0;
-  for(const id of ids){
-    try{
-      await api('/api/jobs',{method:'DELETE',key:adminKey,body:JSON.stringify({id})});
-      ok++;rqSelected.delete(id);
-    }catch(e){fail++;}
-    if(st)st.textContent=ok+' done'+(fail?', '+fail+' failed':'')+' …';
-  }
-  rqUpdateBulk();
-  const kept=(window._reviewQueueData||[]).filter(r=>!ids.includes(r.id));
-  window._reviewQueueData=kept;
-  renderReviewQueue(kept);
-  $('reviewQueueCount').textContent=String(kept.length);
-  discoveryStatus('Bulk delete: '+ok+' removed'+(fail?', '+fail+' failed':'')+'.','show');
-}
 function renderReviewQueue(drafts){
   const section=$('reviewQueueSection');
   const list=$('reviewQueueList');
@@ -2809,14 +2738,10 @@ function renderReviewQueue(drafts){
   if(!drafts||!drafts.length){
     countEl.textContent='0';
     list.innerHTML='<p class="rq-empty">No pending drafts in the review queue for this search.</p>';
-    const bar=$('rqBulkBar');if(bar)bar.style.display='none';
-    rqSelected.clear();
     section.classList.add('show');
     return;
   }
   countEl.textContent=String(drafts.length);
-    const bar2=$('rqBulkBar');if(bar2)bar2.style.display='flex';
-    const allBox=$('rqSelAll');if(allBox)allBox.checked=false;
   list.innerHTML=drafts.map((r,i)=>{
     const tier=r.tier||(r.ageHours!=null&&r.ageHours<=24?'fresh24h':'backup30d');
     const tierBadge=tier==='fresh24h'?`<span style=\"font-size:.6rem;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F7E2; Fresh</span>`:`<span style=\"font-size:.6rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 6px;font-weight:700;margin-left:5px\">&#x1F554; Backup</span>`;
@@ -2826,7 +2751,7 @@ function renderReviewQueue(drafts){
     const dateLabel=hasAge?r.postedAt+(rawShort?' · '+rawShort:''):(rawShort||'Posting time: Unknown');
     return `<article class="discovery-result">
       <div style="min-width:0;flex:1">
-        <h4><input type="checkbox" data-rq-id="${esc(r.id||'')}" onchange="rqCheck('${esc(r.id||'')}',this.checked)" style="margin-right:8px">${esc(r.title||'Untitled')}${tierBadge}
+        <h4>${esc(r.title||'Untitled')}${tierBadge}
           <span style="font-size:.62rem;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:999px;padding:2px 7px;margin-left:6px;font-weight:600">Draft</span>
         </h4>
         <div class="dr-meta">
@@ -3027,20 +2952,19 @@ async function loadAgentReach(){
   try{
 
     const [jr,mr]=await Promise.all([
-      api('/api/jobs?ingestion_source=agent_reach&limit=100',{key:adminKey}),
+      api('/api/jobs',{key:adminKey}),
       api('/api/materials',{key:adminKey})
     ]);
 
-    /* Shared jobs global is intentionally NOT overwritten: the filtered
-       inbox fetch returns only agent-reach rows. */
+    jobs=jr.jobs||jobs;
 
-    /* Same for the shared materials global. */
+    materials=mr.materials||materials;
 
     agentReachItems=[
-      ...(jr.jobs||[])
+      ...jobs
         .filter(j=>j.ingestion_source==='agent_reach')
         .map(j=>({...j,_arType:'job'})),
-      ...(mr.materials||[])
+      ...materials
         .filter(m=>m.ingestion_source==='agent_reach')
         .map(m=>({...m,_arType:'material'}))
     ];
@@ -3054,19 +2978,6 @@ async function loadAgentReach(){
   }
 }
 
-let arView='review';
-const arSelected=new Set();
-function arSetView(v){arView=v;renderAgentReachInbox()}
-function arToggleAll(on){
-  document.querySelectorAll('#agentReachInbox input[data-ar-id]').forEach(cb=>{cb.checked=on;on?arSelected.add(cb.dataset.arId):arSelected.delete(cb.dataset.arId)});
-  arUpdateBulkButtons();
-}
-function arUpdateBulkButtons(){
-  const n=arSelected.size;
-  for(const id of ['arBulkPublish','arBulkReject','arBulkDelete']){const b=$(id);if(b)b.style.display=n?'':'none';}
-  const st=$('arBulkStatus');if(st)st.textContent=n?n+' selected':'';
-}
-function arCheck(id,on){on?arSelected.add(id):arSelected.delete(id);arUpdateBulkButtons()}
 function renderAgentReachInbox(){
 
   const showRejected=$('arShowRejected')&&$('arShowRejected').checked;
@@ -3079,19 +2990,11 @@ function renderAgentReachInbox(){
 
   $('agentReachInbox').innerHTML=`
 
-        <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap" id="arTabs">
-      <button class="btn-ghost" data-arview="review" onclick="arSetView('review')">Review (${pending})</button>
-      <button class="btn-ghost" data-arview="published" onclick="arSetView('published')">Published (${agentReachItems.filter(x=>x.review_state==='Published').length})</button>
-      <button class="btn-ghost" data-arview="deleted" onclick="arSetView('deleted')">Deleted (${agentReachItems.filter(x=>x.review_state==='Rejected').length})</button>
-      <button class="btn-ghost" data-arview="all" onclick="arSetView('all')">All (${agentReachItems.length})</button>
-    </div>
-    <div id="arBulkBar" style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap;align-items:center">
-      <label style="color:#94a3b8;font-size:.78rem"><input type="checkbox" id="arSelAll" onchange="arToggleAll(this.checked)"> Select all shown</label>
-      <button class="btn-publish" id="arBulkPublish" onclick="arBulk('publish')" style="display:none">Publish selected</button>
-      <button class="btn-reject" id="arBulkReject" onclick="arBulk('reject')" style="display:none">Reject selected</button>
-      <button class="btn-delete" id="arBulkDelete" onclick="arBulk('delete')" style="display:none">Delete selected</button>
-      <span id="arBulkStatus" style="color:#94a3b8;font-size:.78rem"></span>
-    </div>`
+    <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 10px">
+      <strong>${pending}</strong> pending &middot;
+      <strong>${agentReachItems.filter(x=>x.review_state==='Published').length}</strong> published &middot;
+      <strong>${agentReachItems.filter(x=>x.review_state==='Rejected').length}</strong> rejected
+    </p>`
 
     +(list.length
 
@@ -3286,26 +3189,6 @@ async function publishAgentReachItem(id){
   }
 }
 
-/* ── Bulk actions over selected Agent Reach items ─────────────────────── */
-async function arBulk(action){
-  const ids=[...arSelected];
-  if(!ids.length)return;
-  const verb=action==='publish'?'PUBLISH':action==='delete'?'PERMANENTLY DELETE':'REJECT';
-  if(!confirm(verb+' '+ids.length+' selected item(s)?'))return;
-  const st=$('arBulkStatus');
-  let ok=0,fail=0;
-  for(const id of ids){
-    try{
-      if(action==='publish')await publishAgentReachItem(id);
-      else if(action==='delete')await rejectAgentReachItem(id,true);
-      else await rejectAgentReachItem(id,false);
-      ok++;arSelected.delete(id);
-    }catch(e){fail++;}
-    if(st)st.textContent=ok+' done'+(fail?', '+fail+' failed':'')+' …';
-  }
-  arUpdateBulkButtons();renderAgentReachInbox();
-  toast(action[0].toUpperCase()+action.slice(1)+': '+ok+' ok'+(fail?', '+fail+' failed':''));
-}
 async function rejectAgentReachItem(id,deletePermanently){
 
   if(!confirm(deletePermanently?'Delete permanently? This cannot be undone.':'Reject this item? It stays in the database but is marked Rejected and never appears publicly.'))return;
@@ -3366,32 +3249,6 @@ $('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)}
 
 let _reviewAgentId=null;
 
-/* TELEGRAM CONTROLS — flat routes only (two-level /api paths 404 on Vercel). */
-async function arTelegramCall(path,btn,confirmText){
-  if(confirmText&&!confirm(confirmText))return;
-  const st=$('arTgStatus');
-  const isStatus=path==='/api/telegram-status';
-  btn.disabled=true;const old=btn.textContent;btn.textContent='⏳ Working…';
-  if(st){st.style.display='block';st.style.color='#fcd34d';st.textContent='Calling Telegram…';}
-  try{
-    const d=await api(path,isStatus?{key:adminKey}:{method:'POST',key:adminKey,body:JSON.stringify({})});
-    if(st){
-      if(isStatus){
-        st.style.color=(d&&d.bot_configured===false)?'#fca5a5':'#86efac';
-        st.textContent=`Published jobs: ${d.total_published??'?'} · Posted: ${d.posted_to_telegram??'?'} · Pending: ${d.pending_telegram??'?'} · Bot: ${d.bot_configured?'configured':'NOT configured'} · Channel: ${d.channel_configured?'configured':'NOT configured'}`;
-      }else{
-        st.style.color='#86efac';
-        st.textContent=`Processed ${d.processed??0} — sent ${d.sent??0}, failed ${d.failed??0}${d.done?' · all done':''}${d.failed_list&&d.failed_list.length?' · failures: '+d.failed_list.slice(0,3).map(f=>f.job+': '+f.error).join('; '):''}`;
-      }
-    }
-  }catch(e){
-    if(st){st.style.display='block';st.style.color='#fca5a5';st.textContent='✗ '+(e.message||'Telegram call failed.');}
-  }finally{btn.disabled=false;btn.textContent=old;}
-}
-function arTelegramStatus(){arTelegramCall('/api/telegram-status',$('arTgStatusBtn'))}
-function arTelegramBulk(){arTelegramCall('/api/telegram-bulk',$('arTgBulkBtn'))}
-function arTelegramBroadcast(){arTelegramCall('/api/telegram-broadcast-all',$('arTgAllBtn'),'Broadcast EVERY published job to Telegram? This can take a long time (about 1.5 seconds per job).')}
-
 /* TABS */
 
 document
@@ -3421,136 +3278,345 @@ document
 
 /* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
 
-/* ── Exam Alerts Scanner ─────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+ * REVIEW JOBS TAB
+ * ───────────────────────────────────────────────────────────────────────── */
 
-async function arRunExamScan() {
-  const btn = $('arExamScanBtn');
-  const status = $('arExamScanStatus');
-  const results = $('arExamScanResults');
+const rjState = {
+  tab:      'review',    // 'review' | 'published' | 'deleted'
+  page:     1,
+  perPage:  50,
+  total:    0,
+  search:   '',
+  jobs:     [],
+  selected: new Set(),
+  searchTimer: null,
+};
 
-  btn.disabled = true;
-  btn.textContent = '⏳ Scanning…';
-  status.style.display = 'block';
-  status.textContent = 'Connecting to government portals…';
-  results.style.display = 'none';
-  results.innerHTML = '';
+/* ── Sub-tab switching ───────────────────────────────────────────────────── */
+
+function rjSwitchTab(tab) {
+  rjState.tab  = tab;
+  rjState.page = 1;
+  rjState.selected.clear();
+  rjState.search = '';
+  $('rjSearch').value = '';
+
+  document.querySelectorAll('.rj-subtabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.rjtab === tab);
+  });
+
+  // Show Restore only on Deleted tab; show Reject only on Review/Published
+  const isDeleted  = tab === 'deleted';
+  const isPending  = tab === 'review';
+  $('rjBulkRestore').style.display = isDeleted  ? '' : 'none';
+  $('rjBulkReject').style.display  = !isDeleted ? '' : 'none';
+  $('rjBulkPublish').style.display = !isDeleted ? '' : 'none';
+  $('rjBulkDelete').style.display  = !isDeleted ? '' : 'none';
+
+  rjLoad();
+}
+
+/* ── Data loading ────────────────────────────────────────────────────────── */
+
+async function rjLoad() {
+  $('rjList').innerHTML = '<div class="rj-loading">Loading jobs…</div>';
+  $('rjPagination').style.display = 'none';
+  $('rjSelectAll').checked = false;
+  rjState.selected.clear();
+  rjUpdateBulkBar();
+
+  const tabParam = rjState.tab === 'review' ? 'review' : rjState.tab;
+  let url = `/api/admin-jobs?tab=${tabParam}&key=${encodeURIComponent(adminKey)}&page=${rjState.page}&per_page=${rjState.perPage}`;
+  if (rjState.search) url += `&search=${encodeURIComponent(rjState.search)}`;
 
   try {
-    const data = await api('/api/exam-alerts', { key: adminKey });
-
-    status.textContent = `✅ Done in ${data.durationMs ? (data.durationMs / 1000).toFixed(1) + 's' : '—'} · ${data.totalNew} new exam${data.totalNew !== 1 ? 's' : ''} added`;
-
-    if (data.sources && data.sources.length) {
-      results.style.display = 'block';
-      results.innerHTML = data.sources.map(s =>
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.8rem">
-          <span style="color:#94a3b8">${esc(s.name)}</span>
-          <span style="color:${s.error ? '#fca5a5' : '#6ee7b7'}">
-            ${s.error ? '⚠ ' + esc(s.error) : `${s.found} found · ${s.saved} saved`}
-          </span>
-        </div>`
-      ).join('');
-    }
-
-    if (Array.isArray(data.insertErrors) && data.insertErrors.length) {
-      results.style.display = 'block';
-      results.innerHTML += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;color:#fca5a5\"><b>' + data.insertErrors.length + '+ insert failures (schema):</b><br>' + data.insertErrors.map(x => esc(x.item) + ' — ' + esc(String(x.detail).slice(0, 160))).join('<br>') + '</div>';
-    }
-
-    if (data.totalNew > 0) {
-      // Refresh exams array so Exams tab shows new drafts
-      try {
-        exams = (await api('/api/exams', { key: adminKey })).exams || [];
-        loadAdminExams();
-      } catch (_) { /* non-fatal */ }
-    }
-
-    toast(`Exam scan complete — ${data.totalNew} new draft${data.totalNew !== 1 ? 's' : ''} added.`);
+    const data = await api(url);
+    rjState.jobs  = data.jobs  || [];
+    rjState.total = data.total || 0;
+    rjRender();
   } catch (err) {
-    status.textContent = '❌ ' + (err.message || 'Scan failed');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '▶ Scan Now';
+    $('rjList').innerHTML = `<div class="rj-error">Failed to load: ${esc(err.message)}</div>`;
   }
 }
 
-/* ── YouTube Transcriber ─────────────────────────────────────────── */
+/* ── Render job cards ────────────────────────────────────────────────────── */
 
-async function arRunYtTranscribe() {
-  const urlInput  = $('arYtUrl');
-  const titleInput = $('arYtTitle');
-  const catSelect  = $('arYtCategory');
-  const btn        = $('arYtBtn');
-  const status     = $('arYtStatus');
-  const preview    = $('arYtPreview');
+function rjSectorBadge(sector) {
+  if (!sector) return '';
+  const s = sector.toLowerCase();
+  if (s === 'government') return `<span class="rj-badge sector-gov">🏛 Govt</span>`;
+  if (s === 'mnc')        return `<span class="rj-badge sector-mnc">🌐 MNC</span>`;
+  return `<span class="rj-badge sector-pvt">🏢 Private</span>`;
+}
 
-  const url = (urlInput.value || '').trim();
-  if (!url) {
-    status.style.display = 'block';
-    status.textContent = '⚠ Please enter a YouTube URL first.';
+function rjTgBadge(posted) {
+  return posted
+    ? `<span class="rj-badge tg-sent">📢 TG</span>`
+    : `<span class="rj-badge tg-unsent">Not sent</span>`;
+}
+
+function rjActButtons(job) {
+  const id = job.id;
+  const tab = rjState.tab;
+  if (tab === 'deleted') {
+    return `<button class="rj-act res" onclick="rjAction('restore',[${id}])">↩ Restore</button>`;
+  }
+  return `
+    <button class="rj-act pub" onclick="rjAction('publish',[${id}])">✓ Publish</button>
+    <button class="rj-act rej" onclick="rjAction('reject',[${id}])">✕ Reject</button>
+    <button class="rj-act del" onclick="rjAction('delete',[${id}])">🗑</button>
+  `;
+}
+
+function rjRender() {
+  const jobs = rjState.jobs;
+
+  if (!jobs.length) {
+    $('rjList').innerHTML = `<div class="rj-empty">No jobs found${rjState.search ? ' for "' + esc(rjState.search) + '"' : ''}.</div>`;
+    $('rjPagination').style.display = 'none';
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = '⏳ Transcribing…';
-  status.style.display = 'block';
-  status.textContent = 'Fetching captions from YouTube…';
-  preview.style.display = 'none';
-  preview.innerHTML = '';
+  $('rjList').innerHTML = jobs.map(j => {
+    const checked = rjState.selected.has(j.id) ? 'checked' : '';
+    const loc     = [j.location, j.company].filter(Boolean).join(' · ');
+    const src     = j.source_name || 'Unknown source';
+    const vac     = j.vacancy_count ? `· ${j.vacancy_count} vacancy` : '';
+    const dl      = j.deadline ? `· Deadline: ${j.deadline}` : '';
+    return `
+    <div class="rj-card" id="rj-card-${j.id}">
+      <input type="checkbox" class="rj-cb" data-id="${j.id}" ${checked}
+        onchange="rjToggleOne(${j.id}, this.checked)">
+      <div class="rj-card-body">
+        <h4>${esc(j.role || 'Untitled')} ${rjSectorBadge(j.sector)}</h4>
+        <p>${esc(loc)}${esc(vac)}${esc(dl)}</p>
+        <div class="rj-badges">
+          ${rjTgBadge(j.telegram_posted)}
+          <span class="rj-badge source">${esc(src)}</span>
+        </div>
+      </div>
+      <div class="rj-card-actions">${rjActButtons(j)}</div>
+    </div>`;
+  }).join('');
 
-  try {
-    const body = { url };
-    if (titleInput.value.trim()) body.title = titleInput.value.trim();
-    if (catSelect.value) body.category = catSelect.value;
-
-    const data = await api('/api/youtube-materials', {
-      method: 'POST',
-      key: adminKey,
-      body: JSON.stringify(body),
-    });
-
-    const s = data.stats || {};
-    status.textContent = '✅ Transcript saved as draft';
-    preview.style.display = 'block';
-    preview.innerHTML =
-      `<strong style="color:#e2e8f0">${esc(s.title)}</strong><br>` +
-      `<span style="color:#64748b">Channel: </span><span>${esc(s.channel)}</span>&ensp;` +
-      `<span style="color:#64748b">Duration: </span><span>${esc(s.duration)}</span>&ensp;` +
-      `<span style="color:#64748b">Words: </span><span>${(s.transcriptWords || 0).toLocaleString()}</span>`;
-
-    // Clear inputs
-    urlInput.value = '';
-    titleInput.value = '';
-    catSelect.value = '';
-
-    // Refresh materials tab
-    try {
-      materials = (await api('/api/materials', { key: adminKey })).materials || [];
-      loadAdminMaterials();
-    } catch (_) { /* non-fatal */ }
-
-    toast('Transcript saved — check Materials tab for draft.');
-  } catch (err) {
-    status.textContent = '❌ ' + (err.message || 'Transcription failed');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '▶ Transcribe';
+  // Pagination
+  const pages = Math.ceil(rjState.total / rjState.perPage) || 1;
+  if (pages > 1 || rjState.total > rjState.perPage) {
+    $('rjPagination').style.display = 'flex';
+    $('rjPageInfo').textContent = `Page ${rjState.page} of ${pages}  (${rjState.total} total)`;
+    $('rjPrevBtn').disabled = rjState.page <= 1;
+    $('rjNextBtn').disabled = rjState.page >= pages;
+  } else {
+    $('rjPagination').style.display = 'none';
   }
 }
-/* ── Review Jobs System ─────────────────────────── */
-let rjActiveTab='review',rjAllJobs=[],rjPage=1;const rjLimit=50;
-async function rjLoadTab(tab){rjActiveTab=tab;rjPage=1;document.querySelectorAll('.rj-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.rjtab===tab));$('rjList').innerHTML='<p style="color:#6a8aaa;font-size:.85rem">Loading…</p>';$('rjSelAll').checked=false;$('rjSelCount').textContent='0 selected';await rjFetch(tab,1);}
-async function rjFetch(tab,page){try{const s=($('rjSearch').value||'').trim();const url=`/api/admin-jobs?tab=${tab}&page=${page}&limit=${rjLimit}${s?'&search='+encodeURIComponent(s):''}&key=${encodeURIComponent(adminKey)}`;const data=await api(url,{key:adminKey});rjAllJobs=data.jobs||[];rjRender(rjAllJobs,data.total||0,page,data.limit||rjLimit);if(tab==='review')$('rjReviewCount').textContent=`(${data.total})`;if(tab==='published')$('rjPublishedCount').textContent=`(${data.total})`;if(tab==='deleted')$('rjDeletedCount').textContent=`(${data.total})`;}catch(e){$('rjList').innerHTML=`<p style="color:#fca5a5;font-size:.85rem">Error: ${esc(e.message)}</p>`;}}
-function rjRender(jobs,total,page,limit){if(!jobs.length){$('rjList').innerHTML='<p style="color:#6a8aaa;padding:1rem">No jobs found.</p>';$('rjPager').innerHTML='';return;}$('rjList').innerHTML=jobs.map(j=>{const tg=j.telegram_posted?'<span class="rj-tg-badge">📢 TG</span>':'<span class="rj-tg-badge no">Not sent</span>';const dl=j.deadline?`· ⏰ ${j.deadline}`:'';const src=j.source_name?`· 📡 ${esc(j.source_name)}`:'';return`<div class="rj-item" id="rji-${j.id}"><input type="checkbox" class="rj-cb" value="${j.id}" onchange="rjUpdateSelCount()"><div class="rj-item-body"><h4>${esc(j.role||'Untitled')} ${tg}</h4><p>${esc(j.company||'')} · ${esc(j.sector||'')} · ${esc(j.location||'India')} ${dl} ${src}</p><div class="rj-item-actions">${rjActiveTab!=='published'?`<button class="btn-publish" onclick="rjSingle('publish','${j.id}')">✅ Publish</button>`:''} ${rjActiveTab==='published'?`<button class="btn-ghost" style="font-size:.73rem" onclick="rjSingle('reject','${j.id}')">Unpublish</button>`:''} ${rjActiveTab!=='deleted'?`<button class="btn-reject" onclick="rjSingle('delete','${j.id}')">🗑 Delete</button>`:''} ${rjActiveTab==='deleted'?`<button class="btn-ghost" style="font-size:.73rem" onclick="rjSingle('restore','${j.id}')">↩ Restore</button>`:''} ${j.source_url?`<a class="btn-open-src" href="${esc(j.source_url)}" target="_blank" rel="noopener noreferrer">View Source ↗</a>`:''}</div></div></div>`}).join('');const pages=Math.ceil(total/limit);$('rjPager').innerHTML=pages>1?`<button class="btn-ghost" ${page<=1?'disabled':''} onclick="rjGoPage(${page-1})">← Prev</button><span style="color:#6a8aaa;font-size:.82rem">Page ${page} of ${pages} · ${total.toLocaleString('en-IN')} jobs</span><button class="btn-ghost" ${page>=pages?'disabled':''} onclick="rjGoPage(${page+1})">Next →</button>`:`<span style="color:#6a8aaa;font-size:.78rem">${total} job${total!==1?'s':''}</span>`;}
-function rjGoPage(p){rjPage=p;rjFetch(rjActiveTab,p);}
-function rjFilterList(){clearTimeout(rjFilterList._t);rjFilterList._t=setTimeout(()=>rjFetch(rjActiveTab,1),400);}
-function rjToggleAll(checked){document.querySelectorAll('.rj-cb').forEach(cb=>cb.checked=checked);rjUpdateSelCount();}
-function rjUpdateSelCount(){const n=document.querySelectorAll('.rj-cb:checked').length;$('rjSelCount').textContent=`${n} selected`;}
-function rjGetSelected(){return[...document.querySelectorAll('.rj-cb:checked')].map(cb=>cb.value);}
-async function rjSingle(action,id){await rjDoAction(action,[id]);}
-async function rjBulkAction(action){const ids=rjGetSelected();if(!ids.length){toast('Select at least one job first.');return;}await rjDoAction(action,ids);}
-async function rjDoAction(action,ids){try{const data=await api('/api/admin-jobs',{method:'POST',key:adminKey,body:JSON.stringify({key:adminKey,action,ids})});const label={publish:'Published',reject:'Rejected',delete:'Deleted',restore:'Restored'}[action]||action;toast(`${label} ${data.affected} job${data.affected!==1?'s':''} ✓`);if(action==='publish')toast('📢 Posting to Telegram…');await rjFetch(rjActiveTab,rjPage);$('rjSelAll').checked=false;$('rjSelCount').textContent='0 selected';}catch(e){toast('Error: '+e.message);}}
-async function rjRunScraper(){const btn=$('rjScraperBtn');btn.disabled=true;btn.textContent='⏳ Scraping…';try{const data=await api('/api/civil-scraper',{method:'POST',key:adminKey,body:JSON.stringify({key:adminKey})});toast(`Scraper done — ${data.new_jobs_saved} new jobs saved ✓`);if(rjActiveTab==='review')await rjFetch('review',1);}catch(e){toast('Scraper error: '+e.message);}finally{btn.disabled=false;btn.textContent='🔍 Run Scraper Now';}}
+
+/* ── Selection helpers ───────────────────────────────────────────────────── */
+
+function rjToggleOne(id, checked) {
+  if (checked) rjState.selected.add(id);
+  else         rjState.selected.delete(id);
+  rjUpdateBulkBar();
+}
+
+function rjToggleSelectAll() {
+  const all = $('rjSelectAll').checked;
+  rjState.jobs.forEach(j => {
+    if (all) rjState.selected.add(j.id);
+    else     rjState.selected.delete(j.id);
+  });
+  document.querySelectorAll('.rj-cb').forEach(cb => { cb.checked = all; });
+  rjUpdateBulkBar();
+}
+
+function rjUpdateBulkBar() {
+  const n = rjState.selected.size;
+  $('rjSelCount').textContent = n === 1 ? '1 selected' : `${n} selected`;
+  const en = n > 0;
+  ['rjBulkPublish','rjBulkReject','rjBulkDelete','rjBulkRestore'].forEach(id => {
+    const el = $(id);
+    if (el) el.disabled = !en;
+  });
+}
+
+/* ── Individual + bulk actions ───────────────────────────────────────────── */
+
+async function rjAction(action, ids) {
+  if (!ids.length) return;
+  const verb = { publish:'Publishing', reject:'Rejecting', delete:'Deleting', restore:'Restoring' }[action] || action;
+  toast(`${verb} ${ids.length} job${ids.length !== 1 ? 's' : ''}…`);
+
+  try {
+    await api('/api/admin-jobs', {
+      method: 'POST',
+      key:    adminKey,
+      body:   JSON.stringify({ key: adminKey, action, ids }),
+    });
+
+    // Remove acted-on cards from the current view immediately
+    ids.forEach(id => {
+      rjState.selected.delete(id);
+      const card = $('rj-card-' + id);
+      if (card) card.remove();
+      rjState.jobs = rjState.jobs.filter(j => j.id !== id);
+      rjState.total = Math.max(0, rjState.total - 1);
+    });
+
+    rjUpdateBulkBar();
+    $('rjSelectAll').checked = false;
+
+    if (action === 'publish') {
+      toast(`✅ Published ${ids.length} job${ids.length !== 1 ? 's' : ''}. 📢 Posting to Telegram…`);
+    } else {
+      const past = { reject:'Rejected', delete:'Deleted', restore:'Restored' }[action] || action;
+      toast(`✅ ${past} ${ids.length} job${ids.length !== 1 ? 's' : ''}.`);
+    }
+
+    // Re-render in case list is now empty
+    if (!rjState.jobs.length) rjRender();
+  } catch (err) {
+    toast(`❌ ${err.message || 'Action failed'}`);
+  }
+}
+
+function rjBulkAction(action) {
+  const ids = Array.from(rjState.selected);
+  if (!ids.length) return;
+  rjAction(action, ids);
+}
+
+/* ── Search (400 ms debounce) ────────────────────────────────────────────── */
+
+function rjOnSearch() {
+  clearTimeout(rjState.searchTimer);
+  rjState.searchTimer = setTimeout(() => {
+    rjState.search = $('rjSearch').value.trim();
+    rjState.page   = 1;
+    rjLoad();
+  }, 400);
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+
+function rjChangePage(delta) {
+  const pages = Math.ceil(rjState.total / rjState.perPage) || 1;
+  rjState.page = Math.max(1, Math.min(pages, rjState.page + delta));
+  rjLoad();
+}
+
+/* ── Scraper ─────────────────────────────────────────────────────────────── */
+
+async function rjRunScraper() {
+  const btn = $('rjScraperBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scraping…';
+  toast('Scraping 9 portals — this takes ~20 seconds…');
+
+  try {
+    const data = await api('/api/civil-scraper', {
+      method: 'POST',
+      key:    adminKey,
+      body:   JSON.stringify({ key: adminKey }),
+    });
+    const added = data.added ?? data.saved ?? data.total ?? '?';
+    toast(`✅ Scrape done — ${added} new job${added !== 1 ? 's' : ''} added to Pending Review.`);
+    // Reload pending tab to show new jobs
+    if (rjState.tab === 'review') rjLoad();
+    else rjSwitchTab('review');
+  } catch (err) {
+    toast(`❌ Scraper failed: ${err.message || 'Unknown error'}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Scrape Now';
+  }
+}
+
+/* ── Auto-load when tab is clicked ──────────────────────────────────────── */
+
+(function patchTabsForReviewJobs() {
+  const origSetup = () => {
+    document.querySelectorAll('#tabs button').forEach(b => {
+      const orig = b.onclick;
+      b.addEventListener('click', () => {
+        if (b.dataset.tab === 'review-jobs') {
+          // First load only — subsequent loads use sub-tab buttons
+          if (!rjState._loaded) {
+            rjState._loaded = true;
+            rjSwitchTab('review');
+          }
+        }
+      });
+    });
+  };
+  // Run after DOM + existing tab wiring is done
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', origSetup);
+  else origSetup();
+})();
+
+/* ── Review Jobs Tab ──────────────────────────────────────────────────────── */
+
+.rj-toolbar{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rj-subtabs{display:flex;gap:4px;background:#071828;border-radius:8px;padding:3px}
+.rj-subtabs button{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:#6a8aaa;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.rj-subtabs button.active{background:#c9973c;color:#0b1f3a}
+.rj-subtabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
+.rj-search{flex:1;min-width:180px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none}
+.rj-search:focus{border-color:#c9973c}
+.rj-search::placeholder{color:#4a6a8a}
+.rj-bulk-bar{background:#071828;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rj-sel-count{font-size:.78rem;color:#94a3b8;flex:1;min-width:80px}
+.rj-bulk-btn{padding:6px 14px;border-radius:7px;border:none;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.rj-bulk-btn.publish{background:rgba(5,150,105,.2);color:#6ee7b7;border:1px solid rgba(5,150,105,.35)}
+.rj-bulk-btn.publish:hover{background:rgba(5,150,105,.35)}
+.rj-bulk-btn.reject{background:rgba(217,119,6,.15);color:#fbbf24;border:1px solid rgba(217,119,6,.3)}
+.rj-bulk-btn.reject:hover{background:rgba(217,119,6,.3)}
+.rj-bulk-btn.del{background:rgba(220,38,38,.12);color:#fca5a5;border:1px solid rgba(220,38,38,.25)}
+.rj-bulk-btn.del:hover{background:rgba(220,38,38,.25)}
+.rj-bulk-btn.restore{background:rgba(255,255,255,.07);color:#94a3b8;border:1px solid rgba(255,255,255,.12)}
+.rj-bulk-btn.restore:hover{background:rgba(255,255,255,.14);color:#fff}
+.rj-bulk-btn:disabled{opacity:.4;cursor:not-allowed}
+.rj-card{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px}
+.rj-card:hover{border-color:rgba(255,255,255,.14)}
+.rj-cb{margin-top:3px;accent-color:#c9973c;width:16px;height:16px;flex-shrink:0;cursor:pointer}
+.rj-card-body{flex:1;min-width:0}
+.rj-card-body h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 4px;line-height:1.3;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rj-card-body p{font-size:.76rem;color:#6a8aaa;margin:0 0 8px;line-height:1.45}
+.rj-badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.rj-badge{font-size:.63rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.rj-badge.sector-gov{background:rgba(96,165,250,.1);color:#93c5fd;border-color:rgba(96,165,250,.25)}
+.rj-badge.sector-pvt{background:rgba(201,151,60,.1);color:#c9973c;border-color:rgba(201,151,60,.25)}
+.rj-badge.sector-mnc{background:rgba(167,139,250,.1);color:#c4b5fd;border-color:rgba(167,139,250,.25)}
+.rj-badge.tg-sent{background:rgba(5,150,105,.12);color:#6ee7b7;border-color:rgba(5,150,105,.3)}
+.rj-badge.tg-unsent{background:rgba(255,255,255,.05);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
+.rj-badge.source{background:rgba(255,255,255,.05);color:#64748b;border-color:rgba(255,255,255,.08)}
+.rj-card-actions{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.rj-act{padding:5px 11px;border-radius:7px;border:none;font-size:.73rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s}
+.rj-act.pub{background:rgba(5,150,105,.18);color:#6ee7b7;border:1px solid rgba(5,150,105,.3)}
+.rj-act.pub:hover{background:rgba(5,150,105,.32)}
+.rj-act.rej{background:rgba(217,119,6,.12);color:#fbbf24;border:1px solid rgba(217,119,6,.25)}
+.rj-act.rej:hover{background:rgba(217,119,6,.28)}
+.rj-act.del{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.2)}
+.rj-act.del:hover{background:rgba(220,38,38,.22)}
+.rj-act.res{background:rgba(255,255,255,.07);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
+.rj-act.res:hover{background:rgba(255,255,255,.14);color:#fff}
+.rj-empty{text-align:center;padding:2.5rem 1rem;color:#4a6a8a;font-size:.85rem}
+.rj-loading{text-align:center;padding:2rem;color:#6a8aaa;font-size:.85rem}
+.rj-error{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.2);border-radius:9px;padding:12px 16px;font-size:.82rem;margin-bottom:10px}
+.rj-pagination{display:flex;align-items:center;gap:8px;justify-content:center;padding:14px 0 2px;font-size:.82rem;color:#6a8aaa}
+.rj-pagination button{padding:6px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#94a3b8;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit}
+.rj-pagination button:hover:not(:disabled){background:rgba(255,255,255,.12);color:#fff}
+.rj-pagination button:disabled{opacity:.3;cursor:not-allowed}
+.rj-scraper-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;width:100%}
+.rj-scraper-row p{font-size:.76rem;color:#6a8aaa;margin:0;flex:1}
+.rj-scraper-btn{padding:7px 16px;border-radius:8px;background:#c9973c;color:#0b1f3a;border:none;font-size:.8rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.rj-scraper-btn:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:640px){
+  .rj-card{flex-direction:column;gap:8px}
+  .rj-card-actions{width:100%}
+  .rj-toolbar{flex-direction:column;align-items:stretch}
+  .rj-search{width:100%}
+}
 </script>
 
 </body>
