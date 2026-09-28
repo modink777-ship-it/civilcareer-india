@@ -216,14 +216,15 @@ async function handlePost(req, res) {
   }
 
   /* AUTO-TELEGRAM: jobs that were just published go to the channel
-     automatically. Fetch each published job and post it — fire-and-forget,
-     sequential, never blocks or fails the response. The dedupe guard in
-     telegram-auto prevents double-posting. */
+     automatically. Fire-and-forget, sequential, never blocks or fails the
+     response. Duplicate safety lives entirely in lib/telegram-auto.js:
+     autoPostToTelegram atomically claims telegram_posted false→true before
+     sending, so only ONE caller ever posts a given job. */
   if (action === 'publish' && updated > 0) {
     (async () => {
       for (const id of ids) {
         try {
-          const fr = await supa(`jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&telegram_posted=eq.false&limit=1`);
+          const fr = await supa(`jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`);
           if (!fr.ok) continue;
           const rows = await fr.json();
           if (Array.isArray(rows) && rows[0]) {

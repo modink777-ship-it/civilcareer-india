@@ -4,12 +4,28 @@
  * CivilCareer — YouTube Study Materials
  * POST /api/youtube-materials { url, title?, category? }
  *
- * Uses YouTube's public caption endpoint (no API key, no auth needed).
- * Much more reliable than InnerTube API which requires authentication.
+ * TRANSCRIPT PIPELINE (replicates what working downloaders do in 2025+ —
+ * bare timedtext URLs and anonymous InnerTube calls are bot-gated):
+ *
+ *   1. WATCH-PAGE SESSION — fetch the video page with a real browser UA,
+ *      collect its Set-Cookie jar and the `visitorData` token embedded in
+ *      the page HTML. This session is what makes YouTube treat us as a
+ *      real client.
+ *   2. VISIONOS PLAYER — InnerTube player call as the visionOS client
+ *      (clientName VISIONOS, X-YouTube-Client-Name 101), passing the page
+ *      session (cookies + X-Goog-Visitor-Id). Returns playability OK and
+ *      caption tracks with signed baseUrls. Falls back to the watch page's
+ *      own ytInitialPlayerResponse tracks if the API call is refused.
+ *   3. TRACK PICK — manual English → auto (ASR) English → any en-* → any
+ *      language auto-translated to English (&tlang=en).
+ *   4. CONTENT — per track: fmt=json3 → fmt=srv3 (XML <p>/<text>) → fmt=vtt,
+ *      always sent WITH the page session cookies.
  */
 
 const SUPA = process.env.SUPABASE_URL;
 const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 
 function db(path, opts = {}) {
   return fetch(`${SUPA}/rest/v1/${path}`, {
@@ -59,107 +75,308 @@ function detectCategory(text) {
   return 'Civil Engineering';
 }
 
-// ── Fetch video metadata from YouTube page ───────────────────────────────
+// ── JSON helpers ─────────────────────────────────────────────────────────
 
-async function fetchVideoMetadata(videoId) {
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
+/** Extract a balanced JSON object that follows a JS assignment marker. */
+function extractJsonAfter(html, marker) {
+  const idx = html.indexOf(marker);
+  if (idx === -1) return null;
+  const start = html.indexOf('{', idx);
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  const maxEnd = Math.min(html.length, start + 2000000);
+  for (let i = start; i < maxEnd; i++) {
+    const ch = html[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+function captionTracksFrom(playerResponse) {
+  try {
+    const renderer =
+      playerResponse &&
+      playerResponse.captions &&
+      playerResponse.captions.playerCaptionsTracklistRenderer;
+    const tracks = (renderer && renderer.captionTracks) || [];
+    return Array.isArray(tracks) ? tracks : [];
+  } catch { return []; }
+}
+
+// ── Step 1: watch-page session ───────────────────────────────────────────
+
+async function fetchWatchSession(videoId) {
+  const url = `https://www.youtube.com/watch?v=${videoId}&hl=en&bpctr=9999999999&has_verified=1`;
   const r = await fetch(url, {
-    signal: AbortSignal.timeout(10000),
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': BROWSER_UA,
+      'Accept-Language': 'en-US,en;q=0.9',
+      Cookie: 'SOCS=CAI; CONSENT=YES+cb.20210328-17-p0.en+FX+678; PREF=hl=en&gl=IN',
     },
+    signal: AbortSignal.timeout(12000),
   });
-  if (!r.ok) throw new Error(`YouTube page HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`YouTube watch page HTTP ${r.status}`);
   const html = await r.text();
 
-  // Extract title from <title> tag
-  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-  const title = titleMatch
-    ? titleMatch[1].replace(' - YouTube', '').replace(/\s*\|\s*YouTube\s*$/, '').trim()
-    : 'Untitled Video';
+  // Session cookies from this visit (each Set-Cookie trimmed to name=value).
+  let cookieHeader = 'SOCS=CAI; CONSENT=YES+cb.20210328-17-p0.en+FX+678; PREF=hl=en&gl=IN';
+  try {
+    const set = (typeof r.headers.getSetCookie === 'function') ? r.headers.getSetCookie() : [];
+    if (set.length) {
+      cookieHeader = [cookieHeader, ...set.map((c) => c.split(';')[0])].join('; ');
+    }
+  } catch { /* keep default jar */ }
 
-  // Extract duration from initial data
-  const durationMatch = html.match(/"duration":"(\d+)"/);
-  const duration = durationMatch ? Math.floor(parseInt(durationMatch[1], 10)) : 0;
+  // visitorData token — the session identity InnerTube calls expect.
+  let visitorData = null;
+  const vd = html.match(/"visitorData":"([^"]+)"/);
+  if (vd) visitorData = vd[1];
 
-  const durationText = duration
-    ? `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`
-    : 'Unknown duration';
+  // Page's own player response — fallback track source + video metadata.
+  const pagePR = extractJsonAfter(html, 'ytInitialPlayerResponse');
+  const pageTracks = captionTracksFrom(pagePR);
 
-  // Try to get channel name from metadata
-  const channelMatch = html.match(/"author":"([^"]+)"/);
-  const channel = channelMatch ? channelMatch[1] : 'Unknown Channel';
+  let videoDetails = (pagePR && pagePR.videoDetails) || null;
+  if (!videoDetails) {
+    const t = html.match(/<title>([^<]+)<\/title>/);
+    if (t) videoDetails = { title: t[1].replace(/ - YouTube$/, '').trim() };
+  }
 
-  return { title, channel, duration, durationText };
+  return { cookieHeader, visitorData, pageTracks, videoDetails };
 }
 
-// ── Fetch captions via YouTube's public endpoint ──────────────────────────
+// ── Step 2: VISIONOS InnerTube player ────────────────────────────────────
 
-async function fetchCaptions(videoId) {
-  // Get caption list
-  const captionListUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&type=list`;
-  const listResp = await fetch(captionListUrl, {
-    signal: AbortSignal.timeout(8000),
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-  });
-  if (!listResp.ok) {
-    throw new Error('Video has no captions. Enable closed captions (CC) on YouTube and try again.');
-  }
-  const listXml = await listResp.text();
+async function visionosPlayer(videoId, session) {
+  try {
+    const client = {
+      clientName: 'VISIONOS',
+      clientVersion: '1.02',
+      deviceMake: 'Apple',
+      deviceModel: 'RealityDevice17,1',
+      userAgent: BROWSER_UA,
+      osName: 'visionOS',
+      osVersion: '26.5.23O471',
+      hl: 'en',
+      gl: 'IN',
+      utcOffsetMinutes: 330,
+    };
+    if (session.visitorData) client.visitorData = session.visitorData;
 
-  // Find English caption track
-  const trackMatch = listXml.match(/lang_code="en"[^>]*name="([^"]*)"[^>]*lang="en"[^>]*yt:format_rank="(\d+)"[^>]*>[\s\S]*?<\/track>|<track[^>]*lang="en"[^>]*>/);
-  if (!trackMatch) {
-    throw new Error('No English captions found. Try a video with English closed captions.');
+    const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': BROWSER_UA,
+        'X-YouTube-Client-Name': '101',
+        'X-YouTube-Client-Version': '1.02',
+        'X-Goog-Visitor-Id': session.visitorData || '',
+        Origin: 'https://www.youtube.com',
+        'X-Origin': 'https://www.youtube.com',
+        'Accept-Language': 'en-US,en;q=0.9',
+        Cookie: session.cookieHeader,
+      },
+      body: JSON.stringify({
+        videoId,
+        context: { client },
+        contentCheckOk: true,
+        racyCheckOk: true,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!r.ok) return { tracks: [], videoDetails: null, status: `HTTP ${r.status}` };
+    const pr = await r.json();
+    const playability = pr && pr.playabilityStatus && pr.playabilityStatus.status;
+    const tracks = captionTracksFrom(pr);
+    return { tracks, videoDetails: (pr && pr.videoDetails) || null, status: playability || 'UNKNOWN' };
+  } catch (e) {
+    return { tracks: [], videoDetails: null, status: e && e.message ? e.message : 'error' };
   }
-
-  // Get first track (usually auto or English)
-  const enMatch = listXml.match(/lang="en"/);
-  if (!enMatch) {
-    throw new Error('No English captions available.');
-  }
-
-  // Fetch captions in VTT format (easier to parse than XML)
-  const captionUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=vtt`;
-  const captResp = await fetch(captionUrl, {
-    signal: AbortSignal.timeout(8000),
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-  });
-  if (!captResp.ok) {
-    throw new Error('Could not fetch captions (HTTP ' + captResp.status + ')');
-  }
-  const vttText = await captResp.text();
-  return vttText;
 }
 
-// ── Parse VTT captions into readable text ────────────────────────────────
+// ── Step 3: track selection ──────────────────────────────────────────────
 
-function parseVTT(vttText) {
-  const lines = vttText.split('\n');
-  const textLines = [];
-  let inContent = false;
+/**
+ * Pick the best track. Returns { track, translateTo } where translateTo is
+ * set when we must ask YouTube to auto-translate the chosen track into
+ * English via &tlang=en.
+ */
+function pickTrack(tracks) {
+  if (!tracks.length) return null;
+  const isEn = (t) => /^en([-_]|$)/i.test(String(t.languageCode || ''));
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Skip timecodes and metadata
-    if (!trimmed || /^WEBVTT|^NOTE|^\d{2}:\d{2}/.test(trimmed)) continue;
-    // Remove HTML tags
-    const cleaned = trimmed
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (cleaned) textLines.push(cleaned);
+  const manualEn = tracks.filter((t) => isEn(t) && t.kind !== 'asr');
+  if (manualEn.length) return { track: manualEn[0], translateTo: null };
+
+  const autoEn = tracks.filter((t) => isEn(t));
+  if (autoEn.length) return { track: autoEn[0], translateTo: null };
+
+  // No English track at all → take any track and auto-translate to English.
+  const manualAny = tracks.filter((t) => t.kind !== 'asr');
+  const any = manualAny.length ? manualAny : tracks;
+  return { track: any[0], translateTo: 'en' };
+}
+
+// ── Step 4: caption content fetching (multiple formats) ──────────────────
+
+function decodeEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
+}
+
+function json3Lines(json) {
+  const events = (json && json.events) || [];
+  const lines = [];
+  for (const ev of events) {
+    if (!ev || !Array.isArray(ev.segs)) continue;
+    const text = ev.segs.map((s) => (s && s.utf8) || '').join('').replace(/\s+/g, ' ').trim();
+    if (text) lines.push(text);
+  }
+  return lines;
+}
+
+function vttLines(vtt) {
+  const out = [];
+  for (const raw of vtt.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (/^WEBVTT|^NOTE|^Kind:|^Language:|^\d+$|-->/.test(line)) continue;
+    const cleaned = decodeEntities(line.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+    if (cleaned) out.push(cleaned);
+  }
+  return out;
+}
+
+function xmlLines(xml) {
+  // srv3 uses <p> elements (with nested <s> segments); legacy srv uses <text>.
+  const out = [];
+  const re = /<(?:text|p)\b[^>]*>([\s\S]*?)<\/(?:text|p)>/gi;
+  let m;
+  while ((m = re.exec(xml))) {
+    const cleaned = decodeEntities(m[1].replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+    if (cleaned) out.push(cleaned);
+  }
+  return out;
+}
+
+async function fetchTrackText(baseUrl, translateTo, cookieHeader) {
+  const url = baseUrl + (translateTo ? `&tlang=${translateTo}` : '');
+  for (const fmt of ['json3', 'srv3', 'vtt']) {
+    try {
+      const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}fmt=${fmt}`, {
+        headers: {
+          'User-Agent': BROWSER_UA,
+          'Accept-Language': 'en-US,en;q=0.9',
+          Origin: 'https://www.youtube.com',
+          Cookie: cookieHeader,
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!r.ok) continue;
+      const body = await r.text();
+      if (!body || body.length < 10) continue;
+      if (fmt === 'json3') {
+        try {
+          const lines = json3Lines(JSON.parse(body));
+          if (lines.length) return lines;
+        } catch { /* try next format */ }
+        continue;
+      }
+      if (fmt === 'srv3') {
+        const lines = xmlLines(body);
+        if (lines.length) return lines;
+        continue;
+      }
+      const lines = vttLines(body);
+      if (lines.length) return lines;
+    } catch { /* try next format */ }
+  }
+  return null;
+}
+
+// ── Full transcript resolution ───────────────────────────────────────────
+
+async function getTranscript(videoId) {
+  // Step 1 — establish a real page session.
+  const session = await fetchWatchSession(videoId);
+
+  // Step 2 — VISIONOS player with the session (preferred track source).
+  let tracks = [];
+  let videoDetails = null;
+  const api = await visionosPlayer(videoId, session);
+  if (api.tracks.length) {
+    tracks = api.tracks;
+    if (api.videoDetails) videoDetails = api.videoDetails;
   }
 
-  const fullText = textLines.join(' ');
-  const words = fullText.split(/\s+/);
+  // Fallback — the watch page's own player response (same session).
+  if (!tracks.length && session.pageTracks.length) {
+    tracks = session.pageTracks;
+    const st = api.status || 'no tracks';
+    console.log(`youtube-materials: VISIONOS player unusable (${st}); using watch-page caption tracks`);
+  }
+  if (!videoDetails && session.videoDetails) videoDetails = session.videoDetails;
 
-  // Group into ~250-word paragraphs
+  if (!tracks.length) {
+    throw new Error(
+      'No caption tracks available for this video (YouTube reported none in any language). ' +
+      'Double-check the video actually shows a CC button on YouTube, then try again.'
+    );
+  }
+
+  // Steps 3 & 4 — pick the best track and download its content.
+  const pick = pickTrack(tracks);
+  const lines = await fetchTrackText(pick.track.baseUrl, pick.translateTo, session.cookieHeader);
+
+  if (!lines || !lines.length) {
+    const langs = Array.from(new Set(tracks.map((t) => String(t.languageCode || '?')))).join(', ');
+    throw new Error(
+      `Found caption tracks (${langs}) but could not download their content. ` +
+      'This is usually temporary — please retry in a minute.'
+    );
+  }
+
+  return {
+    lines,
+    trackInfo: {
+      language: String(pick.track.languageCode || ''),
+      kind: pick.track.kind === 'asr' ? 'auto' : 'manual',
+      translated: Boolean(pick.translateTo),
+    },
+    videoDetails,
+  };
+}
+
+// ── Lines → readable paragraphs ──────────────────────────────────────────
+
+function linesToTranscript(rawLines) {
+  // Collapse rolling-caption duplicates (same line repeated back-to-back).
+  const lines = [];
+  for (const l of rawLines) {
+    if (!lines.length || lines[lines.length - 1] !== l) lines.push(l);
+  }
+
+  const fullText = lines.join(' ').replace(/\s+/g, ' ').trim();
+  const words = fullText.split(/\s+/).filter(Boolean);
+
+  // Group into ~250-word paragraphs.
   const paragraphs = [];
   for (let i = 0; i < words.length; i += 250) {
     paragraphs.push(words.slice(i, i + 250).join(' '));
@@ -170,7 +387,7 @@ function parseVTT(vttText) {
 
 // ── Main handler ─────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
@@ -191,15 +408,9 @@ module.exports = async function handler(req, res) {
   if (!videoId) return res.status(400).json({ ok: false, error: 'Invalid YouTube URL.' });
 
   try {
-    // Fetch metadata
-    const meta = await fetchVideoMetadata(videoId);
-    
-    // Fetch captions
-    const vttText = await fetchCaptions(videoId);
-    
-    // Parse captions
-    const { text: transcript, wordCount } = parseVTT(vttText);
-    
+    const { lines, trackInfo, videoDetails } = await getTranscript(videoId);
+    const { text: transcript, wordCount } = linesToTranscript(lines);
+
     if (wordCount < 20) {
       return res.status(422).json({
         ok: false,
@@ -207,10 +418,17 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Prepare material record
-    const finalTitle = customTitle || meta.title;
-    const finalCategory = customCategory || detectCategory(finalTitle + ' ' + meta.title);
-    const desc = `Channel: ${meta.channel} · Duration: ${meta.durationText} · ~${wordCount.toLocaleString()} words`;
+    const title = (videoDetails && videoDetails.title) || 'Untitled Video';
+    const channel = (videoDetails && videoDetails.author) || 'Unknown Channel';
+    const lengthSec = videoDetails && videoDetails.lengthSeconds ? parseInt(videoDetails.lengthSeconds, 10) : 0;
+    const durationText = lengthSec
+      ? `${Math.floor(lengthSec / 3600)}h ${Math.floor((lengthSec % 3600) / 60)}m`
+      : 'Unknown duration';
+
+    const finalTitle = customTitle || title;
+    const finalCategory = customCategory || detectCategory(finalTitle);
+    const trackDesc = trackInfo.kind === 'auto' ? 'auto-generated' : 'closed captions';
+    const desc = `Channel: ${channel} · Duration: ${durationText} · ~${wordCount.toLocaleString()} words · ${trackInfo.language}${trackInfo.translated ? ' → en (translated)' : ''} (${trackDesc})`;
 
     const payload = {
       title_en: finalTitle.slice(0, 255),
@@ -234,15 +452,28 @@ module.exports = async function handler(req, res) {
     const [material] = await ins.json();
     return res.status(201).json({
       ok: true,
-      stats: { videoId, title: finalTitle, channel: meta.channel, duration: meta.durationText, transcriptWords: wordCount },
+      stats: {
+        videoId,
+        title: finalTitle,
+        channel,
+        duration: durationText,
+        transcriptWords: wordCount,
+        captionTrack: trackInfo,
+      },
       material,
     });
-
   } catch (err) {
-    console.error('YouTube materials error:', err);
+    console.error('YouTube materials error:', err && err.message);
     return res.status(422).json({
       ok: false,
       error: err.message || 'Could not extract transcript from this video.',
     });
   }
-};
+}
+
+/* handler is the Vercel entry point; internals are exposed so local test
+   scripts can exercise the pipeline (harmless at runtime). */
+module.exports = handler;
+module.exports.extractVideoId = extractVideoId;
+module.exports.getTranscript = getTranscript;
+module.exports.linesToTranscript = linesToTranscript;
