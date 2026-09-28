@@ -3255,15 +3255,15 @@ async function rejectAgentReachItem(id,deletePermanently){
   }
 }
 
-$('arClose').onclick=closeAgentReachModal;
+if($('arClose')) $('arClose').onclick=closeAgentReachModal;
 
-$('agentReachModalOverlay').onclick=e=>{if(e.target===$('agentReachModalOverlay'))closeAgentReachModal();};
+if($('agentReachModalOverlay')) $('agentReachModalOverlay').onclick=e=>{if(e.target===$('agentReachModalOverlay'))closeAgentReachModal();};
 
-$('arPublish').onclick=()=>{_reviewAgentId&&publishAgentReachItem(_reviewAgentId)};
+if($('arPublish')) $('arPublish').onclick=()=>{_reviewAgentId&&publishAgentReachItem(_reviewAgentId)};
 
-$('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
+if($('arEdit')) $('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
 
-$('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
+if($('arReject')) $('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
 
 let _reviewAgentId=null;
 
@@ -3315,17 +3315,21 @@ document
 
       b.classList.add('active');
 
-      $('panel-'+b.dataset.tab)
-        .classList.add('active');
+      const panel = $('panel-'+b.dataset.tab);
+      if (panel) panel.classList.add('active');
 
-      /* Review Jobs tab: trigger the RJ loader on first open (and on
-         every open, so a scrape from another tab shows up when returning). */
-      if (b.dataset.tab === 'jobs') {
-        fixedLoadJobs(1);
-      } else if (b.dataset.tab === 'discovery') {
-        fixedLoadDiscovery();
-      } else if (b.dataset.tab === 'review-jobs') {
-        fixedRjLoad(1);
+      /* Load only the replacement panels, and never let a loader error
+         break tab navigation. */
+      try {
+        if (b.dataset.tab === 'jobs') {
+          fixedLoadJobs(1);
+        } else if (b.dataset.tab === 'discovery') {
+          fixedLoadDiscovery();
+        } else if (b.dataset.tab === 'review-jobs') {
+          fixedRjLoad(1);
+        }
+      } catch (e) {
+        console.error('Admin tab loader error:', e);
       }
     };
   });
