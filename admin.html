@@ -245,7 +245,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="exams">Exams</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
-  <button data-tab="reports">Reports</button>
+  <button data-tab="reports">Reports</button>  <button data-tab="review-jobs">⚡ Review Jobs</button>
 </div>
 
 <div class="panel active" id="panel-analytics">
@@ -606,7 +606,34 @@ Notification reader
 <p style="color:#6a8aaa;font-size:.85rem">Loading reports…</p>
 </div>
 </div>
+<div class="panel" id="panel-review-jobs">
+  <div class="rj-scraper-bar">
+    <span>Scrape civil engineering jobs from 9 portals → saved as pending review</span>
+    <button class="btn-gold" onclick="rjRunScraper()" id="rjScraperBtn">🔍 Run Scraper Now</button>
+    <button class="btn-ghost" onclick="rjLoadTab(rjActiveTab)" id="rjRefreshBtn">⟳ Refresh</button>
+  </div>
+  <div class="rj-tabs">
+    <button class="active" data-rjtab="review" onclick="rjLoadTab('review')">📋 Pending Review <span id="rjReviewCount"></span></button>
+    <button data-rjtab="published" onclick="rjLoadTab('published')">✅ Published <span id="rjPublishedCount"></span></button>
+    <button data-rjtab="deleted" onclick="rjLoadTab('deleted')">🗑️ Deleted <span id="rjDeletedCount"></span></button>
+  </div>
+  <input class="rj-search" id="rjSearch" placeholder="Search jobs by title…" oninput="rjFilterList()">
+  <div class="rj-bulk-bar">
+    <label><input type="checkbox" id="rjSelAll" onchange="rjToggleAll(this.checked)"> Select all</label>
+    <span class="rj-count" id="rjSelCount">0 selected</span>
+    <button class="btn-publish-bulk" onclick="rjBulkAction('publish')">✅ Publish</button>
+    <button class="btn-reject-bulk" onclick="rjBulkAction('reject')">✕ Reject</button>
+    <button class="btn-delete-bulk" onclick="rjBulkAction('delete')">🗑 Delete</button>
+    <button class="btn-ghost" onclick="rjBulkAction('restore')" style="font-size:.75rem">↩ Restore</button>
+  </div>
+  <div id="rjList"><p style="color:#6a8aaa;font-size:.85rem">Click a tab to load jobs.</p></div>
+  <div id="rjPager" style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap"></div>
+</div>
 
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
 </div>
 </div>
 
