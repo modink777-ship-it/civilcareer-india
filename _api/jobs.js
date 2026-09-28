@@ -619,17 +619,19 @@ async function renderJobPage(req, res) {
 <meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
 
-<link rel="stylesheet" href="/styles.css">
-
 <meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escapeHtml(canonical)}">
+<meta property="og:image" content="${SITE_URL}/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
+<meta name="twitter:image" content="${SITE_URL}/og-image.png">
 
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
 <script type="application/ld+json">${JSON.stringify({
@@ -643,29 +645,37 @@ async function renderJobPage(req, res) {
 })}</script>
 
 <style>
+  /* Self-contained by design: this page does NOT load /styles.css, whose rules
+     for header/nav/main/article fought this layout and left the share page
+     half-styled. Colours match the palette in styles.css. */
+  *, *::before, *::after { box-sizing: border-box; }
   :root {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: #172033;
-    background: #f6f8fb;
+    color: #162235;
+    background: #eef4fa;
   }
-  body { margin: 0; }
+  body { margin: 0; background: #eef4fa; }
   header {
-    background: #fff;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 16px 20px;
+    background: #0b1f3a;
+    border-bottom: 3px solid #c9973c;
   }
   nav {
     max-width: 1000px;
     margin: 0 auto;
+    padding: 14px 20px;
     display: flex;
-    gap: 18px;
+    gap: 20px;
     flex-wrap: wrap;
+    align-items: center;
   }
   nav a {
-    color: inherit;
+    color: #cfe0f5;
     text-decoration: none;
     font-weight: 600;
+    font-size: 15px;
   }
+  nav a:first-child { color: #fff; font-weight: 800; font-size: 18px; }
+  nav a:hover { color: #fff; }
   main {
     max-width: 900px;
     margin: 0 auto;
@@ -673,28 +683,34 @@ async function renderJobPage(req, res) {
   }
   article {
     background: #fff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #dce3ea;
     border-radius: 16px;
     padding: 28px;
   }
-  h1 { margin-top: 12px; line-height: 1.15; }
-  h2 { margin-top: 28px; }
-  .muted { color: #667085; }
+  h1 { margin: 10px 0 6px; line-height: 1.2; font-size: 34px; color: #0b1f3a; }
+  h2 { margin-top: 28px; font-size: 20px; color: #0b1f3a; }
+  a { color: #155ea8; }
+  .muted { color: #718096; font-size: 14px; }
   .apply {
     display: inline-block;
-    padding: 12px 18px;
+    margin-top: 6px;
+    padding: 13px 22px;
     border-radius: 10px;
-    background: #111827;
+    background: #155ea8;
     color: #fff;
     text-decoration: none;
     font-weight: 700;
   }
+  .apply:hover { background: #0b1f3a; }
+  li { margin-bottom: 6px; }
   footer {
     max-width: 900px;
     margin: 0 auto;
-    padding: 0 20px 40px;
-    color: #667085;
+    padding: 0 20px 48px;
+    color: #718096;
+    font-size: 14px;
   }
+  @media (max-width: 600px) { h1 { font-size: 26px; } article { padding: 20px; } }
 </style>
 </head>
 
