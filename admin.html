@@ -596,6 +596,16 @@ Category
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
+/* Independent tab navigation — works even if legacy admin code fails later. */
+document.addEventListener('click',function(e){
+  const b=e.target.closest('#tabs button'); if(!b)return;
+  const panel=document.getElementById('panel-'+b.dataset.tab); if(!panel)return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); panel.classList.add('active');
+});
+</script>
+<script>
 let adminKey='',jobs=[],exams=[],materials=[],employerProfiles=[],ccJobsPage=1,ccJobsMeta={page:1,total:0,pages:1,has_next:false};
 
 const $=id=>document.getElementById(id);
@@ -2891,30 +2901,28 @@ async function discoverExtract(index){
   }
 }
 
-$('discoverySearchBtn').onclick=discoverJobs;
-$('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
-$('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
-
-/* Review modal wiring */
-$('rmClose').onclick=closeReviewModal;
-$('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReviewModal();});
-$('rmPublish').onclick=publishReviewedDraft;
-$('rmReject').onclick=()=>{
+/* Legacy discovery/review controls were removed from the current HTML. */
+if ($('discoverySearchBtn')) $('discoverySearchBtn').onclick=discoverJobs;
+if ($('discoveryQuery')) $('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+if ($('discoveryLocation')) $('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+if ($('rmClose')) $('rmClose').onclick=closeReviewModal;
+if ($('reviewModalOverlay')) $('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape' && typeof closeReviewModal==='function')closeReviewModal();});
+if ($('rmPublish')) $('rmPublish').onclick=publishReviewedDraft;
+if ($('rmReject')) $('rmReject').onclick=()=>{
   if(!_reviewCurrentId)return;
-  /* find index in both arrays */
   const arr=window._reviewQueueData||[];
   const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
   closeReviewModal();
   if(idx!==-1)rejectDraft(_reviewCurrentId,idx,true);
 };
-$('rmEdit').onclick=()=>{
+if ($('rmEdit')) $('rmEdit').onclick=()=>{
   if(!_reviewCurrentId)return;
   const allJobs=Array.isArray(jobs)?jobs:[];
   const found=allJobs.find(j=>j.id===_reviewCurrentId);
   closeReviewModal();
   if(found)jobEditor(found);
-  else discoveryStatus('Job not found in current jobs list. Reload the Jobs tab.','error');
+  else if(typeof discoveryStatus==='function')discoveryStatus('Job not found in current jobs list. Reload the Jobs tab.','error');
 };
 
 /* =====================================================
@@ -3293,46 +3301,17 @@ function arTelegramStatus(){arTelegramCall('/api/telegram-status',$('arTgStatusB
 function arTelegramBulk(){arTelegramCall('/api/telegram-bulk',$('arTgBulkBtn'))}
 function arTelegramBroadcast(){arTelegramCall('/api/telegram-broadcast-all',$('arTgAllBtn'),'Broadcast EVERY published job to Telegram? This can take a long time (about 1.5 seconds per job).')}
 
-/* TABS */
-
-document
-  .querySelectorAll('#tabs button')
-  .forEach(b=>{
-
-    b.onclick=()=>{
-
-      document
-        .querySelectorAll('#tabs button')
-        .forEach(x=>
-          x.classList.remove('active')
-        );
-
-      document
-        .querySelectorAll('.panel')
-        .forEach(x=>
-          x.classList.remove('active')
-        );
-
-      b.classList.add('active');
-
-      const panel = $('panel-'+b.dataset.tab);
-      if (panel) panel.classList.add('active');
-
-      /* Load only the replacement panels, and never let a loader error
-         break tab navigation. */
-      try {
-        if (b.dataset.tab === 'jobs') {
-          fixedLoadJobs(1);
-        } else if (b.dataset.tab === 'discovery') {
-          fixedLoadDiscovery();
-        } else if (b.dataset.tab === 'review-jobs') {
-          fixedRjLoad(1);
-        }
-      } catch (e) {
-        console.error('Admin tab loader error:', e);
-      }
-    };
-  });
+/* TABS — delegated handler. */
+document.addEventListener('click',function(e){
+  const b=e.target.closest('#tabs button'); if(!b)return;
+  const panel=document.getElementById('panel-'+b.dataset.tab); if(!panel)return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); panel.classList.add('active');
+  if(b.dataset.tab==='jobs' && typeof fixedLoadJobs==='function') fixedLoadJobs(1);
+  else if(b.dataset.tab==='discovery' && typeof fixedLoadDiscovery==='function') fixedLoadDiscovery();
+  else if(b.dataset.tab==='review-jobs' && typeof fixedRjLoad==='function') fixedRjLoad(1);
+});
 
 /* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
 
