@@ -21,6 +21,8 @@
  * mislabelled adzuna.in ads ended up in the feed.
  */
 
+const { allowPublicCors } = require('../lib/security');
+
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
 
@@ -177,7 +179,10 @@ function isGovtCivil(row) {
   if (!CIVIL_RE.test(hay)) return false;            // civil relevance required
   if (AGGREGATOR_RE.test(raw)) return false;        // job-board scrapes are never govt
   if (GOV_DOMAIN_RE.test(url)) return true;         // official government link
-  if (/govt_discovery/i.test(String(row.ingestion_source || row.source || ''))) return true;
+  // The pipeline tags these rows inconsistently — "govt_discovery",
+  // "govt-discovery" and "GovtDiscovery — …" all appear — so allow any
+  // separator (or none) between the two words.
+  if (/govt[-_ ]?discovery/i.test(String(row.ingestion_source || row.source || ''))) return true;
   if (GOV_EMPLOYER_RE.test(hay)) return true;       // strong gov signal beats "Ltd"
   if (PRIVATE_RE.test(company)) return false;       // explicitly commercial employer
   return BROAD_GOV_RE.test(hay);                    // department / board / corporation
@@ -225,9 +230,7 @@ function stateFromLocation(location) {
 /* ── Handler ────────────────────────────────────────────────────────────── */
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  allowPublicCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'GET only.' });
   if (!SUPA_URL || !SUPA_KEY) return res.status(500).json({ ok: false, error: 'Supabase not configured.' });

@@ -17,7 +17,7 @@ function fetch(url, timeoutMs = 12000) {
     const mod = url.startsWith("https") ? https : http;
     const req = mod.get(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; CivilCareerBot/1.0; +https://civilcareer.in)",
+        "User-Agent": "Mozilla/5.0 (compatible; CivilCareerBot/1.0; +https://civilcareer-india-two.vercel.app)",
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "en-IN,en;q=0.9",
       },

@@ -1,5 +1,7 @@
 'use strict';
 
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — Government Job Discovery
  * POST /api/govt-discovery   (admin key or cron user-agent)
@@ -322,9 +324,7 @@ const SOURCES = [
 // ── Main handler ─────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
+  allowPublicCors(req, res, { methods: 'POST, GET, OPTIONS', headers: 'Content-Type, x-owner-key' });
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!isAdmin(req) && !isCron(req)) {

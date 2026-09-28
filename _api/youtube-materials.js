@@ -1,5 +1,7 @@
 'use strict';
 
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — YouTube Study Materials
  * POST /api/youtube-materials { url, title?, category? }
@@ -388,9 +390,7 @@ function linesToTranscript(rawLines) {
 // ── Main handler ─────────────────────────────────────────────────────────
 
 async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
+  allowPublicCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, x-owner-key' });
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only.' });
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'Admin key required.' });

@@ -2,6 +2,8 @@
  * CivilCareer — Exams API
  * File: api/exams.js
  */
+const { allowPublicCors } = require('../lib/security');
+
 const SUPA = process.env.SUPABASE_URL;
 const KEY  = process.env.SUPABASE_SERVICE_KEY;
 
@@ -18,12 +20,26 @@ function supa(path, opts={}) {
 }
 
 async function handler(req, res) {
+  if (req.method === 'GET' || req.method === 'OPTIONS') {
+    allowPublicCors(req, res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+  }
+
   if (req.method === 'GET') {
     /* Admins (valid owner key) see every review state; the public sees only published. */
     const admin = (req.headers['x-owner-key'] || req.query?.key) === process.env.OWNER_KEY;
     const r = await supa(admin ? 'exams?order=created_at.desc' : 'exams?published=eq.true&order=created_at.desc');
     if (!r.ok) return res.status(500).json({ error: 'Failed to load exams' });
     const exams = await r.json();
+    /* This is the slowest endpoint on the site. Cache the public payload at the
+       edge. Vary on the owner header so a cached public body can never be
+       served to an admin (or an unpublished draft to the public); admin
+       responses are marked no-store. */
+    res.setHeader('Vary', 'x-owner-key');
+    res.setHeader(
+      'Cache-Control',
+      admin ? 'private, no-store' : 'public, s-maxage=300, stale-while-revalidate=900'
+    );
     return res.status(200).json({ exams });
   }
 

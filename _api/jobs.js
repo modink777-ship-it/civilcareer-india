@@ -507,11 +507,18 @@ async function renderJobPage(req, res) {
       job = await getJobById(slug);
     }
 
-    // Client-generated URLs end with the database id (role-company-<id>). Older
-    // rows can lack a matching stored slug, so fall back to that trailing id.
+    // Client-generated URLs embed the database id in several shapes —
+    // role-company-<timestamp>, role-<uuid>, role-company-<uuid>. Pull out a
+    // UUID wherever it sits, then fall back to the trailing segment. Both are
+    // safe guesses: getJobById returns null when nothing matches.
+    if (!job) {
+      const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(slug);
+      if (uuid) job = await getJobById(uuid[0]);
+    }
+
     if (!job) {
       const tail = slug.split('-').pop();
-      if (tail && tail !== slug && /^[0-9a-f-]{36}$/i.test(tail)) {
+      if (tail && tail !== slug) {
         job = await getJobById(tail);
       }
     }

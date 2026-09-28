@@ -1,5 +1,7 @@
 'use strict';
 
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — Job Discovery (read-only candidate discovery)
  * GET /api/civil-discovery?key=...
@@ -54,9 +56,7 @@ async function fetchDiscoveryJobs() {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type,x-owner-key');
+  allowPublicCors(req, res, { methods: 'GET,OPTIONS', headers: 'Content-Type,x-owner-key' });
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ok:false,error:'GET only.'});
   if (!isAdmin(req)) return res.status(401).json({ok:false,error:'Admin key required.'});

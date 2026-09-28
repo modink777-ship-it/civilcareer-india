@@ -1,5 +1,7 @@
 'use strict';
 
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — Exam Alerts Scanner
  * GET /api/exam-alerts  (admin key or Vercel cron)
@@ -286,25 +288,25 @@ async function fetchPortalHtml(url) {
 }
 
 /* Extract posting links from a listing page. Returns {title, link} pairs. */
-function extractPortalLinks(html, portal) {
-  const out = [];
-  const seen = new Set();
-  const rule = portal.re ? new RegExp(portal.re, "i") : null;
-  const linkRe = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = linkRe.exec(html)) !== null) {
-    let href = m[1];
-    const text = stripHtml(m[2]).replace(/\s+/g, " ").trim();
-    if (text.length < 20 || text.length > 220) continue;
-    if (!/^https?:\/\//.test(href)) { try { href = new URL(href, portal.url).href; } catch (_) { continue; } }
+function extractPortalLinks(html, portal) {
+  const out = [];
+  const seen = new Set();
+  const rule = portal.re ? new RegExp(portal.re, "i") : null;
+  const linkRe = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = linkRe.exec(html)) !== null) {
+    let href = m[1];
+    const text = stripHtml(m[2]).replace(/\s+/g, " ").trim();
+    if (text.length < 20 || text.length > 220) continue;
+    if (!/^https?:\/\//.test(href)) { try { href = new URL(href, portal.url).href; } catch (_) { continue; } }
     if (rule && !rule.test(href)) continue;
-    if (portal.ex && new RegExp(portal.ex, "i").test(href)) continue;
-    if (seen.has(href)) continue;
-    seen.add(href);
-    out.push({ title: text, description: text, link: href, pubDate: "" });
-  }
-  return out;
-}
+    if (portal.ex && new RegExp(portal.ex, "i").test(href)) continue;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    out.push({ title: text, description: text, link: href, pubDate: "" });
+  }
+  return out;
+}
 async function harvestPortal(portal) {
   const body = await fetchPortalHtml(portal.url);
   if (portal.kind === "rss") return parseRss(body);
@@ -413,9 +415,7 @@ function extractDetailFields(html, text) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
+  allowPublicCors(req, res, { headers: 'Content-Type, x-owner-key' });
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!isAdmin(req) && !isCron(req)) {

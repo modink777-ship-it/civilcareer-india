@@ -1,3 +1,5 @@
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — Agent Reach ingestion endpoint
  * ============================================
@@ -359,9 +361,7 @@ async function upsertItem(item) {
 /* ── handler ───────────────────────────────────────────────── */
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  allowPublicCors(req, res, { methods: 'GET,POST,OPTIONS', headers: 'Content-Type,Authorization' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 

@@ -1,3 +1,5 @@
+const { allowPublicCors } = require('../lib/security');
+
 /**
  * CivilCareer — AI Job Extraction API
  *
@@ -32,9 +34,7 @@ function ownerKeyOk(req) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key');
+  allowPublicCors(req, res, { methods: 'GET,POST,OPTIONS', headers: 'Content-Type,x-owner-key' });
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

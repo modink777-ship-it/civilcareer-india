@@ -116,12 +116,16 @@ module.exports = async function handler(req, res) {
     const offset = (part - 1) * sitemapLimit;
     const urls = [];
     if (part === 1) {
+      /* Extension-less URLs only: these are the addresses the pages
+         canonicalise to, so listing the .html form created a sitemap/canonical
+         mismatch. career-guides and career-tools are deliberately
+         noindex,nofollow, and a noindex page must never be submitted. */
       const staticPages = [
         ['/', '1.0', 'daily'], ['/private-jobs', '0.9', 'daily'], ['/government-jobs', '0.9', 'daily'],
         ['/exams', '0.8', 'weekly'], ['/study-materials', '0.8', 'weekly'], ['/about', '0.5', 'monthly'],
         ['/govt-jobs', '0.9', 'daily'],
-        ['/career-guides.html', '0.7', 'weekly'], ['/career-tools.html', '0.7', 'weekly'], ['/job-alerts.html', '0.7', 'weekly'],
-        ['/legal.html', '0.3', 'monthly'], ['/post-a-job', '0.6', 'weekly'], ['/submit-resource', '0.6', 'weekly'],
+        ['/job-alerts', '0.7', 'weekly'], ['/exam-guides', '0.7', 'weekly'],
+        ['/legal', '0.3', 'monthly'], ['/post-a-job', '0.6', 'weekly'], ['/submit-resource', '0.6', 'weekly'],
         ['/civil-engineer-jobs', '0.8', 'daily'], ['/site-engineer-jobs', '0.8', 'daily'], ['/quantity-surveyor-jobs', '0.8', 'daily'],
         ['/planning-engineer-jobs', '0.8', 'daily'], ['/structural-engineer-jobs', '0.8', 'daily'], ['/bim-engineer-jobs', '0.8', 'daily'],
         ['/qa-qc-engineer-jobs', '0.8', 'daily'], ['/estimation-engineer-jobs', '0.8', 'daily'], ['/project-engineer-jobs', '0.8', 'daily'],
@@ -134,12 +138,26 @@ module.exports = async function handler(req, res) {
       for (const job of jobs) {
         const expiry = job.expires_at;
         if (expiry && Number.isFinite(new Date(expiry).getTime()) && new Date(expiry).getTime() < Date.now()) continue;
-        urls.push(addUrl(`${SITE_URL}/jobs/${encodeURIComponent(jobSlug(job))}`, '0.8', 'daily', job.date_posted || job.created_at || ''));
+        /* Prefer the stored slug: the `${role}-${id}` form built here does not
+           resolve on /jobs/<slug> and produced 404s in the sitemap. */
+        const slugForJob = job.slug || jobSlug(job);
+        urls.push(addUrl(`${SITE_URL}/jobs/${encodeURIComponent(slugForJob)}`, '0.8', 'daily', job.date_posted || job.created_at || ''));
       }
       if (jobs.length < batchSize) break;
     }
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
+    /* De-duplicate by <loc>. The static page list and the job feed used to
+       overlap, which put the same city URL in the sitemap twice. */
+    const seenLoc = new Set();
+    const uniqueUrls = urls.filter((u) => {
+      const m = /<loc>([^<]*)<\/loc>/.exec(u);
+      if (!m) return true;
+      if (seenLoc.has(m[1])) return false;
+      seenLoc.add(m[1]);
+      return true;
+    });
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.join('\n')}\n</urlset>`;
 
     res.setHeader(
       'Content-Type',

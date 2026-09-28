@@ -1,4 +1,5 @@
 const https = require("https");
+const { allowPublicCors, SITE_URL } = require("../lib/security");
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -34,7 +35,7 @@ function formatJob(job) {
   const exp = job.experience_level || (job.experience_min != null ? `${job.experience_min}+ yrs` : "");
   const salary = job.salary || (job.salary_min ? `₹${job.salary_min}–${job.salary_max || ""}` : "");
   const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" }) : "";
-  const applyUrl = job.apply_url || job.application_url || job.source_url || (job.slug ? `https://civilcareer.in/jobs/${job.slug}` : "https://civilcareer.in");
+  const applyUrl = job.apply_url || job.application_url || job.source_url || (job.slug ? `${SITE_URL}/jobs/${encodeURIComponent(job.slug)}` : SITE_URL);
 
   const lines = [`${emoji} *${job.role || "Job Opening"}*`];
   if (job.company)  lines.push(`🏗️ *Company:* ${job.company}`);
@@ -76,7 +77,7 @@ function isAuthed(req) {
 }
 
 module.exports = async function telegramHandler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  allowPublicCors(req, res, { methods: "GET,POST,OPTIONS", headers: "Content-Type,x-owner-key" });
   res.setHeader("Content-Type", "application/json");
   if (req.method === "OPTIONS") return res.status(200).end();
 
