@@ -29,6 +29,7 @@ const handlers = {
   '/api/telegram/broadcast-all':  () => require('../_api/telegram'),
   '/api/civil-scraper':           () => require('../_api/civil-scraper'),
   '/api/admin-jobs':              () => require('../_api/admin-jobs'),
+  '/api/govt-jobs':               () => require('../_api/govt-jobs'),
 };
 
 function sendJson(res, status, obj) {

@@ -654,6 +654,14 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/govt-jobs",
+      "destination": "/govt-jobs.html"
+    },
+    {
+      "source": "/govt-jobs/",
+      "destination": "/govt-jobs.html"
+    },
+    {
       "source": "/jobs/:slug*",
       "destination": "/index.html"
     },

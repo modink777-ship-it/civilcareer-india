@@ -119,6 +119,7 @@ module.exports = async function handler(req, res) {
       const staticPages = [
         ['/', '1.0', 'daily'], ['/private-jobs', '0.9', 'daily'], ['/government-jobs', '0.9', 'daily'],
         ['/exams', '0.8', 'weekly'], ['/study-materials', '0.8', 'weekly'], ['/about', '0.5', 'monthly'],
+        ['/govt-jobs', '0.9', 'daily'],
         ['/career-guides.html', '0.7', 'weekly'], ['/career-tools.html', '0.7', 'weekly'], ['/job-alerts.html', '0.7', 'weekly'],
         ['/legal.html', '0.3', 'monthly'], ['/post-a-job', '0.6', 'weekly'], ['/submit-resource', '0.6', 'weekly'],
         ['/civil-engineer-jobs', '0.8', 'daily'], ['/site-engineer-jobs', '0.8', 'daily'], ['/quantity-surveyor-jobs', '0.8', 'daily'],
