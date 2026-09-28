@@ -1,17 +1,11 @@
 'use strict';
 
 /**
- * CivilCareer — YouTube Study Materials Transcriber
- * POST /api/youtube-materials  (admin key required)
+ * CivilCareer — YouTube Study Materials
+ * POST /api/youtube-materials { url, title?, category? }
  *
- * WHY InnerTube API instead of HTML scraping:
- *   YouTube serves Cloudflare bot-detection HTML (not real content) to
- *   server-side requests. The ytInitialPlayerResponse regex approach therefore
- *   fails 100% of the time from Vercel. The InnerTube API is what the YouTube
- *   Android app uses — it requires no API key, is publicly accessible from any
- *   IP, and reliably returns full caption track data.
- *
- * Body: { url, title?, category? }
+ * Uses YouTube's public caption endpoint (no API key, no auth needed).
+ * Much more reliable than InnerTube API which requires authentication.
  */
 
 const SUPA = process.env.SUPABASE_URL;
@@ -34,9 +28,10 @@ function isAdmin(req) {
   return req.headers['x-owner-key'] === process.env.OWNER_KEY;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Video ID extraction ──────────────────────────────────────────────────
 
 function extractVideoId(url) {
+  if (!url) return null;
   try {
     const u = new URL(url);
     if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
@@ -47,6 +42,8 @@ function extractVideoId(url) {
   const m = /(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/.exec(url);
   return m ? m[1] : null;
 }
+
+// ── Category detection ───────────────────────────────────────────────────
 
 function detectCategory(text) {
   const t = (text || '').toLowerCase();
@@ -62,125 +59,116 @@ function detectCategory(text) {
   return 'Civil Engineering';
 }
 
-function formatDuration(seconds) {
-  const s = parseInt(seconds, 10) || 0;
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${sec}s`;
-  return `${sec}s`;
-}
+// ── Fetch video metadata from YouTube page ───────────────────────────────
 
-// ── InnerTube player request ─────────────────────────────────────────────────
-// Uses the official YouTube Android client context — no API key required.
-// This is a documented public endpoint used by the YouTube mobile app.
-
-async function fetchPlayerData(videoId) {
-  const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'; // public Android client key
-  const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
-
-  const body = JSON.stringify({
-    videoId,
-    context: {
-      client: {
-        clientName: 'ANDROID_VR',
-        clientVersion: '1.60.19',
-        deviceMake: 'Oculus',
-        deviceModel: 'Quest 3',
-        osName: 'Android',
-        osVersion: '12L',
-        androidSdkVersion: 32,
-        userAgent: 'com.google.android.youtube/1.60.19 (Linux; U; Android 12L) gzip',
-        hl: 'en',
-        gl: 'IN',
-        utcOffsetMinutes: 330,
-      },
-    },
-    playbackContext: {
-      contentPlaybackContext: { html5Preference: 'HTML5_PREF_WANTS' },
-    },
-    racyCheckOk: true,
-    contentCheckOk: true,
-  });
-
+async function fetchVideoMetadata(videoId) {
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
   const r = await fetch(url, {
-    method: 'POST',
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(10000),
     headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'com.google.android.youtube/1.60.19 (Linux; U; Android 12L) gzip',
-      'X-YouTube-Client-Name': '3',
-      'X-YouTube-Client-Version': '17.31.35',
-      'Origin': 'https://www.youtube.com',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     },
-    body,
   });
+  if (!r.ok) throw new Error(`YouTube page HTTP ${r.status}`);
+  const html = await r.text();
 
-  if (!r.ok) throw new Error(`InnerTube API returned HTTP ${r.status}`);
-  const data = await r.json();
+  // Extract title from <title> tag
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+  const title = titleMatch
+    ? titleMatch[1].replace(' - YouTube', '').replace(/\s*\|\s*YouTube\s*$/, '').trim()
+    : 'Untitled Video';
 
-  // playabilityStatus check
-  const status = data?.playabilityStatus?.status;
-  if (status && status !== 'OK') {
-    const reason = data?.playabilityStatus?.reason || status;
-    throw new Error(`Video not playable: ${reason}`);
-  }
+  // Extract duration from initial data
+  const durationMatch = html.match(/"duration":"(\d+)"/);
+  const duration = durationMatch ? Math.floor(parseInt(durationMatch[1], 10)) : 0;
 
-  return data;
+  const durationText = duration
+    ? `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`
+    : 'Unknown duration';
+
+  // Try to get channel name from metadata
+  const channelMatch = html.match(/"author":"([^"]+)"/);
+  const channel = channelMatch ? channelMatch[1] : 'Unknown Channel';
+
+  return { title, channel, duration, durationText };
 }
 
-// ── Caption fetch + parse ─────────────────────────────────────────────────────
+// ── Fetch captions via YouTube's public endpoint ──────────────────────────
 
-async function fetchCaptionXml(trackUrl) {
-  const r = await fetch(trackUrl + '&fmt=xml', {
-    signal: AbortSignal.timeout(14000),
-    headers: { 'User-Agent': 'CivilCareer-YT/1.0' },
+async function fetchCaptions(videoId) {
+  // Get caption list
+  const captionListUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&type=list`;
+  const listResp = await fetch(captionListUrl, {
+    signal: AbortSignal.timeout(8000),
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
   });
-  if (!r.ok) throw new Error(`Caption fetch HTTP ${r.status}`);
-  return r.text();
+  if (!listResp.ok) {
+    throw new Error('Video has no captions. Enable closed captions (CC) on YouTube and try again.');
+  }
+  const listXml = await listResp.text();
+
+  // Find English caption track
+  const trackMatch = listXml.match(/lang_code="en"[^>]*name="([^"]*)"[^>]*lang="en"[^>]*yt:format_rank="(\d+)"[^>]*>[\s\S]*?<\/track>|<track[^>]*lang="en"[^>]*>/);
+  if (!trackMatch) {
+    throw new Error('No English captions found. Try a video with English closed captions.');
+  }
+
+  // Get first track (usually auto or English)
+  const enMatch = listXml.match(/lang="en"/);
+  if (!enMatch) {
+    throw new Error('No English captions available.');
+  }
+
+  // Fetch captions in VTT format (easier to parse than XML)
+  const captionUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=vtt`;
+  const captResp = await fetch(captionUrl, {
+    signal: AbortSignal.timeout(8000),
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+  });
+  if (!captResp.ok) {
+    throw new Error('Could not fetch captions (HTTP ' + captResp.status + ')');
+  }
+  const vttText = await captResp.text();
+  return vttText;
 }
 
-function captionXmlToText(xml) {
-  const textRe = /<(?:text|p)\b[^>]*>([\s\S]*?)<\/(?:text|p)>/gi;
-  const parts = [];
-  let m;
-  while ((m = textRe.exec(xml)) !== null) {
-    const decoded = m[1]
-      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
-      .replace(/\n/g, ' ').trim();
-    if (decoded) parts.push(decoded);
+// ── Parse VTT captions into readable text ────────────────────────────────
+
+function parseVTT(vttText) {
+  const lines = vttText.split('\n');
+  const textLines = [];
+  let inContent = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Skip timecodes and metadata
+    if (!trimmed || /^WEBVTT|^NOTE|^\d{2}:\d{2}/.test(trimmed)) continue;
+    // Remove HTML tags
+    const cleaned = trimmed
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (cleaned) textLines.push(cleaned);
   }
+
+  const fullText = textLines.join(' ');
+  const words = fullText.split(/\s+/);
+
   // Group into ~250-word paragraphs
-  const words = parts.join(' ').split(/\s+/).filter(Boolean);
   const paragraphs = [];
   for (let i = 0; i < words.length; i += 250) {
     paragraphs.push(words.slice(i, i + 250).join(' '));
   }
-  return paragraphs.join('\n\n');
+
+  return { text: paragraphs.join('\n\n'), wordCount: words.length };
 }
 
-async function fetchCaptionJson3(trackUrl) {
-  const r = await fetch(trackUrl + '&fmt=json3', {
-    signal: AbortSignal.timeout(14000),
-    headers: { 'User-Agent': 'CivilCareer-YT/1.0' },
-  });
-  if (!r.ok) throw new Error(`Caption fetch HTTP ${r.status}`);
-  const data = await r.json();
-  const events = (data.events || []).filter(e => e.segs && e.segs.length);
-  const words = events
-    .flatMap(e => e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')))
-    .join(' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
-
-  const paragraphs = [];
-  for (let i = 0; i < words.length; i += 250) {
-    paragraphs.push(words.slice(i, i + 250).join(' '));
-  }
-  return paragraphs.join('\n\n');
-}
-
-// ── Main handler ─────────────────────────────────────────────────────────────
+// ── Main handler ─────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -191,103 +179,70 @@ module.exports = async function handler(req, res) {
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: 'Admin key required.' });
   if (!SUPA || !KEY) return res.status(500).json({ ok: false, error: 'Supabase not configured.' });
 
-  // Parse body
   let body = req.body || {};
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const { url, title: customTitle, category: customCategory } = body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { body = {}; }
+  }
 
+  const { url, title: customTitle, category: customCategory } = body;
   if (!url) return res.status(400).json({ ok: false, error: 'Request body must include `url`.' });
 
   const videoId = extractVideoId(url);
-  if (!videoId) return res.status(400).json({ ok: false, error: 'Cannot extract a YouTube video ID from that URL.' });
+  if (!videoId) return res.status(400).json({ ok: false, error: 'Invalid YouTube URL.' });
 
-  // ── Step 1: Get player data via InnerTube ────────────────────────────────
-  let playerData;
   try {
-    playerData = await fetchPlayerData(videoId);
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: `Could not load video: ${err.message}` });
-  }
-
-  const details  = playerData.videoDetails || {};
-  const ytTitle  = details.title || 'Untitled Video';
-  const ytAuthor = details.author || 'Unknown Channel';
-  const ytLength = details.lengthSeconds || '0';
-
-  // ── Step 2: Find caption tracks ──────────────────────────────────────────
-  const tracks =
-    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-
-  if (!tracks.length) {
-    return res.status(422).json({
-      ok: false,
-      error: 'This video has no closed captions (CC). Only videos with CC enabled can be transcribed. Try a video that shows the CC button in YouTube.',
-    });
-  }
-
-  // Prefer English, then any auto-generated, then first available
-  const track =
-    tracks.find(t => t.languageCode === 'en' && !t.kind?.includes('asr')) ||
-    tracks.find(t => t.languageCode === 'en') ||
-    tracks.find(t => t.kind?.includes('asr')) ||
-    tracks[0];
-
-  const trackUrl = track.baseUrl;
-  if (!trackUrl) {
-    return res.status(422).json({ ok: false, error: 'Caption track URL not available for this video.' });
-  }
-
-  // ── Step 3: Fetch and parse captions ─────────────────────────────────────
-  let transcriptText;
-  try {
-    // Try json3 first, fall back to xml
-    try {
-      transcriptText = await fetchCaptionJson3(trackUrl);
-    } catch {
-      const xml = await fetchCaptionXml(trackUrl);
-      transcriptText = captionXmlToText(xml);
+    // Fetch metadata
+    const meta = await fetchVideoMetadata(videoId);
+    
+    // Fetch captions
+    const vttText = await fetchCaptions(videoId);
+    
+    // Parse captions
+    const { text: transcript, wordCount } = parseVTT(vttText);
+    
+    if (wordCount < 20) {
+      return res.status(422).json({
+        ok: false,
+        error: 'Transcript too short. Try a longer video.',
+      });
     }
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: `Caption fetch failed: ${err.message}` });
-  }
 
-  const wordCount = transcriptText.split(/\s+/).filter(Boolean).length;
-  if (wordCount < 20) {
+    // Prepare material record
+    const finalTitle = customTitle || meta.title;
+    const finalCategory = customCategory || detectCategory(finalTitle + ' ' + meta.title);
+    const desc = `Channel: ${meta.channel} · Duration: ${meta.durationText} · ~${wordCount.toLocaleString()} words`;
+
+    const payload = {
+      title_en: finalTitle.slice(0, 255),
+      description_en: desc.slice(0, 600),
+      content: transcript,
+      file_url: `https://www.youtube.com/watch?v=${videoId}`,
+      source_url: `https://www.youtube.com/watch?v=${videoId}`,
+      category: finalCategory,
+      access_type: 'Free',
+      published: false,
+      review_state: 'Pending Review',
+      auto_discovered: true,
+    };
+
+    const ins = await db('materials', { method: 'POST', body: JSON.stringify(payload) });
+    if (!ins.ok) {
+      const errText = await ins.text();
+      return res.status(500).json({ ok: false, error: 'Database insert failed.', details: errText });
+    }
+
+    const [material] = await ins.json();
+    return res.status(201).json({
+      ok: true,
+      stats: { videoId, title: finalTitle, channel: meta.channel, duration: meta.durationText, transcriptWords: wordCount },
+      material,
+    });
+
+  } catch (err) {
+    console.error('YouTube materials error:', err);
     return res.status(422).json({
       ok: false,
-      error: 'Transcript is too short to be useful (fewer than 20 words). The video may have auto-generated captions that are empty.',
+      error: err.message || 'Could not extract transcript from this video.',
     });
   }
-
-  // ── Step 4: Save to Supabase ─────────────────────────────────────────────
-  const finalTitle    = customTitle || ytTitle;
-  const finalCategory = customCategory || detectCategory(finalTitle + ' ' + ytTitle);
-  const durationFmt   = formatDuration(ytLength);
-  const descLine      = `Channel: ${ytAuthor} · Duration: ${durationFmt} · ~${wordCount.toLocaleString()} words`;
-
-  const payload = {
-    title_en:      finalTitle.slice(0, 255),
-    description_en: descLine.slice(0, 600),
-    content:       transcriptText,
-    file_url:      `https://www.youtube.com/watch?v=${videoId}`,
-    source_url:    `https://www.youtube.com/watch?v=${videoId}`,
-    category:      finalCategory,
-    access_type:   'Free',
-    published:     false,
-    review_state:  'Pending Review',
-    auto_discovered: true,
-  };
-
-  const ins = await db('materials', { method: 'POST', body: JSON.stringify(payload) });
-  if (!ins.ok) {
-    const errText = await ins.text();
-    return res.status(500).json({ ok: false, error: 'Database insert failed.', details: errText });
-  }
-
-  const [material] = await ins.json();
-  return res.status(201).json({
-    ok: true,
-    stats: { videoId, title: finalTitle, channel: ytAuthor, duration: durationFmt, transcriptWords: wordCount },
-    material,
-  });
 };
