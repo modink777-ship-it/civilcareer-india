@@ -679,7 +679,7 @@ async function doLogin(){
   }
 }
 
-$('keyInput').addEventListener(
+if ($('keyInput')) $('keyInput').addEventListener(
   'keydown',
   e=>{
     if(e.key==='Enter')doLogin();
@@ -898,6 +898,10 @@ function renderAnalytics(a){
 /* JOBS */
 
 function loadAdminJobs(){
+
+  /* Legacy Jobs renderer: the current UI uses fixedLoadJobs().
+     Keep this function harmless for older callers. */
+  if (!$('showExpiredAdmin') || !$('adminJobs')) return;
 
   const showExpired=
     $('showExpiredAdmin').checked;
@@ -2887,26 +2891,24 @@ async function discoverExtract(index){
   }
 }
 
-/* Legacy discovery/review controls were removed from the current UI.
-   Wire them only when those optional elements actually exist, so a missing
-   legacy control cannot stop the rest of the admin script from loading. */
-if($('discoverySearchBtn')) $('discoverySearchBtn').onclick=discoverJobs;
-if($('discoveryQuery')) $('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
-if($('discoveryLocation')) $('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+$('discoverySearchBtn').onclick=discoverJobs;
+$('discoveryQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
+$('discoveryLocation').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();discoverJobs()}};
 
 /* Review modal wiring */
-if($('rmClose')) $('rmClose').onclick=closeReviewModal;
-if($('reviewModalOverlay')) $('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
+$('rmClose').onclick=closeReviewModal;
+$('reviewModalOverlay').onclick=e=>{if(e.target===$('reviewModalOverlay'))closeReviewModal();};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReviewModal();});
-if($('rmPublish')) $('rmPublish').onclick=publishReviewedDraft;
-if($('rmReject')) $('rmReject').onclick=()=>{
+$('rmPublish').onclick=publishReviewedDraft;
+$('rmReject').onclick=()=>{
   if(!_reviewCurrentId)return;
+  /* find index in both arrays */
   const arr=window._reviewQueueData||[];
   const idx=arr.findIndex(r=>r.id===_reviewCurrentId);
   closeReviewModal();
   if(idx!==-1)rejectDraft(_reviewCurrentId,idx,true);
 };
-if($('rmEdit')) $('rmEdit').onclick=()=>{
+$('rmEdit').onclick=()=>{
   if(!_reviewCurrentId)return;
   const allJobs=Array.isArray(jobs)?jobs:[];
   const found=allJobs.find(j=>j.id===_reviewCurrentId);
@@ -3253,15 +3255,15 @@ async function rejectAgentReachItem(id,deletePermanently){
   }
 }
 
-if($('arClose')) $('arClose').onclick=closeAgentReachModal;
+$('arClose').onclick=closeAgentReachModal;
 
-if($('agentReachModalOverlay')) $('agentReachModalOverlay').onclick=e=>{if(e.target===$('agentReachModalOverlay'))closeAgentReachModal();};
+$('agentReachModalOverlay').onclick=e=>{if(e.target===$('agentReachModalOverlay'))closeAgentReachModal();};
 
-if($('arPublish')) $('arPublish').onclick=()=>{_reviewAgentId&&publishAgentReachItem(_reviewAgentId)};
+$('arPublish').onclick=()=>{_reviewAgentId&&publishAgentReachItem(_reviewAgentId)};
 
-if($('arEdit')) $('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
+$('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
 
-if($('arReject')) $('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
+$('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
 
 let _reviewAgentId=null;
 
