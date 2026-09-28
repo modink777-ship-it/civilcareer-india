@@ -3498,6 +3498,12 @@ document
 
       $('panel-'+b.dataset.tab)
         .classList.add('active');
+
+      /* Review Jobs tab: trigger the RJ loader on first open (and on
+         every open, so a scrape from another tab shows up when returning). */
+      if (b.dataset.tab === 'review-jobs') {
+        rjSwitchTab('review');
+      }
     };
   });
 

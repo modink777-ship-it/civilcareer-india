@@ -73,34 +73,27 @@ function projection(row) {
   return out;
 }
 
-function tabFilter(tab) {
-  if (tab === 'published') return [['published', '=', true]];
-  if (tab === 'deleted') return [['review_state', '=', 'deleted']];
-  return [['review_state', '=', 'pending']];
-}
+/* Build PostgREST query-string fragments directly, e.g.
+   review    → review_state=eq.pending
+   published → published=eq.true
+   deleted   → review_state=eq.deleted
+   search    → or=(role.ilike.*term*,company.ilike.*term*) */
+function buildWhere(tab, search) {
+  const parts = [];
 
-function conditionsFromReq(tab, search) {
-  const conds = tabFilter(tab);
-  if (search && search.trim()) {
-    const needle = '%' + search.trim().replace(/%/g, '\\%').replace(/_/g, '\\_') + '%';
-    conds.push(['or', 'role', 'ilike', needle, 'company', 'ilike', needle]);
+  if (tab === 'published') parts.push('published=eq.true');
+  else if (tab === 'deleted') parts.push('review_state=eq.deleted');
+  else parts.push('review_state=eq.pending');
+
+  const term = String(search || '').trim();
+  if (term) {
+    const needle = '*' + term.replace(/[*%,()]/g, ' ').trim() + '*';
+    parts.push('or=(' +
+      'role.ilike.' + encodeURIComponent(needle) + ',' +
+      'company.ilike.' + encodeURIComponent(needle) + ')');
   }
-  return conds;
-}
 
-function buildWhere(conds) {
-  if (!conds.length) return '';
-  const parts = conds.map((c) => {
-    if (c[0] === 'or') {
-      const clauses = [];
-      for (let i = 1; i < c.length; i += 3) {
-        clauses.push(`${encodeURIComponent(c[i])}=${encodeURIComponent(c[2])}=${encodeURIComponent(c[i + 1])}=${encodeURIComponent(c[i + 2])}`);
-      }
-      return 'or=(' + clauses.join(',') + ')';
-    }
-    return `${encodeURIComponent(c[0])}=${encodeURIComponent(c[1])}=${encodeURIComponent(String(c[2]))}`;
-  });
-  return '?'.concat(parts.join('&'));
+  return '&' + parts.join('&');
 }
 
 async function handleGet(req, res) {
@@ -115,14 +108,13 @@ async function handleGet(req, res) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const perPage = Math.min(200, Math.max(1, parseInt(url.searchParams.get('per_page') || '50', 10) || 50));
 
-    const conds = conditionsFromReq(tab, search);
-    const where = buildWhere(conds);
+    const conds = buildWhere(tab, search);
     const select = LIST_FIELDS.join(',');
     const offset = (page - 1) * perPage;
 
     let total = 0;
     try {
-      const cr = await supa(`jobs${where}&limit=1`, {
+      const cr = await supa(`jobs?select=id${conds}&limit=1`, {
         headers: { Prefer: 'count=exact' },
       });
       const range = cr.headers.get('content-range') || '';
@@ -136,7 +128,7 @@ async function handleGet(req, res) {
     let jobs = [];
     try {
       const rowsR = await supa(
-        `jobs?select=${encodeURIComponent(select)}&order=created_at.desc&limit=${perPage}&offset=${offset}${where}`
+        `jobs?select=${encodeURIComponent(select)}${conds}&order=created_at.desc&limit=${perPage}&offset=${offset}`
       );
       if (!rowsR.ok) {
         console.error('admin-jobs list status:', rowsR.status);
@@ -197,7 +189,8 @@ async function handlePost(req, res) {
 
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const inClause = chunk.map((id) => `id=eq.${encodeURIComponent(id)}`).join(',');
+    // PostgREST: PATCH jobs?id=in.("a","b",...)
+    const inClause = 'id=in.(' + chunk.map((id) => '"' + encodeURIComponent(id) + '"').join(',') + ')';
     try {
       const r = await supa(`jobs?${inClause}`, {
         method: 'PATCH',
