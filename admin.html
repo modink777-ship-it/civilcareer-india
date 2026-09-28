@@ -326,8 +326,64 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 </div>
 
 <div class="panel" id="panel-jobs">
+
+<div class="import-box">
+
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+AI-assisted job importer
+</p>
+
+<h3>Import from a link or pasted vacancy text</h3>
+
+<p>Paste the vacancy URL, job description, or both. AI extracts the fields. You review everything before saving.</p>
+
+<label>
+Vacancy URL
+<span>LinkedIn, Naukri, company careers, government site</span>
+<input type="url" id="importJobUrl" placeholder="https://...">
+</label>
+
+<label>
+Vacancy text / description
+<span>Paste full job post, WhatsApp message, or vacancy description</span>
+<textarea id="importJobText" rows="6" placeholder="Site Engineer — XYZ Company, Bengaluru. BE Civil, 3 years experience..."></textarea>
+</label>
+
+<div class="email-detection">
+
+<label>
+Detected emails
+<select id="detectedEmailSelect">
+<option value="">No email detected yet</option>
+</select>
+</label>
+
+<button class="btn-ghost" id="useDetectedEmail" onclick="useDetectedEmailFn()">Use selected</button>
+
+</div>
+
+<label style="margin-top:12px">
+Application email
+<span>Editable — manual value is never overwritten automatically</span>
+<input type="email" id="importApplicationEmail" placeholder="hr@company.com">
+</label>
+
+<div class="import-actions">
+<button class="btn-gold" id="importJobBtn" onclick="importJobLink()">Extract &amp; fill fields</button>
+<button class="btn-ghost" onclick="clearJobImport()">Clear</button>
+</div>
+
+<div class="import-status" id="importJobStatus"></div>
+
+<p style="font-size:.75rem;color:#4a6a8a;margin-top:10px">
+AI never publishes automatically. Verify every field before saving.
+</p>
+
+</div>
+
   <div class="jobs-toolbar">
     <h3>Published Jobs (Live on website)</h3>
+    <button class="btn-gold" type="button" onclick="jobEditor({_keepUnpublished:true})">+ Add manually</button>
     <input type="text" id="fixedJobsSearch" placeholder="Search published jobs..." style="flex:1;padding:8px 10px;">
     <button class="btn-ghost" type="button" onclick="fixedLoadJobs(1)">Refresh</button>
   </div>
