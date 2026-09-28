@@ -10,6 +10,8 @@
  *       actions: publish | reject | delete | restore
  */
 
+const { autoPostToTelegram } = require('../lib/telegram-auto');
+
 const OWNER_KEY = String(process.env.OWNER_KEY || '').trim();
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
@@ -211,6 +213,26 @@ async function handlePost(req, res) {
     } catch (e) {
       console.error('admin-jobs patch error:', e && e.message);
     }
+  }
+
+  /* AUTO-TELEGRAM: jobs that were just published go to the channel
+     automatically. Fetch each published job and post it — fire-and-forget,
+     sequential, never blocks or fails the response. The dedupe guard in
+     telegram-auto prevents double-posting. */
+  if (action === 'publish' && updated > 0) {
+    (async () => {
+      for (const id of ids) {
+        try {
+          const fr = await supa(`jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&telegram_posted=eq.false&limit=1`);
+          if (!fr.ok) continue;
+          const rows = await fr.json();
+          if (Array.isArray(rows) && rows[0]) {
+            await autoPostToTelegram(rows[0]);
+            await new Promise((r) => setTimeout(r, 1200)); // Telegram rate limit
+          }
+        } catch (_) { /* keep going */ }
+      }
+    })();
   }
 
   return res.status(200).json({ ok: true, action, updated });

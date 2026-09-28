@@ -20,6 +20,7 @@ const SITE_URL = (
 const { runConfiguredSources } = require('../lib/discovery-sources');
 const { allowPublicCors, allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
 const { runCompanyCareerSources, COMPANIES: CAREER_COMPANIES } = require('../lib/company-careers');
+const { autoPostToTelegram } = require('../lib/telegram-auto');
 
 
 // Phase 1 server-rendered job page helpers. Kept in jobs.js to stay within Vercel Hobby limits.
@@ -1801,7 +1802,13 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Job could not be saved', details: detail });
       }
       const data = await r.json();
-      return res.status(201).json({ success: true, job: Array.isArray(data) ? data[0] : data });
+      const savedJob = Array.isArray(data) ? data[0] : data;
+      /* AUTO-TELEGRAM: job created directly as published → post to the channel
+         automatically. Fire-and-forget; never blocks or fails the request. */
+      if (savedJob && savedJob.published === true) {
+        autoPostToTelegram(savedJob).catch(() => {});
+      }
+      return res.status(201).json({ success: true, job: savedJob });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be saved', details: err.message });
     }
@@ -1813,13 +1820,21 @@ module.exports = async function handler(req, res) {
       if (!id) return res.status(400).json({ error: 'Missing id' });
       cleanDates(rest);
       cleanArrays(rest);
+      const wasPublished = typeof body.published === 'boolean' ? body.published : null;
       const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(rest) });
       if (!r.ok) {
         const detail = await r.text();
         return res.status(500).json({ error: 'Job could not be updated', details: detail });
       }
       const data = await r.json();
-      return res.status(200).json({ success: true, job: Array.isArray(data) ? data[0] : data });
+      const updatedJob = Array.isArray(data) ? data[0] : data;
+      /* AUTO-TELEGRAM: a Publish action (published true → true transition) on a
+         job that has not been posted yet fires the channel post automatically.
+         Fire-and-forget; never blocks or fails the request. */
+      if (updatedJob && updatedJob.published === true && wasPublished === true && updatedJob.telegram_posted !== true) {
+        autoPostToTelegram(updatedJob).catch(() => {});
+      }
+      return res.status(200).json({ success: true, job: updatedJob });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be updated', details: err.message });
     }
