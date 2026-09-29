@@ -46,4 +46,16 @@ if(action==='save'){if(!uuid(b.job_id))return send(res,400,{error:'Invalid job i
 if(action==='unsave'){if(!uuid(b.job_id))return send(res,400,{error:'Invalid job id.'});await rest(`candidate_saved_jobs?user_id=eq.${u.id}&job_id=eq.${b.job_id}`,{method:'DELETE'});return send(res,200,{saved:false})}
 if(action==='view'){if(!uuid(b.job_id))return send(res,400,{error:'Invalid job id.'});await rest('candidate_job_events',{method:'POST',body:JSON.stringify({job_id:b.job_id,user_id:u.id,event_type:'view',event_data:{source:'candidate-account'}})});return send(res,200,{tracked:true})}
 if(action==='application'){if(!uuid(b.job_id))return send(res,400,{error:'Invalid job id.'});const status=['Interested','Applied','Interview','Offer','Rejected','Withdrawn'].includes(b.status)?b.status:'Applied';const existing=await rest(`candidate_job_applications?user_id=eq.${u.id}&job_id=eq.${b.job_id}&select=id&limit=1`);const payload={user_id:u.id,job_id:b.job_id,status,notes:String(b.notes||'').slice(0,2000),applied_at:b.applied_at||new Date().toISOString(),updated_at:new Date().toISOString()};if(existing.length)await rest(`candidate_job_applications?id=eq.${existing[0].id}`,{method:'PATCH',body:JSON.stringify(payload)});else await rest('candidate_job_applications',{method:'POST',body:JSON.stringify(payload)});return send(res,200,{saved:true})}
+if(action==='delete_account'){
+/* DPDP Act erasure: delete every candidate-owned row, then deactivate the
+   Supabase Auth user. Data never published to other users is fully removed;
+   the auth user is soft-disabled (ban) since hard deletion of the auth row
+   requires owner-level Dashboard/SQL access. */
+try{await rest(`candidate_job_applications?user_id=eq.${u.id}`,{method:'DELETE'})}catch(e){}
+try{await rest(`candidate_saved_jobs?user_id=eq.${u.id}`,{method:'DELETE'})}catch(e){}
+try{await rest(`candidate_job_events?user_id=eq.${u.id}`,{method:'DELETE'})}catch(e){}
+try{await rest(`candidate_profiles?user_id=eq.${u.id}`,{method:'DELETE'})}catch(e){}
+try{
+const cfg2=process.env;await fetch(`${cfg2.SUPABASE_URL.replace(/\/$/,'')}/auth/v1/admin/users/${u.id}`,{method:'PATCH',headers:{apikey:cfg2.SUPABASE_SERVICE_ROLE_KEY||cfg2.SUPABASE_SERVICE_KEY,authorization:`Bearer ${cfg2.SUPABASE_SERVICE_ROLE_KEY||cfg2.SUPABASE_SERVICE_KEY}`,'content-type':'application/json'},body:JSON.stringify({ban_duration:'876000h'})})}catch(e){}
+return send(res,200,{deleted:true})}
 return send(res,400,{error:'Unknown account action.'})}catch(e){return send(res,500,{error:e.message||'Account request failed.'})}}

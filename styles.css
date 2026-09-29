@@ -1897,3 +1897,5 @@ html[data-theme="dark"] .gov-table td a{color:#7CB8F8!important}
 
 .card-share{font-size:12px;color:var(--muted)}
 .card-share a{color:var(--blue);font-weight:700;text-decoration:none}
+
+.cc-danger-link{color:#B42318!important;border-color:#E5B4AE!important}
