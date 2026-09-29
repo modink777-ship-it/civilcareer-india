@@ -747,7 +747,7 @@ wireForm('employerForm','/api/employer-submissions');wireForm('resourceForm','/a
 const CC_PROGRAMMATIC_ROLES={'civil-engineer':'Civil Engineer','site-engineer':'Site Engineer','quantity-surveyor':'Quantity Surveyor','planning-engineer':'Planning Engineer','structural-engineer':'Structural Engineer','bim-engineer':'BIM Engineer','qa-qc-engineer':'QA/QC Engineer','estimation-engineer':'Estimation Engineer','project-engineer':'Project Engineer','junior-engineer':'Junior Engineer'};
 const CC_PROGRAMMATIC_CITIES={'bengaluru':'Bengaluru','mumbai':'Mumbai','delhi':'Delhi','hyderabad':'Hyderabad','chennai':'Chennai','pune':'Pune','ahmedabad':'Ahmedabad','kolkata':'Kolkata','kochi':'Kochi','noida':'Noida','gurugram':'Gurugram','jaipur':'Jaipur'};
 function ccProgrammaticFromPath(){
-  const m=location.pathname.match(/^\/([a-z]+)-jobs(?:-in-([a-z]+))?$/);
+  const m=location.pathname.match(/^\/([a-z-]+)-jobs(?:-in-([a-z]+))?$/);
   if(!m)return null;
   const role=CC_PROGRAMMATIC_ROLES[m[1]];if(!role)return null;
   const city=m[2]?CC_PROGRAMMATIC_CITIES[m[2]]:'';if(m[2]&&!city)return null;
