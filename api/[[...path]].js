@@ -88,6 +88,17 @@ module.exports = async function handler(req, res) {
       pathName = new URL(req.url, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
     } catch (_) { /* keep default */ }
 
+    /* Server-rendered job detail pages: /jobs/<slug> maps to the jobs handler
+       regardless of whether the vercel.json rewrite reached us intact — the
+       catch-all receives the original path here, so resolve it ourselves. */
+    const jobDetail = pathName.match(/^\/jobs\/([^/]+)$/);
+    if (jobDetail) {
+      let slug = jobDetail[1];
+      try { slug = decodeURIComponent(slug); } catch (_) { /* keep raw */ }
+      pathName = '/api/jobs';
+      req.query = Object.assign({}, req.query, { slug, render: 'html' });
+    }
+
     const match = handlers[pathName];
     if (!match) {
       return sendJson(res, 404, { error: 'Not found', path: pathName });
