@@ -757,6 +757,10 @@ ${
     ? `<p><a class="apply" href="${escapeHtml(applyUrl)}" target="_blank" rel="noopener noreferrer">Apply / View Official Source ↗</a></p>`
     : '<p>Check the official recruitment information before applying.</p>'
 }
+${expired ? '' : `<div class="apply-tracker" id="ccApplyTracker" data-job-id="${escapeHtml(String(job.id ?? ''))}">
+<button type="button" id="ccTrackApply">Did you apply? Mark as applied</button>
+<span class="apply-tracker-note">Tracked on this device; synced to your account when signed in.</span>
+</div>`}
 </section>
 
 <hr>
@@ -769,6 +773,38 @@ ${
 <footer>
 <p>© ${new Date().getFullYear()} CivilCareer</p>
 </footer>
+<style>
+.apply-tracker{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.apply-tracker button{border:1px solid #0b6f79;background:#e3f3f4;color:#0b6f79;padding:9px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+.apply-tracker button[disabled]{background:#e2f4ee;color:#0c6e55;border-color:#0c6e55;cursor:default}
+.apply-tracker-note{font-size:12px;color:#4a5a70}
+</style>
+<script>
+(function(){
+  var box=document.getElementById('ccApplyTracker');
+  if(!box)return;
+  var jobId=box.getAttribute('data-job-id');
+  if(!jobId)return;
+  var key='cc_interactions';
+  var stored={};
+  try{stored=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){}
+  var btn=document.getElementById('ccTrackApply');
+  function markDone(){if(!btn)return;btn.textContent='\u2713 Marked as applied';btn.disabled=true;}
+  if(stored[jobId]==='applied')markDone();
+  if(btn)btn.addEventListener('click',function(){
+    stored[jobId]='applied';
+    try{localStorage.setItem(key,JSON.stringify(stored))}catch(e){}
+    markDone();
+    try{
+      var session=null;
+      try{session=JSON.parse(localStorage.getItem('cc_auth_session')||'null')}catch(e){}
+      if(session&&session.access_token){
+        fetch('/api/account',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({action:'application',job_id:jobId,status:'Applied'})}).catch(function(){});
+      }
+  }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>`);
   } catch (error) {
