@@ -147,7 +147,31 @@ function navigate(next,push=true){route=next in routePath?next:'home';$$('.page'
 /* Career Paths page (FIX-2026-09-24): the /career-paths section markup lives in
    index.html; navigate() calls this hook so the route activates like any page. */
 function renderCareerMapPage(){}
-const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies and Indian MNCs.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],contact:['Contact CivilCareer','Contact CivilCareer for corrections, accessibility issues, partnerships and feedback.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, government civil recruitment, exams and resources.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1]}
+const metas={home:["CivilCareer — Your Civil Engineering Career, in one place","Find the right job. Track government recruitment. Build the skills employers want. India's dedicated civil engineering career platform."],careerpaths:['Civil Engineering Career Paths | CivilCareer','The complete civil engineering career map — Construction, Design, Commercial, Infrastructure and Government paths with live opportunities.'],private:['Civil Engineering Jobs | CivilCareer','Private civil engineering jobs across India, including local employers, Indian companies and Indian MNCs.'],government:['Government Civil Jobs | CivilCareer','Civil-focused Central and State government recruitment across India.'],exams:['Civil Engineering Exams | CivilCareer','Civil-focused government and competitive examinations across India, with official sources and important dates.'],materials:['Free Civil Engineering Study Materials | CivilCareer','Free civil engineering exam, interview, career, course, PDF and professional learning resources.'],post:['Post a Civil Engineering Job | CivilCareer','Submit a legitimate civil engineering job for moderation.'],resource:['Submit a Study Resource | CivilCareer','Submit a study resource you own or have permission to distribute.'],report:['Report a Problem | CivilCareer','Privately report suspicious, incorrect, expired or copyrighted content.'],contact:['Contact CivilCareer','Contact CivilCareer for corrections, accessibility issues, partnerships and feedback.'],about:['About CivilCareer','Learn about CivilCareer’s safety, accuracy and official-source principles.'],search:['Search CivilCareer','Search civil engineering jobs, government civil recruitment, exams and resources.']};function setMeta(){const m=metas[route]||metas.home;document.title=m[0];document.querySelector('meta[name="description"]').content=m[1];
+/* P6.3: unique title/description/FAQ for programmatic role-city pages. Counts
+   come from the live filtered data — nothing is invented. */
+const old=document.getElementById('cc-programmatic-jsonld');if(old)old.remove();
+if(route==='private'){
+  const p=ccProgrammaticFromPath();
+  const hero=document.querySelector('[data-page="private"] .page-hero');
+  if(!p){if(hero&&!hero.dataset.ccDefault){hero.querySelector('h1').textContent='Civil Engineering Jobs';}return;}
+  const jobs=window.__ccPrivateJobs||[];
+  const count=jobs.filter(j=>String(j.role||'').toLowerCase().includes(p.role.toLowerCase().split(' ')[0])&&(!p.city||[j.city,j.state,j.location_display,j.location].join(' ').toLowerCase().includes(p.city.toLowerCase()))).length;
+  const where=p.city?(' in '+p.city):' in India';
+  document.title=`${p.role} Jobs${where} — ${count} Live | CivilCareer`;
+  document.querySelector('meta[name="description"]').content=`${count} live ${p.role.toLowerCase()} job${count===1?'':'s'}${where} from verified employers. Qualifications, deadlines and official application links, updated continuously. Part of India's civil-engineering-only career platform.`;
+  if(hero){hero.dataset.ccDefault='1';hero.querySelector('.eyebrow').textContent=(p.role+' jobs'+where+' · verified employers').toUpperCase();hero.querySelector('h1').textContent=`${p.role} Jobs${where}`;}
+  const site='https://civilcareer-india-two.vercel.app';
+  const ld={"@context":"https://schema.org","@graph":[
+    {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":site+'/'},{"@type":"ListItem","position":2,"name":"Civil Engineering Jobs","item":site+'/private-jobs'},{"@type":"ListItem","position":3,"name":p.role+' Jobs'+where}]},
+    {"@type":"FAQPage","mainEntity":[
+      {"@type":"Question","name":"How many "+p.role.toLowerCase()+" jobs are open"+where+" on CivilCareer?","acceptedAnswer":{"@type":"Answer","text":"Right now CivilCareer lists "+count+" live "+p.role.toLowerCase()+" opportunity"+(count===1?'':'s')+where+". Counts update continuously as listings are verified, expire or are re-checked against their original source."}},
+      {"@type":"Question","name":"Do I ever pay to apply for these "+p.role.toLowerCase()+" jobs?","acceptedAnswer":{"@type":"Answer","text":"Never. CivilCareer does not charge candidates, and every listing links to the employer's own application page or the official notification. If anyone asks you for money for a job, treat it as fraud."}},
+      {"@type":"Question","name":"What should I check before applying to a "+p.role.toLowerCase()+" job"+where+"?","acceptedAnswer":{"@type":"Answer","text":"Open the original source link on each listing and verify the role, qualifications, deadline and application steps at the employer or authority's own page before you apply."}}
+    ]}
+  ]};
+  const s=document.createElement('script');s.type='application/ld+json';s.id='cc-programmatic-jsonld';s.textContent=JSON.stringify(ld);document.head.appendChild(s);
+}}
 function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
 function companyInitials(name){
   const words=String(name||'Company').trim().split(/\s+/).filter(Boolean);
@@ -716,7 +740,25 @@ if($('govScopeChips'))$$('#govScopeChips button').forEach(b=>b.onclick=()=>{$$('
 // Edu chips for private jobs
 if($('privEduChips')){$$('#privEduChips button').forEach(b=>b.onclick=()=>{$$('#privEduChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});}$$('#examChips button').forEach(b=>b.onclick=()=>{$$('#examChips button').forEach(x=>x.classList.toggle('active',x===b));renderExams(b.dataset.code)});$$('.material-tabs button').forEach(b=>b.onclick=()=>{$$('.material-tabs button').forEach(x=>x.classList.toggle('active',x===b));renderMaterials(b.dataset.material)});
 wireForm('employerForm','/api/employer-submissions');wireForm('resourceForm','/api/resource-submissions',d=>({...d,permission_confirmed:document.querySelector('#resourceForm [name="permission_confirmed"]').checked}));wireForm('reportForm','/api/reports');wireForm('contactForm','/api/contact');
-translate();navigate(pathRoute[location.pathname]||'home',false);statsLoading();loadData();
+/* P6.3: programmatic role-city / role landing pages (/site-engineer-jobs-in-pune).
+   The vercel.json rewrites serve the app shell; we parse the path, pre-seed the
+   filters so renderPrivate() opens already filtered, and rewrite the heading,
+   meta and FAQ schema with real counts (never invented ones). */
+const CC_PROGRAMMATIC_ROLES={'civil-engineer':'Civil Engineer','site-engineer':'Site Engineer','quantity-surveyor':'Quantity Surveyor','planning-engineer':'Planning Engineer','structural-engineer':'Structural Engineer','bim-engineer':'BIM Engineer','qa-qc-engineer':'QA/QC Engineer','estimation-engineer':'Estimation Engineer','project-engineer':'Project Engineer','junior-engineer':'Junior Engineer'};
+const CC_PROGRAMMATIC_CITIES={'bengaluru':'Bengaluru','mumbai':'Mumbai','delhi':'Delhi','hyderabad':'Hyderabad','chennai':'Chennai','pune':'Pune','ahmedabad':'Ahmedabad','kolkata':'Kolkata','kochi':'Kochi','noida':'Noida','gurugram':'Gurugram','jaipur':'Jaipur'};
+function ccProgrammaticFromPath(){
+  const m=location.pathname.match(/^\/([a-z]+)-jobs(?:-in-([a-z]+))?$/);
+  if(!m)return null;
+  const role=CC_PROGRAMMATIC_ROLES[m[1]];if(!role)return null;
+  const city=m[2]?CC_PROGRAMMATIC_CITIES[m[2]]:'';if(m[2]&&!city)return null;
+  return {role,city};
+}
+function ccApplyProgrammatic(){
+  const p=ccProgrammaticFromPath();if(!p)return 'home';
+  try{if(window.ccFacetState){window.ccFacetState.private.role=p.role;if(p.city)window.ccFacetState.private.location=p.city;}}catch(e){}
+  return 'private';
+}
+translate();navigate(ccApplyProgrammatic()||pathRoute[location.pathname]||'home',false);statsLoading();loadData();
 
 // Wire featured org tiles
 $$('.org-tile[data-route]').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});
