@@ -326,11 +326,14 @@ async function upsertJobs(rawJobs) {
       .gte("created_at", new Date(Date.now() - 60 * 86400000).toISOString())
       .limit(1);
     if (existing && existing.length > 0) { skipped.push(raw.title); continue; }
+    /* A private-company name in the discovery payload vetoes the Government
+       label (staffing/consultancy ads were being stored as Government). */
+    const privateCompany = /\b(private limited|pvt\.?\s*ltd|llp|manpower|staffing|consultancy|solutions private|lifecare|walk-?in)\b/i.test(raw.company || '');
     const { error } = await supabase.from("jobs").insert({
       role: raw.title.slice(0, 200),
       company: (raw.company || "Government").slice(0, 200),
       location: (raw.location || "India").slice(0, 200),
-      sector: "Government",
+      sector: privateCompany ? 'Private' : 'Government',
       status: "Active",
       source: "govt-discovery",
       source_url: raw.source_url || "",
