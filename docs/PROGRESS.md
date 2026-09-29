@@ -21,9 +21,30 @@
 - Added current free-tier limits documentation in `docs/01-free-tier-limits.md`.
 - Added a GitHub Actions Gitleaks workflow.
 
+## 30 Sep 2026 — independent overhaul session (branch `overhaul-2026-09`, merged `a7190f5`)
+
+- Base of record re-anchored to the 29 Sep rework after `origin/main` diverged via web upload.
+- **Duplicate form ids fixed** (owner finding c): the two runtime filter bars emitted the
+  same 8 select ids twice (16 duplicate ids on the live DOM). Selects are now namespaced
+  `<containerId>-<field>` with the logical key on `data-xf`; verified live: 0 duplicate
+  ids and filter state still writes the correct key. Regression test added
+  (`tests/v8-filterbar.test.js`). Commit `2ed139d`.
+- Phase-11 suite reconciled with the rework (normalizePhone/authRequest names asserted,
+  stale explorer/ingestion assertions updated to the dynamic detail-page architecture);
+  YouTube ingestion regained manual-over-ASR caption preference (`pickTrack`); auth-config
+  now serves `SUPABASE_PUBLIC_URL`/`SUPABASE_PUBLIC_ANON_KEY` aliases. Commit `a7190f5`.
+  `npm test`: 26 passed, 0 failed; `check:launch`: 0 errors.
+- The 29 Sep rework already covered owner findings (a) partial tracker, (b) fonts,
+  footer Gmail/WhatsApp removal, contact endpoint, PDF-upload removal and the admin
+  allowlist — those were verified rather than rebuilt.
+- Gitleaks workflow file added for real (`.github/workflows/gitleaks.yml`); it was
+  previously claimed but missing from the tree.
+- Still open (see Waiting on owner): Turnstile keys for form captcha, Brevo SMTP for
+  auth emails/digests, Search Console submission, admin email config in Vercel.
+
 ## Verification
 
-- `npm test`: 19 passed, 0 failed.
+- `npm test`: 26 passed, 0 failed.
 - `npm run check:launch`: 0 errors, 1 warning (`SITE_URL` not set locally).
 - JavaScript syntax: 48 files checked, 0 failures.
 - HTML forms: no duplicate IDs found within forms in the inspected static HTML.
