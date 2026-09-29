@@ -1823,3 +1823,57 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .cc-compact-card .cc-compact-actions{margin-top:auto}
 #governmentJobs .job-card,#governmentJobs.cards.list .job-card{height:100%}
 #governmentJobs{align-items:stretch}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE (P5.1 — 30 Sep overhaul)
+   Applied via [data-theme="dark"] on <html>; "auto" follows
+   prefers-color-scheme. Placed last so it wins ties against the
+   polish layer above (same selectors get !important where the
+   light value had it). Colors keep WCAG AA contrast on their
+   surfaces: ink #E6EDF6 on #0A1626/#10243D; muted #A7B7CB.
+═══════════════════════════════════════════════════════════ */
+html[data-theme="dark"] body{background:#0A1626;background-image:linear-gradient(160deg,#081322 0%,#0A1626 45%,#0C1C31 100%);background-attachment:fixed;color:#C7D3E2}
+html[data-theme="dark"] .site-header{background:#0E1E33!important;border-bottom:1px solid #1D3255!important;box-shadow:0 4px 18px rgba(0,0,0,.35)!important}
+html[data-theme="dark"] .logo{color:#E6EDF6!important}
+html[data-theme="dark"] .logo span{color:#5AA2F5!important}
+html[data-theme="dark"] nav a.route{color:#C7D3E2!important}
+html[data-theme="dark"] nav a.route.active{background:#16304E!important;color:#7CB8F8!important}
+html[data-theme="dark"] .nav-tools .icon-btn{color:#DCE6F3!important;background:#142B47!important;border-color:#23405F!important}
+html[data-theme="dark"] .hero{background:radial-gradient(circle at 85% 20%,rgba(90,162,245,.30),transparent 32%),linear-gradient(135deg,#050F1F 0%,#0A1D38 52%,#0E2544 100%)!important}
+html[data-theme="dark"] .stats-bar,html[data-theme="dark"] .trust-row{background:#0F2136!important;color:#E6EDF6!important}
+html[data-theme="dark"] .stat-item{border-right-color:#1D3255!important}
+html[data-theme="dark"] .stat-num{color:#6BB1F8!important}
+html[data-theme="dark"] .stat-label{color:#A7B7CB!important}
+html[data-theme="dark"] .section.soft,html[data-theme="dark"] .foryou-home{background:#0B1A2C!important}
+html[data-theme="dark"] .job-card,html[data-theme="dark"] .dedicated-card,html[data-theme="dark"] .panel,html[data-theme="dark"] .cc-detail-grid>div{background:#10243D!important;border-color:#1E3A5C!important;color:#DCE6F3!important}
+html[data-theme="dark"] .job-card h3,html[data-theme="dark"] .dedicated-card h1,html[data-theme="dark"] .dedicated-card h2,html[data-theme="dark"] .dedicated-card h3{color:#F2F6FB!important}
+html[data-theme="dark"] .card-meta span,html[data-theme="dark"] .organization{background:#142B47!important;color:#C7D3E2!important}
+html[data-theme="dark"] .card-copy,html[data-theme="dark"] .detail-lead,html[data-theme="dark"] .muted{color:#A7B7CB!important}
+html[data-theme="dark"] .cc-filterbar,html[data-theme="dark"] .smart-search,html[data-theme="dark"] .panel-form{background:#0F2136!important;border-color:#1E3A5C!important}
+html[data-theme="dark"] .cc-filterbar select,html[data-theme="dark"] .smart-search input,html[data-theme="dark"] .panel-form input,html[data-theme="dark"] .panel-form select,html[data-theme="dark"] .panel-form textarea{background:#0B1A2C!important;border-color:#23405F!important;color:#E6EDF6!important}
+html[data-theme="dark"] .btn.primary{background:#1D72EE!important;color:#fff!important}
+html[data-theme="dark"] .btn.secondary{background:#142B47!important;border-color:#2A4A70!important;color:#DCE6F3!important}
+html[data-theme="dark"] .form-status,html[data-theme="dark"] .how-section{color:#C7D3E2!important}
+html[data-theme="dark"] .trust{background:#0D2036!important}
+html[data-theme="dark"] .footer,html[data-theme="dark"] .site-footer,html[data-theme="dark"] footer{background:#081322!important;border-top:1px solid #1D3255!important;color:#A7B7CB!important}
+html[data-theme="dark"] footer a,html[data-theme="dark"] .footer-grid a{color:#C7D3E2!important}
+html[data-theme="dark"] .pill{background:#16304E!important;color:#A9C6E8!important}
+html[data-theme="dark"] .pill.verified{background:#123B33!important;color:#5BD6A9!important}
+html[data-theme="dark"] .pill.featured{background:#3A2E12!important;color:#E6BC4B!important}
+html[data-theme="dark"] .pill.closed{background:#3A1815!important;color:#FF8A7A!important}
+html[data-theme="dark"] .urgency-strip{background:#3A2E12!important}
+html[data-theme="dark"] .apply-tracker button,html[data-theme="dark"] .cc-apply-tracker .btn.secondary{background:#142B47!important;color:#9FD9C8!important;border-color:#255C4E!important}
+html[data-theme="dark"] .email-apply{background:#0E2544!important;border-color:#255C4E!important;color:#CFE6F6!important}
+html[data-theme="dark"] .callout{background:#0E2544!important;border-color:#255C4E!important;color:#CFE6F6!important}
+html[data-theme="dark"] .expired-banner{background:#3A1815!important;color:#FFB4A8!important;border-left-color:#B4483C!important}
+html[data-theme="dark"] .toast,html[data-theme="dark"] #toast{background:#16304E!important;color:#E6EDF6!important}
+html[data-theme="dark"] .skip:focus{background:#16304E!important;color:#E6EDF6!important}
+/* Theme toggle button */
+.theme-toggle{border:1px solid var(--cc-border);background:#fff;color:#0b1f3a;border-radius:999px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+html[data-theme="dark"] .theme-toggle{background:#142B47!important;border-color:#2A4A70!important;color:#E6BC4B!important}
+@media (prefers-reduced-motion: reduce){
+  html[data-theme="dark"] *{transition-duration:.01ms!important}
+}
+
+html[data-theme="dark"]{color-scheme:dark}
+html[data-theme="light"]{color-scheme:light}

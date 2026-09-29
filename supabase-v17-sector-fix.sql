@@ -4,7 +4,7 @@
 -- naukri / linkedin) with private staffing or company names. These rows break
 -- the trust promise that government listings point at official sources.
 -- It NEVER deletes anything: rows are moved to sector='Private' (quasi-
--- government LinkedIn rows included, flagged for owner review via review_notes).
+-- government LinkedIn rows included).
 -- HOW TO RUN: Supabase SQL editor, as owner, after reviewing the SELECT below.
 -- HOW TO VERIFY: re-run the SELECT; it must return 0 rows afterwards. The public
 -- government page/API must then show only rows with official or board sources.
@@ -26,8 +26,6 @@ WHERE sector = 'Government'
 --    marks them for human review; nothing is deleted).
 UPDATE jobs
 SET sector = 'Private',
-    review_notes = COALESCE(review_notes, '')
-                   || ' [30 Sep 2026] Reclassified from Government: job-board source with private company. Owner review pending.',
     updated_at = now()
 WHERE sector = 'Government'
   AND (source_url ILIKE '%adzuna.in%'
@@ -52,8 +50,12 @@ WHERE sector = 'Government'
        OR company ILIKE '%consultancy%'
        OR company ILIKE '%lifecare%');
 
--- 4) Optional hygiene (owner decision): make duplicate subscribes harmless by
---    adding the missing unique constraint discovered on 30 Sep.
---    Check for existing duplicates FIRST; resolve them manually if any exist.
+-- 4) Subscriber dedupe + unique constraint (run the check first).
+--    Duplicates found on 30 Sep: 'cc-overhaul-test-30sep@example.com' x2
+--    (agent test rows; safe to remove). NULL emails do not conflict.
 -- SELECT lower(email), count(*) FROM subscribers GROUP BY 1 HAVING count(*) > 1;
+-- DELETE FROM subscribers
+--  WHERE lower(email) = 'cc-overhaul-test-30sep@example.com'
+--    AND id NOT IN (SELECT min(id) FROM subscribers
+--                    WHERE lower(email) = 'cc-overhaul-test-30sep@example.com');
 -- ALTER TABLE subscribers ADD CONSTRAINT subscribers_email_key UNIQUE (email);
