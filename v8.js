@@ -35,11 +35,11 @@ function ccCityChoices(){
   return chosen;
 }
 function ccStateChoices(){const s=new Set();for(const j of window.__ccPrivateJobs||[])for(const part of String(j.state||'').split(/[,;]/).map(x=>x.trim().replace(/,$/,'')).filter(Boolean)){if(/^[A-Z]/.test(part)&&!/^india$/i.test(part))s.add(part)}return [...s].sort()}
-function ccSelect(id,label,vals,allLabel,extra){return `<label class="xff" data-xf="${id}"><span>${label}</span><select id="${id}"><option value="">${allLabel}</option>${(extra||[]).map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join('')}${vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>`}
+function ccSelect(pfx,id,label,vals,allLabel,extra){return `<label class="xff"><span>${label}</span><select id="${pfx}-${id}" data-xf="${id}"><option value="">${allLabel}</option>${(extra||[]).map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join('')}${vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>`}
 function ccActiveChipCount(st){return Object.keys(st).filter(k=>st[k]).length}
 function ccBindBar(containerId,st,onApply){
   const bar=$(containerId);if(!bar)return;
-  bar.querySelectorAll('select').forEach(sel=>{sel.onchange=()=>{const k=sel.id;st[k]=sel.value;onApply()}});
+  bar.querySelectorAll('select').forEach(sel=>{sel.onchange=()=>{const k=sel.dataset.xf||sel.id;st[k]=sel.value;onApply()}});
   const clear=bar.querySelector('[data-cc-clear]');if(clear)clear.onclick=()=>{for(const k of Object.keys(st))st[k]='';bar.querySelectorAll('select').forEach(s=>s.value='');onApply()};
 }
 function ccRenderBar(containerId,st){
@@ -47,16 +47,16 @@ function ccRenderBar(containerId,st){
   const cities=ccCityChoices(),states=ccStateChoices();
   const n=ccActiveChipCount(st);
   bar.classList.toggle('has-active',n>0);
-  bar.innerHTML=ccSelect('role','Role',[],'All roles',CC_ROLES.map(r=>[r,r]))
-    +ccSelect('location',`Location (${cities.length})`,cities,'All locations')
-    +ccSelect('state','State',states,'All states')
-    +ccSelect('posted','Posted date',[],'Any time',[['1','Last 24 hours'],['2','Last 2 days'],['3','Last 3 days'],['7','Last 7 days'],['15','Last 15 days'],['30','Last 30 days']])
-    +ccSelect('experience','Experience',[],'All experience',[['Fresher','Fresher'],['1','1+ years'],['3','3+ years'],['5','5+ years'],['8','8+ years'],['10','10+ years']])
-    +ccSelect('work_mode','Work mode',[],'Any work mode',[['remote','Remote'],['hybrid','Hybrid'],['onsite','On-site']])
-    +ccSelect('employment_type','Employment type',[],'All types',[['Full-time','Full-time'],['Part-time','Part-time'],['Contract','Contract'],['Internship','Internship'],['Apprenticeship','Apprenticeship']])
-    +ccSelect('qualification','Qualification',[],'Any qualification',[['Diploma','Diploma'],['BE / BTech','BE / BTech'],['ME / MTech','ME / MTech'],['ITI','ITI'],['10th / SSLC','10th'],['12th / PUC','12th'],['Any Graduate','Any Graduate']])
+  bar.innerHTML=ccSelect(containerId,'role','Role',[],'All roles',CC_ROLES.map(r=>[r,r]))
+    +ccSelect(containerId,'location',`Location (${cities.length})`,cities,'All locations')
+    +ccSelect(containerId,'state','State',states,'All states')
+    +ccSelect(containerId,'posted','Posted date',[],'Any time',[['1','Last 24 hours'],['2','Last 2 days'],['3','Last 3 days'],['7','Last 7 days'],['15','Last 15 days'],['30','Last 30 days']])
+    +ccSelect(containerId,'experience','Experience',[],'All experience',[['Fresher','Fresher'],['1','1+ years'],['3','3+ years'],['5','5+ years'],['8','8+ years'],['10','10+ years']])
+    +ccSelect(containerId,'work_mode','Work mode',[],'Any work mode',[['remote','Remote'],['hybrid','Hybrid'],['onsite','On-site']])
+    +ccSelect(containerId,'employment_type','Employment type',[],'All types',[['Full-time','Full-time'],['Part-time','Part-time'],['Contract','Contract'],['Internship','Internship'],['Apprenticeship','Apprenticeship']])
+    +ccSelect(containerId,'qualification','Qualification',[],'Any qualification',[['Diploma','Diploma'],['BE / BTech','BE / BTech'],['ME / MTech','ME / MTech'],['ITI','ITI'],['10th / SSLC','10th'],['12th / PUC','12th'],['Any Graduate','Any Graduate']])
     +`<div class="xff-actions"><button class="btn secondary" data-cc-clear type="button">Clear${n?` (${n})`:''}</button></div>`;
-  for(const sel of bar.querySelectorAll('select')){const k=sel.id;if(st[k])sel.value=st[k]}
+  for(const sel of bar.querySelectorAll('select')){const k=sel.dataset.xf||sel.id;if(st[k])sel.value=st[k]}
 }
 function renderPrivateFilterBar(){ccRenderBar('ccPrivateFilterBar',ccFacetState.private);ccBindBar('ccPrivateFilterBar',ccFacetState.private,()=>renderPrivate(1))}
 function renderGovFilterBar(){ccRenderBar('ccGovFilterBar',ccFacetState.gov);ccBindBar('ccGovFilterBar',ccFacetState.gov,()=>renderGovernment(1))}
