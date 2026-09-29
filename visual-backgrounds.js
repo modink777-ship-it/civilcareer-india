@@ -3,7 +3,12 @@
    The rotator is visual-only and does not affect page content or controls. */
 (function(){
   const U='https://images.unsplash.com/';
-  const img=(id)=>U+id+'?auto=format&fit=crop&w=2200&q=82';
+  /* Viewport-tuned sizes: the hero band is a background layer, so a phone only
+     needs ~1080px. Large desktop keeps the high-res original. */
+  const vw=screen.width||innerWidth;
+  const w=vw<=480?1080:vw<=1024?1600:2400;
+  const q=vw<=480?68:75;
+  const img=(id)=>U+id+'?auto=format&fit=crop&w='+w+'&q='+q;
   const sets={
     home:[
       img('photo-1773643331861-96242b012c3f'), // high-rise / residential development
