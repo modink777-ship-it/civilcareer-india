@@ -19,7 +19,7 @@ async function handler(req, res) {
     }
 
     const supabaseUrl = process.env.SUPABASE_URL
-    const key = process.env.SUPABASE_ANON_KEY
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!supabaseUrl || !key) return res.status(503).json({ error: 'Subscription service is not configured.' })
 
     const response = await fetch(supabaseUrl + '/rest/v1/subscribers', {

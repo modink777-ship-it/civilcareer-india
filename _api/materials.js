@@ -1,5 +1,3 @@
-const { allowPublicCors } = require('../lib/security');
-
 const SUPA = process.env.SUPABASE_URL;
 const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
@@ -23,7 +21,9 @@ function isAdmin(req) {
 }
 
 module.exports = async function handler(req, res) {
-  allowPublicCors(req, res, { methods: 'GET,POST,PATCH,DELETE,OPTIONS', headers: 'Content-Type,x-owner-key' });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {

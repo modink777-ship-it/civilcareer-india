@@ -71,93 +71,77 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const nowIso = new Date().toISOString();
+    const staticPages = [
+      ['/', '1.0', 'daily'],
+      ['/private-jobs', '0.9', 'daily'],
+      ['/government-jobs', '0.9', 'daily'],
+      ['/exams', '0.8', 'weekly'],
+      ['/study-materials', '0.8', 'weekly'],
+      ['/about', '0.5', 'monthly'],
+      ['/career-guides.html', '0.7', 'weekly'],
+      ['/career-tools.html', '0.7', 'weekly'],
+      ['/job-alerts.html', '0.7', 'weekly'],
+      ['/legal.html', '0.3', 'monthly'],
+      ['/post-a-job', '0.6', 'weekly'],
+      ['/submit-resource', '0.6', 'weekly'],
+      ['/civil-engineer-jobs', '0.8', 'daily'],
+      ['/site-engineer-jobs', '0.8', 'daily'],
+      ['/quantity-surveyor-jobs', '0.8', 'daily'],
+      ['/planning-engineer-jobs', '0.8', 'daily'],
+      ['/structural-engineer-jobs', '0.8', 'daily'],
+      ['/bim-engineer-jobs', '0.8', 'daily'],
+      ['/qa-qc-engineer-jobs', '0.8', 'daily'],
+      ['/estimation-engineer-jobs', '0.8', 'daily'],
+      ['/project-engineer-jobs', '0.8', 'daily'],
+      ['/junior-engineer-jobs', '0.8', 'daily'],
+    ];
+
+    const urls = staticPages.map(([path, priority, changefreq]) =>
+      addUrl(`${SITE_URL}${path}`, priority, changefreq)
+    );
+
+    // Paginate job URLs so the sitemap remains correct beyond 5,000 jobs.
+    // A single sitemap supports up to 50,000 URLs; each batch below is only
+    // 1,000 rows, so memory use stays bounded as CivilCareer grows.
     const batchSize = 1000;
-    const sitemapLimit = 45000;
-    const partRaw = Number.parseInt(new URL(req.url, 'http://localhost').searchParams.get('part') || '', 10);
-
-    async function countJobs() {
-      const r = await supa('jobs?select=id&published=eq.true&or=(expires_at.gte.' + encodeURIComponent(nowIso) + ',expires_at.is.null)', {
-        headers: { Prefer: 'count=exact' },
-      });
-      if (!r.ok) return null;
-      const range = r.headers.get('content-range') || '';
-      const m = range.match(/\/(\d+)$/);
-      return m ? Number(m[1]) : null;
-    }
-
-    async function fetchJobSlice(offset, limit) {
-      const r = await supa(
+    let offset = 0;
+    let jobCount = 0;
+    let response = null;
+    let jobs = [];
+    do {
+      response = await supa(
         'jobs?select=id,slug,role,created_at,date_posted,expires_at' +
         '&published=eq.true' +
-        '&or=(expires_at.gte.' + encodeURIComponent(nowIso) + ',expires_at.is.null)' +
+        '&or=(expires_at.gte.' + encodeURIComponent(new Date().toISOString()) + ',expires_at.is.null)' +
         '&order=created_at.desc' +
-        `&offset=${offset}&limit=${limit}`
+        `&offset=${offset}&limit=${batchSize}`
       );
-      if (!r.ok) throw new Error(`job sitemap query failed (${r.status})`);
-      return r.json();
-    }
+      if (!response.ok) break;
+      jobs = await response.json();
+      jobCount += jobs.length;
+      offset += jobs.length;
 
-    const totalJobs = await countJobs();
-    const effectiveTotal = Number.isFinite(totalJobs) ? totalJobs : 0;
-    const partCount = Math.max(1, Math.ceil(effectiveTotal / sitemapLimit));
-
-    if (!Number.isFinite(partRaw) && partCount > 1) {
-      const indexEntries = Array.from({length: partCount}, (_, i) =>
-        `  <sitemap><loc>${xmlEscape(`${SITE_URL}/sitemap.xml?part=${i + 1}`)}</loc></sitemap>`
-      ).join('\n');
-      const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${indexEntries}\n</sitemapindex>`;
-      res.setHeader('Content-Type','application/xml; charset=utf-8');
-      res.setHeader('Cache-Control','public, s-maxage=600, stale-while-revalidate=3600');
-      return res.status(200).send(indexXml);
-    }
-
-    const part = Number.isFinite(partRaw) && partRaw > 0 ? Math.min(partRaw, partCount) : 1;
-    const offset = (part - 1) * sitemapLimit;
-    const urls = [];
-    if (part === 1) {
-      /* Extension-less URLs only: these are the addresses the pages
-         canonicalise to, so listing the .html form created a sitemap/canonical
-         mismatch. career-guides and career-tools are deliberately
-         noindex,nofollow, and a noindex page must never be submitted. */
-      const staticPages = [
-        ['/', '1.0', 'daily'], ['/private-jobs', '0.9', 'daily'], ['/government-jobs', '0.9', 'daily'],
-        ['/exams', '0.8', 'weekly'], ['/study-materials', '0.8', 'weekly'], ['/about', '0.5', 'monthly'],
-        ['/govt-jobs', '0.9', 'daily'],
-        ['/job-alerts', '0.7', 'weekly'], ['/exam-guides', '0.7', 'weekly'],
-        ['/legal', '0.3', 'monthly'], ['/post-a-job', '0.6', 'weekly'], ['/submit-resource', '0.6', 'weekly'],
-        ['/civil-engineer-jobs', '0.8', 'daily'], ['/site-engineer-jobs', '0.8', 'daily'], ['/quantity-surveyor-jobs', '0.8', 'daily'],
-        ['/planning-engineer-jobs', '0.8', 'daily'], ['/structural-engineer-jobs', '0.8', 'daily'], ['/bim-engineer-jobs', '0.8', 'daily'],
-        ['/qa-qc-engineer-jobs', '0.8', 'daily'], ['/estimation-engineer-jobs', '0.8', 'daily'], ['/project-engineer-jobs', '0.8', 'daily'],
-        ['/junior-engineer-jobs', '0.8', 'daily'],
-      ];
-      urls.push(...staticPages.map(([path, priority, changefreq]) => addUrl(`${SITE_URL}${path}`, priority, changefreq)));
-    }
-    for (let localOffset = 0; localOffset < sitemapLimit; localOffset += batchSize) {
-      const jobs = await fetchJobSlice(offset + localOffset, batchSize);
+      const now = Date.now();
       for (const job of jobs) {
         const expiry = job.expires_at;
-        if (expiry && Number.isFinite(new Date(expiry).getTime()) && new Date(expiry).getTime() < Date.now()) continue;
-        /* Prefer the stored slug: the `${role}-${id}` form built here does not
-           resolve on /jobs/<slug> and produced 404s in the sitemap. */
-        const slugForJob = job.slug || jobSlug(job);
-        urls.push(addUrl(`${SITE_URL}/jobs/${encodeURIComponent(slugForJob)}`, '0.8', 'daily', job.date_posted || job.created_at || ''));
+        if (expiry) {
+          const expiryTime = new Date(expiry).getTime();
+          if (Number.isFinite(expiryTime) && expiryTime < now) continue;
+        }
+        const lastmod = job.date_posted || job.created_at || '';
+        urls.push(addUrl(`${SITE_URL}/jobs/${encodeURIComponent(jobSlug(job))}`, '0.8', 'daily', lastmod));
       }
-      if (jobs.length < batchSize) break;
+    } while (jobs.length === batchSize && jobCount < 50000 - staticPages.length);
+
+    if (response && !response.ok) {
+      const detail = await response.text();
+      console.warn(`Sitemap job query failed (${response.status}); returning static sitemap only: ${detail.slice(0, 500)}`);
     }
 
-    /* De-duplicate by <loc>. The static page list and the job feed used to
-       overlap, which put the same city URL in the sitemap twice. */
-    const seenLoc = new Set();
-    const uniqueUrls = urls.filter((u) => {
-      const m = /<loc>([^<]*)<\/loc>/.exec(u);
-      if (!m) return true;
-      if (seenLoc.has(m[1])) return false;
-      seenLoc.add(m[1]);
-      return true;
-    });
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.join('\n')}\n</urlset>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`;
 
     res.setHeader(
       'Content-Type',

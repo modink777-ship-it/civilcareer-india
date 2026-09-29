@@ -23,12 +23,7 @@ for (const script of ['check:syntax', 'check:launch', 'test']) {
 const vercel = JSON.parse(read('vercel.json'));
 if (!Array.isArray(vercel.headers) || !vercel.headers.length) fail('vercel.json has no security headers');
 if (!Array.isArray(vercel.rewrites) || !vercel.rewrites.some((r) => r.source === '/sitemap.xml')) fail('sitemap rewrite is missing');
-/* The scheduled work moved to dedicated endpoints; this check still looked for
-   a `/api/jobs?discovery=cron` path that vercel.json no longer declares, so it
-   warned on every run and drowned out real problems. */
-const cronPaths = Array.isArray(vercel.crons) ? vercel.crons.map((c) => c.path) : [];
-if (!cronPaths.includes('/api/govt-discovery')) warn('government discovery cron is not declared in vercel.json');
-if (!cronPaths.includes('/api/exam-alerts')) warn('exam alerts cron is not declared in vercel.json');
+if (!Array.isArray(vercel.crons) || !vercel.crons.some((c) => c.path === '/api/jobs?discovery=cron')) warn('discovery cron is not declared in vercel.json');
 
 const requiredFiles = ['api/[[...path]].js', '_api/jobs.js', '_api/account.js', '_api/health.js', '_api/sitemap.js', 'lib/security.js', 'service-worker.js'];
 for (const file of requiredFiles) if (!fs.existsSync(path.join(root, file))) fail(`required launch file missing: ${file}`);

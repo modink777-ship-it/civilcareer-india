@@ -20,7 +20,6 @@ const SITE_URL = (
 const { runConfiguredSources } = require('../lib/discovery-sources');
 const { allowPublicCors, allowSameOrigin, requireOwner, ownerKeyMatches } = require('../lib/security');
 const { runCompanyCareerSources, COMPANIES: CAREER_COMPANIES } = require('../lib/company-careers');
-const { autoPostToTelegram } = require('../lib/telegram-auto');
 
 
 // Phase 1 server-rendered job page helpers. Kept in jobs.js to stay within Vercel Hobby limits.
@@ -507,18 +506,11 @@ async function renderJobPage(req, res) {
       job = await getJobById(slug);
     }
 
-    // Client-generated URLs embed the database id in several shapes —
-    // role-company-<timestamp>, role-<uuid>, role-company-<uuid>. Pull out a
-    // UUID wherever it sits, then fall back to the trailing segment. Both are
-    // safe guesses: getJobById returns null when nothing matches.
-    if (!job) {
-      const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(slug);
-      if (uuid) job = await getJobById(uuid[0]);
-    }
-
+    // Client-generated URLs end with the database id (role-company-<id>). Older
+    // rows can lack a matching stored slug, so fall back to that trailing id.
     if (!job) {
       const tail = slug.split('-').pop();
-      if (tail && tail !== slug) {
+      if (tail && tail !== slug && /^[0-9a-f-]{36}$/i.test(tail)) {
         job = await getJobById(tail);
       }
     }
@@ -619,19 +611,17 @@ async function renderJobPage(req, res) {
 <meta name="robots" content="${robotsDirective}">
 <link rel="canonical" href="${escapeHtml(canonical)}">
 
+<link rel="stylesheet" href="/styles.css">
+
 <meta property="og:site_name" content="CivilCareer">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escapeHtml(canonical)}">
-<meta property="og:image" content="${SITE_URL}/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
 
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
-<meta name="twitter:image" content="${SITE_URL}/og-image.png">
 
 <script type="application/ld+json">${JSON.stringify(postingSchema)}</script>
 <script type="application/ld+json">${JSON.stringify({
@@ -645,37 +635,29 @@ async function renderJobPage(req, res) {
 })}</script>
 
 <style>
-  /* Self-contained by design: this page does NOT load /styles.css, whose rules
-     for header/nav/main/article fought this layout and left the share page
-     half-styled. Colours match the palette in styles.css. */
-  *, *::before, *::after { box-sizing: border-box; }
   :root {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: #162235;
-    background: #eef4fa;
+    color: #172033;
+    background: #f6f8fb;
   }
-  body { margin: 0; background: #eef4fa; }
+  body { margin: 0; }
   header {
-    background: #0b1f3a;
-    border-bottom: 3px solid #c9973c;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 20px;
   }
   nav {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 14px 20px;
     display: flex;
-    gap: 20px;
+    gap: 18px;
     flex-wrap: wrap;
-    align-items: center;
   }
   nav a {
-    color: #cfe0f5;
+    color: inherit;
     text-decoration: none;
     font-weight: 600;
-    font-size: 15px;
   }
-  nav a:first-child { color: #fff; font-weight: 800; font-size: 18px; }
-  nav a:hover { color: #fff; }
   main {
     max-width: 900px;
     margin: 0 auto;
@@ -683,34 +665,28 @@ async function renderJobPage(req, res) {
   }
   article {
     background: #fff;
-    border: 1px solid #dce3ea;
+    border: 1px solid #e5e7eb;
     border-radius: 16px;
     padding: 28px;
   }
-  h1 { margin: 10px 0 6px; line-height: 1.2; font-size: 34px; color: #0b1f3a; }
-  h2 { margin-top: 28px; font-size: 20px; color: #0b1f3a; }
-  a { color: #155ea8; }
-  .muted { color: #718096; font-size: 14px; }
+  h1 { margin-top: 12px; line-height: 1.15; }
+  h2 { margin-top: 28px; }
+  .muted { color: #667085; }
   .apply {
     display: inline-block;
-    margin-top: 6px;
-    padding: 13px 22px;
+    padding: 12px 18px;
     border-radius: 10px;
-    background: #155ea8;
+    background: #111827;
     color: #fff;
     text-decoration: none;
     font-weight: 700;
   }
-  .apply:hover { background: #0b1f3a; }
-  li { margin-bottom: 6px; }
   footer {
     max-width: 900px;
     margin: 0 auto;
-    padding: 0 20px 48px;
-    color: #718096;
-    font-size: 14px;
+    padding: 0 20px 40px;
+    color: #667085;
   }
-  @media (max-width: 600px) { h1 { font-size: 26px; } article { padding: 20px; } }
 </style>
 </head>
 
@@ -1341,7 +1317,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     return true;
   });
 
-  const limited = typeFiltered.slice(0, 300);
+  const limited = typeFiltered.slice(0, 80);
 
   // Dedup against existing Supabase jobs (normalized URL or role+company)
   const existingResponse = await supa('jobs?select=id,source_url,role,company,created_at');
@@ -1364,7 +1340,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
     return true;
   });
 
-  const drafts = fresh.slice(0, 150).map((item, index) => {
+  const drafts = fresh.slice(0, 40).map((item, index) => {
     const role    = discoveryRole(item.title);
     const company = item.company || discoveryCompany(item.title, item.snippet);
     // Full ISO timestamp when known; unknown-date drafts keep NULL (never "today")
@@ -1825,13 +1801,7 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Job could not be saved', details: detail });
       }
       const data = await r.json();
-      const savedJob = Array.isArray(data) ? data[0] : data;
-      /* AUTO-TELEGRAM: job created directly as published → post to the channel
-         automatically. Fire-and-forget; never blocks or fails the request. */
-      if (savedJob && savedJob.published === true) {
-        autoPostToTelegram(savedJob).catch(() => {});
-      }
-      return res.status(201).json({ success: true, job: savedJob });
+      return res.status(201).json({ success: true, job: Array.isArray(data) ? data[0] : data });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be saved', details: err.message });
     }
@@ -1843,21 +1813,13 @@ module.exports = async function handler(req, res) {
       if (!id) return res.status(400).json({ error: 'Missing id' });
       cleanDates(rest);
       cleanArrays(rest);
-      const wasPublished = typeof body.published === 'boolean' ? body.published : null;
       const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(rest) });
       if (!r.ok) {
         const detail = await r.text();
         return res.status(500).json({ error: 'Job could not be updated', details: detail });
       }
       const data = await r.json();
-      const updatedJob = Array.isArray(data) ? data[0] : data;
-      /* AUTO-TELEGRAM: a Publish action (published true → true transition) on a
-         job that has not been posted yet fires the channel post automatically.
-         Fire-and-forget; never blocks or fails the request. */
-      if (updatedJob && updatedJob.published === true && wasPublished === true && updatedJob.telegram_posted !== true) {
-        autoPostToTelegram(updatedJob).catch(() => {});
-      }
-      return res.status(200).json({ success: true, job: updatedJob });
+      return res.status(200).json({ success: true, job: Array.isArray(data) ? data[0] : data });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be updated', details: err.message });
     }
