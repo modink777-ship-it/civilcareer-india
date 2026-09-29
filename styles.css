@@ -1899,3 +1899,7 @@ html[data-theme="dark"] .gov-table td a{color:#7CB8F8!important}
 .card-share a{color:var(--blue);font-weight:700;text-decoration:none}
 
 .cc-danger-link{color:#B42318!important;border-color:#E5B4AE!important}
+
+.kpi-title{margin-top:1.25rem}
+.kpi-generated{grid-column:1/-1;font-size:11px;color:var(--muted);margin:4px 0 0}
+.kpi-error{grid-column:1/-1;color:#B42318}

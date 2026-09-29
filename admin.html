@@ -232,9 +232,9 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
     <h1>CivilCareer Overview</h1>
   </div>
   <button class="sign-out" onclick="signOut()">Sign out</button>
-</div>
-
-<div class="metrics" id="metrics">
+</div>    <h3 class="kpi-title">Weekly KPI report</h3>
+    <div class="metrics" id="kpiReport" style="margin-top:.5rem"><p>Loading KPIs…</p></div>
+    <div class="metrics" id="metrics">
   <div class="metric"><span>Loading</span><b>…</b></div>
 </div>
 
@@ -769,6 +769,20 @@ async function loadAll(page=ccJobsPage){
       an,
       re.reports||[]
     );
+
+    /* Weekly KPI report (P6.4) — computed server-side from real rows. */
+    const k=a.kpi||{};
+    const kpiEl=document.getElementById('kpiReport');
+    if(kpiEl){
+      kpiEl.innerHTML=(k.error?`<p class="kpi-error">KPI error: ${k.error}</p>`:`
+        <div class="metric"><span>Weekly active users</span><b>${(k.weekly_active_users||0).toLocaleString('en-IN')}</b></div>
+        <div class="metric"><span>Alert subscribers (new, 7d)</span><b>${(k.alert_subscribers_new||0).toLocaleString('en-IN')}</b></div>
+        <div class="metric"><span>Applications tracked (7d)</span><b>${(k.applications_tracked_this_week||0).toLocaleString('en-IN')}</b></div>
+        <div class="metric"><span>Apply rate / 1k views</span><b>${k.apply_rate_per_1k_views==null?'—':k.apply_rate_per_1k_views}</b></div>
+        <div class="metric"><span>Listings verified last 7d</span><b>${(k.listings_verified_last_7d||0).toLocaleString('en-IN')}</b></div>
+        <div class="metric"><span>Scam reports / 1k views</span><b>${k.scam_reports_per_1k_views==null?'—':k.scam_reports_per_1k_views}</b></div>`)+
+        `<p class="kpi-generated">Generated ${new Date(k.generated_at||Date.now()).toLocaleString('en-IN')}</p>`;
+    }
 
     renderAnalytics(an);
 
