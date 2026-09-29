@@ -158,6 +158,39 @@ function wireExplorer2(){
   });
   window.renderJobDetailPanel=renderJobDetailPanel;
 }
+/* P5.3: Government Cards | Table toggle. Preference persists per device. */
+function govTableView(){try{return localStorage.getItem('cc_gov_view')==='table'}catch(e){return false}}
+function govTableRows(list){
+  return list.map(j=>{
+    const url=(typeof jobPath==='function'?jobPath(j):'#');
+    const dl=j.deadline?esc(date(j.deadline)):'—';
+    const closed=typeof jobExpired==='function'&&jobExpired(j);
+    const vac=j.vacancy_count||j.vacancies||'—';
+    const auth=esc(j.recruitment_authority||j.company||'—');
+    return `<tr><td><a href="${esc(url)}" data-dynamic-route="true">${esc(j.role||'Untitled role')}</a></td><td>${auth}</td><td>${esc(jobLocs(j).join(', ')||j.location||'—')}</td><td>${dl}</td><td>${esc(String(vac))}</td><td>${closed?'<span class="gov-deadline closed">Closed</span>':'<span class="pill verified">Active</span>'}</td></tr>`;
+  }).join('');
+}
+function renderGovJobsView(){
+  const cards=$('governmentJobs'),table=$('governmentJobsTable');
+  if(!cards||!table)return;
+  const useTable=govTableView();
+  cards.hidden=useTable;table.hidden=!useTable;
+  const bCards=$('govViewCards'),bTable=$('govViewTable');
+  if(bCards&&bTable){
+    bCards.classList.toggle('active',!useTable);bTable.classList.toggle('active',useTable);
+    bCards.setAttribute('aria-pressed',String(!useTable));bTable.setAttribute('aria-pressed',String(useTable));
+  }
+  if(useTable&&!table.innerHTML){
+    table.innerHTML='<table class="gov-table"><thead><tr><th>Post</th><th>Authority</th><th>Location</th><th>Deadline</th><th>Vacancies</th><th>Status</th></tr></thead><tbody></tbody></table>';
+  }
+}
+function wireGovViewToggle(){
+  const bCards=$('govViewCards'),bTable=$('govViewTable');
+  if(!bCards||!bTable||bCards.dataset.ccWired)return;
+  bCards.dataset.ccWired='1';
+  bCards.onclick=()=>{try{localStorage.setItem('cc_gov_view','cards')}catch(e){};renderGovJobsView();};
+  bTable.onclick=()=>{try{localStorage.setItem('cc_gov_view','table')}catch(e){};renderGovJobsView();};
+}
 function renderTrackerBar(j){
   const closed = typeof jobExpired==='function' && jobExpired(j);
   return closed ? '' : `<div class="cc-apply-tracker"><button type="button" class="btn secondary" data-cc-track-apply="${esc(j.id)}">Did you apply? Mark as applied</button><span class="cc-apply-tracker-note">Tracked locally; synced to your account when signed in.</span></div>`;
@@ -286,6 +319,9 @@ async function renderGovernment(page=1){
     const total=Number(meta.total||list.length);
     $('governmentCount').textContent=`${total.toLocaleString('en-IN')} government civil opportunit${total===1?'y':'ies'}`;
     root.innerHTML=list.length?list.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');
+    const tbody=(($('governmentJobsTable')||{}).querySelector)?$('governmentJobsTable').querySelector('tbody'):null;
+    if(tbody)tbody.innerHTML=govTableRows(list);
+    renderGovJobsView();wireGovViewToggle();
     ensurePager('governmentJobsPager','governmentJobs');renderExplorerPager('governmentJobsPager',meta,renderGovernment);
     bindCards();
   }catch(err){
