@@ -1894,3 +1894,6 @@ html[data-theme="dark"] .gov-table-wrap{background:#10243D!important;border-colo
 html[data-theme="dark"] .gov-table th{background:#0F2136!important;color:#A7B7CB!important}
 html[data-theme="dark"] .gov-table td{border-top-color:#1E3A5C!important;color:#C7D3E2!important}
 html[data-theme="dark"] .gov-table td a{color:#7CB8F8!important}
+
+.card-share{font-size:12px;color:var(--muted)}
+.card-share a{color:var(--blue);font-weight:700;text-decoration:none}
