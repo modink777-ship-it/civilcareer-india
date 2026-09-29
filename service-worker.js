@@ -2,7 +2,7 @@
 // FIX-2026-09-25: the obsolete duplicate worker (sw.js) and the dead
 // styles-patch.css precache entry were removed. This is the only service
 // worker registered ("+registration from app.js+" → /service-worker.js).
-const CACHE_NAME = "civilcareer-v21-filterfix-20260926";
+const CACHE_NAME = "civilcareer-v22-sw-bypass-20260930";
 
 const STATIC_ASSETS = [
   "/",
@@ -46,6 +46,12 @@ self.addEventListener("fetch", (event) => {
 
   // Never intercept non-GET requests. This prevents POST/PUT/PATCH caching errors.
   if (request.method !== "GET") return;
+
+  // Cross-origin subresources (Google Fonts, Cloudflare Turnstile, CDNs) must
+  // bypass the worker: the page CSP governs them directly, and routing them
+  // through the offline fallback served the SPA HTML in place of the asset
+  // (fonts/Turnstile were breaking as a result).
+  if (url.origin !== self.location.origin) return;
 
   // API: network first, cached GET fallback.
   if (url.pathname.startsWith("/api/")) {
