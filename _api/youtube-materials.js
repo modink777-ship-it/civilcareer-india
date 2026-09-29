@@ -149,8 +149,14 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ ok: false, error: 'No captions available for this video. Only videos with closed captions (CC) can be transcribed.' });
   }
 
-  // Prefer English, fall back to first available
-  const track = captionTracks.find(t => t.languageCode === 'en') || captionTracks[0];
+  // Prefer human-made captions over auto-generated (ASR): manual English →
+  // any manual track → ASR English → first track as the last resort.
+  const pickTrack = tracks =>
+    tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ||
+    tracks.find(t => t.kind !== 'asr') ||
+    tracks.find(t => t.languageCode === 'en') ||
+    tracks[0];
+  const track = pickTrack(captionTracks);
   const captionUrl = track.baseUrl;
 
   // Step 5: Fetch caption JSON

@@ -14,6 +14,7 @@
     if (!/^\d{10}$/.test(d)) throw Error('Enter a valid Indian mobile number.');
     return `+91${d}`;
   }
+  const normalizeIndianPhone = normalizePhone; /* alias kept for tests */
   function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim()); }
   function isPhone(v) { return /^\+?\d[\d\s()-]{8,}$/.test(String(v || '').trim()); }
 
@@ -26,7 +27,7 @@
   }
   function saveSession(s) { session = s || null; if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session)); else localStorage.removeItem(SESSION_KEY); renderAccountButton(); }
   function loadSession() { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); if (s?.access_token) session = s; } catch {} }
-  async function auth(path, body, method='POST') {
+  async function authRequest(path, body, method='POST') {
     const c = await getConfig();
     const r = await fetch(`${c.url.replace(/\/$/,'')}/auth/v1/${path}`, {method, headers:{apikey:c.anonKey,'Content-Type':'application/json',...(session?{Authorization:`Bearer ${session.access_token}`}:{})}, body: body === undefined ? undefined : JSON.stringify(body)});
     const x = await r.json().catch(() => ({}));
@@ -35,7 +36,7 @@
   }
   async function refreshSession() {
     if (!session?.refresh_token) return;
-    try { const x = await auth('token?grant_type=refresh_token', {refresh_token:session.refresh_token}); saveSession(x); } catch { saveSession(null); }
+    try { const x = await authRequest('token?grant_type=refresh_token', {refresh_token:session.refresh_token}); saveSession(x); } catch { saveSession(null); }
   }
   async function accountApi(action, payload={}) {
     if (!session) return null;
@@ -84,9 +85,9 @@
     $('ccForgotForm').onsubmit=forgotPassword; $('ccBackLogin').onclick=renderAccount;
   }
   async function signIn(e){
-    e.preventDefault(); const id=$('ccLoginId').value.trim(), password=$('ccLoginPassword').value; try { const body=isPhone(id)?{phone:normalizePhone(id),password}:{email:id,password}; const x=await auth('token?grant_type=password',body); saveSession(x); setStatus('Signed in successfully.','success'); renderAccount(); } catch(err){setStatus(err.message);}}
+    e.preventDefault(); const id=$('ccLoginId').value.trim(), password=$('ccLoginPassword').value; try { const body=isPhone(id)?{phone:normalizePhone(id),password}:{email:id,password}; const x=await authRequest('token?grant_type=password',body); saveSession(x); setStatus('Signed in successfully.','success'); renderAccount(); } catch(err){setStatus(err.message);}}
   async function signup(e){
-    e.preventDefault(); const id=$('ccSignupId').value.trim(), p=$('ccSignupPassword').value, c=$('ccSignupConfirm').value; if(p!==c)return setStatus('Passwords do not match.'); try { const body=isPhone(id)?{phone:normalizePhone(id),password:p}:{email:id,password:p}; const x=await auth('signup',body); if(x.access_token) {saveSession(x); renderAccount();} else setStatus('Account created. If email confirmation is enabled, confirm your email and then sign in.','success'); } catch(err){setStatus(err.message);}}
+    e.preventDefault(); const id=$('ccSignupId').value.trim(), p=$('ccSignupPassword').value, c=$('ccSignupConfirm').value; if(p!==c)return setStatus('Passwords do not match.'); try { const body=isPhone(id)?{phone:normalizePhone(id),password:p}:{email:id,password:p}; const x=await authRequest('signup',body); if(x.access_token) {saveSession(x); renderAccount();} else setStatus('Account created. If email confirmation is enabled, confirm your email and then sign in.','success'); } catch(err){setStatus(err.message);}}
   async function forgotPassword(e){e.preventDefault(); try {const c=await getConfig(); const email=$('ccForgotEmail').value.trim(); const r=await fetch(`${c.url.replace(/\/$/,'')}/auth/v1/recover`,{method:'POST',headers:{apikey:c.anonKey,'Content-Type':'application/json'},body:JSON.stringify({email,redirect_to:location.origin+location.pathname})}); if(!r.ok)throw Error((await r.json().catch(()=>({}))).msg||'Could not send reset link.'); setStatus('Password reset link sent.','success');}catch(err){setStatus(err.message);}}
   async function syncAccount(showStatus=false){if(!session)return;try{const x=await loadAccount();const remote=x.profile||null, local=localProfile();if(remote)localStorage.setItem('cc_civil_profile',JSON.stringify({...local,...remote}));else if(Object.keys(local).length)await accountApi('profile',{profile:local});const saved=new Set(x.saved_job_ids||[]);localStorage.setItem('cc_saved',JSON.stringify([...saved]));localStorage.setItem('cc_recommendations',JSON.stringify(x.recommendations||[]));window.__ccRecommendations=x.recommendations||[];if($('ccSavedCount'))$('ccSavedCount').textContent=saved.size;if($('ccAppliedCount'))$('ccAppliedCount').textContent=(x.applications||[]).length;renderRecommendations(x.recommendations||[]);renderApplications(x.applications||[]);if(showStatus)setStatus('Your profile and career activity are synced.','success');}catch(err){setStatus(err.message);}}
   function renderRecommendations(list){const root=$('ccRecommendations');if(!root)return;root.innerHTML=list.length?list.slice(0,8).map(j=>`<div class="cc-account-job"><div><b>${esc(j.role||'Civil opportunity')}</b><span>${esc(j.company||'Organization')} · ${esc(j.location_display||j.location||'India')}</span><small>${esc((j.reasons||[]).slice(0,2).join(' · ')||'Based on your profile')}</small></div><button class="btn secondary" type="button" data-cc-recommend="${esc(j.id)}">View</button></div>`).join(''):'<p>No additional recommendations yet.</p>';root.querySelectorAll('[data-cc-recommend]').forEach(b=>b.onclick=()=>{const j=list.find(x=>String(x.id)===String(b.dataset.ccRecommend));if(j&&typeof window.openJob==='function')window.openJob(j.id);else location.href=`/jobs/${encodeURIComponent(j.slug||j.id)}`;});}

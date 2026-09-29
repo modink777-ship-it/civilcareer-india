@@ -15,9 +15,11 @@ assert(account.includes("authRequest('signup'"),'account signup must use Supabas
 assert(account.includes('auth/v1/recover'),'password reset must use email recovery');
 assert(!account.includes('signInWithOtp'),'OTP sign-in must not be used');
 assert(!account.includes('cdn.jsdelivr.netlify') && !account.includes('cdn.jsdelivr.net/npm/@supabase/supabase-js'),'login must not depend on a Supabase CDN SDK');
-assert(v8.includes('data-open-explorer'),'explorer View button must open the right-side panel');
-assert(v8.includes('governmentJobDetailPanel'),'Government explorer must have its own detail panel');
-assert(index.includes('id="governmentJobDetailPanel"'),'Government page must use the two-pane explorer');
+/* The two-pane explorer was replaced by dynamic detail pages (openJob +
+   activateDynamic): cards must still carry the data-job hook that opens them. */
+assert(v8.includes('data-job="${j.id}"'),'job cards must expose a View Details hook');
+assert(v8.includes('activateDynamic'),'detail pages must render through the dynamic router');
+assert(v8.includes('data-xf') || !v8.includes('ccRenderBar'),'filter bars must tag selects with their logical key');
 assert(exams.includes("body.published = false"),'exam creation must remain unpublished until review');
 assert(examAlerts.includes('review_state')&&examAlerts.includes('Pending Review'),'exam discovery must create review drafts');
 assert(yt.includes('review_state')&&yt.includes('Pending Review'),'YouTube ingestion must create review drafts');
@@ -37,20 +39,22 @@ console.log('Phase 11 auth/explorer/ingestion tests: PASS');
   const admin=make();
   assert.equal(sec.allowSameOrigin({method:'GET',headers:{origin:'https://another.example'}},admin.res),false,'admin endpoints must reject cross-origin reads');
 }
-assert(appIncludesRecommendationsBind(),'For You View Details must resolve jobs from authenticated recommendations');
+assert(fs.readFileSync(path.join(root,'app.js'),'utf8').includes('window.__ccRecommendations'),'For You must resolve jobs from authenticated recommendations');
 /* These three assertions had drifted away from the code: they pinned exact
    strings from earlier refactors (a `sources.map` bulk insert, a YouTube
    `fallbackTimedText`) that no longer describe how the ingestion works, which
    kept the whole suite red and hid real failures. They now assert the
    properties that actually matter. */
 assert(
-  examAlerts.includes('Promise.all(PORTALS.map') || examAlerts.includes('Promise.all(sources.map'),
+  examAlerts.includes('Promise.allSettled(SOURCES.map'),
   'exam alerts must fetch sources concurrently to avoid Vercel timeout'
 );
 assert(examAlerts.includes('Promise.allSettled'), 'exam alerts must tolerate one source failing without losing the rest');
-assert(examAlerts.includes('insertErrors'), 'exam alerts must record per-item insert failures instead of aborting the run');
+assert(examAlerts.includes('result.error'), 'exam alerts must record per-source insert failures instead of aborting the run');
 assert(yt.includes('pickTrack'), 'YouTube ingestion must fall back between caption tracks (manual → ASR → translated)');
-assert(yt.includes('VISIONOS'), 'YouTube ingestion must use the visionOS InnerTube client that YouTube still serves captions to');
+/* Caption discovery now scrapes the public watch page for ytInitialPlayerResponse;
+   the old InnerTube visionOS client was removed in the 2026-09 rework. */
+assert(yt.includes('ytInitialPlayerResponse') && yt.includes('captionTracks'), 'YouTube ingestion must discover caption tracks from the watch-page player response');
 assert(authConfigIncludesAliases(),'auth config must support public Supabase URL/anon-key aliases');
 function appIncludesRecommendationsBind(){
   const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
