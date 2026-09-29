@@ -1,856 +1,99 @@
-# CivilCareer India — Master Project Prompt
-# Copy and paste this entire file at the start of any session.
-# Any AI coder can execute tasks immediately without reading the codebase.
-
----
-
-## WHO YOU ARE WORKING FOR
-
-Modin — Project Controls / Financial Coordinator at Jacobs, Bengaluru.
-Building CivilCareer India as a side project.
-Live site: https://civilcareer-india-two.vercel.app
-GitHub: push to `main` → Vercel auto-deploys (no manual step needed).
-
----
-
-## WHAT THE PRODUCT IS
-
-CivilCareer is India's dedicated career platform for Civil Engineers.
-It aggregates: private-sector civil jobs, government recruitment, competitive
-exams (GATE, SSC JE, RRB JE, ESE, State PSC), and free study materials.
-Audience: Civil Engineers in India, fresher to senior level.
-Tone: Professional, trustworthy. Safety tagline: "We never charge for jobs."
-
----
-
-## HARD RULES — NEVER BREAK THESE
-
-1. NO React, Vue, Angular, Next.js or any JS framework — ever
-2. NO TypeScript — plain .js files only
-3. NO build step — no Vite, Webpack, Parcel, Rollup
-4. NO new npm packages on client-side JS
-5. NO `app/` folder or `next.config.ts` — these break Vercel static serving
-6. NEVER expose SUPABASE_SERVICE_ROLE_KEY in client-side code
-7. NEVER publish a job or material automatically — everything goes through admin review first
-8. All new API handlers go in `/_api/` NOT in `/api/` directly
-9. Every new handler MUST be registered in `api/[[...path]].js` dispatch table
-10. Admin auth uses `x-owner-key` header checked against `process.env.OWNER_KEY`
-
----
-
-## TECH STACK
-
-| Layer       | Technology                                      |
-|-------------|------------------------------------------------|
-| Frontend    | Vanilla HTML + CSS + Vanilla JavaScript        |
-| Hosting     | Vercel (Hobby plan — max 12 serverless funcs)  |
-| Database    | Supabase (PostgreSQL) via REST API             |
-| Build step  | NONE — files served as-is                      |
-| Package mgr | npm (only inside `/_api/` folder)              |
-
----
-
-## COMPLETE FILE STRUCTURE
-
-```
-/
-├── index.html                  ← Main SPA — all page sections live here
-├── admin.html                  ← Admin panel (owner-key protected)
-├── career-guides.html          ← Standalone page
-├── exam-guides.html            ← Standalone page
-├── career-tools.html           ← Standalone page
-├── job-alerts.html             ← Standalone page
-├── legal.html                  ← Privacy / terms
-│
-├── styles.css                  ← ONLY stylesheet — all CSS lives here
-│
-├── app.js                      ← Main SPA logic, routing, data loading
-├── v8.js                       ← Core feature layer
-├── discovery-v9.js             ← Job discovery engine (client)
-├── cc-intelligence.js          ← Personalisation / "For You" logic
-├── account.js                  ← User account UI layer
-├── hero-3d.js                  ← Hero section 3D visual
-├── next-phase.js               ← Future phase features
-├── service-worker.js           ← PWA service worker
-├── visual-backgrounds.js       ← Animated backgrounds
-│
-├── api/
-│   └── [[...path]].js          ← SINGLE catch-all Vercel function (dispatches to /_api/)
-│
-├── _api/                       ← All handler implementations live here
-│   ├── jobs.js                 ← Job listings CRUD + discovery cron
-│   ├── exams.js                ← Exam data CRUD
-│   ├── materials.js            ← Study materials CRUD
-│   ├── account.js              ← User account + auth
-│   ├── alerts.js               ← Job alert subscriptions
-│   ├── agent.js                ← AI agent for job recommendations
-│   ├── agent-reach-ingest.js   ← Agent-Reach ingestion endpoint (FULLY BUILT)
-│   ├── analytics.js            ← Usage analytics
-│   ├── auth-config.js          ← Supabase auth config endpoint
-│   ├── employer-submissions.js ← Employer job submission form
-│   ├── employers.js            ← Employer profiles
-│   ├── extract.js              ← Content extraction / scraping
-│   ├── health.js               ← Health check endpoint
-│   ├── reports.js              ← Report suspicious content
-│   ├── resource-submissions.js ← User study resource submissions
-│   ├── sitemap.js              ← Dynamic XML sitemap
-│   ├── subscribe.js            ← Email / alert subscriptions
-│   ├── telegram.js             ← Telegram bot notifications
-│   └── package.json            ← API deps (@supabase/supabase-js only)
-│
-├── lib/
-│   ├── supabase.js             ← Supabase client (server-side, uses SERVICE key)
-│   ├── security.js             ← Auth + rate limiting middleware
-│   ├── discovery-sources.js    ← Job discovery source config
-│   ├── discovery-core.js       ← Discovery pipeline core logic
-│   ├── company-careers.js      ← Company career page scrapers
-│   └── ai-models.js            ← AI model failover chain
-│
-├── scripts/
-│   ├── scrape-jobs.js          ← Local trigger for discovery cron
-│   ├── launch-check.js         ← Pre-deploy sanity check
-│   └── agent-reach-sync.ps1    ← PowerShell: push Agent-Reach results to /api/agent-reach-ingest
-│
-├── tests/                      ← Phase test files (phase1 through phase10)
-├── docs/                       ← Phase docs (PHASE1-BASELINE.md … PHASE10-LAUNCH-CHECKLIST.md)
-│
-├── vercel.json                 ← Routing (165 rewrites), 1 cron, function config
-├── package.json                ← Root: only @supabase/supabase-js
-├── manifest.json               ← PWA manifest
-├── robots.txt                  ← SEO robots
-└── .github/workflows/
-    └── job-scraper.yml         ← GitHub Actions: triggers discovery every 4 hours
-```
-
----
-
-## API ARCHITECTURE — CRITICAL TO UNDERSTAND
-
-Vercel Hobby plan allows max 12 serverless functions. We use ONE catch-all:
-
-```
-Browser → /api/anything → api/[[...path]].js → dispatches to → _api/anything.js
-```
-
-### How the dispatch table works (`api/[[...path]].js`)
-
-```js
-const handlers = {
-  '/api/jobs':                   () => require('../_api/jobs'),
-  '/api/account':                () => require('../_api/account'),
-  '/api/alerts':                 () => require('../_api/alerts'),
-  '/api/agent':                  () => require('../_api/agent'),
-  '/api/agent-reach-ingest':     () => require('../_api/agent-reach-ingest'),
-  '/api/analytics':              () => require('../_api/analytics'),
-  '/api/auth-config':            () => require('../_api/auth-config'),
-  '/api/employer-submissions':   () => require('../_api/employer-submissions'),
-  '/api/employers':              () => require('../_api/employers'),
-  '/api/exams':                  () => require('../_api/exams'),
-  '/api/extract':                () => require('../_api/extract'),
-  '/api/health':                 () => require('../_api/health'),
-  '/api/materials':              () => require('../_api/materials'),
-  '/api/reports':                () => require('../_api/reports'),
-  '/api/resource-submissions':   () => require('../_api/resource-submissions'),
-  '/api/sitemap':                () => require('../_api/sitemap'),
-  '/api/subscribe':              () => require('../_api/subscribe'),
-  '/api/telegram':               () => require('../_api/telegram'),
-};
-```
-
-### Adding a new API endpoint — exact 2-step process
-
-**Step 1**: Create `_api/your-endpoint.js` following the handler pattern below.
-
-**Step 2**: Add ONE line to the dispatch table in `api/[[...path]].js`:
-```js
-'/api/your-endpoint': () => require('../_api/your-endpoint'),
-```
-
-That's it. No other config needed.
-
-### Handler template — copy this exactly for every new `_api/*.js` file
-
-```js
-'use strict';
-
-const SUPA = process.env.SUPABASE_URL;
-const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-function db(path, opts = {}) {
-  return fetch(`${SUPA}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      apikey: KEY,
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(opts.headers || {}),
-    },
-  });
-}
-
-function isAdmin(req) {
-  return req.headers['x-owner-key'] === process.env.OWNER_KEY;
-}
-
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-owner-key');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  try {
-    // your logic here
-    return res.status(200).json({ ok: true, data: [] });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-};
-```
-
----
-
-## DATABASE — SUPABASE
-
-### Environment variables
-
-| Variable                   | Used in          | Safe on client? |
-|----------------------------|------------------|-----------------|
-| `SUPABASE_URL`             | _api/*.js        | Yes             |
-| `SUPABASE_ANON_KEY`        | _api/*.js        | Yes             |
-| `SUPABASE_SERVICE_ROLE_KEY`| _api/*.js        | NO — never      |
-| `OWNER_KEY`                | admin auth       | NO — never      |
-| `AGENT_REACH_INGEST_KEY`   | agent-reach-ingest| NO — never     |
-| `TELEGRAM_BOT_TOKEN`       | _api/telegram.js | NO — never      |
-| `TELEGRAM_ADMIN_CHAT_ID`   | _api/telegram.js | NO — never      |
-
-### Main tables
-
-| Table                    | Purpose                                           |
-|--------------------------|---------------------------------------------------|
-| `jobs`                   | All job listings (private + government)           |
-| `exams`                  | Civil engineering exam notifications              |
-| `materials`              | Free study resources                              |
-| `employer_profiles`      | Verified employer accounts                        |
-| `employer_submissions`   | Employer job submission requests                  |
-| `resource_submissions`   | User-submitted study resources                    |
-| `candidate_profiles`     | Registered candidate accounts                     |
-| `candidate_saved_jobs`   | Saved/bookmarked jobs per candidate               |
-| `candidate_job_events`   | Click/view/apply tracking                         |
-| `job_alerts`             | Email alert subscriptions                         |
-| `job_alert_deliveries`   | Alert send history                                |
-| `reports`                | Suspicious content reports                        |
-
-### Key fields on `jobs` table (most important)
-
-```
-id, role, company, location, country, sector ('Private'|'Government'),
-description, employment_type, experience_level, salary, qualification,
-posted_date, deadline, source_url, application_url, status ('Active'|'Expired'),
-published (boolean), review_state ('Pending Review'|'Published'|'Rejected'),
-ingestion_source ('agent_reach'|'discovery'|'admin'),
-auto_discovered (boolean), quality_flags (jsonb), featured (boolean),
-slug (text), created_at, updated_at
-```
-
-### CRITICAL: Nothing auto-publishes
-Every job, exam, and material arrives as `published: false, review_state: 'Pending Review'`.
-Only the admin panel can publish. Never set `published: true` in ingestion code.
-
----
-
-## ROUTING SYSTEM
-
-### Server-side (vercel.json) — 165 rewrites
-All URL routes map to an HTML file. Pattern examples:
-```json
-{ "source": "/civil-engineer-jobs-in-bengaluru", "destination": "/index.html" }
-{ "source": "/career-tools",                      "destination": "/career-tools.html" }
-{ "source": "/admin",                             "destination": "/admin.html" }
-{ "source": "/jobs/:slug*",                       "destination": "/index.html" }
-{ "source": "/sitemap.xml",                       "destination": "/api/sitemap" }
-```
-
-To add a new URL: add a rewrite entry in `vercel.json`.
-
-### Client-side SPA (inside index.html)
-Every page is `<section class="page" data-page="name">`. Current pages:
-```
-home | foryou | private | careerpaths | government | exams |
-jobDetail | examDetail | materialDetail | materials |
-post | resource | report | about | search | admin
-```
-
-Navigation uses `data-route` attributes on links, handled by `app.js`.
-Job cards use `jobs-explorer` layout with `job-detail-panel` sidebar (already built).
-
-To add a new SPA page:
-1. Add `<section class="page" data-page="newpage">` in index.html
-2. Add nav link `<a class="route" href="/new-url" data-route="newpage">`
-3. Add rewrite in vercel.json
-4. Handle data loading in app.js if needed
-
----
-
-## CSS SYSTEM
-
-Single file: `styles.css` — do not create separate CSS files.
-
-### CSS variables (always use these, never hardcode hex)
-
-```css
---cc-navy         /* #0b1f3a — primary brand dark navy */
---cc-navy-mid     /* mid-tone navy */
---cc-navy-light   /* light navy */
---cc-gold         /* #c9973c — primary accent / CTA */
---cc-gold-soft    /* soft gold for backgrounds */
---cc-border       /* border color */
---cc-surface      /* card surface */
---cc-ink          /* primary text */
---cc-text-dim     /* secondary/muted text */
---cc-shadow-sm    /* small shadow */
---cc-shadow-md    /* medium shadow */
---cc-white        /* white */
---cc-slate        /* slate gray */
-```
-
-### Existing layout components (already in styles.css — use them)
-
-```css
-.jobs-explorer          /* two-column split: left job list, right detail panel */
-.jobs-column            /* left scrollable job cards column */
-.job-detail-panel       /* right sticky detail panel (mobile: slides from bottom) */
-.cc-filterbar           /* horizontal filter chip bar above job list */
-.cc-compact-card        /* job card in list */
-.dash-card              /* admin dashboard card */
-.btn-gold               /* primary gold button */
-.btn-ghost              /* secondary ghost button */
-.btn-reject             /* red reject button */
-```
-
-### CSS rules
-- Mobile-first. Use existing breakpoints.
-- Class naming: lowercase-hyphenated (`job-card`, `filter-title`)
-- No Tailwind, no CSS-in-JS, no CSS modules
-- Add to `styles.css` only. Never inline styles in HTML except for one-off overrides.
-
----
-
-## JAVASCRIPT CONVENTIONS
-
-- ES6+ OK (modern browsers + Vercel Node.js support it)
-- No import/export on client-side — use plain `<script>` tags
-- API calls: `fetch()` only — no axios, no jQuery
-- DOM: `document.querySelector` / `getElementById`
-- Async: `async/await` preferred over `.then()`
-- Always wrap `fetch` in try/catch with user-visible error messages
-- Remove all `console.log` before pushing to GitHub
-
-### Client-side API call pattern
-
-```js
-async function loadJobs() {
-  try {
-    const res = await fetch('/api/jobs?published=true&limit=9');
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to load');
-    renderJobs(data.jobs || []);
-  } catch (err) {
-    showError(err.message);
-  }
-}
-```
-
-### Admin panel API call pattern (uses `adminKey` variable)
-
-```js
-// adminKey is a global set after login in admin.html
-async function api(url, opt = {}) {
-  const headers = {
-    'content-type': 'application/json',
-    ...(opt.key ? { 'x-owner-key': opt.key } : {}),
-    ...(opt.headers || {}),
-  };
-  const r = await fetch(url, { ...opt, headers });
-  const text = await r.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch {}
-  if (!r.ok) {
-    const err = Error(data.error || data.details || `Request failed (${r.status})`);
-    err.status = r.status;
-    throw err;
-  }
-  return data;
-}
-
-// Usage (adminKey is always in scope in admin.html):
-const jobs = await api('/api/jobs', { key: adminKey });
-const result = await api('/api/jobs', { method: 'POST', key: adminKey, body: JSON.stringify(payload) });
-```
-
----
-
-## ADMIN PANEL (`admin.html`)
-
-### Tabs (panels)
-
-| Panel ID              | Purpose                                      |
-|-----------------------|----------------------------------------------|
-| `panel-analytics`     | Page views, devices, traffic (default)       |
-| `panel-jobs`          | Job listings management                      |
-| `panel-discovery`     | Job discovery from web (SerpAPI / free feeds)|
-| `panel-agent-reach`   | Agent-Reach inbox — pending review items     |
-| `panel-exams`         | Exam notifications management                |
-| `panel-materials`     | Study materials management                   |
-| `panel-submissions`   | Employer + resource submission inbox         |
-| `panel-reports`       | Suspicious content reports                   |
-
-### Agent-Reach tab (`panel-agent-reach`) — what's already there
-- Inbox showing all `ingestion_source = 'agent_reach'` items with `review_state = 'Pending Review'`
-- Buttons: Publish / Open in Editor / Reject per item
-- YouTube section (UI exists, no backend handler yet)
-- RSS discovery section (UI exists, no backend handler yet)
-- Missing: "Run Now" trigger buttons for exam-alerts and youtube-materials
-
-### Adding UI to admin.html — conventions
-
-```js
-// Status feedback pattern (reuse this):
-function setStatus(elId, type, msg) {
-  // type: 'running' | 'ok' | 'err'
-  const el = document.getElementById(elId);
-  el.className = 'ar-status ' + type;
-  el.textContent = msg;
-}
-
-// Button pattern:
-async function myAdminAction() {
-  const btn = document.getElementById('myBtn');
-  btn.disabled = true; btn.textContent = 'Running…';
-  try {
-    const d = await api('/api/my-endpoint', { method: 'POST', key: adminKey });
-    setStatus('myStatus', 'ok', `✅ Done — ${d.total} items processed`);
-  } catch (err) {
-    setStatus('myStatus', 'err', '❌ ' + err.message);
-  } finally {
-    btn.disabled = false; btn.textContent = '▶ Run Now';
-  }
-}
-```
-
----
-
-## VERCEL CONFIGURATION
-
-### Current crons
-
-```json
-"crons": [
-  { "path": "/api/jobs?discovery=cron", "schedule": "30 0 * * *" }
-]
-```
-
-### Function config
-
-```json
-"functions": {
-  "api/[[...path]].js": { "maxDuration": 15 }
-}
-```
-
-To add a new cron, add to the `crons` array. To increase a function timeout:
-```json
-"functions": {
-  "api/[[...path]].js": { "maxDuration": 60 }
-}
-```
-
-(Max 60s on Hobby plan.)
-
----
-
-## WHAT IS ALREADY BUILT (do not rebuild)
-
-| Feature                          | Location                              | Status      |
-|----------------------------------|---------------------------------------|-------------|
-| LinkedIn-style split job layout  | styles.css `.jobs-explorer`           | ✅ Complete |
-| Mobile job detail drawer         | styles.css `.job-detail-panel`        | ✅ Complete |
-| Agent-Reach ingestion endpoint   | `_api/agent-reach-ingest.js`          | ✅ Complete |
-| Agent-Reach admin inbox tab      | `admin.html #panel-agent-reach`       | ✅ Complete |
-| Supabase schema for Agent-Reach  | `supabase-agent-reach.sql`            | ✅ Complete |
-| PowerShell sync script           | `scripts/agent-reach-sync.ps1`        | ✅ Complete |
-| Job discovery pipeline           | `_api/jobs.js` + `lib/discovery-*.js`| ✅ Complete |
-| Company career scrapers          | `lib/company-careers.js`              | ✅ Complete |
-| Account / auth system            | `_api/account.js` + `account.js`     | ✅ Complete |
-| Job alerts system                | `_api/alerts.js`                      | ✅ Complete |
-| Employer trust / verification    | `_api/employers.js`                   | ✅ Complete |
-| GitHub Actions discovery (4h)    | `.github/workflows/job-scraper.yml`   | ✅ Complete |
-| 165 SEO rewrites (city pages)    | `vercel.json`                         | ✅ Complete |
-| Phase 1–10 documentation         | `docs/`                               | ✅ Complete |
-| Test suite (phase1–10)           | `tests/`                              | ✅ Complete |
-| Security middleware              | `lib/security.js`                     | ✅ Complete |
-| Telegram notifications           | `_api/telegram.js`                    | ✅ Complete |
-
----
-
-## WHAT STILL NEEDS TO BE BUILT
-
-### 1. Fix HTTP 403 on live site (HIGHEST PRIORITY)
-The live site https://civilcareer-india-two.vercel.app returns 403 on all URLs.
-
-Check in Vercel → Project → Settings → Environment Variables:
-- `SUPABASE_URL` — must be set
-- `SUPABASE_ANON_KEY` — must be set
-- `SUPABASE_SERVICE_ROLE_KEY` — must be set
-- `OWNER_KEY` — must be set (admin password)
-- `AGENT_REACH_INGEST_KEY` — must be set for Agent-Reach
-
-If all vars are set, check `lib/security.js` for a middleware that may be blocking all requests.
-
-### 2. Exam Alerts Scraper (`_api/exam-alerts.js`)
-Scrapes UPSC, SSC, RRB, Employment News for civil engineering exam notifications.
-Saves to `exams` table as `review_state: 'Pending Review'`.
-
-Steps:
-1. Create `_api/exam-alerts.js` using the handler template above
-2. Scrape these free sources (no API key needed):
-   - `https://www.employmentnews.gov.in/rss/feed.aspx`
-   - `https://upsc.gov.in/examinations/active-examinations`
-   - `https://ssc.nic.in/`
-   - `https://www.sarkariresult.com/feed/`
-3. Filter by civil engineering keywords
-4. Save to `exams` table, `published: false, review_state: 'Pending Review'`
-5. Add to dispatch table in `api/[[...path]].js`
-6. Add cron in `vercel.json`: `{ "path": "/api/exam-alerts", "schedule": "30 0 * * 1" }`
-7. Add "Run Now" button in `admin.html` inside `#panel-exams`
-
-### 3. YouTube Study Materials (`_api/youtube-materials.js`)
-Admin pastes YouTube URL → transcript extracted → saved to `materials` table for review.
-No API key needed — uses YouTube's public caption endpoint.
-
-Steps:
-1. Create `_api/youtube-materials.js` using handler template
-2. Extract video ID from URL
-3. Fetch YouTube page → parse `ytInitialPlayerResponse` JSON → get caption track URL
-4. Fetch caption XML → clean to plain text transcript
-5. Save to `materials` table: `published: false, review_state: 'Pending Review'`
-6. Add to dispatch table in `api/[[...path]].js`
-7. Add input + "Transcribe" button to `admin.html` inside `#panel-materials`
-
-### 4. "Run Now" Trigger Buttons in Admin Panel
-The `#panel-agent-reach` tab needs manual trigger buttons for:
-- Exam scan → calls `POST /api/exam-alerts`
-- YouTube transcribe → calls `POST /api/youtube-materials` with a URL input
-
-Use the admin button pattern from the JS conventions section above.
-
-### 5. CLAUDE.md — Project Knowledge File for Claude Code
-File at project root: `CLAUDE.md`
-Should reference this master prompt and document the v13 architecture.
-Used by Claude Code (VS Code extension) to auto-load project context.
-
-### 6. `.mcp.json` — Claude Code MCP Config
-```json
-{
-  "mcpServers": {
-    "agent-reach": {
-      "command": "agent-reach",
-      "args": ["serve", "--mcp"],
-      "description": "Lets Claude Code browse job sites, government portals and YouTube live."
-    }
-  }
-}
-```
-
----
-
-## HOW TO ADD A NEW FEATURE — MASTER CHECKLIST
-
-### New API endpoint
-- [ ] Create `_api/your-endpoint.js` using the exact handler template above
-- [ ] Add `OWNER_KEY` auth if admin-only
-- [ ] Add one line to dispatch table in `api/[[...path]].js`
-- [ ] Add new dep (if any) to `_api/package.json` only
-- [ ] Test: `curl -X GET http://localhost:3000/api/your-endpoint`
-- [ ] Push to GitHub → Vercel auto-deploys
-
-### New cron job
-- [ ] Handler already exists at `_api/your-endpoint.js`
-- [ ] Add to `vercel.json` crons array
-- [ ] Increase `maxDuration` if needed (max 60 for Hobby)
-- [ ] Test manually via admin panel before relying on cron
-
-### New SPA page in index.html
-- [ ] Add `<section class="page" data-page="newpage">` inside index.html
-- [ ] Add nav link with `data-route="newpage"`
-- [ ] Add rewrite in vercel.json: `{ "source": "/new-url", "destination": "/index.html" }`
-- [ ] Handle in `app.js` (data loading, rendering)
-- [ ] Add CSS to `styles.css`
-
-### New standalone page (not SPA)
-- [ ] Create `newpage.html` at root
-- [ ] Add rewrite: `{ "source": "/newpage", "destination": "/newpage.html" }`
-- [ ] Include same `<head>` boilerplate as other HTML files (meta, canonical, CSS)
-
-### New SEO city/role page
-- [ ] Add rewrite to vercel.json: `{ "source": "/[role]-jobs-in-[city]", "destination": "/index.html" }`
-- [ ] The page content is served by the SPA using the URL slug
-- [ ] Verify `/api/sitemap` picks up new URLs
-
----
-
-## DEPLOYMENT
-
-```
-git push origin main
-```
-
-Vercel auto-deploys on every push to `main`. No build command. No manual step.
-Check deployment status at: vercel.com → civilcareer → Deployments
-
----
-
-## SEO RULES — DO NOT BREAK
-
-- Every public HTML page must have `<title>`, `<meta name="description">`, `<link rel="canonical">`
-- City page pattern: `/civil-engineer-jobs-in-{city}` → rewrite to `/index.html`
-- Sitemap is dynamic at `/api/sitemap` (via `_api/sitemap.js`)
-- Google verification meta tag is in `index.html <head>` — never remove it
-- `robots.txt` at root — never block any public pages
-- Do not add `noindex` to any public page
-
----
-
-## WHAT NOT TO DO
-
-- ❌ Do not add React, Vue, Next.js or any framework
-- ❌ Do not add a build step
-- ❌ Do not create files inside `/api/` directly — use `/_api/` then register
-- ❌ Do not forget to register new handlers in `api/[[...path]].js`
-- ❌ Do not expose `SUPABASE_SERVICE_ROLE_KEY` anywhere client-side
-- ❌ Do not set `published: true` in any ingestion/discovery code
-- ❌ Do not create new CSS files — extend `styles.css`
-- ❌ Do not add new npm packages to the root `package.json` — only `_api/package.json`
-- ❌ Do not recreate `app/` folder or `next.config.ts` — these break the site
-- ❌ Do not add TypeScript (`.ts`) files anywhere
-
----
-
-## NOW — WHAT I NEED YOU TO DO
-
-Execute all of the following tasks in order. Each one is self-contained.
-Do not skip any. Do not ask for clarification — everything you need is above.
-
----
-
-### TASK 1 — Fix HTTP 403 on live site (do this first)
-
-The live site https://civilcareer-india-two.vercel.app returns HTTP 403
-on every URL including the homepage, /private-jobs, and /api/health.
-
-Do the following:
-1. Open `lib/security.js` and read it fully
-2. Identify what condition is causing ALL requests to be blocked (missing
-   env var check, IP block, misconfigured middleware, etc.)
-3. Fix the condition so that public pages and public API endpoints
-   (GET /api/jobs, GET /api/exams, GET /api/materials, GET /api/health)
-   are accessible without any auth
-4. Make sure the fix does NOT remove protection from admin-only endpoints
-   (anything that calls isAdmin(req) must still require x-owner-key)
-5. Show the exact lines changed
-
----
-
-### TASK 2 — Build `_api/exam-alerts.js`
-
-Create a new file `_api/exam-alerts.js` that scrapes government portals
-for civil engineering exam notifications and saves them to the `exams` table.
-
-Requirements:
-- Auth: `isAdmin(req)` OR Vercel cron user-agent (`/vercel-cron/i`)
-- Scrape these 4 free sources (no API key needed, use fetch only):
-    1. Employment News RSS: https://www.employmentnews.gov.in/rss/feed.aspx
-    2. UPSC active exams page: https://upsc.gov.in/examinations/active-examinations
-    3. SSC homepage: https://ssc.nic.in/
-    4. Sarkari Result RSS: https://www.sarkariresult.com/feed/
-- Parse RSS with regex (no cheerio — not in _api/package.json)
-- Filter items that contain civil engineering keywords:
-  civil, je, junior engineer, assistant engineer, gate, ese, ies,
-  ssc je, rrb je, cpwd, pwd, nhai, irrigation, structural, highway,
-  upsc, kpsc, mpsc, tnpsc, appsc, state psc
-- For each matching item save to `exams` table:
-    title, description (plain text, max 600 chars), source_url,
-    category (detect: UPSC/SSC/RRB/GATE/State PSC/Government),
-    status: 'Active', published: false, review_state: 'Pending Review',
-    notification_date (today if not parseable), auto_discovered: true
-- Skip duplicates: load existing exam titles first, compare case-insensitively
-- Return JSON: { ok, totalNew, durationMs, sources: [{name, found, saved, error}] }
-- Use the exact handler template and db() helper from this prompt
-- AbortSignal.timeout(12000) on every fetch
-
-After creating the file:
-- Add to dispatch table in `api/[[...path]].js`:
-  '/api/exam-alerts': () => require('../_api/exam-alerts'),
-- Add cron to vercel.json:
-  { "path": "/api/exam-alerts", "schedule": "30 0 * * 1" }
-  (runs every Monday at 00:30 UTC)
-
----
-
-### TASK 3 — Build `_api/youtube-materials.js`
-
-Create `_api/youtube-materials.js` that transcribes any YouTube video
-and saves the transcript to the `materials` table for admin review.
-
-Requirements:
-- Method: POST only
-- Auth: isAdmin(req) — admin-only, no cron
-- Request body: { url: string, title?: string, category?: string }
-- No API key needed — use YouTube's public caption system:
-    Step 1: fetch https://www.youtube.com/watch?v=VIDEO_ID
-    Step 2: extract ytInitialPlayerResponse JSON from the page HTML
-            (regex: /ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\});/)
-    Step 3: navigate to
-            playerData.captions.playerCaptionsTracklistRenderer.captionTracks
-    Step 4: prefer English (languageCode === 'en'), fallback to first track
-    Step 5: fetch captionTrack.baseUrl + '&fmt=json3'
-    Step 6: parse events array → clean to plain paragraphs (~300 words each)
-- Extract video metadata: title, channel (videoDetails.author),
-  duration (videoDetails.lengthSeconds)
-- Auto-detect category from title keywords:
-    gate/ese → 'GATE / ESE Prep'
-    ssc je/rrb je → 'SSC JE / RRB JE'
-    structural/rcc → 'Structural Engineering'
-    highway/transport → 'Transportation'
-    geotechnical/soil → 'Geotechnical'
-    fluid/hydraulic → 'Fluid Mechanics'
-    survey → 'Surveying'
-    quantity/qs → 'Quantity Surveying'
-    default → 'Civil Engineering'
-- Save to `materials` table:
-    title (body.title || ytTitle),
-    description (channel + duration + word count),
-    content (full transcript text),
-    source_url (https://www.youtube.com/watch?v=VIDEO_ID),
-    category (auto-detected or body.category),
-    type: 'Video Transcript',
-    published: false,
-    review_state: 'Pending Review',
-    auto_discovered: true
-- Return: { ok, stats: { videoId, title, channel, duration, transcriptWords }, material }
-- On error (no captions, video not found): return 500 with clear error message
-
-After creating the file:
-- Add to dispatch table in `api/[[...path]].js`:
-  '/api/youtube-materials': () => require('../_api/youtube-materials'),
-
----
-
-### TASK 4 — Add "Run Now" buttons to admin.html
-
-Open `admin.html`. Find the `#panel-agent-reach` section.
-Add the following two UI blocks inside that panel.
-
-Block A — Exam Alerts Scanner (add near the top of panel-agent-reach,
-before the inbox list):
-
-```
-Card title: "🔔 Exam Alerts Scanner"
-Subtitle: "Scrapes UPSC, SSC, RRB and Employment News for new civil exam notifications"
-Small note: "Runs automatically every Monday · results go to Exams tab for review"
-Button: id="arExamScanBtn" text="▶ Scan Now" onclick="arRunExamScan()"
-Status div: id="arExamScanStatus" (hidden by default)
-Results div: id="arExamScanResults" (hidden by default)
-```
-
-Block B — YouTube Transcriber (add after Block A):
-
-```
-Card title: "🎬 YouTube Study Materials"
-Subtitle: "Paste a YouTube URL — transcript is extracted and saved as a draft"
-Input: id="arYtUrl" type="url" placeholder="https://youtube.com/watch?v=..."
-Input: id="arYtTitle" type="text" placeholder="Custom title (optional)"
-Select: id="arYtCategory" with options matching the category list in Task 3
-Button: id="arYtBtn" text="▶ Transcribe" onclick="arRunYtTranscribe()"
-Status div: id="arYtStatus" (hidden by default)
-Preview div: id="arYtPreview" (hidden by default) — shows title + channel + word count
-```
-
-Style both cards to match the existing `.dash-card` / `.source-health-panel` pattern
-already in admin.html. Use the existing color scheme (--cc-navy, --cc-gold).
-
-Add these JavaScript functions at the bottom of admin.html (before </script>):
-
-```js
-async function arRunExamScan() {
-  // disable button, show running status
-  // call GET /api/exam-alerts with { key: adminKey }
-  // on success: show totalNew and per-source breakdown
-  // on error: show error message
-  // re-enable button
-  // if totalNew > 0: call loadExams() to refresh the exams tab
-}
-
-async function arRunYtTranscribe() {
-  // validate arYtUrl is not empty
-  // disable button, show running status
-  // call POST /api/youtube-materials with { key: adminKey }
-  // body: { url, title (optional), category (optional) }
-  // on success: show video title, channel, duration, word count in preview div
-  // clear the url and title inputs
-  // on error: show error message
-  // re-enable button
-  // if success: call loadMaterials() to refresh materials tab
-}
-```
-
-Use the existing `api(url, opt)` helper already in admin.html — do not write a new fetch wrapper.
-
----
-
-### TASK 5 — Add CLAUDE.md to project root
-
-Create a file `CLAUDE.md` at the project root with this exact content:
-
-```
-@MASTER_PROMPT.md
-```
-
-This tells Claude Code to read the master prompt file.
-Also create `MASTER_PROMPT.md` at the project root containing the full
-contents of this master prompt (the entire file you are reading right now).
-
----
-
-### TASK 6 — Add .mcp.json to project root
-
-Create `.mcp.json` at the project root:
-
-```json
-{
-  "mcpServers": {
-    "agent-reach": {
-      "command": "agent-reach",
-      "args": ["serve", "--mcp"],
-      "description": "Gives Claude Code live web browsing: job sites, government portals, YouTube. Use during development to read real page data."
-    }
-  }
-}
-```
-
----
-
-### DELIVERY CHECKLIST
-
-When all 6 tasks are complete, confirm:
-- [ ] lib/security.js fix — public endpoints return 200, admin endpoints still require key
-- [ ] _api/exam-alerts.js created and registered in api/[[...path]].js
-- [ ] vercel.json has exam-alerts cron added
-- [ ] _api/youtube-materials.js created and registered in api/[[...path]].js
-- [ ] admin.html has both new UI blocks with working JS functions
-- [ ] CLAUDE.md created at project root
-- [ ] MASTER_PROMPT.md created at project root  
-- [ ] .mcp.json created at project root
-- [ ] All files pushed to main branch on GitHub
-
-Show a summary of every file changed and what changed in each one.
+MISSION
+Complete the CivilCareer overhaul end to end in one continuous run (Phase 0 to Phase 6), working autonomously for as long as it takes, up to a full day. Do not wait for my approval between phases. Do not ask questions you can answer by reading the code, testing, or checking current documentation. Give me one final report at the end.
+
+PROJECT
+CivilCareer (https://civilcareer-india-two.vercel.app/): India-only, civil-engineering-only platform for private/MNC jobs, government civil recruitment (SSC JE, RRB JE, State PSC AE/JE, PWD, CPWD, NHAI, MES, metro, irrigation, PSUs), exams and free prep. Goal: the first place an Indian civil engineer opens to find a verified job, never miss a government civil vacancy, and prepare for it. We win on civil-only relevance, provable trust, structured government data, civil-specific tools and a premium look, against Naukri, LinkedIn, Indeed, foundit, Shine, Apna, Freshersworld, Sarkari Result, FreeJobAlert and NCS.
+
+HARD CONSTRAINTS (always)
+- ZERO COST. Free tiers and open-source only. Before relying on any free tier, check its current limits and terms and record them in docs/01-free-tier-limits.md. Design so that hitting a limit degrades gracefully.
+- India-only, civil-only. Nothing auto-publishes. Never charge candidates. Never invent data, counts, testimonials or revenue. Government listings link only to official domains (.gov.in, .nic.in, official PSU/board sites).
+- TRUTHFUL CLAIMS. Every claim on the site must be true and provable. If a claim cannot be proven, reword it or remove it (see Phase 4).
+- Never commit secrets. Use environment variables. Add a secret scan (for example gitleaks in GitHub Actions).
+- Do not delete existing jobs or data. Hide or mark instead. The 513 LinkedIn-sourced rows stay for now; new ingestion prefers official government sources and company career pages.
+- If something cannot be verified, say so. Do not guess. Do not report a fix as done unless you have tested it and can show the evidence.
+
+CURRENT STATE (verified by me; do not redo, but re-check that it still holds)
+Database (Supabase, project ref tnjegaqheyaukyqqighz): the lockdown is complete.
+- RLS is on for all 25 public tables. Your earlier list of 14 was incomplete; it missed candidate_profiles, candidate_saved_jobs, candidate_job_events, candidate_job_applications, saved_jobs, job_events, career_profiles, company_sources, job_sources, source_snapshots and employer_verifications. Update docs/00-audit-findings.md with the full list.
+- All policies were dropped except owner-scoped policies on candidate_*, job_alerts and job_alert_deliveries.
+- anon and authenticated have NO table privileges on any table (verified with has_table_privilege / has_any_column_privilege: all false).
+- civilcareer_analytics_summary (SECURITY DEFINER) is executable by service_role only. No views. No storage policies.
+Accounts: my account modink777@gmail.com (id 5d66d269-0499-40ed-9981-c71d95bd919b) was manually confirmed in auth.users and I can sign in. Supabase's built-in email allows about 2 emails per hour to team addresses only, so confirmation emails to real users will not arrive until custom SMTP is configured.
+Tested by me on the live site after the lockdown: sign-in works; alert preferences save and display; saved jobs persist after refresh. NOT verified: profile sync; whether the subscribe.js service-key fix is deployed.
+Findings from me: (a) the account page says "Use Apply on a job and mark it as applied" but I cannot find any "Mark as applied" control on job pages; (b) Chrome DevTools reports an ignored @import at styles.css line 222; (c) 16 form fields share duplicate id values within the same form.
+
+WHAT THE PUBLIC SITE STILL SHOWS (checked by me just now; production is unchanged from the start)
+- The whole admin UI (owner-key gate, AI importer, web discovery, notification reader, monetization tab) is in the public HTML on EVERY route.
+- A personal Gmail in the footer Contact link; a WhatsApp channel link that looks like a placeholder; a PDF upload field on Submit Resource.
+- Counters show "..." and lists show "Loading..." because content loads by JavaScript.
+- Nine main-nav items, with separate "Government" and "Govt Jobs Table" pages; Job Alerts is missing from the homepage nav (only on /govt-jobs).
+- /private-jobs serves the homepage title and a canonical tag pointing to the homepage "/". Only /govt-jobs has its own title, description and canonical. Check every section route for the same problem.
+- /govt-jobs says "Only official notifications", "Updated daily" and that entries are pulled automatically from official sources (NCS, Employment News, state notifications). Your audit found zero .gov.in sources in the jobs table and only 13 government rows, all from aggregators. These claims are not currently supported.
+- The footer links /career-guides.html, /career-tools.html and /legal.html use a different URL style from the rest of the site.
+
+WORKING METHOD
+- Work on a branch. Use preview deployments for testing. One commit per logical change so each can be reverted alone.
+- WITHIN THE FIRST HOUR: give me a working preview URL and create docs/PROGRESS.md. I will check them. Keep PROGRESS.md updated after every completed task with time, what changed, commit hash, test evidence and open blockers.
+- Start by re-checking production yourself: fetch the live HTML of /, /private-jobs and /govt-jobs and search it for admin strings, "owner key", the Gmail address and the WhatsApp link. Record the results as your baseline. Do not rely on earlier reports.
+- After each phase, test it yourself: curl/HTTP tests, Lighthouse mobile, bundle and HTML searches, screenshots at 360px in light and dark mode, second-account denial tests. Save the evidence in docs/. If tests fail, fix or revert before moving on.
+- Merge to production only after that phase's tests pass. Never leave production broken. Write a rollback note for each merge. After each production deploy, re-fetch the live pages and confirm the change is really live.
+- BLOCKER RULE: if something needs my accounts, secrets, DNS, SQL editor access or money, add it to the "Waiting on owner" list in docs/PROGRESS.md with exact steps, prepare everything around it (code, config, tests against mocks or preview), and continue with the next task. Never sit idle waiting for me.
+- ORDER OF WORK: Phase 2 first (the admin exposure is still live), then Phase 3, 4, 5, 6.
+
+PHASE 0 - BASELINE
+Re-run the Lighthouse mobile audit and the checks listed above, and save the "before" numbers (homepage was 56 Performance, LCP 9.7s; server-rendered job pages scored 100). Update docs 00 to 05 with the corrected facts. Do not redo the database work.
+
+PHASE 1 - DATABASE (DONE; verify only)
+Confirm nothing has regressed: anon and authenticated still have no table privileges, RLS is on for all 25 tables, and the analytics function is still service_role-only. Re-run an external probe with the anon key for SELECT, INSERT, UPDATE and DELETE on every public table, including published=eq.false reads, and record the results.
+
+PHASE 2 - MOVE WRITES AND ADMIN SERVER-SIDE (ship this first)
+1. Admin access is an ALLOWLIST: only my account (email in a server-side ADMIN_EMAIL variable, or user id) may reach the admin route or any admin/AI endpoint. Being logged in is not enough. Check it on the server for every admin request. Prove it by signing up a throwaway second account and showing it is denied.
+2. Build the new protected admin (Supabase Auth, 2FA if available) alongside the old owner-key gate. Confirm I can get in. Only then remove the old gate and the whole admin UI from the public bundle and from the HTML of every route. Prove it by searching the built JS and the live HTML for admin strings, "owner key" and key material, and show the empty results. The service_role key lives only in environment variables.
+3. civilcareer_analytics_summary: find where it is called. If from the browser, move the call to an admin-only server handler.
+4. Post a Job, Report, Submit Resource: route through server functions with Cloudflare Turnstile, per-IP rate limiting, honeypot, validation and length limits. Remove PDF uploads (links only). Submissions land as unpublished drafts.
+5. Deploy or finish the subscribe.js service-key fix and confirm newsletter signups work.
+6. Harden the AI importer against prompt injection from pasted or scraped text. AI output never publishes automatically. Handle Gemini free-tier rate limits with caching, batching and a manual-entry fallback.
+7. Replace the personal Gmail in the footer with a contact form. Fix or remove the placeholder WhatsApp link; verify Telegram.
+8. Application tracker: (a) find any code that writes to candidate_job_applications and whether it runs in the browser (user JWT) or on the server (service key); (b) if the lockdown broke it, show the failing request and write a minimal GRANT to authenticated only as a script for my review; (c) if it was never built, build it: record the click on an external Apply link, and when the user returns show "Did you apply to <job>? Yes / Not yet", writing through a server function. Also verify profile sync end to end with a test account.
+9. Email: prepare custom SMTP for Supabase Auth (free Brevo plan or similar) with exact setup steps; list the credentials I must provide under "Waiting on owner".
+
+PHASE 3 - PERFORMANCE AND INDEXING
+1. Pre-render or server-render the homepage and all listing, role, city, state, organisation and exam pages, INCLUDING the government jobs table (it currently shows only "Loading..." without JavaScript). Replace "..." counters with cached values and skeletons. Code-split so admin and forms never load on public pages.
+2. Fix canonicals and metadata: every section route (/private-jobs, /government-jobs, /govt-jobs, /exams, /study-materials, /career-paths, /for-you, /job-alerts and so on) needs its own title, meta description, canonical, and OG tags. No route may canonicalise to the homepage unless it truly is the homepage. Unify the URL style: convert the /legal.html, /career-guides.html and /career-tools.html pages to clean paths with 301 redirects, and make sure they follow the same design and safety fixes.
+3. Fix indexing: a sitemap matching real live pages (only about 2 pages appeared indexed against a 758-URL sitemap; treat that as an estimate to verify), robots.txt, JobPosting (with validThrough), FAQ, Breadcrumb and Organization schema, and proper expired-job handling. A nonexistent job slug must return a real 404, not a 500.
+4. Remove @import from CSS. Load fonts through <link rel="preconnect"> and <link rel="stylesheet"> in the HTML head (or self-host font files). Confirm the intended fonts render.
+5. Give me Search Console verification steps. Report Lighthouse mobile before and after (target 90+ on Performance, Accessibility, SEO and Best Practices).
+
+PHASE 4 - DATA QUALITY, TRUTHFUL CLAIMS AND THE GOVERNMENT DIFFERENTIATOR
+1. Truthful claims first. Until official-source ingestion is working, reword the government page and homepage claims to match reality (for example: remove "Only official notifications", "Updated daily" and "pulled automatically from NCS/Employment News/state notifications" unless they are true). Every government row must show its official source domain and last-verified date. Show a "Verified" badge only after human review. Re-check the claims "Human-reviewed", "Source-first", "Updated daily" and "auto-refreshed from official sources" everywhere they appear, and make each one either provable or removed.
+2. Expose salary, deadline, vacancies, qualification, source URL and last-verified date in the public API and on every listing. Show "not disclosed" instead of blank.
+3. Deduplicate (about 5% duplicates). Auto-hide expired listings.
+4. Government jobs are 13 versus 723 private. Build free, official-source ingestion for SSC, RRB, State PSCs, state PWDs, CPWD, NHAI, MES, metro and PSUs. Each entry lands as an unpublished draft for my review. Run it on a scheduled GitHub Action inside free minutes. Respect robots.txt and each site's terms.
+5. Build government notification detail pages (organisation, post, level, vacancies, pay level, age limit and relaxation, fee by category, key dates, selection stages, syllabus, official PDF and apply links, "what changed vs last time"), the Eligibility Checker, a government civil calendar with .ics export, and state and organisation pages.
+6. Report new counts and show three sample entries for my review.
+
+PHASE 5 - DESIGN SYSTEM AND EXPERIENCE
+1. Apply the "Blueprint Navy and Brass" design system from docs/03-design-system.md everywhere via CSS variables: light bg #F7F8FA, surface #FFFFFF, surface-2 #EEF2F7, border #E3E7EE, ink #0B1F3A, ink-muted #4A5A70, primary #0B1F3A (hover #14315A), accent #D4A72C (fills only, never text), on-accent #0B1F3A, accent-text #7A5F00, govt #0B6F79 on #E3F3F4, private #1C5AA0 on #E6EEF8, success #0C6E55 on #E2F4EE, warn #9A4506 on #FDF0E1, danger #B42318 on #FDE9E7, link #1D4ED8; dark bg #071426, surface #0E2138, surface-2 #14304F, border #23405F, ink #EAF0F8, ink-muted #9FB0C6, primary/accent #E6BC4B with on-primary #071426, govt #5CD0DB, private #7FB2F0, success #3FCF9F, warn #F5A524, danger #FF7A6B. Fonts: Plus Jakarta Sans (headings), Inter (body), Noto Sans Devanagari (Hindi). Keep all text at WCAG AA (4.5:1) or better in both themes and re-check any colour you change. Light and dark mode with a toggle that respects the system setting. Reduced-motion support. Mobile-first at 360px with 44px tap targets. Govt jobs are always teal and private jobs always steel blue.
+2. Fix the 16 duplicate form field ids: give every field a unique id and point each label's for at it. Verify autofill and confirm axe/Lighthouse show no duplicate-id errors.
+3. Merge "Government" (cards) and "Govt Jobs Table" into one page with a Table/Card toggle and a 301 redirect. Cut the main nav to about six items (Jobs, Govt Jobs, Exams, Prepare, For You, Alerts). Move Post a Job, Submit Resource and Report to the footer or an employer area. Put Job Alerts in the main nav.
+4. Private jobs: filters for role, experience, state/city, employer type, project type, salary, posted date, work type and fresher-friendly; sort by relevance, newest and closing soon; save job, similar jobs; company pages; Report and WhatsApp Share buttons on every listing.
+5. Alerts: email digest via the free SMTP plan, web push (VAPID) and Telegram, filtered by role, state and job type, with one-click unsubscribe. Signup above the fold on the homepage.
+6. For You: 30-second onboarding with immediate matches and "why this matches" explanation. Browsing works without login.
+7. Screenshots of each key page at 360px in light and dark mode.
+
+PHASE 6 - HOSTING, LEGAL AND GROWTH
+1. Vercel Hobby forbids commercial use. Prepare the move to Cloudflare Pages (or Netlify free): deploy on a preview URL, test everything, write exact switch steps and a rollback plan. Do NOT change DNS or switch production without my confirmation.
+2. Complete Terms, Privacy (DPDP Act: consent, data deletion), Disclaimer and a Copyright/takedown process. State how data is collected and sourced.
+3. Programmatic SEO pages with unique content, FAQ and internal links (for example "Site Engineer jobs in Pune", "QS jobs in Hyderabad", "SSC JE Civil 2026 syllabus", "UP PWD JE recruitment"). No thin or duplicate pages.
+4. Weekly email digest, state-wise Telegram channels, and free analytics (Cloudflare Web Analytics) with a simple KPI report: weekly active users, alert subscribers, apply-click rate, percent of listings verified in the last 7 days, scam reports per 1,000 views, organic traffic, profile-completion rate.
+5. Study hub, career guides, resume/ATS checker and salary explorer: build what fits inside the day, ranked by user value; list the rest as next steps.
+
+STOP AND ASK ME ONLY FOR
+Turnstile keys; SMTP credentials; Cloudflare and GitHub secrets; Search Console verification; buying a domain; DNS and the final hosting switch; any destructive or irreversible action (deleting data, key rotation); any SQL that must run in the Supabase SQL editor (give the exact script, what it changes and how to verify, and never assume it ran); anything that could cost money.
+
+FINAL REPORT (one message when finished)
+1. Per phase: done, partly done or pending on me, with evidence (commit hashes, before/after Lighthouse scores, test outputs, screenshots, and a fresh fetch of the live pages showing the change is deployed).
+2. Updated docs 00 to 05 and docs/PROGRESS.md.
+3. "Things only you can do" with exact steps for each.
+4. Live counts of government vs private jobs and three sample government entries.
+5. Everything skipped, with reasons.

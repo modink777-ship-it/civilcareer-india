@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/[[...path]].js": {
-      "maxDuration": 60
+      "maxDuration": 15
     }
   },
   "rewrites": [
@@ -654,18 +654,6 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/govt-jobs",
-      "destination": "/govt-jobs.html"
-    },
-    {
-      "source": "/govt-jobs/",
-      "destination": "/govt-jobs.html"
-    },
-    {
-      "source": "/legal",
-      "destination": "/legal.html"
-    },
-    {
       "source": "/jobs/:slug*",
       "destination": "/index.html"
     },
@@ -676,57 +664,13 @@
     {
       "source": "/study-materials/:slug*",
       "destination": "/index.html"
+    },
+    {
+      "source": "/legal",
+      "destination": "/legal.html"
     }
   ],
   "headers": [
-    {
-      "source": "/styles.css",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/app.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/v8.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/discovery-v9.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/cc-intelligence.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/visual-backgrounds.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/hero-3d.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/next-phase.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/account.js",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/manifest.json",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/og-image.png",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
-    },
-    {
-      "source": "/icons/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=2592000" }]
-    },
     {
       "source": "/(.*)",
       "headers": [
@@ -763,12 +707,34 @@
   ],
   "crons": [
     {
-      "path": "/api/exam-alerts",
-      "schedule": "0 4 * * *"
+      "path": "/api/jobs?discovery=cron",
+      "schedule": "30 0 * * *"
     },
     {
-      "path": "/api/govt-discovery",
-      "schedule": "0 3 * * *"
+      "path": "/api/exam-alerts",
+      "schedule": "30 0 * * 1"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/legal.html",
+      "destination": "/legal",
+      "permanent": true
+    },
+    {
+      "source": "/career-guides.html",
+      "destination": "/career-guides",
+      "permanent": true
+    },
+    {
+      "source": "/career-tools.html",
+      "destination": "/career-tools",
+      "permanent": true
+    },
+    {
+      "source": "/job-alerts.html",
+      "destination": "/job-alerts",
+      "permanent": true
     }
   ]
 }
