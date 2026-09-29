@@ -314,16 +314,32 @@ async function harvestPortal(portal) {
 }
 
 // ── Two-stage civil gate (free / safe / legal) ──────────────────────────────
-/* Only public listing pages are read, once a day, with a polite UA and
-   hard timeouts. We store the posting title, a short snippet and a link
-   back to the source (attribution) — never bulk content. Detail checks
-   are same-host only (no SSRF), PDFs are skipped, and the shared budget
-   keeps one scan inside the function time limit. Everything lands as
+/* Only public listing pages are read, once a day, with a polite UA and hard
+   timeouts. We store the posting title, a short snippet and a link back to
+   the source (attribution) — never bulk content. Detail pages are fetched
+   within a small budget (so one scan stays inside the function time limit),
+   same-host only for portal links, and PDFs are skipped. Everything lands as
    Pending Review: nothing is published without human approval. */
 const detailBudget = { left: 30 };
 
 function looksLikeRecruitment(txt) {
-  return /recruitment|notification|vacanc|apply online|online form|bharti|\\d+\\s*(posts?|vacanc)/i.test(String(txt || ""));
+  return /recruitment|notification|vacanc|apply online|online form|bharti|\d+\s*(posts?|vacanc)/i.test(String(txt || ""));
+}
+
+async function fetchPageHtml(url, timeoutMs) {
+  const r = await fetch(url, {
+    signal: AbortSignal.timeout(timeoutMs || 8000),
+    redirect: 'follow',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-IN,en;q=0.9',
+    },
+  });
+  if (!r.ok) return null;
+  if (!/text\/html/i.test(r.headers.get('content-type') || '')) return null;
+  const html = await r.text();
+  return { html, text: stripHtml(html).replace(/\s+/g, ' ').slice(0, 20000) };
 }
 
 async function fetchDetailIfSafe(url, portal) {
@@ -331,55 +347,124 @@ async function fetchDetailIfSafe(url, portal) {
   try {
     const u = new URL(url);
     const origin = new URL(portal.url);
-    if (u.hostname !== origin.hostname) return null;      /* same-host only */
-    if (/\\.pdf($|\\?)/i.test(u.pathname)) return null;   /* skip PDFs */
+    if (u.hostname !== origin.hostname) return null;   /* same-host only */
+    if (/\.pdf($|\?)/i.test(u.pathname)) return null;  /* skip PDFs */
   } catch (_) { return null; }
   detailBudget.left--;
-  try {
-    const r = await fetch(url, {
-      signal: AbortSignal.timeout(8000),
-      headers: { 'User-Agent': 'CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app; review-first aggregator)', 'Accept-Language': 'en-IN,en;q=0.9' },
-    });
-    if (!r.ok) return null;
-    if (!/text\/html/i.test(r.headers.get('content-type') || '')) return null;
-    const html = await r.text();
-    return { html, text: stripHtml(html).replace(/\s+/g, " ").slice(0, 20000) };
-  } catch (_) { return null; }
+  try { return await fetchPageHtml(url, 8000); } catch (_) { return null; }
 }
 
-async function buildCivilExamPayload(item, portal) {
-  let built = buildExamPayload(item);
-  if (built) return built;
-  if (!looksLikeRecruitment((item.title || "") + " " + (item.description || ""))) return null;
-  const detail = await fetchDetailIfSafe(item.link, portal);
-  if (!detail) return null;
-  const lower = detail.text.toLowerCase();
-  const civ = lower.indexOf("civil");
-  if (civ === -1) return null;                             /* civil not confirmed */
-  const ctx = detail.text.slice(Math.max(0, civ - 400), civ + 900);
-  /* official government / notification-PDF link found on the detail page */
-    /* Official link: any href on the page pointing at a gov.in / nic.in
-       domain or a notification PDF. Plain string checks — no fancy regex. */
-    let om = null;
-    for (const hm of detail.html.matchAll(/href="([^"]+)"/gi)) {
-      const u = hm[1].toLowerCase();
-      if (u.includes('gov.in') || u.includes('nic.in') || u.includes('.pdf')) { om = hm[1]; break; }
+/* RSS links (Google News) redirect to the publisher, so the same-host rule
+   does not apply — the redirect resolves inside fetch itself. */
+async function fetchDetailForRss(url) {
+  if (detailBudget.left <= 0) return null;
+  try {
+    if (/\.pdf($|\?)/i.test(new URL(url).pathname)) return null;
+  } catch (_) { return null; }
+  detailBudget.left--;
+  try { return await fetchPageHtml(url, 9000); } catch (_) { return null; }
+}
+
+/* Merge detail-page fields into a payload WITHOUT clobbering values the
+   title/snippet already produced. This is what fills the admin editor's
+   overview / eligibility / age limit / pay scale / fee / dates / links
+   instead of leaving them blank. Columns the table does not have are
+   dropped later by insertExam's PGRST204 self-healing. */
+function mergeDetailFields(row, f) {
+  row.overview = row.overview || f.overview;
+  row.eligibility_en = row.eligibility_en || f.eligibility_en;
+  row.age_limit = row.age_limit || f.age_limit;
+  row.pay_scale = row.pay_scale || f.pay_scale;
+  row.application_fee = row.application_fee || f.application_fee;
+  row.selection_process = row.selection_process || f.selection_process;
+  row.how_to_apply = row.how_to_apply || f.how_to_apply;
+  row.notification_pdf_url = row.notification_pdf_url || f.notification_pdf_url;
+  row.official_notification_url = row.official_notification_url || f.notification_pdf_url;
+  row.apply_url = row.apply_url || f.apply_url;
+  row.application_start = row.application_start || f.application_start;
+  row.application_end = row.application_end || f.application_end;
+  row.exam_date = row.exam_date || f.exam_date;
+  row.post_names = row.post_names || f.post_names;
+  return row;
+}
+
+/* Pull structured fields out of a recruitment article page. */
+function extractDetailFields(html, text) {
+  const out = {};
+  const grab = (labels, max) => {
+    for (const lab of labels) {
+      const i = text.toLowerCase().indexOf(lab.toLowerCase());
+      if (i === -1) continue;
+      const seg = text.slice(i + lab.length, i + lab.length + 600).replace(/^[\s:.;•\-–—]+/, '').trim();
+      if (seg.length > 3) return seg.slice(0, max || 350);
     }
-  const enriched = {
-    ...item,
-    description: `${item.description || ''} ${ctx}`.replace(/\s+/g, ' ').slice(0, 1200),
+    return null;
   };
-  built = buildExamPayload(enriched);
-  if (built && om && !built.official_website_url) {
-    built.official_website_url = om[1].slice(0, 500);
+  out.overview = grab(['Job Overview', 'About the Recruitment', 'Overview', 'Introduction'], 700);
+  out.eligibility_en = grab(['Educational Qualification', 'Eligibility Criteria', 'Eligibility'], 600);
+  out.age_limit = grab(['Age Limit', 'Age as on'], 200);
+  out.pay_scale = grab(['Pay Scale', 'Pay Matrix', 'Salary', 'Remuneration'], 200);
+  out.application_fee = grab(['Application Fee', 'Exam Fee'], 200);
+  out.selection_process = grab(['Selection Process', 'Selection Procedure'], 400);
+  out.how_to_apply = grab(['How to Apply', 'Application Procedure'], 500);
+  /* Dates: the same context-phrase rules used for RSS snippets, now over the
+     full article text (snippets rarely carry dates). */
+  const dd = '(\\d{1,2}[-/.]\\d{1,2}[-/.]\\d{2,4})';
+  out.application_end   = normDdMmYyyy((new RegExp('(?:last date|closing date|apply (?:by|before))[^0-9]{0,40}' + dd, 'i').exec(text) || [])[1]);
+  out.application_start = normDdMmYyyy((new RegExp('(?:apply online[^.]{0,40}(?:from|begins|starts)|application (?:start|begin)s?)[^0-9]{0,40}' + dd, 'i').exec(text) || [])[1]);
+  out.exam_date         = normDdMmYyyy((new RegExp('(?:exam (?:date|on)|cbt[ -]?1)[^0-9]{0,40}' + dd, 'i').exec(text) || [])[1]);
+  /* Links: notification PDF vs official apply page (gov.in / nic.in). */
+  out.notification_pdf_url = null;
+  out.apply_url = null;
+  let govHref = null;
+  for (const hm of html.matchAll(/href="([^"]+)"/gi)) {
+    const u = hm[1];
+    const ul = u.toLowerCase();
+    if (!out.notification_pdf_url && ul.includes('.pdf')) out.notification_pdf_url = u.slice(0, 500);
+    if (!govHref && (ul.includes('gov.in') || ul.includes('nic.in')) && !ul.includes('.pdf')) govHref = u.slice(0, 500);
   }
-  return built;
+  if (govHref) out.apply_url = govHref;
+  return out;
+}
+
+/* Portal items: enrich from the posting's own detail page whenever the link
+   is same-host (no SSRF). A strong title can pass the civil gate on its own
+   — it still gets one detail fetch, which is what stops saved exams from
+   having every field blank. Items that neither look like recruitment nor
+   pass the civil gate never cost a fetch. */
+async function buildCivilExamPayload(item, portal) {
+  const preText = `${item.title || ''} ${item.description || ''}`;
+  let built = buildExamPayload(item);            /* strict civil gate */
+  const worthDetail = looksLikeRecruitment(preText);
+  if (item.link && detailBudget.left > 0 && (built || worthDetail)) {
+    const detail = await fetchDetailIfSafe(item.link, portal);
+    if (detail) {
+      const f = extractDetailFields(detail.html, detail.text);
+      if (built) return mergeDetailFields(built, f);
+      const civ = detail.text.toLowerCase().indexOf('civil');
+      if (civ !== -1) {
+        const ctx = detail.text.slice(Math.max(0, civ - 400), civ + 900);
+        const enriched = {
+          ...item,
+          description: `${item.description || ''} ${f.overview || ctx}`.replace(/\s+/g, ' ').slice(0, 1200),
+        };
+        built = buildExamPayload(enriched);
+        if (built) return mergeDetailFields(built, f);
+      }
+      return null;
+    }
+  }
+  return built || null;
 }
 
 // ── Jobs-only gate + deep detail extraction ────────────────────────────────
-const ARTICLE_RE = /salary|insight|trends?|highest[- ]pay|career options?|top d+|best books|syllabus|cut ?off|answer key|exam (?:analysis|review)|preparation (?:tips|strategy)|rank predictor|results? (?:out|declared)/i;
-const RECRUIT_RE = /recruitment|notification|vacanc|apply online|online form|application (?:start|begin|fee)|last date|bharti|d+s*(?:posts?|vacanc|openings?)/i;
+const ARTICLE_RE = /salary|insight|trends?|highest[- ]pay|career options?|top \d+|best books|syllabus|cut ?off|answer key|exam (?:analysis|review)|preparation (?:tips|strategy)|rank predictor|results? (?:out|declared)/i;
+const RECRUIT_RE = /recruitment|notification|vacanc|apply online|online form|application (?:start|begin|fee)|last date|bharti|\d+\s*(?:posts?|vacanc|openings?)/i;
 
+function isJobPosting(text) {
+  const s = String(text || '');
+  return RECRUIT_RE.test(s) && !ARTICLE_RE.test(s);
+}
 function isJobPosting(text) {
   const s = String(text || "");
   return RECRUIT_RE.test(s) && !ARTICLE_RE.test(s);
@@ -462,9 +547,15 @@ module.exports = async function handler(req, res) {
       if (link && seenLinks.has(link)) continue;
       if (link) seenLinks.add(link);
 
-        const built = buildExamPayload(item);
+        /* Enrich from the linked article before saving — title alone is not
+           enough; the admin editor kept showing blank detail fields. */
+        let built = buildExamPayload(item);
         if (!built) continue;
         if (existingTitles.has(built.title_en.toLowerCase())) continue;
+        if (item.link && detailBudget.left > 0) {
+          const detail = await fetchDetailForRss(item.link);
+          if (detail) built = mergeDetailFields(built, extractDetailFields(detail.html, detail.text));
+        }
         const payload = built;
 
       try {

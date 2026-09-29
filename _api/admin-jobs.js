@@ -25,14 +25,19 @@ const LIST_FIELDS = [
 
 function supa(path, opts) {
   const url = SUPA_URL + '/rest/v1/' + path;
+  /* NOTE: auth headers must be merged AFTER spreading opts. The previous
+     order (auth headers first, then ...opts) let opts.headers REPLACE them,
+     so authed calls came back 401 and the row count silently fell back to 0
+     — which hid the Jobs-tab pager and made it look like only some jobs
+     existed. */
   return fetch(url, {
+    ...opts,
     headers: {
       'apikey': SUPA_KEY,
       'Authorization': 'Bearer ' + SUPA_KEY,
       'Content-Type': 'application/json',
       ...(opts && opts.headers ? opts.headers : {}),
     },
-    ...opts,
   });
 }
 
@@ -83,9 +88,13 @@ function projection(row) {
 function buildWhere(tab, search) {
   const parts = [];
 
-  if (tab === 'published') parts.push('published=eq.true');
-  else if (tab === 'deleted') parts.push('review_state=eq.deleted');
-  else parts.push('review_state=eq.pending');
+  /* The rest of the app writes review_state in Title Case ('Pending Review',
+     'Deleted'…), so exact eq.<lowercase> filters matched nothing and the
+     Review queue always looked empty. ilike.*value* matches any casing and
+     any value that merely contains the word. */
+  if (tab === 'published') parts.push('published=eq.true', 'review_state=neq.deleted', 'review_state=neq.Deleted');
+  else if (tab === 'deleted') parts.push('or=(review_state=ilike.*deleted*,review_state=eq.deleted)');
+  else parts.push('published=eq.false', 'or=(review_state=ilike.*pending*,review_state=is.null)');
 
   const term = String(search || '').trim();
   if (term) {
@@ -167,8 +176,36 @@ async function handlePost(req, res) {
     return res.status(400).json({ error: 'Missing ids array' });
   }
 
+  /* action=add moves a Discovery candidate into the review queue without
+     publishing it (payload arrives as body.job); action=unpublish sends
+     published jobs back to Review — the Jobs-tab Unpublish button relies on
+     it. Both mirror the routes the admin SPA already calls. */
+  if (body.action === 'add') {
+    const job = body.job && typeof body.job === 'object' ? body.job : null;
+    if (!job) return res.status(400).json({ error: 'Missing job object' });
+    const row = { ...job };
+    delete row.id; delete row.created_at; delete row.updated_at;
+    row.published = false;
+    row.review_state = 'Pending Review';
+    if (!row.status || row.status === 'Active') row.status = 'Pending Review';
+    if (!row.created_at) row.created_at = new Date().toISOString();
+    if (!row.slug) row.slug = (String(row.role || 'job').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'job') + '-' + Date.now();
+    try {
+      const r = await supa('jobs', { method: 'POST', body: JSON.stringify(row) });
+      if (!r.ok) {
+        const detail = await r.text();
+        console.error('admin-jobs add status:', r.status, String(detail).slice(0, 300));
+        return res.status(500).json({ error: 'Job could not be added', details: String(detail).slice(0, 300) });
+      }
+      return res.status(201).json({ ok: true, action: 'add', added: 1 });
+    } catch (e) {
+      console.error('admin-jobs add error:', e && e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   const action = String(body.action || '').toLowerCase();
-  if (!['publish', 'reject', 'delete', 'restore'].includes(action)) {
+  if (!['publish', 'reject', 'delete', 'restore', 'unpublish'].includes(action)) {
     return res.status(400).json({ error: 'Unknown action: ' + action });
   }
 
@@ -181,10 +218,11 @@ async function handlePost(req, res) {
   }
 
   const updates = {};
-  if (action === 'publish') { updates.published = true;  updates.review_state = 'approved'; }
-  else if (action === 'reject') { updates.published = false; updates.review_state = 'rejected'; }
-  else if (action === 'delete') { updates.published = false; updates.review_state = 'deleted'; }
-  else if (action === 'restore') { updates.published = false; updates.review_state = 'pending'; }
+  if (action === 'publish') { updates.published = true; updates.review_state = 'Published'; updates.status = 'Active'; }
+  else if (action === 'unpublish') { updates.published = false; updates.review_state = 'Pending Review'; }
+  else if (action === 'reject') { updates.published = false; updates.review_state = 'Rejected'; }
+  else if (action === 'delete') { updates.published = false; updates.review_state = 'Deleted'; }
+  else if (action === 'restore') { updates.published = false; updates.review_state = 'Pending Review'; }
 
   let updated = 0;
   const CHUNK = 100;

@@ -27,6 +27,14 @@ const handlers = {
   '/api/telegram/status':         () => require('../_api/telegram'),
   '/api/telegram/bulk':           () => require('../_api/telegram'),
   '/api/telegram/broadcast-all':  () => require('../_api/telegram'),
+  /* The admin SPA calls the dash-form URLs; without these entries the
+     catch-all 404s them ("Not found"). */
+  '/api/telegram-status':         () => require('../_api/telegram'),
+  '/api/telegram-bulk':           () => require('../_api/telegram'),
+  '/api/telegram-broadcast-all':  () => require('../_api/telegram'),
+  /* Discovery tab: _api/civil-discovery.js existed but was never registered,
+     so the admin Discovery tab always got a 404 "Not found". */
+  '/api/civil-discovery':         () => require('../_api/civil-discovery'),
   '/api/civil-scraper':           () => require('../_api/civil-scraper'),
   '/api/admin-jobs':              () => require('../_api/admin-jobs'),
   '/api/govt-jobs':               () => require('../_api/govt-jobs'),
