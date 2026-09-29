@@ -42,9 +42,73 @@
 - Still open (see Waiting on owner): Turnstile keys for form captcha, Brevo SMTP for
   auth emails/digests, Search Console submission, admin email config in Vercel.
 
+## 30 Sep 2026 — Phase 2/3 completion session (commits `1f0bd6a`…`213ec37`, all deployed)
+
+All commits below were merged to `main` and verified live on
+`https://civilcareer-india-two.vercel.app` after each deploy.
+
+### Deployed changes
+
+| Commit | Change | Live verification |
+|--------|--------|-------------------|
+| `2ed139d` | Duplicate filter-bar ids namespaced (`<barId>-<field>`, key on `data-xf`) + regression test | live DOM: **0 duplicate ids**; filter change writes correct key |
+| `a7190f5` | Phase-11 suite reconciled; `pickTrack` manual-over-ASR captions; auth-config public aliases | `npm test` 26/26 |
+| `1f0bd6a` | Gitleaks workflow (was claimed, missing); PROGRESS update | workflow file in tree |
+| `a6e9241` | Apply tracker on dynamic detail pages + SSR job pages (local-first, syncs via `/api/account`) | `data-cc-track-apply` served; SSR pages carry tracker markup |
+| `5a869b9` | Shared per-IP rate limiting + Turnstile siteverify for contact/job/resource/report | 401s on admin endpoints; honeypot silent-accepts bots |
+| `2acdc73` | AI extraction: injection fence + post-data rules, 6h per-URL cache, 429 backoff | syntax + suite green |
+| `fbc5e92` | Turnstile wired end to end: loader renders widget when site key published; `wireForm` attaches/resets token | browser: widget rendered, token (794 chars), form **201 accepted**; no-token curl → 400 |
+| `19867d7` | CSP allows fonts.googleapis.com (style), fonts.gstatic.com, challenges.cloudflare.com (script+frame) | header live; fonts refused-error gone |
+| `e4fcfeb` | Service worker bypasses cross-origin requests (offline fallback was serving SPA HTML over fonts/Turnstile); cache v22 | worker served with bypass + new cache name |
+| `6a96c90`, `213ec37` | Hero background viewport-tuned (828/1600/2400) + head preload with `fetchpriority=high` | Lighthouse below |
+| `(tests)` | Admin allowlist denial test (mocked Supabase Auth): valid non-allowlisted session → 403; invalid → 401 | `npm test` 27/27 |
+
+### Lighthouse mobile (homepage)
+
+| Metric | Before (30 Sep baseline) | After |
+|--------|--------------------------|-------|
+| Performance | 56 | **79** |
+| Largest Contentful Paint | 9.7–10.6 s | **3.9 s** |
+| Total Blocking Time | 630 ms | **10 ms** |
+| Accessibility | 95 | 95 |
+| Best Practices | 96 | 96 |
+| SEO | 100 | 100 |
+
+Remaining LCP gap is the Unsplash network dependency (hero photo). Next step:
+self-host the first hero image per route in the repo (est. −0.5–1.0 s LCP).
+
+### Owner config discovered live
+
+- `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` are **both configured** in Vercel
+  (site key published via `/api/auth-config`; secret enforced server-side).
+- `ADMIN_EMAIL`/`ADMIN_USER_ID` admin gate returns 401 without session; denial
+  proof for a valid non-allowlisted account is unit-tested; live second-account
+  test blocked by email confirmation (needs custom SMTP).
+- Newsletter `subscribers` table appears to lack a unique email constraint
+  (duplicate subscribe returns success). Owner may add
+  `alter table subscribers add constraint subscribers_email_key unique (email);`
+  after checking existing dupes.
+
+### Phase 2.9 Brevo SMTP setup (exact steps for owner)
+
+1. Sign up at brevo.com (free: 300 emails/day).
+2. Senders & IP → create sender `no-reply@<your-domain>` (verify).
+3. SMTP & API → SMTP: copy user + SMTP key.
+4. Supabase → Authentication → SMTP Settings: enable, host `smtp-relay.brevo.com`, port 587, user/key from step 3, sender from step 2. Save.
+5. Authentication → Emails: customize Confirm signup / Reset password templates (SITE_URL links).
+6. Test: sign up with a real address; the confirmation email must arrive (rate limit then becomes 300/day).
+
+### Skipped this run (with reasons)
+
+- Phase 5 full design system (dark mode, nav merge, For You onboarding): large UI
+  rework not started — the 29 Sep rework changed the same files, so any parallel
+  work would have conflicted. Recommend as the next focused session.
+- Phase 6 Cloudflare Pages prep, programmatic SEO pages, web-push alerts: not started.
+- Live second-account admin denial: blocked by unconfirmed throwaway email (no SMTP yet).
+
 ## Verification
 
-- `npm test`: 26 passed, 0 failed.
+- `npm test`: 27 passed, 0 failed.
 - `npm run check:launch`: 0 errors, 1 warning (`SITE_URL` not set locally).
 - JavaScript syntax: 48 files checked, 0 failures.
 - HTML forms: no duplicate IDs found within forms in the inspected static HTML.
@@ -52,7 +116,7 @@
 
 ## Waiting on owner
 
-1. Configure `ADMIN_EMAIL` or `ADMIN_USER_ID` in Vercel Production.
+1. ~~Configure `ADMIN_EMAIL` or `ADMIN_USER_ID` in Vercel Production.~~ Owner gate: confirm which of the two is set, and confirm Turnstile keys (both were detected live on 30 Sep).
 2. Confirm Supabase email/password and phone/password providers are enabled as desired. Disable phone confirmation if a no-OTP phone signup is required; email confirmation is a separate setting.
 3. Configure `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SITE_URL`, `CRON_SECRET` and other production secrets in Vercel/GitHub.
 4. Apply any required Supabase SQL only after schema review/backups; this run did not modify production data.
