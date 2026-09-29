@@ -6,8 +6,8 @@
   /* Viewport-tuned sizes: the hero band is a background layer, so a phone only
      needs ~1080px. Large desktop keeps the high-res original. */
   const vw=screen.width||innerWidth;
-  const w=vw<=480?1080:vw<=1024?1600:2400;
-  const q=vw<=480?68:75;
+  const w=vw<=480?828:vw<=1024?1600:2400;
+  const q=vw<=480?70:75;
   const img=(id)=>U+id+'?auto=format&fit=crop&w='+w+'&q='+q;
   const sets={
     home:[
