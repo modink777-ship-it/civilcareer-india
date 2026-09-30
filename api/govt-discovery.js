@@ -1,607 +1,1480 @@
 /**
- * govt-discovery.js
- * Scrapes Indian government job portals directly — no API keys needed.
+
+ * api/govt-discovery.js
+
+ *
+
+ * Agent Reach government discovery pipeline.
+
+ * Source of truth: public.govt_sources.
+
+ *
+
+ * Flow:
+
+ * govt_sources -> robots check -> official page fetch -> candidate extraction
+
+ * -> civil rules classifier -> govt_job_leads -> govt_job_staging.
+
+ *
+
+ * Nothing is published here. Private jobs are never touched.
+
  */
 
+
+"use strict";
+
+
 const https = require("https");
+
 const http = require("http");
+
+const crypto = require("crypto");
+
 const { createClient } = require("@supabase/supabase-js");
 
+
 const supabase = createClient(
+
   process.env.SUPABASE_URL,
+
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+
 );
 
+
 const ROBOTS_UA =
+
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
+
+
+const REQUEST_GAP_MS = 2000;
+
+const MAX_REDIRECTS = 5;
 
 const robotsCache = new Map();
 
-function rawFetch(url, timeoutMs = 12000) {
+const hostLastRequest = new Map();
+
+
+function sleep(ms) {
+
+  return new Promise((resolve) => setTimeout(resolve, ms));
+
+}
+
+
+async function politeDelay(url) {
+
+  const host = new URL(url).hostname;
+
+  const previous = hostLastRequest.get(host) || 0;
+
+  const wait = REQUEST_GAP_MS - (Date.now() - previous);
+
+
+  if (wait > 0) await sleep(wait);
+
+
+  hostLastRequest.set(host, Date.now());
+
+}
+
+
+function rawFetch(url, timeoutMs = 12000, redirects = 0) {
+
   return new Promise((resolve, reject) => {
+
+    if (redirects > MAX_REDIRECTS) {
+
+      return reject(new Error(`Too many redirects: ${url}`));
+
+    }
+
+
     const mod = url.startsWith("https") ? https : http;
 
+
     const req = mod.get(
+
       url,
+
       {
+
         headers: {
+
           "User-Agent": ROBOTS_UA,
+
           Accept: "text/html,application/xhtml+xml,text/plain",
+
           "Accept-Language": "en-IN,en;q=0.9",
+
         },
+
         timeout: timeoutMs,
+
       },
+
       (res) => {
+
         if (
+
           [301, 302, 303, 307, 308].includes(res.statusCode) &&
+
           res.headers.location
+
         ) {
-          const nextUrl = new URL(res.headers.location, url).toString();
-          return rawFetch(nextUrl, timeoutMs).then(resolve).catch(reject);
+
+          const next = new URL(res.headers.location, url).toString();
+
+          res.resume();
+
+          return rawFetch(next, timeoutMs, redirects + 1)
+
+            .then(resolve)
+
+            .catch(reject);
+
         }
+
 
         let body = "";
 
+
         res.on("data", (d) => {
+
           body += d;
+
+          // Protect the free pipeline from unexpectedly huge responses.
+
+          if (body.length > 2_000_000) {
+
+            req.destroy(new Error("Response too large"));
+
+          }
+
         });
 
+
         res.on("end", () => {
+
           resolve({
-            status: res.statusCode,
+
+            status: res.statusCode || 0,
+
             body,
-            headers: res.headers,
+
+            headers: res.headers || {},
+
             url,
+
           });
+
         });
+
       }
+
     );
+
 
     req.on("error", reject);
 
+
     req.on("timeout", () => {
+
       req.destroy();
+
       reject(new Error(`Timeout: ${url}`));
+
     });
+
   });
+
 }
+
 
 function parseRobots(text) {
+
   const groups = [];
+
   let current = null;
 
+
   for (const rawLine of String(text || "").split(/\r?\n/)) {
+
     const line = rawLine.replace(/#.*/, "").trim();
+
     if (!line) continue;
 
+
     const colon = line.indexOf(":");
+
     if (colon === -1) continue;
 
+
     const field = line.slice(0, colon).trim().toLowerCase();
+
     const value = line.slice(colon + 1).trim();
 
+
     if (field === "user-agent") {
+
       if (!current || current.rules.length > 0) {
+
         current = { agents: [], rules: [] };
+
         groups.push(current);
+
       }
+
       current.agents.push(value.toLowerCase());
-      continue;
+
+    } else if (
+
+      (field === "allow" || field === "disallow") &&
+
+      current
+
+    ) {
+
+      current.rules.push({ type: field, path: value });
+
     }
 
-    if ((field === "allow" || field === "disallow") && current) {
-      current.rules.push({ type: field, path: value });
-    }
   }
 
+
   return groups;
+
 }
 
+
 function robotsRuleMatches(rulePath, targetPath) {
+
   if (!rulePath) return false;
 
+
   let pattern = rulePath;
+
   const endAnchored = pattern.endsWith("$");
 
   if (endAnchored) pattern = pattern.slice(0, -1);
 
+
   const escaped = pattern
+
     .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+
     .replace(/\*/g, ".*");
 
+
   return new RegExp("^" + escaped + (endAnchored ? "$" : "")).test(
+
     targetPath
+
   );
+
 }
+
 
 function robotsAllows(text, targetUrl) {
+
   const groups = parseRobots(text);
 
-  // Prefer an explicit CivilCareerBot group. Otherwise use the wildcard group.
+
   const specific = groups.filter((group) =>
-    group.agents.some((agent) => agent === "civilcareerbot")
+
+    group.agents.includes("civilcareerbot")
+
   );
-  const wildcard = groups.filter((group) =>
-    group.agents.includes("*")
-  );
 
-  const selectedGroups = specific.length ? specific : wildcard;
-  if (!selectedGroups.length) return true;
+  const wildcard = groups.filter((group) => group.agents.includes("*"));
 
-  const target = new URL(targetUrl);
-  const targetPath = target.pathname + target.search;
+  const selected = specific.length ? specific : wildcard;
 
-  const matches = selectedGroups
+
+  if (!selected.length) return true;
+
+
+  const parsed = new URL(targetUrl);
+
+  const targetPath = parsed.pathname + parsed.search;
+
+
+  const matches = selected
+
     .flatMap((group) => group.rules)
+
     .filter((rule) => robotsRuleMatches(rule.path, targetPath))
+
     .sort((a, b) => {
+
       const aLength = a.path.replace(/\*$/, "").length;
+
       const bLength = b.path.replace(/\*$/, "").length;
 
-      if (bLength !== aLength) return bLength - aLength;
+
+      if (aLength !== bLength) return bLength - aLength;
+
+      if (a.type === b.type) return 0;
+
 
       // Equal-length Allow wins.
-      if (a.type !== b.type) {
-        return a.type === "allow" ? -1 : 1;
-      }
 
-      return 0;
+      return a.type === "allow" ? -1 : 1;
+
     });
 
-  if (!matches.length) return true;
 
-  return matches[0].type === "allow";
+  return !matches.length || matches[0].type === "allow";
+
 }
 
-async function recordRobotsStatus(targetUrl, robotsResult) {
-  try {
-    const host = new URL(targetUrl).hostname;
 
-    // Keep source health auditable without requiring a schema change.
-    // A host can have more than one configured source, so update matching
-    // source URLs rather than assuming a single source row.
-    const { data, error } = await supabase
-      .from("govt_sources")
-      .select("id,url")
-      .ilike("url", `%${host}%`);
+async function updateSource(sourceId, patch) {
 
-    if (error || !Array.isArray(data)) return;
+  if (!sourceId) return;
 
-    for (const source of data) {
-      await supabase
-        .from("govt_sources")
-        .update({
-          robots_ok: Boolean(robotsResult.allowed),
-          last_status: robotsResult.status,
-        })
-        .eq("id", source.id);
-    }
-  } catch (_) {
-    // Robots enforcement must never be weakened because status recording fails.
+
+  await supabase
+
+    .from("govt_sources")
+
+    .update(patch)
+
+    .eq("id", sourceId);
+
+}
+
+
+async function checkRobots(source) {
+
+  const sourceUrl = String(source.url || "").trim();
+
+  if (!sourceUrl) {
+
+    return { allowed: false, status: "robots:invalid-source-url" };
+
   }
-}
 
-async function checkRobots(targetUrl) {
-  const parsed = new URL(targetUrl);
+
+  const parsed = new URL(sourceUrl);
+
   const origin = parsed.origin;
 
+
   if (robotsCache.has(origin)) {
+
     const cached = robotsCache.get(origin);
-    await recordRobotsStatus(targetUrl, cached);
+
+    await updateSource(source.id, {
+
+      robots_ok: cached.allowed,
+
+      last_status: cached.status,
+
+    });
+
     return cached;
+
   }
+
 
   const robotsUrl = `${origin}/robots.txt`;
+
   let result;
 
+
   try {
+
+    await politeDelay(robotsUrl);
+
     const response = await rawFetch(robotsUrl, 10000);
 
+
     if (response.status >= 200 && response.status < 300) {
-      const allowed = robotsAllows(response.body, targetUrl);
+
+      const allowed = robotsAllows(response.body, sourceUrl);
 
       result = {
+
         allowed,
+
         status: allowed ? "robots:allowed" : "robots:disallowed",
+
       };
+
     } else if (response.status >= 400 && response.status < 500) {
-      // A 4xx response means robots.txt is unavailable. The crawl may proceed.
+
+      // robots.txt unavailable via 4xx: crawl may proceed.
+
       result = {
+
         allowed: true,
+
         status: `robots:unavailable-4xx-${response.status}; crawl_allowed`,
+
       };
+
     } else if (response.status >= 500) {
-      // Server/network failure: fail closed and do not crawl.
+
+      // Server failure: fail closed.
+
       result = {
+
         allowed: false,
+
         status: `robots:unreachable-http-${response.status}`,
+
       };
+
     } else {
+
       result = {
+
         allowed: false,
+
         status: `robots:unverified-http-${response.status}`,
+
       };
+
     }
+
   } catch (_) {
+
     result = {
+
       allowed: false,
+
       status: "robots:unreachable",
+
     };
+
   }
+
 
   robotsCache.set(origin, result);
-  await recordRobotsStatus(targetUrl, result);
+
+
+  await updateSource(source.id, {
+
+    robots_ok: result.allowed,
+
+    last_status: result.status,
+
+  });
+
 
   return result;
+
 }
 
-async function fetch(url, timeoutMs = 12000) {
-  const robots = await checkRobots(url);
+
+async function fetchSource(source) {
+
+  const robots = await checkRobots(source);
+
 
   if (!robots.allowed) {
-    throw new Error(
-      `Robots policy prevented crawl: ${url} (${robots.status})`
-    );
+
+    return {
+
+      ok: false,
+
+      status: robots.status,
+
+      body: "",
+
+      url: source.url,
+
+    };
+
   }
 
-  return rawFetch(url, timeoutMs);
+
+  try {
+
+    await politeDelay(source.url);
+
+    const response = await rawFetch(source.url, 15000);
+
+
+    if (response.status === 403 || response.status === 429) {
+
+      return {
+
+        ok: false,
+
+        status: `source:http-${response.status}; stopped`,
+
+        body: "",
+
+        url: response.url,
+
+      };
+
+    }
+
+
+    if (response.status < 200 || response.status >= 300) {
+
+      return {
+
+        ok: false,
+
+        status: `source:http-${response.status}`,
+
+        body: "",
+
+        url: response.url,
+
+      };
+
+    }
+
+
+    return {
+
+      ok: true,
+
+      status: `source:http-${response.status}`,
+
+      body: response.body,
+
+      url: response.url,
+
+    };
+
+  } catch (error) {
+
+    return {
+
+      ok: false,
+
+      status: `source:error:${String(error.message || "unknown").slice(0, 180)}`,
+
+      body: "",
+
+      url: source.url,
+
+    };
+
+  }
+
 }
+
+
+function decodeEntities(value) {
+
+  return String(value || "")
+
+    .replace(/&nbsp;/gi, " ")
+
+    .replace(/&amp;/gi, "&")
+
+    .replace(/&lt;/gi, "<")
+
+    .replace(/&gt;/gi, ">")
+
+    .replace(/&quot;/gi, '"')
+
+    .replace(/&#39;/gi, "'")
+
+    .replace(/&#(\d+);/g, (_, n) => {
+
+      const code = Number(n);
+
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+
+    });
+
+}
+
+
+function cleanText(value, max = 500) {
+
+  return decodeEntities(String(value || ""))
+
+    .replace(/<[^>]+>/g, " ")
+
+    .replace(/\s+/g, " ")
+
+    .trim()
+
+    .slice(0, max);
+
+}
+
 
 function stripHtml(html) {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, " ").trim();
+
+  return cleanText(
+
+    String(html || "")
+
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+
+      .replace(/<[^>]+>/g, " "),
+
+    20000
+
+  );
+
 }
 
-function between(text, start, end) {
-  const s = text.indexOf(start);
-  if (s === -1) return "";
-  const e = text.indexOf(end, s + start.length);
-  return e === -1 ? text.slice(s + start.length) : text.slice(s + start.length, e);
-}
 
-function extractDeadline(text) {
-  const patterns = [
-    /last date[:\s]+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/i,
-    /closing date[:\s]+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/i,
-    /apply (?:by|before|on)[:\s]+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/i,
-    /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/,
-    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})/i,
-  ];
-  for (const p of patterns) {
-    const m = text.match(p);
-    if (m) {
-      try {
-        const d = new Date(m[1].replace(/[\/\.]/g, "-"));
-        if (!isNaN(d)) return d.toISOString().slice(0, 10);
-      } catch (_) {}
-    }
+function absoluteUrl(href, baseUrl) {
+
+  try {
+
+    return new URL(decodeEntities(href), baseUrl).toString();
+
+  } catch (_) {
+
+    return "";
+
   }
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toISOString().slice(0, 10);
+
 }
 
-function slugify(s) {
-  return s.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").slice(0, 80);
-}
 
-async function scrapeSSC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://ssc.gov.in/");
-    const text = stripHtml(body);
-    const noticeSection = between(text, "Notice Board", "Important Links") || text;
-    const lines = noticeSection.split(/\n|\.\s/).filter((l) => l.trim().length > 15);
-    for (const line of lines.slice(0, 8)) {
-      if (/recruitment|notification|result|exam|post/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120),
-          company: "Staff Selection Commission (SSC)",
-          location: "All India", job_type: "government",
-          deadline: extractDeadline(line + " " + text),
-          source_url: "https://ssc.gov.in",
-          description: `SSC notification: ${line.trim()}. Visit ssc.gov.in for full details and application link.`,
-        });
-      }
+function extractCandidates(html, source) {
+
+  const candidates = [];
+
+  const seen = new Set();
+
+
+  const anchorRe =
+
+    /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+
+  let match;
+
+
+  while ((match = anchorRe.exec(html)) !== null) {
+
+    const href = absoluteUrl(match[1], source.url);
+
+    const title = cleanText(match[2], 240);
+
+
+    if (!href || !title || title.length < 8) continue;
+
+
+    let parsed;
+
+    try {
+
+      parsed = new URL(href);
+
+    } catch (_) {
+
+      continue;
+
     }
-  } catch (_) {}
-  return jobs;
-}
 
-async function scrapeUPSC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://upsc.gov.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n|\.\s/).filter((l) => l.trim().length > 15)) {
-      if (/recruitment|notification|advt|advertisement|vacancy/i.test(line) && !/privacy|cookie/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120),
-          company: "Union Public Service Commission (UPSC)",
-          location: "All India", job_type: "government",
-          deadline: extractDeadline(line + " " + text),
-          source_url: "https://upsc.gov.in",
-          description: `UPSC notification: ${line.trim()}. Visit upsc.gov.in for syllabus and application link.`,
-        });
-        if (jobs.length >= 5) break;
-      }
-    }
-  } catch (_) {}
-  return jobs;
-}
 
-async function scrapeCPWD() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://cpwd.gov.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => /recruit|vacancy|junior|senior|engineer/i.test(l)).slice(0, 6)) {
-      jobs.push({
-        title: line.trim().slice(0, 120),
-        company: "Central Public Works Department (CPWD)",
-        location: "All India", job_type: "government",
-        deadline: extractDeadline(text),
-        source_url: "https://cpwd.gov.in",
-        description: `CPWD notification: ${line.trim()}. Visit cpwd.gov.in for complete details.`,
-      });
-    }
-  } catch (_) {}
-  return jobs;
-}
+    // Stay on the official source host. We do not follow arbitrary external links.
 
-async function scrapeNCS() {
-  const jobs = [];
-  try {
-    for (const url of [
-      "https://www.ncs.gov.in/jobseeker/pages/jobsearch.aspx?JobCategory=Engineering",
-      "https://www.ncs.gov.in/jobseeker/pages/jobsearch.aspx?JobCategory=Civil+Engineering",
-    ]) {
-      try {
-        const { body } = await fetch(url);
-        const text = stripHtml(body);
-        const rows = text.match(/([A-Z][A-Za-z\s\/]+(?:Engineer|Officer|Manager|Supervisor|Inspector|Technician)[A-Za-z\s\/]*)/g) || [];
-        for (const title of rows.slice(0, 10)) {
-          jobs.push({
-            title: title.trim(), company: "Via NCS Portal",
-            location: "India", job_type: "government",
-            deadline: extractDeadline(text), source_url: url,
-            description: `Job listed on National Career Service portal. Title: ${title.trim()}. Visit the portal to apply.`,
-          });
-        }
-      } catch (_) {}
-    }
-  } catch (_) {}
-  return jobs;
-}
+    if (parsed.hostname !== new URL(source.url).hostname) continue;
 
-async function scrapeEmploymentNews() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://www.employmentnews.gov.in/NewEmp/Home.aspx");
-    const text = stripHtml(body);
-    for (const line of text.split("\n").filter((l) => l.trim().length > 20)) {
-      if (/engineer|officer|manager|inspector|assistant|technician/i.test(line) && !/privacy|cookie|follow|subscribe/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120), company: "Government of India",
-          location: "India", job_type: "government",
-          deadline: extractDeadline(text),
-          source_url: "https://www.employmentnews.gov.in",
-          description: `Notification from Employment News: ${line.trim()}`,
-        });
-        if (jobs.length >= 6) break;
-      }
-    }
-  } catch (_) {}
-  return jobs;
-}
 
-async function scrapeNTPC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://careers.ntpc.co.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => l.trim().length > 20 && !/^[\s\d]*$/.test(l))) {
-      if (/engineer|officer|executive|trainee|manager/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120), company: "NTPC Limited",
-          location: "India", job_type: "psu",
-          deadline: extractDeadline(text),
-          source_url: "https://careers.ntpc.co.in",
-          description: `NTPC career opportunity: ${line.trim()}. Apply at careers.ntpc.co.in.`,
-        });
-        if (jobs.length >= 5) break;
-      }
-    }
-  } catch (_) {}
-  return jobs;
-}
+    const signal =
 
-async function scrapeNBCC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://www.nbccindia.com/nbccindia/newsite/htdocs/recruit.jsp");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => l.trim().length > 20)) {
-      if (/engineer|manager|officer|executive|consultant/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120), company: "NBCC (India) Limited",
-          location: "India", job_type: "psu",
-          deadline: extractDeadline(text),
-          source_url: "https://www.nbccindia.com/nbccindia/newsite/htdocs/recruit.jsp",
-          description: `NBCC recruitment: ${line.trim()}. Visit NBCC portal for details.`,
-        });
-        if (jobs.length >= 5) break;
-      }
-    }
-  } catch (_) {}
-  return jobs;
-}
+      /recruit|vacan|career|appoint|notification|advertisement|advt|engineer|civil|junior|assistant|executive|manager|trainee|draught|surveyor|tender/i.test(
 
-async function scrapeRITES() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://www.rites.com/web/index.php/career");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => l.trim().length > 20)) {
-      if (/engineer|manager|officer|consultant|supervisor/i.test(line)) {
-        jobs.push({
-          title: line.trim().slice(0, 120), company: "RITES Limited",
-          location: "India", job_type: "psu",
-          deadline: extractDeadline(text),
-          source_url: "https://www.rites.com/web/index.php/career",
-          description: `RITES career opportunity: ${line.trim()}. Apply at rites.com.`,
-        });
-        if (jobs.length >= 5) break;
-      }
-    }
-  } catch (_) {}
-  return jobs;
-}
+        `${title} ${href}`
 
-async function scrapeKPSC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://kpsc.kar.nic.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => /recruitment|notification|vacancy|engineer|officer/i.test(l) && l.trim().length > 15).slice(0, 6)) {
-      jobs.push({
-        title: line.trim().slice(0, 120),
-        company: "Karnataka Public Service Commission (KPSC)",
-        location: "Karnataka", job_type: "state_psc",
-        deadline: extractDeadline(text), source_url: "https://kpsc.kar.nic.in",
-        description: `KPSC notification: ${line.trim()}. Visit kpsc.kar.nic.in for application.`,
-      });
-    }
-  } catch (_) {}
-  return jobs;
-}
+      );
 
-async function scrapeTSPSC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://tspsc.gov.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => /recruitment|notification|vacancy|engineer|officer/i.test(l) && l.trim().length > 15).slice(0, 6)) {
-      jobs.push({
-        title: line.trim().slice(0, 120),
-        company: "Telangana State Public Service Commission (TSPSC)",
-        location: "Telangana", job_type: "state_psc",
-        deadline: extractDeadline(text), source_url: "https://tspsc.gov.in",
-        description: `TSPSC notification: ${line.trim()}. Visit tspsc.gov.in for application.`,
-      });
-    }
-  } catch (_) {}
-  return jobs;
-}
 
-async function scrapeMPSC() {
-  const jobs = [];
-  try {
-    const { body } = await fetch("https://mpsc.gov.in/");
-    const text = stripHtml(body);
-    for (const line of text.split(/\n/).filter((l) => /recruitment|notification|vacancy|engineer|officer/i.test(l) && l.trim().length > 15).slice(0, 5)) {
-      jobs.push({
-        title: line.trim().slice(0, 120),
-        company: "Maharashtra Public Service Commission (MPSC)",
-        location: "Maharashtra", job_type: "state_psc",
-        deadline: extractDeadline(text), source_url: "https://mpsc.gov.in",
-        description: `MPSC notification: ${line.trim()}. Visit mpsc.gov.in for application.`,
-      });
-    }
-  } catch (_) {}
-  return jobs;
-}
+    if (!signal) continue;
 
-/* The jobs table stores deadline as an ISO date; portals publish dd/mm/yyyy.
-   Anything unparseable becomes NULL instead of failing the whole row. */
-function normDate(value) {
-  const m = String(value || "").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-  if (!m) return null;
-  let y = Number(m[3]); if (y < 100) y += 2000;
-  const d = new Date(Date.UTC(y, Number(m[2]) - 1, Number(m[1])));
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-}
 
-async function upsertJobs(rawJobs) {
-  const inserted = [], skipped = [];
-  for (const raw of rawJobs) {
-    if (!raw.title || raw.title.length < 8) continue;
-    const slug = slugify(raw.title + "-" + (raw.company || "govt")) + "-" + Date.now();
-    const { data: existing } = await supabase.from("jobs").select("id")
-      .ilike("role", `%${raw.title.slice(0, 40).trim()}%`)
-      .eq("company", raw.company || "")
-      .gte("created_at", new Date(Date.now() - 60 * 86400000).toISOString())
-      .limit(1);
-    if (existing && existing.length > 0) { skipped.push(raw.title); continue; }
-    /* A private-company name in the discovery payload vetoes the Government
-       label (staffing/consultancy ads were being stored as Government). */
-    const privateCompany = /\b(private limited|pvt\.?\s*ltd|llp|manpower|staffing|consultancy|solutions private|lifecare|walk-?in)\b/i.test(raw.company || '');
-    const { error } = await supabase.from("jobs").insert({
-      role: raw.title.slice(0, 200),
-      company: (raw.company || "Government").slice(0, 200),
-      location: (raw.location || "India").slice(0, 200),
-      sector: privateCompany ? 'Private' : 'Government',
-      status: "Active",
-      source: "govt-discovery",
-      source_url: raw.source_url || "",
-      description: (raw.description || "").slice(0, 2000),
-      deadline: normDate(raw.deadline),
-      published: false,
-      review_state: "Pending Review",
-      ingestion_source: "agent_reach",
-      slug,
+    const key = `${href}|${title.toLowerCase()}`;
+
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+
+
+    candidates.push({
+
+      title,
+
+      source_url: href,
+
+      excerpt: title,
+
+      org_hint: source.org || source.name,
+
     });
-    if (error) skipped.push(`${raw.title} (${error.message})`);
-    else inserted.push(raw.title);
+
+
+    if (candidates.length >= 30) break;
+
   }
-  return { inserted, skipped };
+
+
+  // Some portals expose the notice as plain text rather than an anchor.
+
+  // Keep one conservative fallback candidate for a source page itself.
+
+  if (!candidates.length) {
+
+    const pageText = stripHtml(html, 4000);
+
+
+    if (
+
+      /recruit|vacan|career|notification|advertisement|engineer|civil/i.test(
+
+        pageText
+
+      )
+
+    ) {
+
+      candidates.push({
+
+        title: `${source.name} recruitment / vacancy notice`,
+
+        source_url: source.url,
+
+        excerpt: pageText.slice(0, 600),
+
+        org_hint: source.org || source.name,
+
+      });
+
+    }
+
+  }
+
+
+  return candidates;
+
 }
+
+
+const CIVIL_POSITIVE = [
+
+  /\bcivil\s+engineer(?:ing)?\b/i,
+
+  /\b(?:je|ae|aee|ee)\s*[-/]?\s*civil\b/i,
+
+  /\bassistant\s+engineer\s+(?:civil|works)\b/i,
+
+  /\bsite\s+\/?\s*project\s+engineer\b/i,
+
+  /\bstructural\b/i,
+
+  /\bhighway\b/i,
+
+  /\broad\b/i,
+
+  /\btransportation\b/i,
+
+  /\bgeotechnical\b/i,
+
+  /\bquantity\s+surveyor\b/i,
+
+  /\bdraughtsman\s*\(?\s*civil\b/i,
+
+  /\bsurveyor\b/i,
+
+  /\boverseer\b/i,
+
+  /\bworks\s+manager\b/i,
+
+  /\bssc\s+je\b/i,
+
+  /\brrb\s+je\b/i,
+
+  /\bese\b/i,
+
+  /\bgate\b/i,
+
+  /\bb\.?\s*e\.?\s*\/?\s*b\.?\s*tech\.?\s+(?:in\s+)?civil\b/i,
+
+  /\bdiploma\s+(?:in\s+)?civil\b/i,
+
+  /\biti\s+draughtsman\s+civil\b/i,
+
+];
+
+
+const CIVIL_NEGATIVE = [
+
+  /\bcivil\s+judge\b/i,
+
+  /\bcivil\s+court\b/i,
+
+  /\bcity\s+civil\s+court\b/i,
+
+  /\bcivil\s+services\b/i,
+
+  /\bcivil\s+clerk\b/i,
+
+  /\bcivil\s+labourer\b/i,
+
+  /\bcivil\s+defen[cs]e\b/i,
+
+  /\bcivil\s+surgeon\b/i,
+
+  /\bcivilian\s+(?:driver|mts)\b/i,
+
+  /\bbank\b/i,
+
+  /\bteacher\b/i,
+
+  /\bnurse\b/i,
+
+  /\bpolice\b/i,
+
+];
+
+
+function classifyCivil(title, excerpt) {
+
+  const text = `${title} ${excerpt}`;
+
+
+  const negative = CIVIL_NEGATIVE.filter((re) => re.test(text));
+
+  if (negative.length) {
+
+    return {
+
+      civil_status: "not_civil",
+
+      tier: "C",
+
+      relevance_score: 0,
+
+      confidence: 0.98,
+
+      match_reasons: {
+
+        positive: [],
+
+        negative: negative.map(String),
+
+      },
+
+    };
+
+  }
+
+
+  const positive = CIVIL_POSITIVE.filter((re) => re.test(text));
+
+
+  if (positive.length >= 2) {
+
+    return {
+
+      civil_status: "civil",
+
+      tier: "A",
+
+      relevance_score: Math.min(100, 70 + positive.length * 8),
+
+      confidence: 0.9,
+
+      match_reasons: {
+
+        positive: positive.map(String),
+
+        negative: [],
+
+      },
+
+    };
+
+  }
+
+
+  if (positive.length === 1) {
+
+    return {
+
+      civil_status: "discipline_unknown",
+
+      tier: "B",
+
+      relevance_score: 55,
+
+      confidence: 0.65,
+
+      match_reasons: {
+
+        positive: positive.map(String),
+
+        negative: [],
+
+      },
+
+    };
+
+  }
+
+
+  return {
+
+    civil_status: "discipline_unknown",
+
+    tier: "U",
+
+    relevance_score: 20,
+
+    confidence: 0.3,
+
+    match_reasons: {
+
+      positive: [],
+
+      negative: [],
+
+    },
+
+  };
+
+}
+
+
+function normalize(value) {
+
+  return String(value || "")
+
+    .toLowerCase()
+
+    .replace(/https?:\/\//g, "")
+
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+
+    .trim();
+
+}
+
+
+function hash(value) {
+
+  return crypto.createHash("sha256").update(value).digest("hex");
+
+}
+
+
+function dedupeKey(candidate, classification) {
+
+  return hash(
+
+    [
+
+      normalize(candidate.org_hint),
+
+      normalize(candidate.title),
+
+      normalize(candidate.source_url),
+
+      classification.civil_status,
+
+    ].join("|")
+
+  );
+
+}
+
+
+async function upsertLead(source, candidate) {
+
+  const urlHash = hash(candidate.source_url);
+
+
+  const payload = {
+
+    source_id: source.id,
+
+    source_url: candidate.source_url,
+
+    title: candidate.title.slice(0, 500),
+
+    org_hint: String(candidate.org_hint || "").slice(0, 250),
+
+    discovered_at: new Date().toISOString(),
+
+    status: "new",
+
+    url_hash: urlHash,
+
+  };
+
+
+  const { data, error } = await supabase
+
+    .from("govt_job_leads")
+
+    .upsert(payload, { onConflict: "url_hash" })
+
+    .select("id")
+
+    .single();
+
+
+  if (error) {
+
+    return { ok: false, error: error.message };
+
+  }
+
+
+  return { ok: true, id: data.id };
+
+}
+
+
+async function stageCandidate(source, leadId, candidate, classification) {
+
+  const key = dedupeKey(candidate, classification);
+
+
+  const payload = {
+
+    lead_id: leadId,
+
+    status:
+
+      classification.civil_status === "not_civil"
+
+        ? "needs_info"
+
+        : "pending",
+
+    relevance_tier: classification.tier,
+
+    relevance_score: classification.relevance_score,
+
+    confidence: classification.confidence,
+
+    extraction_method: "rules",
+
+    dedupe_key: key,
+
+    match_reasons: classification.match_reasons,
+
+    full_payload: {
+
+      title: candidate.title,
+
+      organization: candidate.org_hint || source.org || source.name,
+
+      official_notice_url: candidate.source_url,
+
+      official_site_url: source.url,
+
+      excerpt: candidate.excerpt,
+
+      source_name: source.name,
+
+      source_type: source.type,
+
+      source_category: source.category,
+
+      source_state: source.state,
+
+      civil_status: classification.civil_status,
+
+    },
+
+  };
+
+
+  const { error } = await supabase
+
+    .from("govt_job_staging")
+
+    .upsert(payload, { onConflict: "dedupe_key" });
+
+
+  return {
+
+    ok: !error,
+
+    error: error?.message || null,
+
+  };
+
+}
+
+
+async function processSource(source) {
+
+  const result = {
+
+    source: source.name,
+
+    source_id: source.id,
+
+    robots: null,
+
+    fetched: false,
+
+    candidates: 0,
+
+    staged: 0,
+
+    errors: [],
+
+  };
+
+
+  const robots = await checkRobots(source);
+
+  result.robots = robots.status;
+
+
+  if (!robots.allowed) {
+
+    await updateSource(source.id, {
+
+      last_run_at: new Date().toISOString(),
+
+      last_status: robots.status,
+
+      robots_ok: false,
+
+    });
+
+    return result;
+
+  }
+
+
+  const fetched = await fetchSource(source);
+
+  result.fetched = fetched.ok;
+
+
+  if (!fetched.ok) {
+
+    await updateSource(source.id, {
+
+      last_run_at: new Date().toISOString(),
+
+      last_status: fetched.status,
+
+      robots_ok: true,
+
+    });
+
+    result.errors.push(fetched.status);
+
+    return result;
+
+  }
+
+
+  const candidates = extractCandidates(fetched.body, {
+
+    ...source,
+
+    url: fetched.url,
+
+  });
+
+
+  result.candidates = candidates.length;
+
+
+  for (const candidate of candidates) {
+
+    const classification = classifyCivil(
+
+      candidate.title,
+
+      candidate.excerpt
+
+    );
+
+
+    const lead = await upsertLead(source, candidate);
+
+
+    if (!lead.ok) {
+
+      result.errors.push(`lead:${lead.error}`);
+
+      continue;
+
+    }
+
+
+    const staged = await stageCandidate(
+
+      source,
+
+      lead.id,
+
+      candidate,
+
+      classification
+
+    );
+
+
+    if (staged.ok) {
+
+      result.staged += 1;
+
+    } else {
+
+      result.errors.push(`stage:${staged.error}`);
+
+    }
+
+  }
+
+
+  await updateSource(source.id, {
+
+    last_run_at: new Date().toISOString(),
+
+    last_status: result.errors.length
+
+      ? `ok; candidates=${result.candidates}; staged=${result.staged}; errors=${result.errors.length}`
+
+      : `ok; candidates=${result.candidates}; staged=${result.staged}`,
+
+    robots_ok: true,
+
+  });
+
+
+  return result;
+
+}
+
+
+async function getSources() {
+
+  const { data, error } = await supabase
+
+    .from("govt_sources")
+
+    .select(
+
+      "id,name,type,url,kind,org,category,state,enabled,robots_ok,last_run_at,last_status"
+
+    )
+
+    .eq("enabled", true)
+
+    .order("name");
+
+
+  if (error) throw new Error(`govt_sources read failed: ${error.message}`);
+
+
+  return data || [];
+
+}
+
 
 module.exports = async function govtDiscovery(req, res) {
+
   res.setHeader("Access-Control-Allow-Origin", "*");
+
   res.setHeader("Content-Type", "application/json");
+
+
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const ownerKey = process.env.OWNER_KEY || process.env.CIVILCAREER_OWNER_KEY || process.env.ADMIN_OWNER_KEY;
-  const isCron = /vercel-cron/i.test(String(req.headers["user-agent"] || ""));
-  const providedKey = req.body?.key || req.headers["x-owner-key"];
-  const authed = (ownerKey && providedKey === ownerKey) || isCron;
 
-  /* Plain GET is a status probe. The daily Vercel cron (vercel-cron UA on
-     GET — Vercel crons cannot send POST bodies or secrets) triggers a run. */
+  const ownerKey =
+
+    process.env.OWNER_KEY ||
+
+    process.env.CIVILCAREER_OWNER_KEY ||
+
+    process.env.ADMIN_OWNER_KEY;
+
+
+  const isCron = /vercel-cron/i.test(
+
+    String(req.headers["user-agent"] || "")
+
+  );
+
+
+  const providedKey =
+
+    req.body?.key || req.headers["x-owner-key"];
+
+
+  const authed =
+
+    (ownerKey && providedKey === ownerKey) || isCron;
+
+
   if (req.method === "GET" && !isCron) {
-    const { data, error } = await supabase.from("jobs").select("id, role, company, created_at")
-      .eq("source", "govt-discovery").order("created_at", { ascending: false }).limit(20);
+
+    const sources = await getSources();
+
+
     return res.status(200).json({
-      message: "POST with owner key — or the daily Vercel cron — triggers a scrape run.",
-      last_scraped: data || [], error: error?.message || null,
+
+      ok: true,
+
+      message:
+
+        "Agent Reach source-driven discovery is configured. POST with owner key or use the scheduled cron to run it.",
+
+      enabled_sources: sources.map((s) => ({
+
+        id: s.id,
+
+        name: s.name,
+
+        url: s.url,
+
+        enabled: s.enabled,
+
+        robots_ok: s.robots_ok,
+
+        last_run_at: s.last_run_at,
+
+        last_status: s.last_status,
+
+      })),
+
     });
+
   }
 
-  if (req.method !== "GET" && req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!authed) return res.status(401).json({ error: "Unauthorized" });
 
-  const scrapers = [scrapeSSC, scrapeUPSC, scrapeCPWD, scrapeNCS, scrapeEmploymentNews, scrapeNTPC, scrapeNBCC, scrapeRITES, scrapeKPSC, scrapeTSPSC, scrapeMPSC];
-  const names   = ["SSC","UPSC","CPWD","NCS","EmploymentNews","NTPC","NBCC","RITES","KPSC","TSPSC","MPSC"];
-  const results = await Promise.allSettled(scrapers.map((s) => s()));
+  if (req.method !== "GET" && req.method !== "POST") {
 
-  const allJobs = [], portalSummary = {};
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (r.status === "fulfilled") { portalSummary[names[i]] = r.value.length; allJobs.push(...r.value); }
-    else portalSummary[names[i]] = `error: ${r.reason?.message || "unknown"}`;
+    return res.status(405).json({ error: "Method not allowed" });
+
   }
 
-  const { inserted, skipped } = await upsertJobs(allJobs);
+
+  if (!authed) {
+
+    return res.status(401).json({ error: "Unauthorized" });
+
+  }
+
+
+  robotsCache.clear();
+
+  hostLastRequest.clear();
+
+
+  const sources = await getSources();
+
+  const results = [];
+
+
+  for (const source of sources) {
+
+    try {
+
+      results.push(await processSource(source));
+
+    } catch (error) {
+
+      const message = String(
+
+        error?.message || "unknown error"
+
+      ).slice(0, 240);
+
+
+      results.push({
+
+        source: source.name,
+
+        source_id: source.id,
+
+        robots: null,
+
+        fetched: false,
+
+        candidates: 0,
+
+        staged: 0,
+
+        errors: [message],
+
+      });
+
+
+      await updateSource(source.id, {
+
+        last_run_at: new Date().toISOString(),
+
+        last_status: `run-error:${message}`,
+
+      });
+
+    }
+
+  }
+
+
+  const summary = {
+
+    sources: sources.length,
+
+    sources_processed: results.length,
+
+    candidates: results.reduce(
+
+      (n, r) => n + Number(r.candidates || 0),
+
+      0
+
+    ),
+
+    staged: results.reduce(
+
+      (n, r) => n + Number(r.staged || 0),
+
+      0
+
+    ),
+
+    errors: results.reduce(
+
+      (n, r) => n + (r.errors?.length || 0),
+
+      0
+
+    ),
+
+  };
+
+
   return res.status(200).json({
-    ok: true, portals_scraped: portalSummary,
-    total_raw: allJobs.length, inserted: inserted.length, skipped: skipped.length,
-    inserted_titles: inserted,
-    note: "New jobs saved as Pending Review (published=false, ingestion_source=agent_reach). Review in the admin Agent Reach inbox before publishing.",
+
+    ok: true,
+
+    summary,
+
+    results,
+
+    note:
+
+      "Agent Reach writes only to govt_job_leads and govt_job_staging. Nothing is published and the private jobs table is untouched.",
+
   });
+
 };
