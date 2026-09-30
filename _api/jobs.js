@@ -944,6 +944,58 @@ async function discoveryFetchOnJob(){
 // have an id but NO URL — the per-id route above is real, so the source record
 // URL is that route. An application_url is only ever set from apply_url /
 // application_url present in the payload — never invented.
+/* ── FREE PUBLIC JOB APIs ─────────────────────────────────────────────
+ * These sources require no paid subscription or API key. They are secondary
+ * sources only; the existing civil + India + freshness gates remain the
+ * authority and nothing is auto-published.
+ */
+async function discoveryFetchDevGlobal(query, requestedLocation) {
+  const params = new URLSearchParams();
+  params.set('limit', '100');
+  params.set('country', 'India');
+  if (query) params.set('search', query);
+  const raw = JSON.parse(await fetchText(`https://devglobaljobs.com/api/v1/jobs?${params.toString()}`, { 'Accept': 'application/json' }));
+  const rows = Array.isArray(raw) ? raw : (raw.jobs || raw.data || raw.results || raw.items || []);
+  return rows.map(j => ({
+    title: discoveryCleanText(j.title || j.name || ''),
+    link: discoveryCleanText(j.url || j.job_url || j.link || j.detail_url || ''),
+    description: discoveryCleanText(j.description || j.excerpt || j.summary || ''),
+    pubDate: j.posted_at || j.published_at || j.publication_date || j.created_at || '',
+    source: 'devglobal',
+    company: discoveryCleanText(j.company || j.company_name || j.employer || ''),
+    location: discoveryCleanText(j.location || j.location_display || [j.city, j.state, j.country].filter(Boolean).join(', ')),
+    city: discoveryCleanText(j.city || ''),
+    state: discoveryCleanText(j.state || ''),
+    country: discoveryCleanText(j.country || 'India'),
+    application_url: discoveryCleanText(j.application_url || j.apply_url || j.apply_link || j.url || '')
+  }));
+}
+
+async function discoveryFetchHimalayas(query) {
+  const params = new URLSearchParams();
+  params.set('q', query || 'civil engineering');
+  params.set('country', 'India');
+  params.set('exclude_worldwide', 'true');
+  params.set('sort', 'recent');
+  params.set('page', '1');
+  const raw = JSON.parse(await fetchText(`https://himalayas.app/jobs/api/search?${params.toString()}`, { 'Accept': 'application/json' }));
+  const rows = Array.isArray(raw) ? raw : (raw.jobs || raw.data || raw.results || []);
+  return rows.map(j => {
+    const restrictions = Array.isArray(j.locationRestrictions) ? j.locationRestrictions.map(x => x && (x.name || x.slug)).filter(Boolean) : [];
+    return {
+      title: discoveryCleanText(j.title || ''),
+      link: discoveryCleanText(j.applicationLink || j.url || ''),
+      description: discoveryCleanText(j.description || j.excerpt || ''),
+      pubDate: j.pubDate ? new Date(Number(j.pubDate)).toISOString() : (j.publication_date || ''),
+      source: 'himalayas',
+      company: discoveryCleanText(j.companyName || ''),
+      location: restrictions.join(', ') || 'India',
+      country: 'India',
+      application_url: discoveryCleanText(j.applicationLink || j.url || '')
+    };
+  });
+}
+
 async function discoveryFetchHopin(query, requestedLocation) {
   const urls = [
     'https://api.hopinjobs.com/api/jobs',
@@ -1227,6 +1279,8 @@ async function runPublicDiscovery({q, location, type} = {}) {
   const publicSources = [
     ['google_news', () => discoveryFetchGoogleNews(newsPlan)],
     ['bing_news',   () => discoveryFetchBingNews(newsPlan)],
+    ['devglobal',   () => discoveryFetchDevGlobal(query, requestedLocation)],
+    ['himalayas',   () => discoveryFetchHimalayas(query)],
     ['jobicy',      () => discoveryFetchJobicy()],
     ['arbeitnow',   () => discoveryFetchArbeitnow()],
     ['onjob',       () => discoveryFetchOnJob()],
@@ -1524,12 +1578,12 @@ async function runPublicDiscovery({q, location, type} = {}) {
     sourceStats,
     configuredSources:    Object.entries(sourceStats)
       .filter(([key, x]) => x.configured && ![
-        'google_news','bing_news','jobicy','arbeitnow','onjob','hopin','company_careers',
+        'google_news','bing_news','devglobal','himalayas','jobicy','arbeitnow','onjob','hopin','company_careers',
       ].includes(key))
       .map(([key]) => key),
     runAt:                now,
     persistenceWarning,
-    note: 'Source-specific validation: news = strict vacancy+India evidence; job boards = structured location checks; Hopin/OnJob/company careers pages = trusted India sources (foreign records still rejected); fresh24h <= 24h and backup30d 24h-30d use exact ms with no rounding; unknown dates are excluded from both queues and never defaulted to today. A web-search crawl date is never used as a posting date. Application URLs are only used when the source itself provides them (a company careers page, Hopin apply_url, or Hopin\'s documented per-id API route); no URL is ever fabricated and no India location is inferred from the search query.',
+    note: 'Source-specific validation: news = strict vacancy+India evidence; job boards = structured location checks; Dev Global/Himalayas/Hopin/OnJob/company careers are free public sources and still pass the same civil + India + freshness gates; fresh24h <= 24h and backup30d 24h-30d use exact ms with no rounding; unknown dates are excluded from both queues and never defaulted to today. A web-search crawl date is never used as a posting date. Application URLs are only used when the source itself provides them; no URL is ever fabricated and no India location is inferred from the search query.',
   };
 }
 
@@ -1890,6 +1944,8 @@ module.exports._internal = {
   discoveryFetchJobicy,
   discoveryFetchArbeitnow,
   discoveryFetchOnJob,
+  discoveryFetchDevGlobal,
+  discoveryFetchHimalayas,
   runPublicDiscovery,
   classifyFreshness,
   classifyCivilRole,
