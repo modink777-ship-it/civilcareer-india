@@ -267,6 +267,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="exam-tracker">Exam Tracker</button>
   <button data-tab="salary">Salary</button>
   <button data-tab="walkins">Walk-Ins</button>
+  <button data-tab="subscribers">Subscribers</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -695,6 +696,41 @@ Walk-in interview board — public page /walk-in
 
 </div>
 
+<div class="panel" id="panel-subscribers">
+
+<div class="metrics" style="margin-bottom:16px">
+  <div class="metric"><span>WhatsApp subscribers</span><b id="waSubCount">…</b></div>
+  <div class="metric"><span>Active</span><b id="waSubActive">…</b></div>
+  <div class="metric"><span>Cities covered</span><b id="waSubCities">…</b></div>
+  <div class="metric"><span>Hindi-language</span><b id="waSubHindi">…</b></div>
+</div>
+
+<div class="import-actions" style="margin-bottom:14px">
+<button class="btn-gold" onclick="copyWaNumbers()">📋 Copy All Numbers</button>
+<button class="btn-gold" onclick="exportWaCSV()">⬇ Export CSV</button>
+<button class="btn-ghost" onclick="loadWaSubs()">⟳ Refresh</button>
+</div>
+
+<div class="discovery-grid" style="margin-bottom:14px;grid-template-columns:1fr 1fr 1fr">
+<label>Filter by city
+  <select id="waFilterCity" onchange="renderWaSubs()"><option value="">All cities</option></select>
+</label>
+<label>Filter by role
+  <select id="waFilterRole" onchange="renderWaSubs()"><option value="">All roles</option></select>
+</label>
+<label>Filter by sector
+  <select id="waFilterSector" onchange="renderWaSubs()"><option value="">All sectors</option><option>Government</option><option>Private</option><option>PSU</option><option>MNC</option></select>
+</label>
+</div>
+
+<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">Phone numbers are personal data — use the export only for sending CivilCareer alerts, never share or sell the list.</p>
+
+<div id="adminWaSubs" style="overflow-x:auto">
+<p style="color:#6a8aaa;font-size:.85rem">Loading subscribers…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -962,6 +998,8 @@ async function loadAll(page=ccJobsPage){
   loadSalaryAdmin().catch(() => {});
 
   loadWalkinAdmin().catch(() => {});
+
+  loadWaSubs().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -3929,6 +3967,116 @@ async function deleteWalkin(id) {
   } catch (e) {
     toast(e.message);
   }
+}
+
+/* ════════════════════════════════════════════════
+   WHATSAPP SUBSCRIBERS ADMIN (Feature 9)
+   Count, filterable table, copy-all numbers, CSV export.
+   ════════════════════════════════════════════════ */
+
+let waSubs = [];
+
+async function loadWaSubs() {
+  try {
+    const d = await api('/api/whatsapp-subscribe', { key: adminKey });
+    waSubs = d.subscribers || [];
+    renderWaMetrics();
+    renderWaFilters();
+    renderWaSubs();
+  } catch (e) {
+    $('adminWaSubs').innerHTML =
+      `<p style="color:#fca5a5;padding:1rem">Could not load subscribers: ${esc(e.message)}</p>` +
+      (/missing|not exist|PGRST205/i.test(e.message || '')
+        ? '<p style="color:#fbbf24;font-size:.82rem;padding:0 1rem">Run <b>supabase-v23-whatsapp-subscribers.sql</b> in the Supabase SQL Editor, then press Refresh.</p>'
+        : '');
+  }
+}
+
+function waFiltered() {
+  const city = ($('waFilterCity').value || '').toLowerCase();
+  const role = ($('waFilterRole').value || '').toLowerCase();
+  const sector = $('waFilterSector').value || '';
+  return waSubs.filter(s =>
+    (!city || String(s.city || '').toLowerCase().includes(city)) &&
+    (!role || (s.preferred_roles || []).some(r => String(r).toLowerCase().includes(role))) &&
+    (!sector || (s.preferred_sectors || []).includes(sector))
+  );
+}
+
+function renderWaMetrics() {
+  $('waSubCount').textContent = Number(waSubs.length).toLocaleString('en-IN');
+  $('waSubActive').textContent = Number(waSubs.filter(s => s.is_active !== false).length).toLocaleString('en-IN');
+  $('waSubCities').textContent = new Set(waSubs.map(s => s.city).filter(Boolean)).size;
+  $('waSubHindi').textContent = Number(waSubs.filter(s => s.language === 'hi').length).toLocaleString('en-IN');
+}
+
+function renderWaFilters() {
+  const cities = [...new Set(waSubs.map(s => s.city).filter(Boolean))].sort();
+  const roles = [...new Set(waSubs.flatMap(s => s.preferred_roles || []))].sort();
+  const citySel = $('waFilterCity'), roleSel = $('waFilterRole');
+  const keepCity = citySel.value, keepRole = roleSel.value;
+  citySel.innerHTML = '<option value="">All cities</option>' + cities.map(c => `<option ${c === keepCity ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  roleSel.innerHTML = '<option value="">All roles</option>' + roles.map(r => `<option ${r === keepRole ? 'selected' : ''}>${esc(r)}</option>`).join('');
+}
+
+function renderWaSubs() {
+  const rows = waFiltered();
+  if (!waSubs.length) {
+    $('adminWaSubs').innerHTML = '<p style="color:#6a8aaa;padding:.5rem 1rem">No subscribers yet. The floating WhatsApp button on the homepage collects them.</p>';
+    return;
+  }
+  $('adminWaSubs').innerHTML = `
+    <table class="source-health-table" style="width:100%">
+      <thead><tr><th>Name</th><th>WhatsApp</th><th>City</th><th>Role(s)</th><th>Sectors</th><th>Lang</th><th>Joined</th></tr></thead>
+      <tbody>${rows.map(s => `
+        <tr>
+          <td style="color:#fff;font-weight:650">${esc(s.name || '—')}</td>
+          <td>${esc(s.whatsapp || '')}</td>
+          <td>${esc(s.city || '—')}</td>
+          <td>${esc((s.preferred_roles || []).join(', ') || 'Any')}</td>
+          <td>${esc((s.preferred_sectors || []).join(', ') || '—')}</td>
+          <td>${esc(s.language === 'hi' ? 'हिं' : s.language === 'en' ? 'EN' : esc(s.language))}</td>
+          <td>${esc(String(s.created_at || '').slice(0, 10))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    ${rows.length !== waSubs.length ? `<p style="color:#6a8aaa;font-size:.76rem;padding:8px 4px">Showing ${rows.length} of ${waSubs.length} subscribers.</p>` : ''}`;
+}
+
+/* Copy all (filtered) numbers as a comma list. Clipboard API needs HTTPS,
+   so fall back to a hidden textarea + execCommand on http/older browsers. */
+async function copyWaNumbers() {
+  const nums = waFiltered().map(s => s.whatsapp).filter(Boolean);
+  if (!nums.length) { toast('No numbers to copy.'); return; }
+  const text = nums.join(',');
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Copied ${nums.length} numbers ✓`);
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast(`Copied ${nums.length} numbers ✓`); }
+    catch (_) { toast('Copy failed — use Export CSV instead.'); }
+    ta.remove();
+  }
+}
+
+function exportWaCSV() {
+  const rows = waFiltered();
+  if (!rows.length) { toast('No subscribers to export.'); return; }
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = 'Name,WhatsApp,City,Role,Sectors,Language,Joined\n' + rows.map(r =>
+    [r.name, r.whatsapp, r.city, (r.preferred_roles || []).join('; '), (r.preferred_sectors || []).join('; '), r.language, String(r.created_at || '').slice(0, 10)]
+      .map(q).join(',')
+  ).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\ufeff' + csv);
+  a.download = 'whatsapp-subscribers-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  toast(`Exported ${rows.length} subscribers ✓`);
 }
 
 /* TABS */

@@ -76,4 +76,63 @@
 </div>
 
 <div class="toast" id="toast" role="status"></div><div class="cc-search-overlay" id="ccSearchOverlay" hidden><div class="cc-search-panel"><div class="cc-search-fields-row"><label>Role(s)<input id="ccSearchRoles" placeholder="e.g. Planning Engineer, QS, Estimator" autocomplete="off"></label><label>Experience<select id="ccSearchExp"><option value="">Any</option><option>Fresher</option><option value="1">1+ years</option><option value="3">3+ years</option><option value="5">5+ years</option><option value="8">8+ years</option><option value="10">10+ years</option></select></label><label>Location(s)<input id="ccSearchCities" placeholder="e.g. Bengaluru, Mumbai, Noida" autocomplete="off"></label><button class="btn primary" id="ccSearchGo" type="button">Search Jobs</button><button class="cc-search-close" id="ccSearchClose" aria-label="Close search">×</button></div><div class="cc-search-hints"><span>Try:</span><button data-q="Site Engineer">Site Engineer</button><button data-q="SSC JE">SSC JE</button><button data-q="Quantity Surveyor">Quantity Surveyor</button><button data-q="Bengaluru">Bengaluru</button></div><div class="cc-search-results" id="ccSearchResults"></div></div></div><dialog id="detailDialog"><div class="dialog-head"><h2 id="detailTitle">Details</h2><button data-close>×</button></div><div class="dialog-body" id="detailBody"></div></dialog><dialog id="editorDialog"><div class="dialog-head"><h2 id="editorTitle">Content editor</h2><button data-close>×</button></div><div class="dialog-body" id="editorBody"></div></dialog>
+<button class="wa-float-btn" id="waFloatBtn" type="button" aria-haspopup="dialog">📱 Get Job Alerts on WhatsApp</button>
+<dialog id="waModal"><div class="dialog-head"><h2 style="font-size:19px">Get Civil Engineering Job Alerts on WhatsApp — Free</h2><button type="button" data-wa-close aria-label="Close">×</button></div><div class="dialog-body">
+<form id="waForm">
+<label class="wa-label">Name *<input id="waName" required maxlength="80" autocomplete="name" placeholder="Your name"></label>
+<label class="wa-label">WhatsApp number *<input id="waPhone" required inputmode="tel" autocomplete="tel" maxlength="16" placeholder="10-digit mobile number"></label>
+<label class="wa-label">City<select id="waCity"><option value="">Select your city</option><option>Ahmedabad</option><option>Bengaluru</option><option>Bhopal</option><option>Bhubaneswar</option><option>Chandigarh</option><option>Chennai</option><option>Coimbatore</option><option>Dehradun</option><option>Delhi</option><option>Faridabad</option><option>Ghaziabad</option><option>Guwahati</option><option>Gurugram</option><option>Hubli</option><option>Hyderabad</option><option>Indore</option><option>Jaipur</option><option>Jamshedpur</option><option>Kanpur</option><option>Kochi</option><option>Kolkata</option><option>Kozhikode</option><option>Lucknow</option><option>Ludhiana</option><option>Madurai</option><option>Mangaluru</option><option>Mumbai</option><option>Nagpur</option><option>Nashik</option><option>Noida</option><option>Patna</option><option>Pune</option><option>Raipur</option><option>Rajkot</option><option>Ranchi</option><option>Surat</option><option>Thiruvananthapuram</option><option>Thrivuvananthapuram</option><option>Tiruchirappalli</option><option>Vadodara</option><option>Varanasi</option><option>Vijayawada</option><option>Visakhapatnam</option><option>Other / Any</option></select></label>
+<label class="wa-label">Preferred role<select id="waRole"><option>Any</option><option>Site Engineer</option><option>Planning Engineer</option><option>Quantity Surveyor</option><option>Structural Engineer</option><option>Project Engineer</option><option>BIM Engineer</option><option>QA/QC Engineer</option><option>Junior Engineer</option><option>Assistant Engineer</option></select></label>
+<fieldset class="wa-fieldset"><legend>Sectors</legend><label class="wa-check"><input type="checkbox" name="waSector" value="Government"> Government</label><label class="wa-check"><input type="checkbox" name="waSector" value="Private"> Private</label><label class="wa-check"><input type="checkbox" name="waSector" value="PSU"> PSU</label><label class="wa-check"><input type="checkbox" name="waSector" value="MNC"> MNC</label></fieldset>
+<fieldset class="wa-fieldset"><legend>Alert language</legend><label class="wa-check"><input type="radio" name="waLang" value="en" checked> English</label><label class="wa-check"><input type="radio" name="waLang" value="hi"> हिंदी</label></fieldset>
+<button class="btn primary" type="submit" style="width:100%;margin-top:14px">Subscribe Free</button>
+<div class="form-status" id="waStatus"></div>
+<div class="wa-premium">ℹ Free trial. Premium alerts ₹99/month coming soon — we'll WhatsApp you first.</div>
+</form>
+<div id="waDone" hidden style="text-align:center;padding:12px 0"><div style="font-size:36px">✓</div><b style="display:block;color:var(--navy);margin:6px 0">Subscribed!</b><p style="margin:0 0 12px;color:var(--muted);font-size:13.5px">We'll send job alerts matching your preferences.</p><a class="btn-tg" href="https://t.me/CivilCareerIndiaJobs" target="_blank" rel="noopener">✈ Join our Telegram too: t.me/CivilCareerIndiaJobs</a></div>
+</div></dialog>
+<style>
+.wa-float-btn{position:fixed;bottom:24px;right:24px;background:#25D366;color:#fff;border:none;padding:12px 20px;border-radius:99px;cursor:pointer;box-shadow:0 4px 20px rgba(37,211,102,.4);font-weight:700;font-size:.9rem;z-index:50;animation:waPulse 2s infinite;font-family:inherit}
+.wa-float-btn:hover{transform:translateY(-2px)}
+@keyframes waPulse{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,.4)}50%{box-shadow:0 4px 30px rgba(37,211,102,.7)}}
+.wa-label{display:block;margin:12px 0;color:#354459;font-size:12px;font-weight:750}
+.wa-label input,.wa-label select{width:100%;margin-top:5px;border:1px solid #cfd8e1;border-radius:7px;background:#fff;padding:10px;color:var(--ink);outline:0}
+.wa-label input:focus,.wa-label select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea812}
+.wa-fieldset{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin:12px 0}
+.wa-fieldset legend{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 6px}
+.wa-check{display:inline-flex;align-items:center;gap:6px;margin:4px 12px 4px 0;font-size:13.5px;color:#354459;cursor:pointer}
+.wa-premium{margin-top:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px;background:#f8fbfe;font-size:12px;color:var(--muted);line-height:1.5}
+@media(max-width:600px){.wa-float-btn{bottom:16px;right:16px;padding:11px 16px;font-size:.82rem}}
+</style>
+<script>
+(function(){
+var $=function(id){return document.getElementById(id)};
+var modal=$('waModal'),done=false;
+$('waFloatBtn').addEventListener('click',function(){
+  if(done){$('waForm').hidden=true;$('waDone').hidden=false;}
+  modal.showModal();
+});
+modal.addEventListener('click',function(e){if(e.target.hasAttribute('data-wa-close'))modal.close();});
+function normalizeWhatsApp(raw){var d=String(raw||'').replace(/\D/g,'');var local=d.replace(/^91(?=\d{10}$)/,'');return /^[6-9]\d{9}$/.test(local)?'+91'+local:null;}
+$('waForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var phone=normalizeWhatsApp($('waPhone').value);
+  var st=$('waStatus');
+  if(!phone){st.className='form-status show error';st.textContent='Please enter a valid 10-digit Indian mobile number.';return;}
+  var sectors=[].slice.call(document.querySelectorAll('input[name="waSector"]:checked')).map(function(x){return x.value;});
+  var payload={name:$('waName').value.trim(),whatsapp:phone,city:$('waCity').value,preferred_roles:[$('waRole').value],preferred_sectors:sectors,language:(document.querySelector('input[name="waLang"]:checked')||{}).value||'en'};
+  st.className='form-status show';st.textContent='Subscribing…';
+  var btn=e.target.querySelector('button[type="submit"]');btn.disabled=true;
+  fetch('/api/whatsapp-subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+  .then(function(res){
+    if(!res.ok)throw new Error(res.d.error||'Could not subscribe. Please try again.');
+    done=true;$('waForm').hidden=true;$('waDone').hidden=false;st.className='form-status';st.textContent='';
+    try{localStorage.setItem('cc_wa_subscribed','1');}catch(_){}
+  })
+  .catch(function(err){st.className='form-status show error';st.textContent=err.message;})
+  .then(function(){btn.disabled=false;});
+});
+})();
+</script>
 <script src="/app.js?v=20260926-400"></script><script src="/v8.js?v=20260926-400"></script><script src="/discovery-v9.js?v=20260926-400"></script><script src="/cc-intelligence.js?v=20260926-400"></script><script src="/visual-backgrounds.js?v=20260926-400"></script><script src="/aceternity-effects.js?v=20260930-401" defer></script><script src="/hero-3d.js?v=20260926-400" defer></script><script src="/account.js?v=20260926-400" defer></script><script src="/turnstile.js" defer></script></body></html>

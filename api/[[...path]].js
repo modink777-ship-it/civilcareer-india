@@ -37,6 +37,7 @@ const handlers = {
   '/api/exam-alert-subscribe': () => require('../_api/exam-alert-subscribe'),
   '/api/salary':               () => require('../_api/salary'),
   '/api/walkin':               () => require('../_api/walkin'),
+  '/api/whatsapp-subscribe':   () => require('../_api/whatsapp-subscribe'),
 };
 
 
