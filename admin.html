@@ -3814,7 +3814,7 @@ function setWalkinStatus(msg, type='') {
 
 async function loadWalkinAdmin() {
   try {
-    /* Admin fetch: owner key present → returns ALL rows (published + pending). */
+    /* Authenticated admin fetch → returns ALL rows (published + pending). */
     const d = await api('/api/walkin?admin=all', { key: adminKey });
     walkinRows = d.walkins || [];
     renderWalkins();
