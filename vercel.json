@@ -603,23 +603,23 @@
     },
     {
       "source": "/for-you",
-      "destination": "/index.html"
+      "destination": "/for-you.html"
     },
     {
       "source": "/private-jobs",
-      "destination": "/index.html"
+      "destination": "/private-jobs.html"
     },
     {
       "source": "/government-jobs",
-      "destination": "/index.html"
+      "destination": "/government-jobs.html"
     },
     {
       "source": "/exams",
-      "destination": "/index.html"
+      "destination": "/exams.html"
     },
     {
       "source": "/study-materials",
-      "destination": "/index.html"
+      "destination": "/study-materials.html"
     },
     {
       "source": "/post-a-job",
@@ -643,7 +643,7 @@
     },
     {
       "source": "/career-paths",
-      "destination": "/index.html"
+      "destination": "/career-paths.html"
     },
     {
       "source": "/career-hub",
