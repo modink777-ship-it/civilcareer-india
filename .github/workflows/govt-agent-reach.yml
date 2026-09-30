@@ -1,0 +1,42 @@
+name: Government Agent Reach
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: govt-agent-reach
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Run Government Agent Reach
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          OWNER_KEY: ${{ secrets.OWNER_KEY }}
+        run: |
+          set -e
+
+          echo "Starting Government Agent Reach..."
+
+          curl --fail-with-body \
+            --silent \
+            --show-error \
+            --max-time 900 \
+            -X POST \
+            "${SITE_URL}/api/govt-discovery" \
+            -H "Content-Type: application/json" \
+            -H "x-owner-key: ${OWNER_KEY}" \
+            --data '{}'
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Government Agent Reach" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run time: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Results remain unpublished until Admin review." >> "$GITHUB_STEP_SUMMARY"
