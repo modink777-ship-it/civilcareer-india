@@ -198,8 +198,10 @@ still-pending subscriber dedupe + unique constraint).
 
 ### Waiting on owner (this session)
 
-1. Run `supabase-v18-sector-fix.sql` steps 1–2 (reclass ~11 rows) and step 3
-   (subscriber dedupe + `subscribers_email_key` unique constraint) if not yet run.
+1. ~~Run `supabase-v18-sector-fix.sql` steps 1–2 (reclass ~11 rows)~~ DONE 30 Sep:
+   Government now 3 rows (QCI, NTCPWC, Live Connections), Private 733. Step 3
+   (subscriber dedupe + `subscribers_email_key` unique constraint) still to run
+   if not already done.
 2. Sign in at /admin with the allowlisted owner email to see the KPI report.
 3. Brevo SMTP (Phase 2.9 steps above) — still pending; blocks the second-account
    admin-denial demo and alert emails.
