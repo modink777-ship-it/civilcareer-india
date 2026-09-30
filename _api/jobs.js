@@ -445,11 +445,44 @@ function buildJobPosting(job, canonical) {
     };
   }
 
-  const employmentTypes = asArray(job.employment_types);
-  if (employmentTypes.length === 1) {
-    schema.employmentType = employmentTypes[0];
-  } else if (job.employment_type) {
-    schema.employmentType = job.employment_type;
+  /* employmentType must be a schema.org organized-intangibles value
+     (FULL_TIME, PART_TIME, CONTRACTOR, TEMPORARY, INTERN, VOLUNTEER,
+     PERIODIC, OTHER, or a pipe-separated list). Free-text values such as
+     "Full Time", "Permanent" or localized text would fail Google's
+     Rich Results validation, so normalize or omit — never guess. */
+  const EMPLOYMENT_TYPE_MAP = {
+    'FULL_TIME': 'FULL_TIME',
+    'FULL-TIME': 'FULL_TIME',
+    'FULLTIME': 'FULL_TIME',
+    'FULL TIME': 'FULL_TIME',
+    'PART_TIME': 'PART_TIME',
+    'PART-TIME': 'PART_TIME',
+    'PARTTIME': 'PART_TIME',
+    'PART TIME': 'PART_TIME',
+    'CONTRACTOR': 'CONTRACTOR',
+    'CONTRACT': 'CONTRACTOR',
+    'CONTRACTUAL': 'CONTRACTOR',
+    'TEMPORARY': 'TEMPORARY',
+    'TEMP': 'TEMPORARY',
+    'INTERN': 'INTERN',
+    'INTERNSHIP': 'INTERN',
+    'TRAINEE': 'INTERN',
+    'VOLUNTEER': 'VOLUNTEER',
+    'PERIODIC': 'PERIODIC',
+    'OTHER': 'OTHER',
+  };
+  const normalizeEmploymentType = (value) =>
+    EMPLOYMENT_TYPE_MAP[String(value || '').trim().toUpperCase()] || null;
+
+  const employmentTypes = asArray(job.employment_types)
+    .map(normalizeEmploymentType)
+    .filter(Boolean);
+  const singleEmploymentType = normalizeEmploymentType(job.employment_type);
+  const employmentTypeValue = employmentTypes.length
+    ? [...new Set(employmentTypes)].join('|')
+    : singleEmploymentType;
+  if (employmentTypeValue) {
+    schema.employmentType = employmentTypeValue;
   }
 
   /* Salary structured data only when the unit is known. LPA values are

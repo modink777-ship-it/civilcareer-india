@@ -33,6 +33,8 @@ const handlers = {
   '/api/govt-review':       () => require('../_api/govt-review'),
   '/api/govt-jobs':         () => require('../_api/govt-jobs'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
+  '/api/exam-tracker':         () => require('../_api/exam-tracker'),
+  '/api/exam-alert-subscribe': () => require('../_api/exam-alert-subscribe'),
 };
 
 

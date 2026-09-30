@@ -264,6 +264,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="discovery">Discovery</button>
   <button data-tab="agent-reach">Agent Reach</button>
   <button data-tab="exams">Exams</button>
+  <button data-tab="exam-tracker">Exam Tracker</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -593,6 +594,30 @@ Notification reader
 
 </div>
 
+<div class="panel" id="panel-exam-tracker">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Exam tracker — public page /exam-tracker
+</p>
+
+<h3>Civil engineering exam tracker</h3>
+<p>Every row below appears on the public <a href="/exam-tracker" target="_blank" rel="noopener" style="color:#c9973c">Exam Tracker page</a>. Setting a status to <b style="color:#6ee7b7">Applications Open</b> automatically announces the exam on the Telegram channel — once per change. Dates use the date picker; the exam date also accepts text such as “Feb 1-16, 2026”.</p>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="loadExamTracker()">⟳ Refresh</button>
+<button class="btn-ghost" onclick="examTrackerEditor()">+ Add new exam</button>
+</div>
+
+<div class="import-status" id="examTrackerStatus"></div>
+</div>
+
+<div id="adminExamTracker">
+<p style="color:#6a8aaa;font-size:.85rem">Loading exam tracker…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -854,6 +879,8 @@ async function loadAll(page=ccJobsPage){
   ]);
 
   loadAgentReach();
+
+  loadExamTracker().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -3272,6 +3299,307 @@ $('arEdit').onclick=()=>{_reviewAgentId&&editAgentReachItem(_reviewAgentId)};
 $('arReject').onclick=()=>{_reviewAgentId&&rejectAgentReachItem(_reviewAgentId)};
 
 let _reviewAgentId=null;
+
+/* ════════════════════════════════════════════════
+   EXAM TRACKER (Feature 2)
+   Inline-editable rows → PUT /api/exam-tracker.
+   Status → application_open auto-posts to Telegram (server side).
+   ════════════════════════════════════════════════ */
+
+let examTrackerRows = [];
+
+const XT_STATUSES = [
+  ['upcoming','Awaited'],
+  ['notification_out','Notification Out'],
+  ['application_open','Applications Open'],
+  ['application_closed','Applications Closed'],
+  ['admit_card','Admit Card'],
+  ['exam_scheduled','Exam Scheduled'],
+  ['result_out','Result Out'],
+];
+
+const XT_CATEGORIES = ['GATE','SSC','RRB','UPSC','STATE_PSC','PSU'];
+
+function setExamTrackerStatus(msg, type='') {
+  const el = $('examTrackerStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = `import-status show${type ? ' ' + type : ''}`;
+}
+
+async function loadExamTracker() {
+  try {
+    const d = await api('/api/exam-tracker', { key: adminKey });
+    examTrackerRows = d.exams || [];
+    renderExamTracker();
+  } catch (e) {
+    $('adminExamTracker').innerHTML =
+      `<p style="color:#fca5a5;padding:1rem">Could not load the exam tracker: ${esc(e.message)}</p>` +
+      (/missing|not exist|PGRST205/i.test(e.message || '')
+        ? '<p style="color:#fbbf24;font-size:.82rem;padding:0 1rem">Run <b>supabase-v20-exam-tracker.sql</b> in the Supabase SQL Editor, then press Refresh.</p>'
+        : '');
+  }
+}
+
+function xtStatusBadge(status) {
+  const s = String(status || 'upcoming');
+  const color = {
+    application_open:'#6ee7b7', result_out:'#7fd8c8', admit_card:'#c4b5fd',
+    exam_scheduled:'#fbbf24', application_closed:'#fbbf24', notification_out:'#93c5fd',
+    upcoming:'#94a3b8',
+  }[s] || '#94a3b8';
+  const label = (XT_STATUSES.find(x => x[0] === s) || ['', s])[1];
+  return `<span class="status-badge" style="background:rgba(255,255,255,.06);color:${color};border:1px solid ${color}44">${esc(label)}</span>`;
+}
+
+function renderExamTracker() {
+  const rows = examTrackerRows;
+  if (!rows.length) {
+    $('adminExamTracker').innerHTML = '<p style="color:#6a8aaa;padding:1rem">No exams yet. Add one with “+ Add new exam”.</p>';
+    return;
+  }
+  const opts = (list, current) => list.map(v =>
+    `<option value="${esc(v[0] ?? v)}" ${String(current) === String(v[0] ?? v) ? 'selected' : ''}>${esc(v[1] ?? v)}</option>`
+  ).join('');
+
+  $('adminExamTracker').innerHTML = rows.map(x => `
+    <div class="list-item" style="align-items:flex-start" data-row="${esc(x.id)}">
+
+      <div style="min-width:0;flex:1">
+        <h4>
+          ${esc(x.name || 'Untitled exam')}
+          ${xtStatusBadge(x.status)}
+          ${x.is_active === false ? '<span class="status-badge expired">Hidden</span>' : ''}
+        </h4>
+        <p>
+          ${esc(x.authority || '—')}
+          · ${esc((XT_CATEGORIES.includes(x.category) ? x.category : '—'))}
+          ${x.application_end ? ` · Apply by ${esc(x.application_end)}` : ''}
+          ${x.vacancy_count ? ` · ~${Number(x.vacancy_count).toLocaleString('en-IN')} vacancies` : ''}
+        </p>
+
+        <div class="field-grid" style="margin-top:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <label>Status
+            <select data-f="status" data-id="${esc(x.id)}">${opts(XT_STATUSES, x.status)}</select>
+          </label>
+          <label>Notification
+            <input type="date" data-f="notification_date" data-id="${esc(x.id)}" value="${esc(x.notification_date || '')}">
+          </label>
+          <label>Applications start
+            <input type="date" data-f="application_start" data-id="${esc(x.id)}" value="${esc(x.application_start || '')}">
+          </label>
+          <label>Applications end
+            <input type="date" data-f="application_end" data-id="${esc(x.id)}" value="${esc(x.application_end || '')}">
+          </label>
+          <label>Exam date (text ok)
+            <input data-f="exam_date" data-id="${esc(x.id)}" value="${val(x.exam_date)}" placeholder="Feb 1-16, 2026">
+          </label>
+          <label>Result date
+            <input type="date" data-f="result_date" data-id="${esc(x.id)}" value="${esc(x.result_date || '')}">
+          </label>
+          <label>Vacancies
+            <input type="number" min="0" data-f="vacancy_count" data-id="${esc(x.id)}" value="${val(x.vacancy_count)}">
+          </label>
+          <label>Official URL
+            <input type="url" data-f="official_url" data-id="${esc(x.id)}" value="${val(x.official_url)}" placeholder="https://…">
+          </label>
+        </div>
+      </div>
+
+      <div class="mini-actions" style="flex-direction:column;align-items:stretch">
+        <button class="btn-publish" data-save="${esc(x.id)}">Save</button>
+        <button onclick="examTrackerEditor(examTrackerRows.find(z => z.id === '${esc(x.id)}'))">Edit all fields</button>
+        <button class="btn-delete" onclick="deleteExamTracker('${esc(x.id)}')">Delete</button>
+      </div>
+
+    </div>`).join('');
+
+  $('adminExamTracker').querySelectorAll('[data-save]').forEach(b => {
+    b.onclick = () => saveExamTrackerRow(b.getAttribute('data-save'));
+  });
+}
+
+async function saveExamTrackerRow(id) {
+  const row = examTrackerRows.find(z => z.id === id);
+  if (!row) return;
+  const container = $(`adminExamTracker`).querySelector(`[data-row="${id}"]`);
+  if (!container) return;
+
+  const payload = { id };
+  container.querySelectorAll('[data-f]').forEach(el => {
+    payload[el.getAttribute('data-f')] = el.value;
+  });
+
+  const btn = container.querySelector('[data-save]');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const d = await api('/api/exam-tracker', {
+      method: 'PUT',
+      key: adminKey,
+      body: JSON.stringify(payload),
+    });
+    if (d.exam) Object.assign(row, d.exam);
+    setExamTrackerStatus(
+      d.telegram && d.telegram.sent
+        ? 'Saved ✓ — Applications Open announced on Telegram 📢'
+        : d.telegram && d.telegram.reason
+          ? `Saved ✓ (Telegram skipped: ${d.telegram.reason})`
+          : 'Saved ✓',
+      'success'
+    );
+    toast('Exam saved.');
+    renderExamTracker();
+  } catch (e) {
+    setExamTrackerStatus(`Save failed: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function deleteExamTracker(id) {
+  if (!confirm('Delete this exam from the tracker? This cannot be undone.')) return;
+  try {
+    await api('/api/exam-tracker', { method: 'DELETE', key: adminKey, body: JSON.stringify({ id }) });
+    examTrackerRows = examTrackerRows.filter(z => z.id !== id);
+    renderExamTracker();
+    toast('Exam deleted.');
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function examTrackerEditor(x = {}) {
+  $('editorTitle').textContent = x.id ? 'Edit exam (tracker)' : 'Add exam (tracker)';
+  $('editorBody').innerHTML = `
+<form id="xtEdit">
+<div class="field-grid">
+
+<label class="wide">
+Name *
+<input name="name" value="${val(x.name)}" required placeholder="e.g. SSC Junior Engineer Civil">
+</label>
+
+<label>
+Short name
+<input name="short_name" value="${val(x.short_name)}" placeholder="e.g. SSC JE">
+</label>
+
+<label>
+Authority
+<input name="authority" value="${val(x.authority)}" placeholder="e.g. Staff Selection Commission">
+</label>
+
+<label>
+Category
+<select name="category">
+${XT_CATEGORIES.map(c => `<option value="${c}" ${x.category === c ? 'selected' : ''}>${c === 'STATE_PSC' ? 'State PSC' : c}</option>`).join('')}
+</select>
+</label>
+
+<label>
+Status
+<select name="status">
+${XT_STATUSES.map(([v, l]) => `<option value="${v}" ${(x.status || 'upcoming') === v ? 'selected' : ''}>${l}</option>`).join('')}
+</select>
+</label>
+
+<label>
+Notification date
+<input type="date" name="notification_date" value="${val(x.notification_date)}">
+</label>
+
+<label>
+Applications start
+<input type="date" name="application_start" value="${val(x.application_start)}">
+</label>
+
+<label>
+Applications end
+<input type="date" name="application_end" value="${val(x.application_end)}">
+</label>
+
+<label>
+Exam date (text allowed)
+<input name="exam_date" value="${val(x.exam_date)}" placeholder="Feb 1-16, 2026">
+</label>
+
+<label>
+Result date
+<input type="date" name="result_date" value="${val(x.result_date)}">
+</label>
+
+<label>
+Vacancies
+<input type="number" min="0" name="vacancy_count" value="${val(x.vacancy_count)}">
+</label>
+
+<label>
+Application fee
+<input name="exam_fee" value="${val(x.exam_fee)}" placeholder="e.g. ₹100">
+</label>
+
+<label>
+Age limit
+<input name="age_limit" value="${val(x.age_limit)}" placeholder="e.g. 18-32">
+</label>
+
+<label class="wide">
+Official URL
+<input type="url" name="official_url" value="${val(x.official_url)}" placeholder="https://ssc.gov.in">
+</label>
+
+<label class="wide">
+Eligibility summary
+<textarea name="eligibility_summary">${val(x.eligibility_summary)}</textarea>
+</label>
+
+<label class="wide">
+Qualification
+<input name="qualification" value="${val(x.qualification)}" placeholder="e.g. Diploma or Degree in Civil Engineering">
+</label>
+
+<label class="wide">
+Internal notes (never public)
+<textarea name="notes">${val(x.notes)}</textarea>
+</label>
+
+<label class="check" style="display:flex;align-items:center;gap:8px">
+<input type="checkbox" name="is_active" ${x.is_active !== false ? 'checked' : 'style="accent-color:#c9973c"'}> Visible on the public exam tracker page
+</label>
+
+<button type="submit" class="btn-save">${x.id ? 'Save Exam' : 'Create Exam'}</button>
+<div class="save-status" id="xtSaveStatus"></div>
+
+</div>
+</form>`;
+
+  $('editorDialog').showModal();
+
+  $('xtEdit').onsubmit = async e => {
+    e.preventDefault();
+    const d = formObject(e.target);
+    d.is_active = e.target.elements['is_active'].checked;
+    if (x.id) d.id = x.id;
+    const st = $('xtSaveStatus');
+    st.className = 'save-status show';
+    st.textContent = 'Saving…';
+    try {
+      await api('/api/exam-tracker', {
+        method: x.id ? 'PUT' : 'POST',
+        key: adminKey,
+        body: JSON.stringify(d),
+      });
+      st.className = 'save-status show success';
+      st.textContent = 'Saved ✓';
+      toast('Exam tracker saved.');
+      await loadExamTracker();
+      setTimeout(() => $('editorDialog').close(), 700);
+    } catch (err) {
+      st.className = 'save-status show error';
+      st.textContent = err.message;
+    }
+  };
+}
 
 /* TABS */
 

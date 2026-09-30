@@ -586,6 +586,10 @@
       "destination": "/job-alerts.html"
     },
     {
+      "source": "/exam-tracker",
+      "destination": "/exam-tracker.html"
+    },
+    {
       "source": "/career-guides",
       "destination": "/career-guides.html"
     },
