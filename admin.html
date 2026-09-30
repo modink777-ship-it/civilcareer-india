@@ -335,7 +335,7 @@ Show expired
   <div class="discovery-controls">
     <p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Automatic civil-job discovery</p>
     <h3 style="color:#fff;font-size:1rem;margin:0 0 6px">Civil vacancies for India, discovered every 4 hours</h3>
-    <p class="discovery-note" style="margin-top:0">Every 4 hours the discovery model searches job platforms, India job feeds and vacancy news, and reads the career pages of 35 top Indian construction, infrastructure and real-estate companies. Every lead is India-only and civil-only, so nothing irrelevant reaches the queue. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
+    <p class="discovery-note" style="margin-top:0">Every 4 hours the free discovery pipeline checks public job feeds, vacancy news and the career pages of Indian construction, infrastructure and real-estate companies. Every lead is India-only and civil-only, so nothing irrelevant reaches the queue. New matches are saved as unpublished drafts for your review. Nothing is published automatically.</p>
     <div class="discovery-grid" style="margin-top:14px">
       <label class="wide">Search query
         <input id="discoveryQuery" value="civil engineering jobs India" placeholder="civil engineer jobs India">
@@ -356,42 +356,19 @@ Show expired
     <div class="discovery-status" id="discoveryStatus"></div>
   </div>
 
-  <!-- Setup guide: shown when no API sources are configured -->
+  <!-- Setup guide: free-first discovery -- no paid key required -->
   <div class="source-health-panel show" id="setupGuidePanel" style="border-color:rgba(201,151,60,.25)">
-    <p class="source-health-title" style="color:#c9973c">🔑 Connect a job source to get results</p>
+    <p class="source-health-title" style="color:#c9973c">✓ Free-first discovery is enabled</p>
     <p style="color:#94a3b8;font-size:.78rem;margin:0 0 10px;line-height:1.6">
-      The free public feeds (Remotive, CareerJet, Findwork) are included but rarely have India civil engineering jobs.
-      For real India-specific results, add at least one API key in
-      <strong style="color:#cbd5e1">Vercel → Project → Settings → Environment Variables</strong>.
+      Search Now uses public feeds and company career pages that do not require a paid API. Every result still passes CivilCareer's India-only, civil-only, freshness and duplicate checks, and every match enters the review queue as an unpublished draft.
     </p>
-    <table class="source-health-table" style="margin-bottom:6px">
-      <thead><tr><th>Provider</th><th>Cost</th><th>India jobs?</th><th>Env vars to add</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><strong>Adzuna</strong> ⭐ Recommended</td>
-          <td style="color:#6ee7b7">Free (1000 req/mo)</td>
-          <td style="color:#6ee7b7">✓ Yes</td>
-          <td style="font-size:.7rem;color:#c9973c"><code>ADZUNA_APP_ID</code> + <code>ADZUNA_APP_KEY</code></td>
-        </tr>
-        <tr>
-          <td>Google Jobs (SerpApi)</td>
-          <td style="color:#fbbf24">Free tier (100/mo)</td>
-          <td style="color:#6ee7b7">✓ Yes</td>
-          <td style="font-size:.7rem;color:#c9973c"><code>SERPAPI_API_KEY</code></td>
-        </tr>
-        <tr>
-          <td>The Muse</td>
-          <td style="color:#6ee7b7">Free (no key needed)</td>
-          <td style="color:#fca5a5">✗ Mostly US/global</td>
-          <td style="font-size:.7rem;color:#4a6a8a">Already enabled</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="font-size:.72rem;color:#6a8aaa;margin:0">
-      Register free at
-      <a href="https://developer.adzuna.com" target="_blank" rel="noopener noreferrer" style="color:#c9973c">developer.adzuna.com</a>
-      · Takes 2 minutes · No credit card.
-    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.72rem">
+      <span class="ar-badge">No paid API required</span>
+      <span class="ar-badge">India-only filtering</span>
+      <span class="ar-badge">Civil-only filtering</span>
+      <span class="ar-badge">Manual publish</span>
+    </div>
+    <p style="font-size:.7rem;color:#6a8aaa;margin:10px 0 0">Optional free-provider credentials can increase coverage later, but they are not required for the built-in scan.</p>
   </div>
 
   <!-- Source Health Panel (populated after search) -->
@@ -485,7 +462,20 @@ Show expired
     Agent Reach never publishes directly. Verify the original source, edit if needed, then publish explicitly.
   </p>
 
-  <!-- BLOCK A — Exam Alerts Scanner -->
+  <!-- BLOCK A — Built-in free civil job scan -->
+  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
+    <h3 style="color:#c9973c">🔎 Free Civil Job Scan</h3>
+    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Run the same zero-cost public/company-source discovery pipeline without leaving Agent Reach.</p>
+    <p style="color:#6a8aaa;font-size:.76rem;margin-bottom:12px">Results are saved as <strong style="color:#fbbf24">Pending Review</strong>. Nothing is published automatically.</p>
+    <div class="admin-actions" style="margin-bottom:0">
+      <button id="arJobScanBtn" class="btn-gold" onclick="arRunJobScan()">▶ Scan Civil Jobs</button>
+      <button class="btn-ghost" type="button" onclick="document.querySelector('[data-tab=\"discovery\"]').click()">Open Discovery</button>
+    </div>
+    <div id="arJobScanStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
+  </div>
+
+  <!-- BLOCK B — Exam Alerts Scanner -->
+
   <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
     <h3 style="color:#c9973c">🔔 Exam Alerts Scanner</h3>
     <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Scrapes UPSC, SSC, RRB and Employment News for new civil exam notifications</p>
@@ -497,7 +487,7 @@ Show expired
     <div id="arExamScanResults" style="display:none;margin-top:10px"></div>
   </div>
 
-  <!-- BLOCK B — YouTube Transcriber -->
+  <!-- BLOCK C — YouTube Transcriber -->
   <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
     <h3 style="color:#c9973c">🎬 YouTube Study Materials</h3>
     <p style="color:#94a3b8;font-size:.82rem;margin-bottom:12px">Paste a YouTube URL — transcript is extracted and saved as a draft</p>
@@ -2596,19 +2586,25 @@ function discoveryStatus(message,type='show'){
 /* ── Phase 7: source label mapping ── */
 const SOURCE_LABELS={
   google_jobs:'Google Jobs (SerpApi)',
-  the_muse:'The Muse (free)',
+  the_muse:'The Muse',
   adzuna:'Adzuna',
   jobvetta:'Jobvetta',
-  remotive:'Remotive',
-  careerjet:'CareerJet India',
-  findwork:'Findwork.dev'
+  devglobal:'Dev Global Jobs (free)',
+  himalayas:'Himalayas (free)',
+  google_news:'Google News RSS (free)',
+  bing_news:'Bing News RSS (free)',
+  jobicy:'Jobicy (free)',
+  arbeitnow:'Arbeitnow (free)',
+  onjob:'OnJob India (free)',
+  hopin:'Hopin (free)',
+  company_careers:'Company career pages (free)'
 };
 
 function renderSourceHealth(sourceStats){
   const panel=$('sourceHealthPanel');
   const tbody=$('sourceHealthBody');
   if(!sourceStats||!Object.keys(sourceStats).length){panel.classList.remove('show');return;}
-  const ORDER=['google_jobs','adzuna','the_muse','jobvetta','google_news','bing_news','jobicy','arbeitnow','onjob'];
+  const ORDER=['company_careers','devglobal','himalayas','onjob','hopin','google_news','bing_news','arbeitnow','jobicy','google_jobs','adzuna','the_muse','jobvetta'];
   const allKeys=[...new Set([...ORDER,...Object.keys(sourceStats)])];
   tbody.innerHTML=allKeys.map(key=>{
     const v=sourceStats[key];
@@ -3250,6 +3246,35 @@ document
   });
 
 /* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
+
+/* ── Free civil-job scan from Agent Reach ───────────────────────────── */
+async function arRunJobScan(){
+  const btn=$('arJobScanBtn');
+  const status=$('arJobScanStatus');
+  if(!btn||!status)return;
+  btn.disabled=true;
+  btn.textContent='⏳ Scanning…';
+  status.style.display='block';
+  status.textContent='Checking free public feeds and company career pages…';
+  try{
+    const data=await api('/api/jobs?discovery=1',{
+      method:'POST',
+      body:JSON.stringify({q:'civil engineering jobs India',location:'India',type:'all',limit:40})
+    });
+    const count=Number(data.count||0);
+    const sourceCount=Object.values(data.sourceStats||{}).reduce((n,v)=>n+(v&&v.ok?Number(v.items||0):0),0);
+    status.textContent=count
+      ?`✅ ${count} new draft${count===1?'':'s'} added to the review queue. ${sourceCount} raw listing${sourceCount===1?'':'s'} scanned.`
+      :`✓ Scan completed. ${sourceCount} raw listing${sourceCount===1?'':'s'} were checked; no new CivilCareer drafts were created. Open Discovery → Source Status for the exact reason by source.`;
+    await loadAgentReach();
+    toast(`Civil job scan complete — ${count} new draft${count===1?'':'s'}.`);
+  }catch(err){
+    status.textContent='❌ '+(err.message||'Civil job scan failed');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='▶ Scan Civil Jobs';
+  }
+}
 
 /* ── Exam Alerts Scanner ─────────────────────────────────────────── */
 
