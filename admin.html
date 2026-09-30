@@ -326,11 +326,6 @@ Show expired
 
 <div id="adminJobsPager"></div>
 
-<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">Employer verification</h3>
-<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">A verified badge means CivilCareer reviewed the employer profile and its official website. It is not a legal or government certification.</p>
-<div id="adminEmployers">
-<p style="color:#6a8aaa;font-size:.85rem">Loading employers…</p>
-</div>
 
 </div>
 
@@ -765,11 +760,19 @@ async function loadAll(page=ccJobsPage){
        Pending Review and agent-reach items) are visible to the allowlisted
        admin. Server-side enforced; the browser never holds any secret. */
     settle(async()=>{
-      const j=await authedApi(`/api/jobs?page=${page}&limit=50&auth=1`,{});
-      jobs=j.jobs||[];
-      ccJobsMeta=j.meta||{page,total:jobs.length,pages:1,has_next:false};
-      ccJobsPage=ccJobsMeta.page||page;
-      loadAdminJobs();
+      try {
+        const j=await authedApi(`/api/jobs?page=${page}&limit=50&auth=1`,{});
+        if (!Array.isArray(j.jobs)) throw new Error(j.error || 'Jobs API returned no job list.');
+        jobs=j.jobs;
+        ccJobsMeta=j.meta||{page,total:jobs.length,pages:1,has_next:false};
+        ccJobsPage=ccJobsMeta.page||page;
+        loadAdminJobs();
+      } catch (e) {
+        jobs=[];
+        const root=$('adminJobs');
+        if(root) root.innerHTML=`<p style="color:#f3a6a6;padding:1rem">Unable to load jobs: ${esc(e.message||'Unknown error')}. <button class="btn-ghost" onclick="loadAll(${page})">Retry</button></p>`;
+        throw e;
+      }
     }),
 
     settle(async()=>{
@@ -802,12 +805,6 @@ async function loadAll(page=ccJobsPage){
       renderReports(re.reports||[]);
       const el=$('metrics');
       /* Metric cards re-render with the real open-report count once known. */
-    }),
-
-    settle(async()=>{
-      const ep=await authedApi('/api/employers',{});
-      employerProfiles=ep.employers||[];
-      renderEmployers();
     }),
 
     settle(async()=>{
@@ -1041,64 +1038,6 @@ function loadAdminJobs(){
         <button class="btn-ghost" ${!ccJobsMeta.has_next?'disabled':''} onclick="loadAll(${ccJobsMeta.page+1})">Next</button>
       </div>`
     :'';
-}
-
-/* EMPLOYER VERIFICATION (Phase 8) */
-
-function renderEmployers(){
-
-  if(!$('adminEmployers'))return;
-
-  $('adminEmployers').innerHTML=employerProfiles.length
-
-    ?employerProfiles.map(x=>`
-
-      <div class="list-item">
-
-        <div class="list-item-info">
-
-          <h4>
-            ${esc(x.company_name||'Untitled employer')}
-            <span class="status-badge ${x.status==='Verified'?'published':x.status==='Rejected'?'expired':'unpublished'}">
-              ${esc(x.status||'Pending')}
-            </span>
-          </h4>
-
-          <p><a href="${esc(x.official_url)}" target="_blank" rel="noopener noreferrer" style="color:#c9973c">${esc(x.official_url)}</a></p>
-
-        </div>
-
-        <div class="mini-actions">
-
-          ${x.status!=='Verified'
-            ?`<button class="btn-publish" onclick="setEmployerStatus('${x.id}','Verified')">Verify</button>`
-            :''}
-
-          ${x.status!=='Rejected'
-            ?`<button class="btn-delete" onclick="setEmployerStatus('${x.id}','Rejected')">Reject</button>`
-            :''}
-
-        </div>
-
-      </div>`).join('')
-
-    :'<p style="color:#6a8aaa;padding:1rem">No employer profiles yet. Verify employers from their submissions or add profiles via the API.</p>';
-}
-
-async function setEmployerStatus(id,status){
-
-  try{
-
-    await api('/api/employers',{method:'PATCH',key:adminKey,body:JSON.stringify({id,status})});
-
-    toast(status==='Verified'?'Employer verified ✓':'Employer rejected.');
-
-    await loadAll(ccJobsPage);
-
-  }catch(e){
-
-    toast(e.message);
-  }
 }
 
 async function toggleJob(id,published){

@@ -159,8 +159,8 @@ if(route==='private'){
   const count=jobs.filter(j=>String(j.role||'').toLowerCase().includes(p.role.toLowerCase().split(' ')[0])&&(!p.city||[j.city,j.state,j.location_display,j.location].join(' ').toLowerCase().includes(p.city.toLowerCase()))).length;
   const where=p.city?(' in '+p.city):' in India';
   document.title=`${p.role} Jobs${where} — ${count} Live | CivilCareer`;
-  document.querySelector('meta[name="description"]').content=`${count} live ${p.role.toLowerCase()} job${count===1?'':'s'}${where} from verified employers. Qualifications, deadlines and official application links, updated continuously. Part of India's civil-engineering-only career platform.`;
-  if(hero){hero.dataset.ccDefault='1';hero.querySelector('.eyebrow').textContent=(p.role+' jobs'+where+' · verified employers').toUpperCase();hero.querySelector('h1').textContent=`${p.role} Jobs${where}`;}
+  document.querySelector('meta[name="description"]').content=`${count} live ${p.role.toLowerCase()} job${count===1?'':'s'}${where}. Qualifications, deadlines and application links are shown where available. Part of India's civil-engineering-only career platform.`;
+  if(hero){hero.dataset.ccDefault='1';hero.querySelector('.eyebrow').textContent=(p.role+' jobs'+where+' · civil engineering opportunities').toUpperCase();hero.querySelector('h1').textContent=`${p.role} Jobs${where}`;}
   const site='https://civilcareer-india-two.vercel.app';
   const ld={"@context":"https://schema.org","@graph":[
     {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":site+'/'},{"@type":"ListItem","position":2,"name":"Civil Engineering Jobs","item":site+'/private-jobs'},{"@type":"ListItem","position":3,"name":p.role+' Jobs'+where}]},
@@ -196,7 +196,7 @@ function companyLogoMarkup(j){
 }
 function jobCard(j,gov=false){
   gov=gov||isGovJob(j);
-  const closed=isClosed(j),verified=j.last_verified&&!closed,employerVerified=j.employer_verification_status==='Verified',saved=getSaved().has(j.id);
+  const closed=isClosed(j),verified=j.last_verified&&!closed,saved=getSaved().has(j.id);
   const isNew=j.created_at&&(new Date()-new Date(j.created_at))<3*86400000;
   const initials=companyInitials(j.company||j.recruitment_authority||'CC');
   const proj=projectTypeOf(j),work=workTypeOf(j),sal=salaryText(j);
@@ -221,7 +221,7 @@ function jobCard(j,gov=false){
       <button class="btn-save cc-save ${saved?'saved':''}" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★':'☆'}</button>
     </div>
     <div class="cc-compact-status">
-      <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Closed':j.featured?'Featured':verified?'Verified':'Active'}${employerVerified?'<span class="pill employer-verified">Employer verified</span>':''}</span>
+      <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Closed':j.featured?'Featured':verified?'Verified':'Active'}</span>
       <span class="cc-posted-ago">${j.created_at?esc(timeAgo(j.created_at)):(j.last_verified?'Verified '+esc(date(j.last_verified)):'')}</span>
       ${isNew?'<span class="new-badge">NEW</span>':''}
     </div>

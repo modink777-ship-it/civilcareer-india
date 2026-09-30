@@ -100,7 +100,7 @@
     const proj=typeof projectTypeOf==='function'?projectTypeOf(j):'';
     const work=typeof workTypeOf==='function'?workTypeOf(j):'';
     const sal=typeof salaryText==='function'?salaryText(j):(j.salary||(j.salary_min&&j.salary_max?`${j.salary_min} – ${j.salary_max}`:''));
-    const verified=j.last_verified&&!closed,employerVerified=j.employer_verification_status==='Verified';
+    const verified=j.last_verified&&!closed;
     const posted=pubDate(j)?ago(pubDate(j)):(j.last_verified?`Verified ${String(j.last_verified).slice(0,10)}`:'');
     const isNew=j.created_at&&(Date.now()-new Date(j.created_at))<3*86400000;
     const viewed=typeof viewedLabel==='function'?viewedLabel(j.id):'';
@@ -124,7 +124,7 @@
         <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Expired':j.featured?'Featured':verified?'Verified':'Active'}</span>
         <span class="cc-posted-ago">${esc(posted)}</span>
         ${isNew?'<span class="new-badge">NEW</span>':''}
-        ${employerVerified?'<span class="pill employer-verified">Employer verified</span>':''}${viewed?`<span class="cc-viewed-badge">${esc(viewed)}</span>`:''}
+        ${viewed?`<span class="cc-viewed-badge">${esc(viewed)}</span>`:''}
       </div>
       <div class="cc-compact-actions">
         <button data-job="${esc(j.id)}" class="cc-view-btn">View</button>
