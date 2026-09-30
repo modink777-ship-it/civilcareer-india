@@ -2018,3 +2018,77 @@ html[data-theme="dark"] .stats-strip{background:#0F2136!important}
   .cc-bg-layer,.cc-bg-layer.is-active{transform:scale(1)!important;will-change:auto;}
   .cc-career-path{stroke-dashoffset:0!important;}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FOOTER LAYOUT REFINEMENT — desktop + tablet + mobile
+   Keeps all footer groups in a compact, predictable grid.
+═══════════════════════════════════════════════════════════ */
+footer{
+  padding:44px 0 18px!important;
+}
+.footer-grid{
+  display:grid!important;
+  grid-template-columns:minmax(250px,1.45fr) repeat(3,minmax(150px,1fr))!important;
+  gap:28px 42px!important;
+  align-items:start!important;
+  padding-top:0!important;
+  padding-bottom:28px!important;
+}
+.footer-grid>div:first-child{
+  grid-column:auto!important;
+}
+.footer-grid>b,
+.footer-grid>div>b{
+  line-height:1.2;
+}
+.footer-grid p{
+  max-width:280px;
+  margin:10px 0 0!important;
+  line-height:1.55;
+}
+.footer-grid a:not(.logo){
+  margin:6px 0!important;
+  line-height:1.35;
+}
+.footer-bottom{
+  margin-top:0!important;
+  padding-top:16px!important;
+}
+
+@media(max-width:1100px) and (min-width:769px){
+  .footer-grid{
+    grid-template-columns:minmax(210px,1.3fr) repeat(3,minmax(135px,1fr))!important;
+    gap:24px 24px!important;
+  }
+  .footer-grid a:not(.logo){font-size:12.5px!important}
+  .footer-grid p{font-size:12.5px!important}
+}
+
+@media(max-width:768px){
+  footer{padding:36px 0 16px!important}
+  .footer-grid{
+    grid-template-columns:1fr 1fr!important;
+    gap:26px 28px!important;
+    padding-bottom:24px!important;
+  }
+  .footer-grid>div:first-child{
+    grid-column:1/-1!important;
+  }
+  .footer-grid p{max-width:440px}
+  .footer-bottom{
+    margin-top:0!important;
+    gap:8px!important;
+  }
+}
+
+@media(max-width:480px){
+  .footer-grid{
+    grid-template-columns:1fr!important;
+    gap:22px!important;
+  }
+  .footer-grid>div:first-child{
+    grid-column:auto!important;
+  }
+  .footer-grid a:not(.logo){margin:5px 0!important}
+  .footer-bottom{font-size:10.5px!important}
+}
