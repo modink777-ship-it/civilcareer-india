@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Run Government Agent Reach
-       env:
+env:
   SITE_URL: https://civilcareer-india-two.vercel.app
   OWNER_KEY: ${{ secrets.Summaiya@3951 }}
        run: |
