@@ -25,7 +25,13 @@ async function fetchUser(accessToken) {
 
 function allowed(user) {
   if (!user) return false;
-  const emailOk = ADMIN_EMAIL && String(user.email || '').toLowerCase() === ADMIN_EMAIL;
+  /* Mirrors the dispatcher: comma-separated ADMIN_EMAIL, dot-insensitive. */
+  const gotEmail = String(user.email || '').toLowerCase().replace(/\.$/, '');
+  const emailOk = ADMIN_EMAIL.split(',').some(e => {
+    const want = e.trim().toLowerCase().replace(/\.$/, '');
+    if (!want) return false;
+    return gotEmail === want || gotEmail.replace(/\./g, '') === want.replace(/\./g, '');
+  });
   const idOk = ADMIN_USER_ID && String(user.id || '') === ADMIN_USER_ID;
   return Boolean(emailOk || idOk);
 }
@@ -44,7 +50,9 @@ module.exports = async function handler(req, res) {
       const token = auth.replace(/^Bearer\s+/i, '').trim();
       if (!token) return res.status(401).json({ error: 'Missing session token.' });
       const user = await fetchUser(token);
-      if (!allowed(user)) return res.status(403).json({ error: 'Administrator access denied.' });
+      if (!allowed(user)) return res.status(403).json({
+        error: 'Administrator access denied — ' + String(user.email || 'this account') + ' is not the ADMIN_EMAIL configured on this deployment.'
+      });
       return res.status(200).json({ email: user.email, user_id: user.id });
     }
 

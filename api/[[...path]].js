@@ -56,9 +56,9 @@ async function requireAdmin(req) {
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   const supabaseUrl = process.env.SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
-  const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminEmail = String(process.env.ADMIN_EMAIL || '');
   const adminUserId = String(process.env.ADMIN_USER_ID || '').trim();
-  if (!supabaseUrl || !anonKey || (!adminEmail && !adminUserId)) {
+  if (!supabaseUrl || !anonKey || (!adminEmail.trim() && !adminUserId)) {
     return { ok: false, status: 503, error: 'Admin authentication is not configured.' };
   }
   try {
@@ -67,7 +67,14 @@ async function requireAdmin(req) {
     });
     if (!r.ok) return { ok: false, status: 401, error: 'Invalid admin session.' };
     const user = await r.json();
-    const emailOk = adminEmail && String(user.email || '').toLowerCase() === adminEmail;
+    /* Multiple addresses allowed, comma separated, so modin7174@ and
+       modink777@ can both be the owner. Dot-insensitive for GMail. */
+    const gotEmail = String(user.email || '').toLowerCase().replace(/\.$/, '');
+    const emailOk = adminEmail.split(',').some(e => {
+      const want = e.trim().toLowerCase().replace(/\.$/, '');
+      if (!want) return false;
+      return gotEmail === want || gotEmail.replace(/\./g, '') === want.replace(/\./g, '');
+    });
     const idOk = adminUserId && String(user.id || '') === adminUserId;
     if (!emailOk && !idOk) return { ok: false, status: 403, error: 'Administrator access denied.' };
     return { ok: true, user };
