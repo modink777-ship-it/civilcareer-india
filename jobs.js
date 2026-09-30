@@ -1817,7 +1817,10 @@ module.exports = async function handler(req, res) {
         const key = slug ? `slug=eq.${encodeURIComponent(slug)}` : `id=eq.${encodeURIComponent(id)}`;
         const filters = admin
           ? [key]
-          : [key, 'published=eq.true', `or=(expires_at.gte.${queryValue(new Date().toISOString())},expires_at.is.null)`];
+          : (() => {
+              const currentIso = new Date().toISOString();
+              return [key, 'published=eq.true', `or=(expires_at.gte.${queryValue(currentIso)},expires_at.is.null)`];
+            })();
         const r = await supa(`jobs?select=${encodeURIComponent(admin ? '*' : PUBLIC_JOB_FIELDS.join(','))}&${filters.join('&')}&limit=1`);
         if (!r.ok) {
           const detail = await r.text();
