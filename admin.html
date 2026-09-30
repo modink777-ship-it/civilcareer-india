@@ -203,10 +203,23 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 </style>
 <script src="/theme.js"></script>
 <style id="admin-jobs-bulk-style">
-.admin-jobs-bulkbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:10px 12px;border:1px solid #ddd;border-radius:10px}
+.admin-jobs-bulkbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#102a49;min-height:48px}
+.admin-jobs-bulkbar label{display:flex;align-items:center;gap:8px;color:#dbe7f5;font-size:.82rem;font-weight:700;cursor:pointer}
+.admin-jobs-bulkbar input{width:17px;height:17px;margin:0;accent-color:#c9973c}
+.admin-jobs-selected-count{font-size:.8rem;color:#8ea8c4;min-width:70px}
 .admin-jobs-bulkbar button{cursor:pointer}
-.admin-jobs-select-count{font-size:.9rem;opacity:.8}
-.admin-job-select{width:20px;height:20px;min-width:20px;accent-color:#2563eb;cursor:pointer;margin:0 12px 0 2px}
+.admin-job-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:14px}
+.admin-job-row .admin-job-select{width:18px;height:18px;margin:0;accent-color:#c9973c}
+.admin-job-row .list-item-info{min-width:0}
+.admin-job-row .list-item-info h4{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 4px}
+.admin-job-row .list-item-info h4 .status-badge{margin-left:0}
+.admin-job-row .list-item-info p{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-job-row .mini-actions{justify-content:flex-end;align-items:center;flex-wrap:nowrap}
+@media (max-width:760px){
+  .admin-job-row{grid-template-columns:28px minmax(0,1fr);align-items:start}
+  .admin-job-row .mini-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
+  .admin-job-row .list-item-info p{white-space:normal}
+}
 </style>
 </head>
 
@@ -335,6 +348,12 @@ Status
 <input type="checkbox" id="showExpiredAdmin" checked onchange="loadAdminJobs()">
 Show expired
 </label>
+</div>
+
+<div id="admin-jobs-bulkbar" class="admin-jobs-bulkbar">
+  <label><input id="admin-jobs-select-all" type="checkbox"> Select all</label>
+  <span id="admin-jobs-selected-count" class="admin-jobs-selected-count">0 selected</span>
+  <button id="admin-jobs-delete-selected" class="btn-ghost" type="button" disabled>Delete selected</button>
 </div>
 
 <div id="adminJobs">
@@ -979,9 +998,9 @@ function loadAdminJobs(){
 
     ?list.map(j=>`
 
-      <div class="list-item" data-job-id="${esc(j.id)}">
+      <div class="list-item admin-job-row" data-job-id="${esc(j.id)}">
 
-        <input class="admin-job-select" type="checkbox" value="${esc(j.id)}" aria-label="Select ${esc(j.role||'job')}">
+        <input class="admin-job-select" type="checkbox" value="${esc(j.id)}" aria-label="Select ${esc(j.role||'Untitled')}" onchange="toggleSelectedJob(this)">
 
         <div class="list-item-info">
 
@@ -1053,31 +1072,6 @@ function loadAdminJobs(){
     `).join('')
 
     :'<p style="color:#6a8aaa;padding:1rem">No jobs found.</p>';
-
-  const selected=window.__adminSelectedJobs||(window.__adminSelectedJobs=new Set());
-  const bulk=document.getElementById('adminJobsBulkBar')||document.createElement('div');
-  bulk.id='adminJobsBulkBar'; bulk.className='admin-jobs-bulkbar';
-  bulk.innerHTML='<label><input id="adminJobsSelectAll" type="checkbox"> Select all</label><span id="adminJobsSelectedCount" class="admin-jobs-select-count">0 selected</span><button id="adminJobsDeleteSelected" type="button" disabled>Delete selected</button>';
-  if(!bulk.parentNode)$('adminJobs').parentNode.insertBefore(bulk,$('adminJobs'));
-  const updateBulk=()=>{
-    const visible=[...$('adminJobs').querySelectorAll('.admin-job-select')];
-    visible.forEach(cb=>cb.checked=selected.has(String(cb.value)));
-    const n=document.getElementById('adminJobsSelectedCount'); if(n)n.textContent=`${selected.size} selected`;
-    const b=document.getElementById('adminJobsDeleteSelected'); if(b)b.disabled=!selected.size;
-  };
-  $('adminJobs').querySelectorAll('.admin-job-select').forEach(cb=>cb.addEventListener('change',()=>{
-    if(cb.checked)selected.add(String(cb.value)); else selected.delete(String(cb.value)); updateBulk();
-  }));
-  document.getElementById('adminJobsSelectAll').onchange=e=>{
-    $('adminJobs').querySelectorAll('.admin-job-select').forEach(cb=>{cb.checked=e.target.checked; if(e.target.checked)selected.add(String(cb.value)); else selected.delete(String(cb.value));}); updateBulk();
-  };
-  document.getElementById('adminJobsDeleteSelected').onclick=async()=>{
-    const ids=[...selected]; if(!ids.length)return;
-    if(!confirm(`Delete ${ids.length} selected job${ids.length===1?'':'s'}?`))return;
-    try{await authedApi('/api/jobs',{method:'DELETE',body:JSON.stringify({ids})}); selected.clear(); toast(`${ids.length} job${ids.length===1?'':'s'} deleted.`); await loadAll(ccJobsPage);}
-    catch(e){toast(e.message||'Selected jobs could not be deleted.');}
-  };
-  updateBulk();
 
   /* Server-side pagination (Phase AG): the admin browser holds one bounded
      page; older pages stay on the server. */
@@ -3451,6 +3445,43 @@ async function arRunYtTranscribe() {
 </script>
 
 
-
+<script id="admin-jobs-bulk-script">
+const selectedAdminJobIds = new Set();
+function syncAdminJobSelection(){
+  document.querySelectorAll('.admin-job-select').forEach(cb=>cb.checked=selectedAdminJobIds.has(cb.value));
+  const countEl=document.getElementById('admin-jobs-selected-count');
+  const deleteBtn=document.getElementById('admin-jobs-delete-selected');
+  const selectAll=document.getElementById('admin-jobs-select-all');
+  const boxes=[...document.querySelectorAll('.admin-job-select')];
+  const checked=boxes.filter(x=>x.checked).length;
+  if(countEl) countEl.textContent=`${selectedAdminJobIds.size} selected`;
+  if(deleteBtn) deleteBtn.disabled=selectedAdminJobIds.size===0;
+  if(selectAll){selectAll.checked=boxes.length>0&&checked===boxes.length;selectAll.indeterminate=checked>0&&checked<boxes.length;}
+}
+function toggleSelectedJob(cb){
+  if(cb.checked) selectedAdminJobIds.add(cb.value); else selectedAdminJobIds.delete(cb.value);
+  syncAdminJobSelection();
+}
+function toggleSelectAllAdminJobs(cb){
+  document.querySelectorAll('.admin-job-select').forEach(box=>{box.checked=cb.checked;if(cb.checked)selectedAdminJobIds.add(box.value);else selectedAdminJobIds.delete(box.value);});
+  syncAdminJobSelection();
+}
+async function deleteSelectedAdminJobs(){
+  const ids=[...selectedAdminJobIds];
+  if(!ids.length)return;
+  if(!confirm(`Delete ${ids.length} selected job${ids.length===1?'':'s'}? They will move to Deleted.`))return;
+  try{
+    await api('/api/jobs',{method:'DELETE',key:adminKey,body:JSON.stringify({ids})});
+    selectedAdminJobIds.clear();
+    toast(`${ids.length} job${ids.length===1?'':'s'} moved to Deleted.`);
+    await loadAll(ccJobsPage||1);
+  }catch(err){toast(err.message||'Selected jobs could not be deleted');}
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('admin-jobs-select-all')?.addEventListener('change',e=>toggleSelectAllAdminJobs(e.target));
+  document.getElementById('admin-jobs-delete-selected')?.addEventListener('click',deleteSelectedAdminJobs);
+  syncAdminJobSelection();
+});
+</script>
 </body>
 </html>
