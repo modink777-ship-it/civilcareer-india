@@ -58,6 +58,44 @@ async function probe(requestToken) {
   }
 }
 
+
+/* The scheduler credential must not bypass an unrelated admin endpoint. */
+async function probeCronBypass() {
+  const prev = { ...process.env };
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_ANON_KEY = 'anon-key-for-test';
+  process.env.ADMIN_EMAIL = 'owner@civilcareer.test';
+  process.env.ADMIN_USER_ID = '';
+  process.env.CRON_SECRET = 'cron-secret-for-test';
+  delete process.env.OWNER_KEY;
+
+  const realFetch = global.fetch;
+  global.fetch = async (url) => {
+    if (String(url).includes('/auth/v1/user')) {
+      return { ok: false, status: 401, json: async () => ({}) };
+    }
+    return realFetch(url);
+  };
+  const res = {
+    statusCode: 0,
+    headers: {},
+    setHeader(k, v) { this.headers[k] = v; },
+    end() {},
+  };
+  const req = {
+    method: 'GET',
+    url: '/api/analytics',
+    headers: { authorization: 'Bearer cron-secret-for-test' },
+  };
+  try {
+    await dispatcher(req, res);
+  } finally {
+    global.fetch = realFetch;
+  }
+  Object.assign(process.env, prev);
+  return res.statusCode;
+}
+
 (async () => {
   const prev = { ...process.env };
   process.env.SUPABASE_URL = 'https://example.supabase.co';
@@ -74,6 +112,9 @@ async function probe(requestToken) {
   /* An invalid session must be rejected outright with 401. */
   const unauth = await probe('no-such-token');
   assert.strictEqual(unauth, 401, `invalid session must get 401, got ${unauth}`);
+
+  const cronBypass = await probeCronBypass();
+  assert.strictEqual(cronBypass, 401, `CRON_SECRET must not bypass unrelated admin routes, got ${cronBypass}`);
 
   Object.assign(process.env, prev);
   console.log('Phase 12 admin allowlist tests: PASS');

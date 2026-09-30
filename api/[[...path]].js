@@ -35,6 +35,11 @@ const handlers = {
 
 
 
+const CRON_ROUTES = new Set([
+  '/api/exam-alerts',
+  '/api/govt-discovery',
+]);
+
 const ADMIN_RULES = {
   '/api/jobs': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
   '/api/analytics': req => req.method === 'GET',
@@ -124,12 +129,15 @@ module.exports = async function handler(req, res) {
     const cronAuthorized = isValidCronRequest(req);
     const rule = ADMIN_RULES[pathName];
     if (rule && rule(req)) {
-      if (!cronAuthorized) {
+      /* A CRON_SECRET is valid only for the explicitly scheduled routes.
+         Never let possession of the scheduler credential bypass an unrelated
+         admin allowlist. */
+      if (cronAuthorized && CRON_ROUTES.has(pathName)) {
+        req.isCron = true;
+      } else {
         const auth = await requireAdmin(req);
         if (!auth.ok) return sendJson(res, auth.status, { error: auth.error });
         req.adminUser = auth.user;
-      } else {
-        req.isCron = true;
       }
       // Legacy handlers still expect their owner key. Keep the secret server-side.
       if (!process.env.OWNER_KEY) process.env.OWNER_KEY = '__ADMIN_AUTH_OK__';
