@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "policy": "Official sources are authoritative. Aggregators are lead-only and never supply publishable facts.",
+  "sources": [
+    {"name":"UPSC Recruitment Advertisements","type":"official","url":"https://www.upsc.gov.in/recruitment/recruitment-advertisement","kind":"html","org":"UPSC","category":"UPSC","state":null,"enabled":true},
+    {"name":"RRB Chandigarh Employment Notices","type":"official","url":"https://www.rrbcdg.gov.in/employment-notices.php","kind":"html","org":"RRB","category":"Railway","state":null,"enabled":true},
+    {"name":"Employment News All Jobs","type":"official","url":"https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All","kind":"html","org":"Employment News","category":"Other","state":null,"enabled":true},
+    {"name":"CPWD Recruitment","type":"official","url":"https://www.cpwd.gov.in/recruitment.aspx","kind":"html","org":"CPWD","category":"PWD/Irrigation","state":null,"enabled":true},
+    {"name":"NHAI Direct Recruitment","type":"official","url":"https://nhai.gov.in/nhai/taxonomy/term/248?page=0","kind":"html","org":"NHAI","category":"PSU","state":null,"enabled":true},
+    {"name":"RITES Recruitment System","type":"official","url":"https://recruit.rites.com/frmRegistration.aspx","kind":"html","org":"RITES","category":"PSU","state":null,"enabled":true},
+    {"name":"IRCON Regular Employment","type":"official","url":"https://www.ircon.org/career-ircon/regular-employment?items_per_page=200&langcode=en&title=2026","kind":"html","org":"IRCON","category":"PSU","state":null,"enabled":true},
+    {"name":"IRCON Contract Employment","type":"official","url":"https://www.ircon.org/career-ircon/contract-employment","kind":"html","org":"IRCON","category":"PSU","state":null,"enabled":true},
+    {"name":"NTPC Jobs","type":"official","url":"https://ntpc.co.in/index.php/jobs-ntpc","kind":"html","org":"NTPC","category":"PSU","state":null,"enabled":true},
+    {"name":"BHEL Recruitment","type":"official","url":"https://www.bhel.com/recruitment","kind":"html","org":"BHEL","category":"PSU","state":null,"enabled":true},
+    {"name":"AAI Recruitment Dashboard","type":"official","url":"https://www.aai.aero/en/careers/recruitment/Offical","kind":"html","org":"AAI","category":"PSU","state":null,"enabled":true},
+    {"name":"KPSC Karnataka","type":"official","url":"https://kpsc.kar.nic.in/","kind":"html","org":"KPSC","category":"State PSC","state":"Karnataka","enabled":false},
+    {"name":"TSPSC Telangana","type":"official","url":"https://www.tspsc.gov.in/","kind":"html","org":"TSPSC","category":"State PSC","state":"Telangana","enabled":false},
+    {"name":"TNPSC Tamil Nadu","type":"official","url":"https://www.tnpsc.gov.in/","kind":"html","org":"TNPSC","category":"State PSC","state":"Tamil Nadu","enabled":false},
+    {"name":"APPSC Andhra Pradesh","type":"official","url":"https://psc.ap.gov.in/","kind":"html","org":"APPSC","category":"State PSC","state":"Andhra Pradesh","enabled":false},
+    {"name":"govtjobguru lead feed","type":"aggregator_lead","url":"https://govtjobguru.in/","kind":"html","org":"govtjobguru.in","category":"Other","state":null,"enabled":false},
+    {"name":"mysarkarinaukri lead feed","type":"aggregator_lead","url":"https://mysarkarinaukri.com/","kind":"html","org":"mysarkarinaukri.com","category":"Other","state":null,"enabled":false},
+    {"name":"karnatakagovtjobs lead feed","type":"aggregator_lead","url":"https://karnatakagovtjobs.com/","kind":"html","org":"karnatakagovtjobs.com","category":"Other","state":"Karnataka","enabled":false},
+    {"name":"indgovtjobs lead feed","type":"aggregator_lead","url":"https://indgovtjobs.in/","kind":"html","org":"indgovtjobs.in","category":"Other","state":null,"enabled":false}
+  ]
+}

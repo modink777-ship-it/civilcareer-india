@@ -30,6 +30,8 @@ const handlers = {
   '/api/telegram':          () => require('../_api/telegram'),
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
   '/api/govt-discovery':    () => require('../_api/govt-discovery'),
+  '/api/govt-review':       () => require('../_api/govt-review'),
+  '/api/govt-jobs':         () => require('../_api/govt-jobs'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
 };
 
@@ -48,6 +50,7 @@ const ADMIN_RULES = {
   '/api/employers': req => req.method !== 'GET',
   '/api/exam-alerts': req => !isValidCronRequest(req),
   '/api/govt-discovery': req => !isValidCronRequest(req),
+  '/api/govt-review': req => true,
   '/api/exams': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
   '/api/extract': () => true,
   '/api/materials': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',

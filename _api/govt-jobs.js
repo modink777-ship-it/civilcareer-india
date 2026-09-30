@@ -1,363 +1,39 @@
 'use strict';
 
-/**
- * CivilCareer — Government Civil Jobs listing endpoint (public, read-only)
- * GET /api/govt-jobs[?dept=&state=&q=&hideExpired=1]
- *
- * Feeds the dedicated /govt-jobs page: a GovtJobGuru-style table of
- * GOVERNMENT CIVIL ENGINEERING notifications only.
- *
- * Inclusion rules are deliberately strict: the public government feed contains
- * only civil-relevant rows whose application/source URL resolves to an HTTPS
- * official government domain (.gov.in/.nic.in) or an explicit official PSU/
- * board/recruitment hostname. Employer-name heuristics are review signals only.
- *
- * The `sector` flag alone is never trusted: private employers (Pvt Ltd /
- * manpower / staffing / consultancy) and job-board aggregators are dropped
- * even when their sector says Government — which is exactly how the
- * mislabelled adzuna.in ads ended up in the feed.
- */
-
 const { allowPublicCors } = require('../lib/security');
-
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
-
-const LIST_FIELDS = [
-  'id', 'role', 'company', 'sector', 'location', 'location_display', 'state',
-  'qualification', 'deadline', 'vacancy_count', 'application_url', 'apply_url',
-  'source_url', 'source', 'ingestion_source', 'slug', 'created_at', 'employment_type',
-  'posted_at', 'status', 'description', 'recruitment_authority', 'application_start',
-].join(',');
-
-/* ── Civil engineering relevance (mirrors _api/govt-discovery.js) ───────── */
-
-const CIVIL_KW = [
-  'civil engineer', 'civil engineering', 'site engineer', 'structural engineer',
-  'planning engineer', 'quantity surveyor', 'highway engineer', 'road engineer',
-  'bridge engineer', 'geotechnical', 'water resources', 'irrigation engineer',
-  'drainage engineer', 'surveyor', 'qs engineer', 'billing engineer',
-  'qaqc engineer', 'bim engineer', 'junior engineer', 'assistant engineer',
-  'executive engineer', 'section engineer', 'works engineer', 'project engineer',
-  'je civil', 'ae civil', 'ee civil', 'pwd', 'cpwd', 'nhai', 'cwc', 'mes',
-  'construction', 'infrastructure', 'civil works', 'building works', 'draftsman',
-  'draughtsman', 'estimator', 'estimation', 'architect', 'town planning',
-  'urban development', 'panchayat', 'municipal', 'water supply', 'sanitation',
-  'railway engineer', 'metro rail', 'bridge works', 'roads and buildings',
-  'r&b', 'storage works', 'irrigation', 'canal', 'dam', 'buildings',
-];
-const CIVIL_RE = new RegExp(CIVIL_KW.join('|'), 'i');
-
-/* ── Private-commercial signals (never government) ──────────────────────── */
-
-const PRIVATE_RE = /\b(pvt|private limited|pvt\.? ltd|limited|ltd\.?|llp|inc|manpower|staffing|recruiters?|consultanc|consulting|solutions|services private|technologies|infotech|softech|adzuna|indeed|naukri|linkedin)\b/i;
-
-/* ── Official government/PSU source policy ─────────────────────────────── */
-
-const OFFICIAL_GOVT_HOSTS = new Set([
-  'ncs.gov.in', 'employmentnews.gov.in', 'ssc.gov.in', 'upsc.gov.in',
-  'cpwd.gov.in', 'nhai.gov.in', 'indianrailways.gov.in', 'kpsc.kar.nic.in',
-  'tspsc.gov.in', 'tnpsc.gov.in', 'psc.ap.gov.in', 'mpsc.gov.in',
-  'ntpc.co.in', 'bhel.com', 'aai.aero', 'nhpcindia.com', 'nbccindia.com',
-  'rites.com', 'ongcindia.com', 'gailonline.com', 'hpcl.co.in', 'nmdc.co.in',
-  'ircon.org', 'irctc.co.in', 'sail.co.in', 'wapcos.gov.in', 'mes.gov.in',
-  'bro.gov.in', 'drdo.gov.in', 'isro.gov.in', 'csir.res.in', 'dmrc.co.in',
-  'kmrl.co.in', 'cmrl.co.in', 'gmrc.co.in', 'bmrcl.co.in', 'mrvc.indianrailways.gov.in',
-]);
-
+const OFFICIAL_GOVT_HOSTS = new Set(['ntpc.co.in','bhel.com','rites.com','ircon.org','aai.aero','nhpcindia.com','nbccindia.com','wapcos.gov.in']);
 function isOfficialGovtUrl(value) {
+  try { const u = new URL(String(value || '')); if (u.protocol !== 'https:') return false; const h = u.hostname.toLowerCase().replace(/^www\./,''); return h.endsWith('.gov.in') || h.endsWith('.nic.in') || OFFICIAL_GOVT_HOSTS.has(h) || [...OFFICIAL_GOVT_HOSTS].some(x => h.endsWith('.' + x)); } catch (_) { return false; }
+}
+function db(path, opts={}) { return fetch(`${SUPA_URL}/rest/v1/${path}`, { ...opts, headers: { apikey: SUPA_KEY, Authorization:`Bearer ${SUPA_KEY}`, 'Content-Type':'application/json', ...(opts.headers||{}) } }); }
+function daysLeft(date) { if (!date) return null; const d = new Date(`${date}T00:00:00Z`); const t = new Date(); const today = new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())); return Math.round((d-today)/86400000); }
+function shape(job, posts) {
+  const civilPosts = posts.filter(p => p.is_civil);
+  const deadline = job.apply_end || null; const left = daysLeft(deadline);
+  const source = job.official_notice_url || job.official_site_url;
+  return { id:job.id, role:job.title, company:job.organization, department:job.department_category, departmentLabel:job.department_category, qualification:[...new Set(civilPosts.map(p=>p.qualification).filter(Boolean))].join(' / ').slice(0,300), location:job.state || 'All India', state:job.state || 'All India', vacancies:job.civil_posts_count || civilPosts.reduce((n,p)=>n+(Number(p.vacancies)||0),0) || null, deadline, deadlineText:deadline, daysLeft:left, expired:left!==null&&left<0, closingSoon:left!==null&&left>=0&&left<=5, applyUrl:job.official_apply_url || source, sourceUrl:source, verificationStatus:isOfficialGovtUrl(source)?'official-source':'unverified-source', internalUrl:`/government-jobs?job=${encodeURIComponent(job.slug)}`, source:job.organization, govScope:job.scope, postedAt:job.published_at, scrapedAt:new Date().toISOString(), posts:civilPosts.map(p=>({name:p.post_name,vacancies:p.vacancies,qualification:p.qualification,pay:p.pay,selection_process:p.selection_process})) };
+}
+module.exports = async function handler(req,res) {
+  allowPublicCors(req,res); if(req.method==='OPTIONS') return res.status(200).end(); if(req.method!=='GET') return res.status(405).json({ok:false,error:'GET only.'});
+  if(!SUPA_URL||!SUPA_KEY) return res.status(500).json({ok:false,error:'Supabase not configured.'});
   try {
-    const u = new URL(String(value || '').trim());
-    if (u.protocol !== 'https:') return false;
-    const host = u.hostname.toLowerCase().replace(/^www\./, '');
-    if (host.endsWith('.gov.in') || host.endsWith('.nic.in')) return true;
-    return OFFICIAL_GOVT_HOSTS.has(host) || Array.from(OFFICIAL_GOVT_HOSTS).some(h => host.endsWith('.' + h));
-  } catch (_) {
-    return false;
-  }
-}
-
-/* Job boards / aggregators — commercial by definition, never government. */
-const AGGREGATOR_RE = /(adzuna|indeed|naukri|linkedin|shine\.com|timesjobs|monster\.com|foundit|apna\.co|hirist|instahyre|cutshort)/i;
-
-/* ── Department (tab) classification — civil-engineering oriented ───────── */
-
-const DEPARTMENTS = [
-  { key: 'railway', label: 'Railway & Metro', re: /\b(railway|rrb|rrc|ircon|rites|irctc|metro|dmrc|kmrl|cmrl|gmrc|bmrcl|mrvc|krcl|rail vikas|loco)\b/i },
-  { key: 'defence', label: 'Defence & MES', re: /\b(defence|defense|army|navy|air force|military engineer|mes\b|bro\b|drdo|bsf|crpf|cisf|itbp|coast guard|ssb\b|ordnance|assam rifles|border roads)\b/i },
-  { key: 'psu', label: 'PSU & Maharatna', re: /\b(ntpc|bhel|sail|ongc|iocl|bpcl|hpcl|gail|nhpc|sjvn|npcil|nbcc|npcc|wapcos|nhai|powergrid|nmdc|concor|irfc|pfc|rec\b|mazagon|grse|bdl|bel\b|hal\b|cochin shipyard|engineers india|ecil|mecon|mstc|hudco|wcl|secl|mcl|nhsrcl)\b/i },
-  { key: 'ssc-psc', label: 'SSC / State PSC', re: /\b(ssc\b|staff selection|upsc|bpsc|appsc|tnpsc|kpsc|mpsc|uppsc|uppsc|hpsc|jpsc|cgpsc|opsc|gpsc|kpsc|psc\b|public service commission|sssb|jkssb|kpsc|kerala psc|tspsc|apsc|mpsc|rajasthan psc)\b/i },
-  { key: 'state', label: 'State PWD & Irrigation', re: /\b(pwd|public works|roads and buildings|r&b|irrigation|water resources|jal (nigam|sansthan|shakti)|panchayat|municipal|nagar|urban development|housing board|development authority|zilla parishad|gram panchayat|water supply|sewerage|drainage|minor irrigation|major irrigation|state government)\b/i },
-  { key: 'central', label: 'Central Govt & CPWD', re: /\b(cpwd|central public works|ministry|department of|government of india|nhai|survey of india|geological survey|cwc|central water commission|nhsrc|cantt?onment|central government|authority of india|commission)\b/i },
-  { key: 'institute', label: 'Institutes & Universities', re: /\b(iit|nit\b|iiit|iim\b|university|college|institute|aiims|kvs|nvs|sainik school|navodaya|csir|iiser|niT\b)\b/i },
-];
-
-function govScopeOf(row) {
-  const src = String(row.source || '');
-  if (/\(central\)/i.test(src) || /central/i.test(src)) return 'central';
-  if (/\(state\)/i.test(src) || /state/i.test(src)) return 'state';
-  return null;
-}
-
-function classifyDepartment(job) {
-  const hay = [job.company, job.role, job.recruitment_authority, job.source].filter(Boolean).join(' ');
-  for (const d of DEPARTMENTS) {
-    if (d.re.test(hay)) return d;
-  }
-  const scope = govScopeOf(job);
-  if (scope === 'central') return { key: 'central', label: 'Central Govt & CPWD' };
-  if (scope === 'state') return { key: 'state', label: 'State PWD & Irrigation' };
-  return { key: 'other', label: 'Other Govt Bodies' };
-}
-
-/* ── Helpers ────────────────────────────────────────────────────────────── */
-
-function db(path, opts) {
-  return fetch(`${SUPA_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
-      'Content-Type': 'application/json',
-      ...(opts && opts.headers ? opts.headers : {}),
-    },
-    ...opts,
-  });
-}
-
-function stripHtml(s) {
-  return String(s || '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
-
-/** Accepts ISO (2026-10-17) or Indian DD-MM-YY / DD-MM-YYYY. */
-function parseDeadline(raw) {
-  const s = String(raw || '').trim();
-  if (!s) return null;
-  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/.exec(s);
-  if (m) {
-    let year = +m[3];
-    if (year < 100) year += 2000;
-    return new Date(Date.UTC(year, +m[2] - 1, +m[1]));
-  }
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function fmtDeadline(d) {
-  if (!d) return '';
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  return `${dd}-${mm}-${String(d.getUTCFullYear()).slice(2)}`;
-}
-
-function daysLeft(d) {
-  if (!d) return null;
-  const today = new Date();
-  const utcToday = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  return Math.round((d.getTime() - utcToday) / 86400000);
-}
-
-/** Pull a vacancy number out of free text like "3,500 posts". */
-function parseVacancies(row) {
-  const direct = parseInt(row.vacancy_count, 10);
-  if (Number.isFinite(direct) && direct > 0) return direct;
-  const hay = `${row.role || ''} ${row.description || ''} ${row.qualification || ''}`;
-  const m = /(\d[\d,]{1,7})\s*(?:posts?|vacanc\w+|vacant\s+seats?|openings?)/i.exec(hay);
-  if (m) {
-    const n = parseInt(m[1].replace(/,/g, ''), 10);
-    if (Number.isFinite(n) && n > 0 && n < 5000000) return n;
-  }
-  return null;
-}
-
-function primaryUrl(row) {
-  return row.apply_url || row.application_url || row.source_url || null;
-}
-
-/** True only for genuine government civil-engineering records. */
-function isGovtCivil(row) {
-  const company = String(row.company || '');
-  const hay = [row.company, row.role, row.qualification, row.description, row.source].filter(Boolean).join(' ');
-  const url = [row.apply_url, row.application_url, row.source_url].filter(Boolean).join(' ');
-  const raw = `${url} ${row.source || ''}`;
-
-  if (!CIVIL_RE.test(hay)) return false;            // civil relevance required
-  if (AGGREGATOR_RE.test(raw)) return false;        // job-board scrapes are never govt
-  // Public government listings require an official source URL. Employer-name
-  // heuristics are useful for review/classification, but cannot authorize a row
-  // into the public government feed by themselves.
-  if (!isOfficialGovtUrl(primaryUrl(row))) return false;
-  if (PRIVATE_RE.test(company)) return false;
-  return true;
-}
-
-function shape(row, now) {
-  const d = parseDeadline(row.deadline);
-  const left = daysLeft(d);
-  const dept = classifyDepartment(row);
-  const vacancies = parseVacancies(row);
-  const url = primaryUrl(row);
-  const walkIn = /\bwalk[\s-]?in\b/i.test(`${row.role || ''} ${row.description || ''}`);
-  return {
-    id: row.id,
-    role: stripHtml(row.role) || 'Government vacancy',
-    company: stripHtml(row.company) || 'Government of India',
-    department: dept.key,
-    departmentLabel: dept.label,
-    qualification: stripHtml(row.qualification).slice(0, 220),
-    location: stripHtml(row.location_display || row.location || row.state || 'All India'),
-    state: stripHtml(row.state) || stateFromLocation(row.location) || 'All India',
-    vacancies,
-    deadline: d ? d.toISOString().slice(0, 10) : null,
-    deadlineText: fmtDeadline(d),
-    daysLeft: left,
-    expired: left !== null && left < 0,
-    closingSoon: left !== null && left >= 0 && left <= 5,
-    walkIn,
-    applyUrl: url,
-    sourceUrl: url,
-    verificationStatus: isOfficialGovtUrl(url) ? 'official-source' : 'unverified-source',
-    internalUrl: row.slug ? `/jobs/${row.slug}` : null,
-    source: stripHtml(row.source),
-    govScope: govScopeOf(row),
-    postedAt: row.posted_at || row.created_at || null,
-    scrapedAt: now,
-  };
-}
-
-function stateFromLocation(location) {
-  const raw = String(location || '').trim();
-  if (!raw) return null;
-  const first = raw.split(',')[0].trim();
-  return first && !/^india$/i.test(first) ? first : null;
-}
-
-/* ── Handler ────────────────────────────────────────────────────────────── */
-
-module.exports = async function handler(req, res) {
-  allowPublicCors(req, res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'GET only.' });
-  if (!SUPA_URL || !SUPA_KEY) return res.status(500).json({ ok: false, error: 'Supabase not configured.' });
-
-  let params = new URLSearchParams();
-  try {
-    params = new URL(req.url, 'http://localhost').searchParams;
-  } catch (_) { /* keep empty */ }
-  const wantDept = String(params.get('dept') || '').trim().toLowerCase();
-  const wantState = String(params.get('state') || '').trim().toLowerCase();
-  const wantQuery = String(params.get('q') || '').trim().toLowerCase();
-  const hideExpired = ['1', 'true', 'yes'].includes(String(params.get('hideExpired') || '').toLowerCase());
-
-  const SELECT = `select=${encodeURIComponent(LIST_FIELDS)}&published=eq.true&order=created_at.desc&limit=1000`;
-
-  /* Admin files civil recruitment as either "Government" or "Public Sector",
-     so both values are pulled; the filter below decides what is genuinely
-     government. If the `in.()` form is ever rejected, fall back to the
-     single-value form rather than failing the whole page. */
-  const QUERIES = [
-    `jobs?${SELECT}&sector=in.(${encodeURIComponent('"Government","Public Sector"')})`,
-    `jobs?${SELECT}&sector=eq.Government`,
-  ];
-
-  try {
-    let list = null;
-    for (const q of QUERIES) {
-      const r = await db(q);
-      if (r.ok) {
-        const rows = await r.json();
-        list = Array.isArray(rows) ? rows : [];
-        break;
-      }
-      const detail = await r.text();
-      console.error('govt-jobs query failed:', r.status, String(detail).slice(0, 200));
+    const p=new URL(req.url,'http://localhost').searchParams; const slug=p.get('slug');
+    const jq=slug ? `govt_jobs?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=*&limit=1` : `govt_jobs?status=eq.active&order=apply_end.asc.nullslast,published_at.desc&limit=1000`;
+    const jr=await db(jq); if(!jr.ok) { const t=await jr.text(); if(/relation .*govt_jobs.* does not exist/i.test(t)) return res.status(200).json({ok:true,updatedAt:new Date().toISOString(),totals:{notifications:0,shown:0,vacancies:null,states:0},departments:[],states:[],jobs:[]}); throw new Error(t.slice(0,300)); }
+    const jobs=await jr.json(); if(slug) {
+      const j=jobs[0]; if(!j) return res.status(404).json({ok:false,error:'Government job not found.'});
+      const pr=await db(`govt_job_posts?govt_job_id=eq.${encodeURIComponent(j.id)}&is_civil=eq.true&select=post_name,discipline,vacancies,pay,qualification,qualification_levels,selection_process`); const posts=pr.ok?await pr.json():[];
+      return res.status(200).json({ok:true,job:shape(j,posts)});
     }
-    if (list === null) {
-      return res.status(500).json({ ok: false, error: 'Could not load government jobs.' });
-    }
-    const now = new Date().toISOString();
-
-    let jobs = list.filter(isGovtCivil).map((row) => shape(row, now));
-
-    // De-duplicate by role + company (scrapers can re-add the same notice).
-    const seen = new Set();
-    jobs = jobs.filter((j) => {
-      const key = `${j.role}`.toLowerCase().slice(0, 90) + '|' + `${j.company}`.toLowerCase().slice(0, 60);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    // Sort: soonest deadline first, then undated/newest.
-    jobs.sort((a, b) => {
-      const ad = a.deadline ? Date.parse(a.deadline) : Infinity;
-      const bd = b.deadline ? Date.parse(b.deadline) : Infinity;
-      if (ad !== bd) return ad - bd;
-      return Date.parse(b.postedAt || 0) - Date.parse(a.postedAt || 0);
-    });
-
-    // ── Aggregates for the filter tabs (computed on the full set) ─────────
-    const deptMap = new Map();
-    const stateMap = new Map();
-    let totalVacancies = 0;
-    for (const j of jobs) {
-      const d = deptMap.get(j.department) || { key: j.department, label: j.departmentLabel, count: 0, vacancies: 0 };
-      d.count += 1;
-      d.vacancies += j.vacancies || 0;
-      deptMap.set(j.department, d);
-
-      const s = stateMap.get(j.state) || { name: j.state, count: 0, vacancies: 0 };
-      s.count += 1;
-      s.vacancies += j.vacancies || 0;
-      stateMap.set(j.state, s);
-
-      totalVacancies += j.vacancies || 0;
-    }
-
-    const departments = [
-      ...DEPARTMENTS.map((d) => deptMap.get(d.key)).filter(Boolean),
-      deptMap.get('other'),
-    ].filter(Boolean);
-    const states = [...stateMap.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-
-    // ── Apply requested filters to the returned rows ─────────────────────
-    let filtered = jobs;
-    if (wantDept && wantDept !== 'all') filtered = filtered.filter((j) => j.department === wantDept);
-    if (wantState && wantState !== 'all') filtered = filtered.filter((j) => j.state.toLowerCase() === wantState);
-    if (wantQuery) {
-      filtered = filtered.filter((j) =>
-        `${j.role} ${j.company} ${j.qualification} ${j.location} ${j.state}`.toLowerCase().includes(wantQuery)
-      );
-    }
-    if (hideExpired) filtered = filtered.filter((j) => !j.expired);
-
-    res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800');
-    return res.status(200).json({
-      ok: true,
-      updatedAt: now,
-      year: new Date().getFullYear() + 1,
-      totals: {
-        notifications: jobs.length,
-        shown: filtered.length,
-        vacancies: totalVacancies || null,
-        states: states.length,
-      },
-      departments,
-      states,
-      jobs: filtered,
-    });
-  } catch (e) {
-    console.error('govt-jobs error:', e && e.message);
-    return res.status(500).json({ ok: false, error: 'Server error.' });
-  }
+    const ids=jobs.map(j=>j.id); let posts=[]; if(ids.length){ const inList=ids.map(x=>`"${String(x).replace(/"/g,'') }"`).join(','); const pr=await db(`govt_job_posts?govt_job_id=in.(${encodeURIComponent(inList)})&is_civil=eq.true&select=govt_job_id,post_name,discipline,vacancies,pay,qualification,qualification_levels,selection_process`); if(pr.ok) posts=await pr.json(); }
+    const byJob=new Map(); for(const p of posts){ if(!byJob.has(p.govt_job_id)) byJob.set(p.govt_job_id,[]); byJob.get(p.govt_job_id).push(p); }
+    let list=jobs.map(j=>shape(j,byJob.get(j.id)||[])).filter(j=>j.posts.length && j.verificationStatus==='official-source');
+    const q=String(p.get('q')||'').toLowerCase().trim(), dept=String(p.get('dept')||'').toLowerCase().trim(), state=String(p.get('state')||'').toLowerCase().trim();
+    if(q) list=list.filter(j=>`${j.role} ${j.company} ${j.qualification} ${j.location}`.toLowerCase().includes(q)); if(dept&&dept!=='all') list=list.filter(j=>j.department.toLowerCase()===dept); if(state&&state!=='all') list=list.filter(j=>j.state.toLowerCase()===state);
+    const deptMap=new Map(), stateMap=new Map(); let vacancies=0; for(const j of list){ const d=deptMap.get(j.department)||{key:j.department,label:j.departmentLabel,count:0,vacancies:0};d.count++;d.vacancies+=j.vacancies||0;deptMap.set(j.department,d);const s=stateMap.get(j.state)||{name:j.state,count:0,vacancies:0};s.count++;s.vacancies+=j.vacancies||0;stateMap.set(j.state,s);vacancies+=j.vacancies||0; }
+    res.setHeader('Cache-Control','public, s-maxage=600, stale-while-revalidate=1800'); return res.status(200).json({ok:true,updatedAt:new Date().toISOString(),totals:{notifications:list.length,shown:list.length,vacancies:vacancies||null,states:stateMap.size},departments:[...deptMap.values()],states:[...stateMap.values()],jobs:list});
+  } catch(e) { console.error('govt-jobs',e.message); return res.status(500).json({ok:false,error:'Could not load government jobs.'}); }
 };
-
-/* Internals exposed for local test scripts — no effect at runtime. */
-module.exports.__test = { isGovtCivil, classifyDepartment, parseVacancies, parseDeadline, shape };
-
-module.exports.isOfficialGovtUrl = isOfficialGovtUrl;
+module.exports.isOfficialGovtUrl=isOfficialGovtUrl;

@@ -119,7 +119,7 @@ function parseRobots(text) {
     const field = line.slice(0, colon).trim().toLowerCase();
     const value = line.slice(colon + 1).trim();
 
-    if (field === "user" + "-agent") {
+    if (field === "user-agent") {
       if (!current || current.rules.length > 0) {
         current = { agents: [], rules: [] };
         groups.push(current);
@@ -703,9 +703,20 @@ module.exports = async function govtDiscovery(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Authorization is handled centrally by api/[[...path]].js.
-  // Only dispatcher-approved cron requests may execute the scan.
-  const isCron = req.isCron === true;
+  const ownerKey =
+    process.env.OWNER_KEY ||
+    process.env.CIVILCAREER_OWNER_KEY ||
+    process.env.ADMIN_OWNER_KEY;
+
+  const isCron = /vercel-cron/i.test(
+    String(req.headers["user-agent"] || "")
+  );
+
+  const providedKey =
+    req.body?.key || req.headers["x-owner-key"];
+
+  const authed =
+    (ownerKey && providedKey === ownerKey) || isCron;
 
   if (req.method === "GET" && !isCron) {
     const sources = await getSources();
@@ -730,8 +741,8 @@ module.exports = async function govtDiscovery(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!isCron) {
-    return res.status(401).json({ error: "Cron authorization required." });
+  if (!authed) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   robotsCache.clear();
