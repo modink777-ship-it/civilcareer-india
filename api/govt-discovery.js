@@ -12,27 +12,239 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
 );
 
-function fetch(url, timeoutMs = 12000) {
+const ROBOTS_UA =
+  "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
+
+const robotsCache = new Map();
+
+function rawFetch(url, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith("https") ? https : http;
-    const req = mod.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; CivilCareerBot/1.0; +https://civilcareer-india-two.vercel.app)",
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-IN,en;q=0.9",
+
+    const req = mod.get(
+      url,
+      {
+        headers: {
+          "User-Agent": ROBOTS_UA,
+          Accept: "text/html,application/xhtml+xml,text/plain",
+          "Accept-Language": "en-IN,en;q=0.9",
+        },
+        timeout: timeoutMs,
       },
-      timeout: timeoutMs,
-    }, (res) => {
-      if ([301,302,303,307,308].includes(res.statusCode) && res.headers.location) {
-        return fetch(res.headers.location, timeoutMs).then(resolve).catch(reject);
+      (res) => {
+        if (
+          [301, 302, 303, 307, 308].includes(res.statusCode) &&
+          res.headers.location
+        ) {
+          const nextUrl = new URL(res.headers.location, url).toString();
+          return rawFetch(nextUrl, timeoutMs).then(resolve).catch(reject);
+        }
+
+        let body = "";
+
+        res.on("data", (d) => {
+          body += d;
+        });
+
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode,
+            body,
+            headers: res.headers,
+            url,
+          });
+        });
       }
-      let body = "";
-      res.on("data", (d) => (body += d));
-      res.on("end", () => resolve({ status: res.statusCode, body }));
-    });
+    );
+
     req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error(`Timeout: ${url}`)); });
+
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error(`Timeout: ${url}`));
+    });
   });
+}
+
+function parseRobots(text) {
+  const groups = [];
+  let current = null;
+
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*/, "").trim();
+    if (!line) continue;
+
+    const colon = line.indexOf(":");
+    if (colon === -1) continue;
+
+    const field = line.slice(0, colon).trim().toLowerCase();
+    const value = line.slice(colon + 1).trim();
+
+    if (field === "user-agent") {
+      if (!current || current.rules.length > 0) {
+        current = { agents: [], rules: [] };
+        groups.push(current);
+      }
+      current.agents.push(value.toLowerCase());
+      continue;
+    }
+
+    if ((field === "allow" || field === "disallow") && current) {
+      current.rules.push({ type: field, path: value });
+    }
+  }
+
+  return groups;
+}
+
+function robotsRuleMatches(rulePath, targetPath) {
+  if (!rulePath) return false;
+
+  let pattern = rulePath;
+  const endAnchored = pattern.endsWith("$");
+
+  if (endAnchored) pattern = pattern.slice(0, -1);
+
+  const escaped = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+
+  return new RegExp("^" + escaped + (endAnchored ? "$" : "")).test(
+    targetPath
+  );
+}
+
+function robotsAllows(text, targetUrl) {
+  const groups = parseRobots(text);
+
+  // Prefer an explicit CivilCareerBot group. Otherwise use the wildcard group.
+  const specific = groups.filter((group) =>
+    group.agents.some((agent) => agent === "civilcareerbot")
+  );
+  const wildcard = groups.filter((group) =>
+    group.agents.includes("*")
+  );
+
+  const selectedGroups = specific.length ? specific : wildcard;
+  if (!selectedGroups.length) return true;
+
+  const target = new URL(targetUrl);
+  const targetPath = target.pathname + target.search;
+
+  const matches = selectedGroups
+    .flatMap((group) => group.rules)
+    .filter((rule) => robotsRuleMatches(rule.path, targetPath))
+    .sort((a, b) => {
+      const aLength = a.path.replace(/\*$/, "").length;
+      const bLength = b.path.replace(/\*$/, "").length;
+
+      if (bLength !== aLength) return bLength - aLength;
+
+      // Equal-length Allow wins.
+      if (a.type !== b.type) {
+        return a.type === "allow" ? -1 : 1;
+      }
+
+      return 0;
+    });
+
+  if (!matches.length) return true;
+
+  return matches[0].type === "allow";
+}
+
+async function recordRobotsStatus(targetUrl, robotsResult) {
+  try {
+    const host = new URL(targetUrl).hostname;
+
+    // Keep source health auditable without requiring a schema change.
+    // A host can have more than one configured source, so update matching
+    // source URLs rather than assuming a single source row.
+    const { data, error } = await supabase
+      .from("govt_sources")
+      .select("id,url")
+      .ilike("url", `%${host}%`);
+
+    if (error || !Array.isArray(data)) return;
+
+    for (const source of data) {
+      await supabase
+        .from("govt_sources")
+        .update({
+          robots_ok: Boolean(robotsResult.allowed),
+          last_status: robotsResult.status,
+        })
+        .eq("id", source.id);
+    }
+  } catch (_) {
+    // Robots enforcement must never be weakened because status recording fails.
+  }
+}
+
+async function checkRobots(targetUrl) {
+  const parsed = new URL(targetUrl);
+  const origin = parsed.origin;
+
+  if (robotsCache.has(origin)) {
+    const cached = robotsCache.get(origin);
+    await recordRobotsStatus(targetUrl, cached);
+    return cached;
+  }
+
+  const robotsUrl = `${origin}/robots.txt`;
+  let result;
+
+  try {
+    const response = await rawFetch(robotsUrl, 10000);
+
+    if (response.status >= 200 && response.status < 300) {
+      const allowed = robotsAllows(response.body, targetUrl);
+
+      result = {
+        allowed,
+        status: allowed ? "robots:allowed" : "robots:disallowed",
+      };
+    } else if (response.status >= 400 && response.status < 500) {
+      // A 4xx response means robots.txt is unavailable. The crawl may proceed.
+      result = {
+        allowed: true,
+        status: `robots:unavailable-4xx-${response.status}; crawl_allowed`,
+      };
+    } else if (response.status >= 500) {
+      // Server/network failure: fail closed and do not crawl.
+      result = {
+        allowed: false,
+        status: `robots:unreachable-http-${response.status}`,
+      };
+    } else {
+      result = {
+        allowed: false,
+        status: `robots:unverified-http-${response.status}`,
+      };
+    }
+  } catch (_) {
+    result = {
+      allowed: false,
+      status: "robots:unreachable",
+    };
+  }
+
+  robotsCache.set(origin, result);
+  await recordRobotsStatus(targetUrl, result);
+
+  return result;
+}
+
+async function fetch(url, timeoutMs = 12000) {
+  const robots = await checkRobots(url);
+
+  if (!robots.allowed) {
+    throw new Error(
+      `Robots policy prevented crawl: ${url} (${robots.status})`
+    );
+  }
+
+  return rawFetch(url, timeoutMs);
 }
 
 function stripHtml(html) {
