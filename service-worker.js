@@ -2,7 +2,7 @@
 // FIX-2026-09-25: the obsolete duplicate worker (sw.js) and the dead
 // styles-patch.css precache entry were removed. This is the only service
 // worker registered ("+registration from app.js+" → /service-worker.js).
-const CACHE_NAME = "civilcareer-v22-sw-bypass-20260930";
+const CACHE_NAME = "civilcareer-v23-admin-auth-fix-20260930";
 
 const STATIC_ASSETS = [
   "/",

@@ -618,7 +618,7 @@ Notification reader
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-let adminKey='',jobs=[],exams=[],materials=[],employerProfiles=[],ccJobsPage=1,ccJobsMeta={page:1,total:0,pages:1,has_next:false};
+let adminKey='',adminRefresh='',jobs=[],exams=[],materials=[],employerProfiles=[],ccJobsPage=1,ccJobsMeta={page:1,total:0,pages:1,has_next:false};
 
 const $=id=>document.getElementById(id);
 
@@ -670,6 +670,46 @@ async function api(url,opt={}){
   return data;
 }
 
+/* Session refresh: Supabase access tokens expire after ~1 hour. On a 401 the
+   session is rotated once via /api/admin-auth (the server re-checks the owner
+   allowlist before returning a token) and the request is retried. */
+async function refreshSession(){
+  if(!adminRefresh)return false;
+  try{
+    const r=await fetch('/api/admin-auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'refresh_token',refresh_token:adminRefresh})});
+    const x=await r.json().catch(()=>({}));
+    if(!r.ok||!x.access_token)return false;
+    adminKey=x.access_token;
+    adminRefresh=x.refresh_token||adminRefresh;
+    sessionStorage.setItem('cc_admin_token',adminKey);
+    sessionStorage.setItem('cc_admin_refresh',adminRefresh);
+    return true;
+  }catch{return false}
+}
+
+async function authedApi(url,opt={}){
+  try{
+    return await api(url,opt);
+  }catch(e){
+    if(e.status===401&&await refreshSession())return await api(url,opt);
+    throw e;
+  }
+}
+
+function loadFail(id,label){
+  const el=$(id);
+  if(el)el.innerHTML=`<p style="color:#fca5a5;padding:1rem">${esc(label)} failed to load — <button class="btn-ghost" onclick="loadAll()">Retry</button></p>`;
+}
+
+/* Each source resolves independently so one failed endpoint (rate limit,
+   expired session, partial outage) never blanks the whole dashboard. */
+async function settle(step){
+  try{ await step(); }catch(e){
+    if(e.status===401||e.status===403){toast(e.message||'Administrator session problem — sign in again.');}
+    console.warn('admin load:',e.message||e);
+  }
+}
+
 function formObject(form){
   return Object.fromEntries(
     new FormData(form).entries()
@@ -693,7 +733,9 @@ async function doLogin(){
     const x=await r.json().catch(()=>({}));
     if(!r.ok||!x.access_token)throw Object.assign(Error(x.error_description||x.msg||'Administrator sign-in failed.'),{status:r.status});
     adminKey=x.access_token;
+    adminRefresh=x.refresh_token||'';
     sessionStorage.setItem('cc_admin_token',adminKey);
+    if(adminRefresh)sessionStorage.setItem('cc_admin_refresh',adminRefresh);
     $('loginError').style.display='none';
     await showDashboard();
   }catch(e){
@@ -701,10 +743,11 @@ async function doLogin(){
     $('loginError').textContent=e.message||'Administrator sign-in failed.';
   }
 }
-function signOut(){adminKey='';sessionStorage.removeItem('cc_admin_token');$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
+function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
 async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboard').style.display='block'; await loadAll(); }
 (function restoreAdminSession(){
   adminKey=sessionStorage.getItem('cc_admin_token')||'';
+  adminRefresh=sessionStorage.getItem('cc_admin_refresh')||'';
   if(adminKey)showDashboard().catch(()=>signOut());
 })();
 
@@ -712,105 +755,81 @@ async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboar
 
 async function loadAll(page=ccJobsPage){
 
-  try{
+  /* Independent settles: a failed endpoint shows its own retry note and the
+     rest of the dashboard still loads. FIX 30 Sep: one failed call used to
+     leave every tab stuck on "Loading" (single Promise.all + throw). */
 
-    const [
-      j,
-      a,
-      es,
-      rs,
-      re,
-      ep,
-      cm
-    ]=await Promise.all([
+  await Promise.allSettled([
 
-      api(`/api/jobs?page=${page}&limit=50`,{}),
+    /* auth=1 → the dispatcher stamps owner context, so jobs (incl. drafts,
+       Pending Review and agent-reach items) are visible to the allowlisted
+       admin. Server-side enforced; the browser never holds any secret. */
+    settle(async()=>{
+      const j=await authedApi(`/api/jobs?page=${page}&limit=50&auth=1`,{});
+      jobs=j.jobs||[];
+      ccJobsMeta=j.meta||{page,total:jobs.length,pages:1,has_next:false};
+      ccJobsPage=ccJobsMeta.page||page;
+      loadAdminJobs();
+    }),
 
-      api('/api/analytics',{}),
+    settle(async()=>{
+      const a=await authedApi('/api/analytics',{});
+      const an=a.analytics||{};
+      renderMetrics(an,[]);
+      const k=a.kpi||{};
+      const kpiEl=document.getElementById('kpiReport');
+      if(kpiEl){
+        kpiEl.innerHTML=(k.error?`<p class="kpi-error">KPI error: ${k.error}</p>`:`
+          <div class="metric"><span>Weekly active users</span><b>${(k.weekly_active_users||0).toLocaleString('en-IN')}</b></div>
+          <div class="metric"><span>Alert subscribers (new, 7d)</span><b>${(k.alert_subscribers_new||0).toLocaleString('en-IN')}</b></div>
+          <div class="metric"><span>Applications tracked (7d)</span><b>${(k.applications_tracked_this_week||0).toLocaleString('en-IN')}</b></div>
+          <div class="metric"><span>Apply rate / 1k views</span><b>${k.apply_rate_per_1k_views==null?'—':k.apply_rate_per_1k_views}</b></div>
+          <div class="metric"><span>Listings verified last 7d</span><b>${(k.listings_verified_last_7d||0).toLocaleString('en-IN')}</b></div>
+          <div class="metric"><span>Scam reports / 1k views</span><b>${k.scam_reports_per_1k_views==null?'—':k.scam_reports_per_1k_views}</b></div>`)+
+          `<p class="kpi-generated">Generated ${new Date(k.generated_at||Date.now()).toLocaleString('en-IN')}</p>`;
+      }
+      renderAnalytics(an);
+    }),
 
-      api('/api/employer-submissions',{
-        key:adminKey
-      }),
+    settle(async()=>{
+      const es=await authedApi('/api/employer-submissions',{});
+      const rs=await authedApi('/api/resource-submissions',{});
+      renderSubmissions(es.submissions||[],rs.submissions||[]);
+    }),
 
-      api('/api/resource-submissions',{
-        key:adminKey
-      }),
+    settle(async()=>{
+      const re=await authedApi('/api/reports',{});
+      renderReports(re.reports||[]);
+      const el=$('metrics');
+      /* Metric cards re-render with the real open-report count once known. */
+    }),
 
-      api('/api/reports',{
-        key:adminKey
-      }),
+    settle(async()=>{
+      const ep=await authedApi('/api/employers',{});
+      employerProfiles=ep.employers||[];
+      renderEmployers();
+    }),
 
-      api('/api/employers',{}),
+    settle(async()=>{
+      const cm=await authedApi('/api/contact',{});
+      renderContactMessages(cm.messages||[]);
+    }),
 
-      api('/api/contact',{})
+    settle(async()=>{
+      const x=await authedApi('/api/exams?auth=1',{});
+      exams=x.exams||[];
+      loadAdminExams();
+    }),
 
-    ]);
+    settle(async()=>{
+      const m=await authedApi('/api/materials?auth=1',{});
+      materials=m.materials||[];
+      loadAdminMaterials();
+    }),
 
-    jobs=j.jobs||[];
+  ]);
 
-    ccJobsMeta=j.meta||{page,total:jobs.length,pages:1,has_next:false};
-    ccJobsPage=ccJobsMeta.page||page;
-
-    exams=
-      (await api('/api/exams',{
-        key:adminKey
-      })).exams||[];
-
-    materials=
-      (await api('/api/materials',{
-        key:adminKey
-      })).materials||[];
-
-    employerProfiles=ep.employers||[];
-
-    const an=a.analytics||{};
-
-    renderMetrics(
-      an,
-      re.reports||[]
-    );
-
-    /* Weekly KPI report (P6.4) — computed server-side from real rows. */
-    const k=a.kpi||{};
-    const kpiEl=document.getElementById('kpiReport');
-    if(kpiEl){
-      kpiEl.innerHTML=(k.error?`<p class="kpi-error">KPI error: ${k.error}</p>`:`
-        <div class="metric"><span>Weekly active users</span><b>${(k.weekly_active_users||0).toLocaleString('en-IN')}</b></div>
-        <div class="metric"><span>Alert subscribers (new, 7d)</span><b>${(k.alert_subscribers_new||0).toLocaleString('en-IN')}</b></div>
-        <div class="metric"><span>Applications tracked (7d)</span><b>${(k.applications_tracked_this_week||0).toLocaleString('en-IN')}</b></div>
-        <div class="metric"><span>Apply rate / 1k views</span><b>${k.apply_rate_per_1k_views==null?'—':k.apply_rate_per_1k_views}</b></div>
-        <div class="metric"><span>Listings verified last 7d</span><b>${(k.listings_verified_last_7d||0).toLocaleString('en-IN')}</b></div>
-        <div class="metric"><span>Scam reports / 1k views</span><b>${k.scam_reports_per_1k_views==null?'—':k.scam_reports_per_1k_views}</b></div>`)+
-        `<p class="kpi-generated">Generated ${new Date(k.generated_at||Date.now()).toLocaleString('en-IN')}</p>`;
-    }
-
-    renderAnalytics(an);
-
-    loadAdminJobs();
-
-    loadAdminExams();
-
-    loadAdminMaterials();
-
-    loadAgentReach();
-
-    renderSubmissions(
-      es.submissions||[],
-      rs.submissions||[]
-    );
-
-    renderEmployers();
-
-    renderReports(
-      re.reports||[]
-    );
-
-    renderContactMessages(cm.messages||[]);
-
-  }catch(e){
-
-    toast(e.message);
-  }
+  loadAgentReach();
 }
 
 function renderContactMessages(list){
@@ -2845,7 +2864,7 @@ async function publishReviewedDraft(){
     await api('/api/jobs',{method:'PATCH',key:adminKey,body:JSON.stringify({id:_reviewCurrentId,published:true,status:'Active',review_state:'Published',verification_status:'Verified'})});
     closeReviewModal();
     /* Refresh jobs list */
-    const resp=await api('/api/jobs',{});
+    const resp=await authedApi(`/api/jobs?page=${ccJobsPage}&limit=50&auth=1`,{});
     jobs=(resp.jobs||[]);
     loadAdminJobs();
     /* Remove from queues */
@@ -2967,8 +2986,8 @@ async function loadAgentReach(){
   try{
 
     const [jr,mr]=await Promise.all([
-      api('/api/jobs',{}),
-      api('/api/materials',{})
+      authedApi('/api/jobs?limit=100&auth=1',{}),
+      authedApi('/api/materials?auth=1',{})
     ]);
 
     jobs=jr.jobs||jobs;
@@ -3327,7 +3346,7 @@ async function arRunExamScan() {
     if (data.totalNew > 0) {
       // Refresh exams array so Exams tab shows new drafts
       try {
-        exams = (await api('/api/exams', {})).exams || [];
+        exams = (await authedApi('/api/exams?auth=1', {})).exams || [];
         loadAdminExams();
       } catch (_) { /* non-fatal */ }
     }
@@ -3392,7 +3411,7 @@ async function arRunYtTranscribe() {
 
     // Refresh materials tab
     try {
-      materials = (await api('/api/materials', {})).materials || [];
+      materials = (await authedApi('/api/materials?auth=1', {})).materials || [];
       loadAdminMaterials();
     } catch (_) { /* non-fatal */ }
 
