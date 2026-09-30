@@ -1,24 +1,8 @@
-name: Government Agent Reach
-
-on:
-  schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
-
-concurrency:
-  group: govt-agent-reach
-  cancel-in-progress: false
-
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
       - name: Run Government Agent Reach
         env:
           SITE_URL: https://civilcareer-india-two.vercel.app
-         OWNER_KEY: ${{ secrets.Summaiya@3951 }}
+          OWNER_KEY: ${{ secrets.Summaiya@3951 }}
         run: |
           set -e
 
@@ -33,10 +17,3 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-owner-key: ${OWNER_KEY}" \
             --data '{}'
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "### Government Agent Reach" >> "$GITHUB_STEP_SUMMARY"
-          echo "Run time: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
-          echo "Results remain unpublished until Admin review." >> "$GITHUB_STEP_SUMMARY"
