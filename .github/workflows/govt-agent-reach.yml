@@ -19,7 +19,7 @@ jobs:
        env:
   SITE_URL: https://civilcareer-india-two.vercel.app
   OWNER_KEY: ${{ secrets.Summaiya@3951 }}
-        run: |
+       run: |
           set -e
 
           echo "Starting Government Agent Reach..."
