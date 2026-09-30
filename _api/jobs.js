@@ -1922,12 +1922,24 @@ module.exports = async function handler(req, res) {
     try {
       const { id } = body;
       if (!id) return res.status(400).json({ error: 'Missing id' });
-      const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      /* Keep deleted jobs in the admin list so the Jobs tab can filter
+         Draft / Published / Deleted / Needs to be edited. Public reads are
+         already limited to published=true, so soft-deleted rows never appear
+         to candidates. */
+      const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          published: false,
+          status: 'Deleted',
+          review_state: 'Deleted',
+          updated_at: new Date().toISOString(),
+        }),
+      });
       if (!r.ok) {
         const detail = await r.text();
         return res.status(500).json({ error: 'Job could not be deleted', details: detail });
       }
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, deleted: true });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be deleted', details: err.message });
     }

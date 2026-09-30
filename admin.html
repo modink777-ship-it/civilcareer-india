@@ -314,6 +314,16 @@ AI never publishes automatically. Verify every field before saving.
 
 <div class="admin-actions">
 <button class="btn-ghost" onclick="jobEditor()">+ Add manually</button>
+<label>
+Status
+<select id="adminJobStatusFilter" onchange="loadAdminJobs()">
+<option value="all">All jobs</option>
+<option value="draft">Draft</option>
+<option value="published">Published</option>
+<option value="deleted">Deleted</option>
+<option value="needs_edit">Needs to be edited</option>
+</select>
+</label>
 <label class="check">
 <input type="checkbox" id="showExpiredAdmin" checked onchange="loadAdminJobs()">
 Show expired
@@ -936,12 +946,24 @@ function loadAdminJobs(){
 
   const showExpired=
     $('showExpiredAdmin').checked;
+  const statusFilter=
+    $('adminJobStatusFilter')?.value || 'all';
 
-  const list=showExpired
+  let list=showExpired
     ?jobs
     :jobs.filter(
       j=>j.status!=='Expired'
     );
+
+  if(statusFilter==='draft'){
+    list=list.filter(j=>j.published===false && j.status!=='Deleted');
+  }else if(statusFilter==='published'){
+    list=list.filter(j=>j.published===true && j.status!=='Deleted');
+  }else if(statusFilter==='deleted'){
+    list=list.filter(j=>j.status==='Deleted' || j.review_state==='Deleted');
+  }else if(statusFilter==='needs_edit'){
+    list=list.filter(j=>String(j.review_state||'').toLowerCase()==='needs edit' || String(j.status||'').toLowerCase()==='needs edit');
+  }
 
   $('adminJobs').innerHTML=
 
@@ -972,6 +994,10 @@ function loadAdminJobs(){
             ${
               j.status==='Expired'
               ?'<span class="status-badge expired">Expired</span>'
+              :j.status==='Deleted' || j.review_state==='Deleted'
+              ?'<span class="status-badge expired">Deleted</span>'
+              :String(j.review_state||'').toLowerCase()==='needs edit' || String(j.status||'').toLowerCase()==='needs edit'
+              ?'<span class="status-badge unpublished">Needs to be edited</span>'
               :''
             }
 

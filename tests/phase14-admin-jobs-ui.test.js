@@ -21,4 +21,13 @@ assert(!admin.includes('No employer profiles yet'));
 assert(!app.includes('Employer verified'));
 assert(!app.includes('employerVerified'));
 
+// Jobs tab exposes the requested lifecycle filters.
+assert(admin.includes('id="adminJobStatusFilter"'));
+assert(admin.includes('value="draft"'));
+assert(admin.includes('value="published"'));
+assert(admin.includes('value="deleted"'));
+assert(admin.includes('value="needs_edit"'));
+assert(jobs.includes("status: 'Deleted'"));
+assert(jobs.includes("review_state: 'Deleted'"));
+
 console.log('Phase 14 admin jobs/employer UI tests passed');
