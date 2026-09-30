@@ -29,6 +29,7 @@ const handlers = {
   '/api/subscribe': () => require('../_api/subscribe'),
   '/api/telegram':          () => require('../_api/telegram'),
   '/api/exam-alerts':       () => require('../_api/exam-alerts'),
+  '/api/govt-discovery':    () => require('../_api/govt-discovery'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
 };
 
@@ -40,7 +41,8 @@ const ADMIN_RULES = {
   '/api/contact': req => req.method !== 'POST',
   '/api/employer-submissions': req => req.method !== 'POST',
   '/api/employers': req => req.method !== 'GET',
-  '/api/exam-alerts': req => !/vercel-cron/i.test(req.headers['user-agent'] || ''),
+  '/api/exam-alerts': req => !isValidCronRequest(req),
+  '/api/govt-discovery': req => !isValidCronRequest(req),
   '/api/exams': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
   '/api/extract': () => true,
   '/api/materials': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
@@ -49,6 +51,13 @@ const ADMIN_RULES = {
   '/api/telegram': () => true,
   '/api/youtube-materials': () => true,
 };
+
+function isValidCronRequest(req) {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!secret) return false;
+  const auth = String(req.headers.authorization || '');
+  return auth === `Bearer ${secret}`;
+}
 
 async function requireAdmin(req) {
   const auth = String(req.headers.authorization || '');
@@ -112,14 +121,19 @@ module.exports = async function handler(req, res) {
       return sendJson(res, 404, { error: 'Not found', path: pathName });
     }
 
+    const cronAuthorized = isValidCronRequest(req);
     const rule = ADMIN_RULES[pathName];
     if (rule && rule(req)) {
-      const auth = await requireAdmin(req);
-      if (!auth.ok) return sendJson(res, auth.status, { error: auth.error });
+      if (!cronAuthorized) {
+        const auth = await requireAdmin(req);
+        if (!auth.ok) return sendJson(res, auth.status, { error: auth.error });
+        req.adminUser = auth.user;
+      } else {
+        req.isCron = true;
+      }
       // Legacy handlers still expect their owner key. Keep the secret server-side.
       if (!process.env.OWNER_KEY) process.env.OWNER_KEY = '__ADMIN_AUTH_OK__';
       req.headers['x-owner-key'] = process.env.OWNER_KEY;
-      req.adminUser = auth.user;
     }
 
     const fn = match();

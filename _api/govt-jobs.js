@@ -7,13 +7,10 @@
  * Feeds the dedicated /govt-jobs page: a GovtJobGuru-style table of
  * GOVERNMENT CIVIL ENGINEERING notifications only.
  *
- * Inclusion rules (deliberately strict — the public jobs feed mixes in
- * private ads that carry a wrong `sector` value):
- *   1. the row is civil-engineering relevant (same keyword set the
- *      discovery pipeline uses at ingestion)  AND
- *   2. it comes from a real government source — a gov.in / nic.in / ncs.gov
- *      link, the govt-discovery pipeline, or a recognised government
- *      employer (department, PWD, PSU, railway, metro, SSC/PSC…).
+ * Inclusion rules are deliberately strict: the public government feed contains
+ * only civil-relevant rows whose application/source URL resolves to an HTTPS
+ * official government domain (.gov.in/.nic.in) or an explicit official PSU/
+ * board/recruitment hostname. Employer-name heuristics are review signals only.
  *
  * The `sector` flag alone is never trusted: private employers (Pvt Ltd /
  * manpower / staffing / consultancy) and job-board aggregators are dropped
@@ -55,17 +52,30 @@ const CIVIL_RE = new RegExp(CIVIL_KW.join('|'), 'i');
 
 const PRIVATE_RE = /\b(pvt|private limited|pvt\.? ltd|limited|ltd\.?|llp|inc|manpower|staffing|recruiters?|consultanc|consulting|solutions|services private|technologies|infotech|softech|adzuna|indeed|naukri|linkedin)\b/i;
 
-/* ── Real government signals ────────────────────────────────────────────── */
+/* ── Official government/PSU source policy ─────────────────────────────── */
 
-/* Unambiguous government names/terms — these win even when the employer
-   string also contains "Ltd" (NTPC Limited, NBCC (India) Limited…). */
-const GOV_EMPLOYER_RE = /\b(government|govt|ministry|department of|public works|pwd|cpwd|ccwd|cwc|nhai|nhpc|nmdc|ongc|gail|bhel|ntpc|npcc|nbcc|wapcos|sail|ril\b|ircon|rites|irctc|rrb|rrc|railway|rail vikas|metro|dmrc|kmrl|cmrl|gmrc|bmrcl|mrvc|krcl|upsc|ssc|psc\b|sssb|jkssb|staff selection|public service commission|municipal|nagar (nigam|palika|parishad)|panchayat|zilla parishad|jal (nigam|sansthan|shakti)|irrigation|water resources|public health engineering|military engineer|mes\b|bro\b|border roads|drdo|isro|csir|cimfr|crri|hofm|cpwd|housing board|development authority|port trust|sarpanch|kvs|nvs|public sector undertaking|undertaking|mahatma|vigyan|sansad|secretariat|raj bhavan)\b/i;
+const OFFICIAL_GOVT_HOSTS = new Set([
+  'ncs.gov.in', 'employmentnews.gov.in', 'ssc.gov.in', 'upsc.gov.in',
+  'cpwd.gov.in', 'nhai.gov.in', 'indianrailways.gov.in', 'kpsc.kar.nic.in',
+  'tspsc.gov.in', 'tnpsc.gov.in', 'psc.ap.gov.in', 'mpsc.gov.in',
+  'ntpc.co.in', 'bhel.com', 'aai.aero', 'nhpcindia.com', 'nbccindia.com',
+  'rites.com', 'ongcindia.com', 'gailonline.com', 'hpcl.co.in', 'nmdc.co.in',
+  'ircon.org', 'irctc.co.in', 'sail.co.in', 'wapcos.gov.in', 'mes.gov.in',
+  'bro.gov.in', 'drdo.gov.in', 'isro.gov.in', 'csir.res.in', 'dmrc.co.in',
+  'kmrl.co.in', 'cmrl.co.in', 'gmrc.co.in', 'bmrcl.co.in', 'mrvc.indianrailways.gov.in',
+]);
 
-/* Generic corporate-shell words — genuine government bodies use them, but so
-   do private firms, so they only count after the private check. */
-const BROAD_GOV_RE = /\b(corporation|corporations|board|authority|department|departments|council|nigam|sansthan|commission|commissionerate|works division|engineering (wing|cell)|institute|university|college)\b/i;
-
-const GOV_DOMAIN_RE = /(\.gov\.in|\.nic\.in|gov\.in\/|nic\.in\/|ncs\.gov|employmentnews)/i;
+function isOfficialGovtUrl(value) {
+  try {
+    const u = new URL(String(value || '').trim());
+    if (u.protocol !== 'https:') return false;
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    if (host.endsWith('.gov.in') || host.endsWith('.nic.in')) return true;
+    return OFFICIAL_GOVT_HOSTS.has(host) || Array.from(OFFICIAL_GOVT_HOSTS).some(h => host.endsWith('.' + h));
+  } catch (_) {
+    return false;
+  }
+}
 
 /* Job boards / aggregators — commercial by definition, never government. */
 const AGGREGATOR_RE = /(adzuna|indeed|naukri|linkedin|shine\.com|timesjobs|monster\.com|foundit|apna\.co|hirist|instahyre|cutshort)/i;
@@ -178,14 +188,12 @@ function isGovtCivil(row) {
 
   if (!CIVIL_RE.test(hay)) return false;            // civil relevance required
   if (AGGREGATOR_RE.test(raw)) return false;        // job-board scrapes are never govt
-  if (GOV_DOMAIN_RE.test(url)) return true;         // official government link
-  // The pipeline tags these rows inconsistently — "govt_discovery",
-  // "govt-discovery" and "GovtDiscovery — …" all appear — so allow any
-  // separator (or none) between the two words.
-  if (/govt[-_ ]?discovery/i.test(String(row.ingestion_source || row.source || ''))) return true;
-  if (GOV_EMPLOYER_RE.test(hay)) return true;       // strong gov signal beats "Ltd"
-  if (PRIVATE_RE.test(company)) return false;       // explicitly commercial employer
-  return BROAD_GOV_RE.test(hay);                    // department / board / corporation
+  // Public government listings require an official source URL. Employer-name
+  // heuristics are useful for review/classification, but cannot authorize a row
+  // into the public government feed by themselves.
+  if (!isOfficialGovtUrl(primaryUrl(row))) return false;
+  if (PRIVATE_RE.test(company)) return false;
+  return true;
 }
 
 function shape(row, now) {
@@ -212,6 +220,8 @@ function shape(row, now) {
     closingSoon: left !== null && left >= 0 && left <= 5,
     walkIn,
     applyUrl: url,
+    sourceUrl: url,
+    verificationStatus: isOfficialGovtUrl(url) ? 'official-source' : 'unverified-source',
     internalUrl: row.slug ? `/jobs/${row.slug}` : null,
     source: stripHtml(row.source),
     govScope: govScopeOf(row),
@@ -349,3 +359,5 @@ module.exports = async function handler(req, res) {
 
 /* Internals exposed for local test scripts — no effect at runtime. */
 module.exports.__test = { isGovtCivil, classifyDepartment, parseVacancies, parseDeadline, shape };
+
+module.exports.isOfficialGovtUrl = isOfficialGovtUrl;

@@ -4,7 +4,7 @@ const { allowPublicCors } = require('../lib/security');
 
 /**
  * CivilCareer — Government Job Discovery
- * POST /api/govt-discovery   (admin key or cron user-agent)
+ * POST /api/govt-discovery   (Supabase admin session or Vercel CRON_SECRET)
  *
  * Scrapes free public sources for civil engineering government jobs in India:
  *   1. NCS Portal  (National Career Service — govt.in official job board)
@@ -33,11 +33,9 @@ function db(path, opts = {}) {
   });
 }
 
-function isAdmin(req) {
-  return req.headers['x-owner-key'] === process.env.OWNER_KEY;
-}
-function isCron(req) {
-  return /vercel-cron/i.test(req.headers['user-agent'] || '');
+function isAuthorized(req) {
+  if (req && req.isCron === true) return true;
+  return Boolean(req && req.adminUser);
 }
 
 // ── Civil engineering keyword matching ─────────────────────────────────────
@@ -327,8 +325,8 @@ module.exports = async function handler(req, res) {
   allowPublicCors(req, res, { methods: 'POST, GET, OPTIONS', headers: 'Content-Type, x-owner-key' });
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  if (!isAdmin(req) && !isCron(req)) {
-    return res.status(401).json({ ok: false, error: 'Admin key or cron user-agent required.' });
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ ok: false, error: 'Administrator authentication required.' });
   }
   if (!SUPA || !KEY) {
     return res.status(500).json({ ok: false, error: 'Supabase configuration missing.' });

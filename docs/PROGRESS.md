@@ -227,3 +227,11 @@ still-pending subscriber dedupe + unique constraint).
   tightened (no large gaps).
 - **Owner steps**: add the sign-in address to `ADMIN_EMAIL` in Vercel (comma-separated
   with the existing one), redeploy, hard-refresh /admin (or clear SW caches once).
+## Phase 13 — Production integrity patch (2026-09-30)
+- Removed the duplicate direct `/api/govt-discovery.js` function; government discovery is now centralized through `api/[[...path]].js` → `_api/govt-discovery.js`.
+- Replaced spoofable `vercel-cron` User-Agent authentication with `CRON_SECRET` bearer authentication.
+- Public government listings now require an HTTPS official `.gov.in`/`.nic.in` or explicit official PSU/board/recruitment hostname; employer-name heuristics alone cannot authorize publication.
+- Added source verification fields to the government feed.
+- Removed unused stale `next-phase.js`.
+- Added route-specific static HTML metadata shells for key landing routes and rewrote those routes to their shells.
+- Added regression tests in `tests/phase13-production-integrity.test.js`.
