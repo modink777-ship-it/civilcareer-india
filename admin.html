@@ -206,7 +206,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 .admin-jobs-bulkbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:10px 12px;border:1px solid #ddd;border-radius:10px}
 .admin-jobs-bulkbar button{cursor:pointer}
 .admin-jobs-select-count{font-size:.9rem;opacity:.8}
-.admin-job-select{width:18px;height:18px}
+.admin-job-select{width:20px;height:20px;min-width:20px;accent-color:#2563eb;cursor:pointer;margin:0 12px 0 2px}
 </style>
 </head>
 
@@ -979,7 +979,9 @@ function loadAdminJobs(){
 
     ?list.map(j=>`
 
-      <div class="list-item">
+      <div class="list-item" data-job-id="${esc(j.id)}">
+
+        <input class="admin-job-select" type="checkbox" value="${esc(j.id)}" aria-label="Select ${esc(j.role||'job')}">
 
         <div class="list-item-info">
 
@@ -1051,6 +1053,31 @@ function loadAdminJobs(){
     `).join('')
 
     :'<p style="color:#6a8aaa;padding:1rem">No jobs found.</p>';
+
+  const selected=window.__adminSelectedJobs||(window.__adminSelectedJobs=new Set());
+  const bulk=document.getElementById('adminJobsBulkBar')||document.createElement('div');
+  bulk.id='adminJobsBulkBar'; bulk.className='admin-jobs-bulkbar';
+  bulk.innerHTML='<label><input id="adminJobsSelectAll" type="checkbox"> Select all</label><span id="adminJobsSelectedCount" class="admin-jobs-select-count">0 selected</span><button id="adminJobsDeleteSelected" type="button" disabled>Delete selected</button>';
+  if(!bulk.parentNode)$('adminJobs').parentNode.insertBefore(bulk,$('adminJobs'));
+  const updateBulk=()=>{
+    const visible=[...$('adminJobs').querySelectorAll('.admin-job-select')];
+    visible.forEach(cb=>cb.checked=selected.has(String(cb.value)));
+    const n=document.getElementById('adminJobsSelectedCount'); if(n)n.textContent=`${selected.size} selected`;
+    const b=document.getElementById('adminJobsDeleteSelected'); if(b)b.disabled=!selected.size;
+  };
+  $('adminJobs').querySelectorAll('.admin-job-select').forEach(cb=>cb.addEventListener('change',()=>{
+    if(cb.checked)selected.add(String(cb.value)); else selected.delete(String(cb.value)); updateBulk();
+  }));
+  document.getElementById('adminJobsSelectAll').onchange=e=>{
+    $('adminJobs').querySelectorAll('.admin-job-select').forEach(cb=>{cb.checked=e.target.checked; if(e.target.checked)selected.add(String(cb.value)); else selected.delete(String(cb.value));}); updateBulk();
+  };
+  document.getElementById('adminJobsDeleteSelected').onclick=async()=>{
+    const ids=[...selected]; if(!ids.length)return;
+    if(!confirm(`Delete ${ids.length} selected job${ids.length===1?'':'s'}?`))return;
+    try{await authedApi('/api/jobs',{method:'DELETE',body:JSON.stringify({ids})}); selected.clear(); toast(`${ids.length} job${ids.length===1?'':'s'} deleted.`); await loadAll(ccJobsPage);}
+    catch(e){toast(e.message||'Selected jobs could not be deleted.');}
+  };
+  updateBulk();
 
   /* Server-side pagination (Phase AG): the admin browser holds one bounded
      page; older pages stay on the server. */
@@ -3424,86 +3451,6 @@ async function arRunYtTranscribe() {
 </script>
 
 
-<script id="admin-jobs-bulk-script">
-(function(){
-  const selected = new Set();
-  const getApiBase = () => window.ADMIN_JOBS_API || "/api/jobs";
 
-  function jobIdFrom(el){
-    return el.dataset.jobId || el.getAttribute("data-id") || el.dataset.id || "";
-  }
-
-  async function deleteSelected(){
-    const ids=[...selected];
-    if(!ids.length) return;
-    const ok=window.confirm(`Delete ${ids.length} selected draft job${ids.length===1?"":"s"}?`);
-    if(!ok) return;
-
-    const res=await fetch(getApiBase(),{
-      method:"DELETE",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ids})
-    });
-    if(!res.ok){
-      const t=await res.text();
-      throw new Error(t || "Delete failed");
-    }
-    selected.clear();
-    window.location.reload();
-  }
-
-  function sync(){
-    document.querySelectorAll(".admin-job-select").forEach(cb=>{
-      cb.checked=selected.has(cb.value);
-    });
-    const count=document.querySelector("#admin-jobs-selected-count");
-    if(count) count.textContent=`${selected.size} selected`;
-    const btn=document.querySelector("#admin-jobs-delete-selected");
-    if(btn) btn.disabled=!selected.size;
-  }
-
-  function wire(){
-    document.querySelectorAll("[data-job-id], [data-id]").forEach(row=>{
-      if(row.dataset.bulkWired==="1") return;
-      const id=jobIdFrom(row);
-      if(!id) return;
-      row.dataset.bulkWired="1";
-      if(row.querySelector(".admin-job-select")) return;
-      const cb=document.createElement("input");
-      cb.type="checkbox";
-      cb.className="admin-job-select";
-      cb.value=id;
-      cb.setAttribute("aria-label","Select this job");
-      cb.checked=selected.has(id);
-      cb.addEventListener("change",()=>{ cb.checked ? selected.add(id) : selected.delete(id); sync(); });
-      row.insertBefore(cb,row.firstChild);
-    });
-    sync();
-  }
-
-  function ensureToolbar(){
-    if(document.querySelector("#admin-jobs-bulkbar")) return;
-    const host=document.querySelector("#jobs-list, #admin-jobs-list, [data-jobs-list], .jobs-list");
-    if(!host) return;
-    const bar=document.createElement("div");
-    bar.id="admin-jobs-bulkbar";
-    bar.className="admin-jobs-bulkbar";
-    bar.innerHTML='<label><input id="admin-jobs-select-all" type="checkbox"> Select all</label><span id="admin-jobs-selected-count" class="admin-jobs-select-count">0 selected</span><button id="admin-jobs-delete-selected" type="button" disabled>Delete selected</button>';
-    host.parentNode.insertBefore(bar,host);
-    bar.querySelector("#admin-jobs-delete-selected").addEventListener("click",()=>deleteSelected().catch(e=>alert(e.message)));
-    bar.querySelector("#admin-jobs-select-all").addEventListener("change",e=>{
-      document.querySelectorAll(".admin-job-select").forEach(cb=>{
-        cb.checked=e.target.checked;
-        e.target.checked ? selected.add(cb.value) : selected.delete(cb.value);
-      });
-      sync();
-    });
-  }
-
-  const obs=new MutationObserver(()=>{ensureToolbar();wire();});
-  obs.observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener("DOMContentLoaded",()=>{ensureToolbar();wire();});
-})();
-</script>
 </body>
 </html>
