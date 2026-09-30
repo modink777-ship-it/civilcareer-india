@@ -130,6 +130,7 @@
         <button data-job="${esc(j.id)}" class="cc-view-btn">View</button>
         ${!closed&&apply?`<a class="btn-apply cc-apply-btn" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">Apply ↗</a>`:''}
         <button class="btn-save cc-save ${saved?'saved':''}" data-save-job="${esc(j.id)}" title="${saved?'Remove saved job':'Save job'}" aria-label="${saved?'Remove saved job':'Save job'}">${saved?'★':'☆'}</button>
+        <span class="card-share"><a href="https://wa.me/?text=${encodeURIComponent((j.role||'Civil engineering job')+' — CivilCareer '+location.origin+(typeof jobPath==='function'?jobPath(j):''))}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">WhatsApp</a> · <a class="route" href="/report" data-dynamic-route="true" aria-label="Report this listing">Report</a></span>
       </div>
     </article>`;
   }
