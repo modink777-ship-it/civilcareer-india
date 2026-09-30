@@ -21,6 +21,7 @@ jobs:
           OWNER_KEY: ${{ secrets.OWNER_KEY }}
         run: |
           set -e
+
           echo "Starting Government Agent Reach..."
 
           curl --fail-with-body \
