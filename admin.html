@@ -266,6 +266,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
   <button data-tab="salary">Salary</button>
+  <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -649,6 +650,51 @@ Salary transparency — public page /salary
 
 </div>
 
+<div class="panel" id="panel-walkins">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Walk-in interview board — public page /walk-in
+</p>
+
+<h3>Add a walk-in drive</h3>
+<p>Everything you save here can be published to the public <a href="/walk-in" target="_blank" rel="noopener" style="color:#c9973c">Walk-In board</a> with one click. Required: company, roles, date, venue. Times use 24-hour format (e.g. 09:00, 16:00) — the public page shows them as 12-hour.</p>
+
+<div class="field-grid" style="margin-top:12px">
+<label>Company *<input id="wiCompany" placeholder="e.g. L&T Construction"></label>
+<label>Roles *<input id="wiRoles" placeholder="Site Engineer, QS"></label>
+<label>Date *<input type="date" id="wiDate"></label>
+<label>Start time<input type="time" id="wiStart"></label>
+<label>End time<input type="time" id="wiEnd"></label>
+<label>Venue *<input id="wiVenue" placeholder="Full venue address"></label>
+<label>City<input id="wiCity" placeholder="Bengaluru"></label>
+<label>State<input id="wiState" placeholder="Karnataka"></label>
+<label>Experience<input id="wiExp" placeholder="e.g. 2-8 years"></label>
+<label>Qualification<input id="wiQual" placeholder="BE/BTech/Diploma Civil"></label>
+<label>Salary offered<input id="wiSalary" placeholder="optional"></label>
+<label>Expires on<input type="date" id="wiExpires"></label>
+<label class="wide">Documents to bring<input id="wiDocs" placeholder="Resume, marksheets, photos, experience letters"></label>
+<label>Contact<input id="wiContact" placeholder="phone or email"></label>
+<label>Source URL<input type="url" id="wiSource" placeholder="https://..."></label>
+</div>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="createWalkin()">+ Add Walk-In</button>
+<button class="btn-ghost" onclick="clearWalkinForm()">Clear form</button>
+<button class="btn-ghost" onclick="loadWalkinAdmin()">⟳ Refresh</button>
+</div>
+
+<div class="import-status" id="walkinAdminStatus"></div>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">All walk-ins</h3>
+<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px"><span style="color:#6ee7b7">■</span> Published (live on the public board) &nbsp;·&nbsp; <span style="color:#fbbf24">■</span> Pending (not yet visible)</p>
+<div id="adminWalkins">
+<p style="color:#6a8aaa;font-size:.85rem">Loading walk-ins…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -914,6 +960,8 @@ async function loadAll(page=ccJobsPage){
   loadExamTracker().catch(() => {});
 
   loadSalaryAdmin().catch(() => {});
+
+  loadWalkinAdmin().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -3745,6 +3793,139 @@ async function deleteSalary(id) {
     renderSalaryUnverified();
     toast('Submission deleted.');
     loadSalaryAdmin();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+/* ════════════════════════════════════════════════
+   WALK-INS ADMIN (Feature 6)
+   Add form + all-rows list with Publish/Delete.
+   ════════════════════════════════════════════════ */
+
+let walkinRows = [];
+
+function setWalkinStatus(msg, type='') {
+  const el = $('walkinAdminStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = `import-status show${type ? ' ' + type : ''}`;
+}
+
+async function loadWalkinAdmin() {
+  try {
+    /* Admin fetch: owner key present → returns ALL rows (published + pending). */
+    const d = await api('/api/walkin?admin=all', { key: adminKey });
+    walkinRows = d.walkins || [];
+    renderWalkins();
+  } catch (e) {
+    $('adminWalkins').innerHTML =
+      `<p style="color:#fca5a5;padding:1rem">Could not load walk-ins: ${esc(e.message)}</p>` +
+      (/missing|not exist|PGRST205/i.test(e.message || '')
+        ? '<p style="color:#fbbf24;font-size:.82rem;padding:0 1rem">Run <b>supabase-v22-walkin.sql</b> in the Supabase SQL Editor, then press Refresh.</p>'
+        : '');
+  }
+}
+
+function walkinWhen(x) {
+  const d = x.date ? String(x.date).slice(0, 10) : '';
+  const t = x.time_start ? String(x.time_start).slice(0, 5) : '';
+  return [d, t].filter(Boolean).join(' · ');
+}
+
+function renderWalkins() {
+  if (!walkinRows.length) {
+    $('adminWalkins').innerHTML = '<p style="color:#6a8aaa;padding:.5rem 1rem">No walk-ins yet. Add one with the form above.</p>';
+    return;
+  }
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const sorted = [...walkinRows].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  $('adminWalkins').innerHTML = sorted.map(x => {
+    const isPast = x.date && String(x.date) < todayStr;
+    return `
+    <div class="list-item" data-wi-row="${esc(x.id)}">
+      <div class="list-item-info">
+        <h4>
+          ${esc(x.company)}
+          <span class="status-badge ${x.published ? 'published' : 'unpublished'}">${x.published ? 'Published' : 'Pending'}</span>
+          ${isPast ? '<span class="status-badge expired">Past</span>' : ''}
+        </h4>
+        <p>
+          ${esc(x.roles || '')}
+          · ${esc(walkinWhen(x))}
+          · ${esc(x.venue || '')}${x.city ? ', ' + esc(x.city) : ''}
+          ${x.experience_required ? ' · ' + esc(x.experience_required) : ''}
+        </p>
+      </div>
+      <div class="mini-actions">
+        <button class="${x.published ? '' : 'btn-publish'}" onclick="toggleWalkin('${esc(x.id)}',${!x.published})">${x.published ? 'Unpublish' : '✓ Publish'}</button>
+        <button class="btn-delete" onclick="deleteWalkin('${esc(x.id)}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function createWalkin() {
+  const payload = {
+    company: $('wiCompany').value.trim(),
+    roles: $('wiRoles').value.trim(),
+    date: $('wiDate').value,
+    time_start: $('wiStart').value,
+    time_end: $('wiEnd').value,
+    venue: $('wiVenue').value.trim(),
+    city: $('wiCity').value.trim(),
+    state: $('wiState').value.trim(),
+    experience_required: $('wiExp').value.trim(),
+    qualification: $('wiQual').value.trim(),
+    salary_offered: $('wiSalary').value.trim(),
+    expires_at: $('wiExpires').value,
+    documents_required: $('wiDocs').value.trim(),
+    contact: $('wiContact').value.trim(),
+    source_url: $('wiSource').value.trim(),
+    published: false,
+  };
+  const missing = ['company', 'roles', 'date', 'venue'].filter(f => !payload[f]);
+  if (missing.length) {
+    return setWalkinStatus('Please fill: ' + missing.join(', '), 'error');
+  }
+  const btns = document.querySelectorAll('#panel-walkins .btn-gold');
+  btns.forEach(b => b.disabled = true);
+  try {
+    await api('/api/walkin', { method: 'POST', key: adminKey, body: JSON.stringify(payload) });
+    setWalkinStatus('Walk-in added (pending). Publish it below when ready.', 'success');
+    clearWalkinForm();
+    await loadWalkinAdmin();
+  } catch (e) {
+    setWalkinStatus(`Save failed: ${e.message}`, 'error');
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function clearWalkinForm() {
+  ['wiCompany','wiRoles','wiDate','wiStart','wiEnd','wiVenue','wiCity','wiState','wiExp','wiQual','wiSalary','wiExpires','wiDocs','wiContact','wiSource'].forEach(id => { $(id).value = ''; });
+}
+
+async function toggleWalkin(id, published) {
+  try {
+    await api('/api/walkin', { method: 'PUT', key: adminKey, body: JSON.stringify({ id, published }) });
+    setWalkinStatus(published ? 'Published ✓ — live on the public board' : 'Unpublished.', 'success');
+    toast(published ? 'Published ✓' : 'Unpublished.');
+    await loadWalkinAdmin();
+  } catch (e) {
+    setWalkinStatus(`Failed: ${e.message}`, 'error');
+  }
+}
+
+async function deleteWalkin(id) {
+  if (!confirm('Delete this walk-in permanently?')) return;
+  try {
+    await api('/api/walkin', { method: 'DELETE', key: adminKey, body: JSON.stringify({ id }) });
+    walkinRows = walkinRows.filter(z => z.id !== id);
+    renderWalkins();
+    toast('Walk-in deleted.');
   } catch (e) {
     toast(e.message);
   }

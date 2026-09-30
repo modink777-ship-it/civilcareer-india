@@ -36,6 +36,7 @@ const handlers = {
   '/api/exam-tracker':         () => require('../_api/exam-tracker'),
   '/api/exam-alert-subscribe': () => require('../_api/exam-alert-subscribe'),
   '/api/salary':               () => require('../_api/salary'),
+  '/api/walkin':               () => require('../_api/walkin'),
 };
 
 

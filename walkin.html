@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="/icons/icon-96.png">
+<title>Walk-In Interviews This Week — Civil Engineering | CivilCareer</title>
+<meta name="description" content="Civil engineering walk-in interviews across India — direct hiring drives for Site Engineers, Quantity Surveyors, Planning Engineers and more. No application needed, just show up with your resume. Updated daily.">
+<meta property="og:title" content="Civil Engineering Walk-In Interviews This Week">
+<meta property="og:description" content="Direct hiring drives across India — no application needed, just show up. Dates, venues, documents and contacts in one place.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/walk-in">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Event","name":"Civil Engineering Walk-In Interview Drives","description":"Ongoing walk-in interview drives for civil engineering roles across India — site, planning, quantity surveying, BIM and more. Check the CivilCareer walk-in board for this week's drives with venues, timings and documents.","eventStatus":"https://schema.org/EventScheduled","eventAttendanceMode":"https://schema.org/OfflineEventAttendanceMode","location":{"@type":"Place","name":"Multiple venues across India","address":{"@type":"PostalAddress","addressCountry":"IN"}},"organizer":{"@type":"Organization","name":"CivilCareer","url":"https://civilcareer-india-two.vercel.app/"}}</script>
+<style>
+/* Page-local walk-in styles — colors only via existing CSS variables */
+.walkin-main{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
+.walkin-note{margin:0 0 24px;padding:14px 16px;border-left:3px solid var(--teal);background:#edf6f3;color:#38564f;font-size:13px;border-radius:0 10px 10px 0;line-height:1.6}
+.wi-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow);margin-bottom:26px}
+.wi-filters label{display:grid;gap:5px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.wi-filters select{min-height:44px;min-width:170px;border:1px solid #cfd8e1;border-radius:8px;background:#fbfcfe;padding:0 10px;color:var(--navy);font-size:14px;font-weight:600;outline:0;cursor:pointer}
+.wi-filters select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea812;background:#fff}
+.wi-weeks{display:flex;gap:0;border:1px solid #cfd8e1;border-radius:8px;overflow:hidden}
+.wi-weeks button{border:0;background:#fbfcfe;color:var(--navy);padding:0 16px;min-height:44px;font-size:13px;font-weight:700;cursor:pointer}
+.wi-weeks button.active{background:var(--navy);color:#fff}
+.walkin-card{position:relative;display:flex;flex-direction:column;padding:22px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;transition:.17s;border-top:3px solid var(--blue)}
+.walkin-card:hover{border-color:#aab9c7;box-shadow:var(--shadow)}
+.walkin-card.is-today{border-top-color:#e53e3e}
+.wi-badges{position:absolute;top:-1px;right:14px;display:flex;gap:6px}
+.wi-badge-today{background:#e53e3e;color:#fff;font-size:10px;font-weight:850;letter-spacing:.06em;padding:4px 10px;border-radius:0 0 7px 7px;text-transform:uppercase;animation:wiPulse 1.6s infinite}
+.wi-badge-days{background:#fdf6e3;color:#8a6414;border:1px solid #ecd9a8;border-top:0;font-size:10px;font-weight:750;padding:3px 9px;border-radius:0 0 7px 7px}
+@keyframes wiPulse{0%,100%{opacity:1}50%{opacity:.75}}
+.walkin-card h3{margin:14px 0 4px}
+.wi-roles{font-size:13.5px;font-weight:700;color:var(--navy);line-height:1.5}
+.wi-when{margin:13px 0 0;padding:0;list-style:none;display:grid;gap:7px}
+.wi-when li{display:flex;gap:9px;font-size:13px;color:#41546b;line-height:1.5}
+.wi-when li span{flex:0 0 auto}
+.wi-when b{font-weight:650;color:var(--ink)}
+.wi-actions{display:flex;gap:10px;align-items:center;margin-top:auto;padding-top:16px;flex-wrap:wrap}
+.wi-actions .btn{min-height:38px;padding:0 14px;font-size:12.5px;border-radius:8px}
+.wi-dialog p{margin:6px 0;font-size:14px;line-height:1.6;color:#41546b}
+.wi-dialog b{color:var(--navy)}
+.wi-empty{padding:44px 24px;text-align:center;border:1px dashed #bfcad4;border-radius:var(--radius);background:#fafbfc;grid-column:1/-1}
+.wi-empty h3{margin:0 0 8px}
+.wi-empty p{margin:0;color:var(--muted)}
+@media(max-width:600px){.walkin-main{padding:26px 16px 64px}.wi-filters{align-items:stretch;flex-direction:column}.wi-filters select{width:100%}.wi-weeks button{flex:1;padding:0 8px}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/walk-in" aria-current="page">Walk-Ins</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/salary">Salary Guide</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <p class="eyebrow">Direct hiring · No appointment needed</p>
+    <h1>Walk-In Interviews This Week — Civil Engineering</h1>
+    <p>Direct hiring drives across India — no application needed, just show up with your resume. Dates, venues, timings, documents and contacts, all in one place.</p>
+  </div>
+</section>
+
+<main class="walkin-main">
+
+  <p class="walkin-note">⚡ <b>Walk-ins move fast.</b> Reach the venue early, carry every document listed, and never pay anyone for attending an interview — genuine walk-in drives are always free. Verify the company before you go.</p>
+
+  <div class="wi-filters">
+    <label>City
+      <select id="fCity">
+        <option value="">All cities</option>
+        <option>Bengaluru</option>
+        <option>Mumbai</option>
+        <option>Delhi</option>
+        <option>Hyderabad</option>
+        <option>Chennai</option>
+        <option>Pune</option>
+        <option>Ahmedabad</option>
+        <option>Kolkata</option>
+        <option>Kochi</option>
+        <option>Noida</option>
+        <option>Gurugram</option>
+        <option>Jaipur</option>
+      </select>
+    </label>
+    <div class="wi-weeks" id="weekTabs" role="group" aria-label="Date range">
+      <button class="active" data-week="current">This Week</button>
+      <button data-week="next">Next Week</button>
+      <button data-week="all">All Upcoming</button>
+    </div>
+  </div>
+
+  <div class="cards three" id="walkinGrid">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+
+  <noscript>
+    <p class="wi-empty">Enable JavaScript to load the live walk-in board. For the latest drives, join t.me/CivilCareerIndiaJobs on Telegram.</p>
+  </noscript>
+
+  <section style="margin-top:56px">
+    <h2>How to prepare for a walk-in interview</h2>
+    <div class="article-grid">
+      <article><h3>1. Carry everything</h3><p>Multiple printed resumes, all marksheets, ID proof, passport photos and your certificates — as listed on each drive. Originals plus photocopies.</p></article>
+      <article><h3>2. Arrive early</h3><p>Walk-in drives often stop taking candidates by early afternoon. Reaching the venue within the first two hours gives you the best chance.</p></article>
+      <article><h3>3. Know the company</h3><p>Spend ten minutes on the company's projects before you go. Interviewers notice candidates who already understand what the firm builds.</p></article>
+      <article><h3>4. Stay safe</h3><p>Genuine walk-in drives never charge fees. If anyone demands money for "registration" or "confirmation", walk away and report it.</p></article>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/walk-in">Walk-In Interviews</a><a href="/exam-tracker">Exam Tracker</a><a href="/salary">Salary Guide</a></div>
+    <div><b>Contribute</b><a href="/post-a-job">Post a Job</a><a href="/submit-resource">Submit Resource</a><a href="/report">Report Content</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a><a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">Job Scam Safety</a></div>
+  </div>
+  <div class="container footer-bottom">
+    <p>CivilCareer is an independent information directory. It is not an employer, recruitment agency, government organization or examination authority. Always verify walk-in drive details with the company before attending.</p>
+    <span>© 2026 CivilCareer. All rights reserved.</span>
+  </div>
+</footer>
+
+<dialog id="detailsDialog">
+  <div class="dialog-head">
+    <h2 id="detailsTitle">Walk-In Details</h2>
+    <button type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="dialog-body wi-dialog" id="detailsBody"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ═══ Walk-In Board — vanilla JS, no dependencies ═══ */
+const API = '/api/walkin';
+const CACHE_KEY = 'cc_walkin_cache_v1';
+const CACHE_TTL = 5 * 60 * 1000;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let walkins = [];
+let week = 'current';
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ── date helpers (local-time safe: parse YYYY-MM-DD at midnight) ── */
+function parseDay(value) {
+  if (!value) return null;
+  const d = new Date(String(value).slice(0, 10) + 'T00:00:00');
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function todayMidnight() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+function daysAway(value) {
+  const d = parseDay(value);
+  if (!d) return null;
+  return Math.round((d.getTime() - todayMidnight().getTime()) / 86400000);
+}
+function fmtLong(value) {
+  const d = parseDay(value);
+  if (!d) return String(value || '');
+  return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function fmtTime(t) {
+  if (!t) return '';
+  const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return String(t);
+  let h = Number(m[1]);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m[2]} ${ap}`;
+}
+
+/* ── ICS calendar file — RFC 5545, all values date-based, no API needed ── */
+function icsEscape(v) {
+  return String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+function toIcsDate(dayStr, timeStr, fallbackHour) {
+  const m = String(timeStr || '').match(/^(\d{1,2}):(\d{2})/);
+  const h = m ? Number(m[1]) : fallbackHour;
+  const min = m ? Number(m[2]) : 0;
+  return String(dayStr).slice(0, 10).replace(/-/g, '') + 'T' +
+    String(h).padStart(2, '0') + String(min).padStart(2, '0') + '00';
+}
+function downloadIcs(w) {
+  const day = String(w.date).slice(0, 10);
+  const start = toIcsDate(day, w.time_start, 9);
+  const end = toIcsDate(day, w.time_end, 17);
+  const desc =
+    'Roles: ' + (w.roles || 'Civil Engineering') + '\\n' +
+    'Experience: ' + (w.experience_required || 'Open') + '\\n' +
+    'Bring: ' + (w.documents_required || 'Resume, certificates, passport photos') + '\\n' +
+    'Contact: ' + (w.contact || '-') + '\\n' +
+    'Source: ' + (w.source_url || 'civilcareer-india-two.vercel.app/walk-in');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//CivilCareer//Walk-In Board//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:' + w.id + '@civilcareer',
+    'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
+    'DTSTART:' + start,
+    'DTEND:' + end,
+    'SUMMARY:' + icsEscape((w.company || 'Walk-In') + ' Walk-In Drive' + (w.city ? ' — ' + w.city : '')),
+    'DESCRIPTION:' + icsEscape(desc),
+    'LOCATION:' + icsEscape([w.venue, w.city, w.state].filter(Boolean).join(', ')),
+    'STATUS:CONFIRMED',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT12H',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Walk-in interview tomorrow — carry your documents',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'walkin-' + day + '-' + String(w.company || 'drive').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) + '.ics';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('📅 Calendar file downloaded — check your downloads');
+}
+
+/* ── filtering ── */
+function inRange(w) {
+  const n = daysAway(w.date);
+  if (n === null || n < 0) return false; /* past drives never show */
+  if (week === 'current') return n <= 7;
+  if (week === 'next') return n >= 8 && n <= 14;
+  return true; /* all upcoming */
+}
+function visibleWalkins() {
+  const city = $('fCity').value.trim().toLowerCase();
+  return walkins
+    .filter(w => w.published !== false)
+    .filter(inRange)
+    .filter(w => !city || String(w.city || '').toLowerCase().includes(city));
+}
+
+/* ── card renderer ── */
+function cardHTML(w) {
+  const n = daysAway(w.date);
+  const today = n === 0;
+  const soon = n !== null && n > 0 && n <= 2;
+  return `<article class="walkin-card ${today ? 'is-today' : ''}">
+    <div class="wi-badges">
+      ${today ? '<span class="wi-badge-today">⚡ Today</span>' : soon ? `<span class="wi-badge-days">In ${n} day${n === 1 ? '' : 's'}</span>` : ''}
+    </div>
+    <span class="pill">${esc(w.city || 'India')}</span>
+    <h3>${esc(w.company)}</h3>
+    <p class="wi-roles">${esc(w.roles)}</p>
+    <ul class="wi-when">
+      <li><span>📅</span><b>${esc(fmtLong(w.date))}</b></li>
+      ${(w.time_start || w.time_end) ? `<li><span>🕐</span><b>${esc(fmtTime(w.time_start) || '—')}${w.time_end ? ' – ' + esc(fmtTime(w.time_end)) : ''}</b></li>` : ''}
+      <li><span>📍</span><b>${esc(w.venue)}${w.city ? ', ' + esc(w.city) : ''}</b></li>
+      ${w.experience_required ? `<li><span>🎓</span><b>${esc(w.experience_required)} experience</b></li>` : ''}
+      ${w.qualification ? `<li><span>🎓</span><b>${esc(w.qualification)}</b></li>` : ''}
+      ${w.documents_required ? `<li><span>📋</span><b>Bring:</b>&nbsp;${esc(w.documents_required)}</li>` : ''}
+      ${w.contact ? `<li><span>📞</span><b>${esc(w.contact)}</b></li>` : ''}
+    </ul>
+    <div class="wi-actions">
+      <button class="btn primary" type="button" data-ics="${esc(w.id)}">📅 Add to Calendar</button>
+      <button class="btn secondary" type="button" data-details="${esc(w.id)}">View Details</button>
+      ${w.source_url ? `<a class="text-link" href="${esc(w.source_url)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
+    </div>
+  </article>`;
+}
+
+function render() {
+  const list = visibleWalkins().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  $('walkinGrid').innerHTML = list.length
+    ? list.map(cardHTML).join('')
+    : `<div class="wi-empty">
+         <div style="font-size:36px;margin-bottom:8px">📭</div>
+         <h3>No walk-ins found${$('fCity').value ? ' for ' + esc($('fCity').value) : ''}${week === 'current' ? ' this week' : week === 'next' ? ' next week' : ''}</h3>
+         <p>Check our Telegram channel <a href="https://t.me/CivilCareerIndiaJobs" target="_blank" rel="noopener" style="color:#155ea8;font-weight:700">@CivilCareerIndiaJobs</a> for the latest updates.</p>
+       </div>`;
+}
+
+/* ── events ── */
+$('weekTabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-week]');
+  if (!btn) return;
+  week = btn.getAttribute('data-week');
+  document.querySelectorAll('#weekTabs button').forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+$('fCity').addEventListener('change', render);
+
+document.addEventListener('click', e => {
+  const icsBtn = e.target.closest('[data-ics]');
+  if (icsBtn) {
+    const w = walkins.find(x => x.id === icsBtn.getAttribute('data-ics'));
+    if (w) downloadIcs(w);
+    return;
+  }
+  const detBtn = e.target.closest('[data-details]');
+  if (detBtn) {
+    const w = walkins.find(x => x.id === detBtn.getAttribute('data-details'));
+    if (w) openDetails(w);
+  }
+});
+
+function openDetails(w) {
+  $('detailsTitle').textContent = (w.company || 'Walk-In') + (w.city ? ' — ' + w.city : '');
+  $('detailsBody').innerHTML = `
+    <p><b>📅 Date:</b> ${esc(fmtLong(w.date))}</p>
+    <p><b>🕐 Time:</b> ${esc(fmtTime(w.time_start) || '—')}${w.time_end ? ' – ' + esc(fmtTime(w.time_end)) : ''}</p>
+    <p><b>📍 Venue:</b> ${esc(w.venue)}${w.city ? ', ' + esc(w.city) : ''}${w.state ? ', ' + esc(w.state) : ''}</p>
+    <p><b>👔 Roles:</b> ${esc(w.roles)}</p>
+    ${w.experience_required ? `<p><b>🎓 Experience:</b> ${esc(w.experience_required)}</p>` : ''}
+    ${w.qualification ? `<p><b>🎓 Qualification:</b> ${esc(w.qualification)}</p>` : ''}
+    ${w.salary_offered ? `<p><b>💰 Salary offered:</b> ${esc(w.salary_offered)}</p>` : ''}
+    ${w.documents_required ? `<p><b>📋 Bring:</b> ${esc(w.documents_required)}</p>` : ''}
+    ${w.contact ? `<p><b>📞 Contact:</b> ${esc(w.contact)}</p>` : ''}
+    ${w.source_url ? `<p><b>🔗 Source:</b> <a href="${esc(w.source_url)}" target="_blank" rel="noopener noreferrer" style="color:#155ea8;word-break:break-all">${esc(w.source_url)}</a></p>` : ''}
+    <div class="wi-actions" style="padding-top:14px">
+      <button class="btn primary" type="button" data-ics="${esc(w.id)}">📅 Add to Calendar</button>
+      <p style="margin:0;font-size:12px;color:var(--muted)">Never pay to attend an interview. Verify before you go.</p>
+    </div>`;
+  $('detailsDialog').showModal();
+}
+$('detailsDialog').addEventListener('click', e => {
+  if (e.target.hasAttribute('data-close')) $('detailsDialog').close();
+});
+
+/* ── data loading (5-min sessionStorage cache) ── */
+function readCache() {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+    if (c && Date.now() - c.at < CACHE_TTL && Array.isArray(c.rows)) return c.rows;
+  } catch (_) {}
+  return null;
+}
+function writeCache(rows) {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), rows })); } catch (_) {}
+}
+
+async function loadWalkins() {
+  const cached = readCache();
+  if (cached) { walkins = cached; render(); return; }
+  try {
+    const r = await fetch(API);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to load walk-ins');
+    walkins = data.walkins || [];
+    writeCache(walkins);
+    render();
+  } catch (err) {
+    $('walkinGrid').innerHTML = `<div class="wi-empty"><h3>Could not load walk-ins</h3><p>${esc(err.message)}</p><button class="btn secondary" type="button" onclick="location.reload()">Retry</button></div>`;
+  }
+}
+
+render();
+loadWalkins();
+</script>
+</body>
+</html>

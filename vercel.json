@@ -594,6 +594,14 @@
       "destination": "/salary.html"
     },
     {
+      "source": "/walk-in",
+      "destination": "/walkin.html"
+    },
+    {
+      "source": "/walk-in-interviews",
+      "destination": "/walkin.html"
+    },
+    {
       "source": "/salary/:slug",
       "destination": "/salary.html"
     },
