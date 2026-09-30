@@ -841,6 +841,7 @@ const {
   extractRole: discoveryRole,
   extractCompany: discoveryCompany,
   classifySector: discoverySector,
+  classifyJobSector: discoveryJobSector,
   buildNewsQueryPlan,
   parseRssItems: discoveryParseRssItems,
 } = require('../lib/discovery-core');
@@ -1346,7 +1347,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
 
   const typeFiltered = candidates.filter(x => {
     if (!type || type === 'all') return true;
-    const sector = discoverySector(`${x.title} ${x.snippet}`);
+    const sector = discoveryJobSector(x.title, x.snippet, x.company);
     if (type === 'government') return sector === 'Government';
     if (type === 'private')    return sector === 'Private';
     if (type === 'mnc')        return /mnc|multinational|large employer|corporation|ltd|limited|pvt|private/i.test(`${x.company} ${x.snippet}`);
@@ -1390,7 +1391,7 @@ async function runPublicDiscovery({q, location, type} = {}) {
       location_display:    item.location || '',
       country:             'India',
       description:         item.snippet || `Vacancy discovered from ${item.source}. Verify the original source before publishing.`,
-      sector:              discoverySector(`${item.title} ${item.snippet}`),
+      sector:              discoveryJobSector(item.title, item.snippet, item.company),
       experience_level:    '',
       qualification:       '',
       salary:              item.salary || '',
