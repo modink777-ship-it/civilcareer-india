@@ -170,6 +170,12 @@ function govTableRows(list){
     return `<tr><td><a href="${esc(url)}" data-dynamic-route="true">${esc(j.role||'Untitled role')}</a></td><td>${auth}</td><td>${esc(jobLocs(j).join(', ')||j.location||'—')}</td><td>${dl}</td><td>${esc(String(vac))}</td><td>${closed?'<span class="gov-deadline closed">Closed</span>':'<span class="pill verified">Active</span>'}</td></tr>`;
   }).join('');
 }
+/* Create the gov table skeleton BEFORE rows are filled in — renderGovernment
+   fills the tbody on every fetch, so the table must exist by then. */
+function ensureGovTableSkeleton(){
+  const table=$('governmentJobsTable');if(!table)return;
+  if(!table.querySelector('table'))table.innerHTML='<table class="gov-table"><thead><tr><th>Post</th><th>Authority</th><th>Location</th><th>Deadline</th><th>Vacancies</th><th>Status</th></tr></thead><tbody></tbody></table>';
+}
 function renderGovJobsView(){
   const cards=$('governmentJobs'),table=$('governmentJobsTable');
   if(!cards||!table)return;
@@ -180,9 +186,7 @@ function renderGovJobsView(){
     bCards.classList.toggle('active',!useTable);bTable.classList.toggle('active',useTable);
     bCards.setAttribute('aria-pressed',String(!useTable));bTable.setAttribute('aria-pressed',String(useTable));
   }
-  if(useTable&&!table.innerHTML){
-    table.innerHTML='<table class="gov-table"><thead><tr><th>Post</th><th>Authority</th><th>Location</th><th>Deadline</th><th>Vacancies</th><th>Status</th></tr></thead><tbody></tbody></table>';
-  }
+  if(useTable)ensureGovTableSkeleton();
 }
 function wireGovViewToggle(){
   const bCards=$('govViewCards'),bTable=$('govViewTable');
@@ -319,7 +323,8 @@ async function renderGovernment(page=1){
     const total=Number(meta.total||list.length);
     $('governmentCount').textContent=`${total.toLocaleString('en-IN')} government civil opportunit${total===1?'y':'ies'}`;
     root.innerHTML=list.length?list.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');
-    const tbody=(($('governmentJobsTable')||{}).querySelector)?$('governmentJobsTable').querySelector('tbody'):null;
+    ensureGovTableSkeleton();
+    const tbody=$('governmentJobsTable').querySelector('tbody');
     if(tbody)tbody.innerHTML=govTableRows(list);
     renderGovJobsView();wireGovViewToggle();
     ensurePager('governmentJobsPager','governmentJobs');renderExplorerPager('governmentJobsPager',meta,renderGovernment);
