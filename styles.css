@@ -1989,3 +1989,11 @@ html[data-theme="dark"] .foryou-profile-summary{background:#122B47!important;bor
 /* Form status pills on static pages. */
 html[data-theme="dark"] .form-status.success{background:#123B33!important;color:#5BD6A9!important}
 html[data-theme="dark"] .form-status.error{background:#3A1815!important;color:#FF8A7A!important}
+
+/* Dark-mode round 3: homepage strips missed in round 2. */
+html[data-theme="dark"] .trust-row b,
+html[data-theme="dark"] .safety-badge,
+html[data-theme="dark"] .safety-inline a{color:#E6BC4B!important}
+html[data-theme="dark"] .safety-inline p,
+html[data-theme="dark"] .trust-row span{color:#A7B7CB!important}
+html[data-theme="dark"] .stats-strip{background:#0F2136!important}
