@@ -1686,6 +1686,9 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
   }
 
+  /* The catch-all dispatcher already authenticates auth=1 admin GET requests.
+     Keep the legacy owner check as a guard, but do not short-circuit here: the
+     admin page needs the actual paginated jobs payload, not {authenticated:true}. */
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
     if (!process.env.OWNER_KEY) {
       return res.status(503).json({ ok: false, error: 'Admin authentication is not configured on this deployment' });
@@ -1693,7 +1696,6 @@ module.exports = async function handler(req, res) {
     if (!isAdmin(req)) {
       return res.status(401).json({ ok: false, error: 'Invalid owner key' });
     }
-    return res.status(200).json({ ok: true, authenticated: true });
   }
 
   if (!SUPA || !KEY) {
