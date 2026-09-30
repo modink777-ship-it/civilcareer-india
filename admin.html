@@ -316,7 +316,7 @@ AI never publishes automatically. Verify every field before saving.
 <button class="btn-ghost" onclick="jobEditor()">+ Add manually</button>
 <label>
 Status
-<select id="adminJobStatusFilter" onchange="loadAdminJobs()">
+<select id="adminJobStatusFilter" onchange="loadAll(1)">
 <option value="all">All jobs</option>
 <option value="draft">Draft</option>
 <option value="published">Published</option>
@@ -761,7 +761,8 @@ async function loadAll(page=ccJobsPage){
        admin. Server-side enforced; the browser never holds any secret. */
     settle(async()=>{
       try {
-        const j=await authedApi(`/api/jobs?page=${page}&limit=50&auth=1`,{});
+        const lifecycle=encodeURIComponent($('adminJobStatusFilter')?.value || 'all');
+        const j=await authedApi(`/api/jobs?page=${page}&limit=50&auth=1&lifecycle=${lifecycle}`,{});
         if (!Array.isArray(j.jobs)) throw new Error(j.error || 'Jobs API returned no job list.');
         jobs=j.jobs;
         ccJobsMeta=j.meta||{page,total:jobs.length,pages:1,has_next:false};

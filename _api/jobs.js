@@ -166,6 +166,24 @@ function buildJobFilters(query, { admin = false } = {}) {
   if (admin && query.status) filters.push(`status=eq.${queryValue(query.status)}`);
   if (admin && query.published === 'true') filters.push('published=eq.true');
   if (admin && query.published === 'false') filters.push('published=eq.false');
+
+  // Admin Jobs lifecycle filter. This is applied server-side so switching
+  // Draft/Published/Deleted/Needs to be edited searches the full dataset,
+  // not only the currently loaded pagination page.
+  if (admin && query.lifecycle) {
+    const lifecycle = String(query.lifecycle).toLowerCase();
+    if (lifecycle === 'draft') {
+      filters.push('published=eq.false');
+      filters.push('status=not.eq.Deleted');
+    } else if (lifecycle === 'published') {
+      filters.push('published=eq.true');
+      filters.push('status=not.eq.Deleted');
+    } else if (lifecycle === 'deleted') {
+      filters.push('or=(status.eq.Deleted,review_state.eq.Deleted)');
+    } else if (lifecycle === 'needs_edit') {
+      filters.push('or=(review_state.eq.Needs%20Edit,status.eq.Needs%20Edit)');
+    }
+  }
   if (admin && query.from) filters.push(`created_at.gte.${queryValue(query.from)}`);
   if (admin && query.to) filters.push(`created_at.lte.${queryValue(query.to)}`);
   if (query.status && !admin) {
