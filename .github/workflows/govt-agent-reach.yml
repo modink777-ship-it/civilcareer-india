@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Run Government Agent Reach
-env:
-  SITE_URL: https://civilcareer-india-two.vercel.app
-  OWNER_KEY: ${{ secrets.Summaiya@3951 }}
-       run: |
+        env:
+          SITE_URL: https://civilcareer-india-two.vercel.app
+          OWNER_KEY: ${{ secrets.Summaiya@3951 }}
+        run: |
           set -e
 
           echo "Starting Government Agent Reach..."
