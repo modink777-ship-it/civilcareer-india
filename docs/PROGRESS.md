@@ -121,3 +121,85 @@ self-host the first hero image per route in the repo (est. −0.5–1.0 s LCP).
 3. Configure `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SITE_URL`, `CRON_SECRET` and other production secrets in Vercel/GitHub.
 4. Apply any required Supabase SQL only after schema review/backups; this run did not modify production data.
 5. Perform the final hosting switch away from Vercel Hobby only with owner confirmation, because current Vercel Terms restrict Hobby to personal/non-commercial use.
+
+## 30 Sep 2026 — Phases 5–6 completion session (commits `1bde1b5`…`da34154`, all deployed)
+
+Everything below was verified live in a browser (with the `civilcareer-v22-sw-bypass-20260930`
+service worker's caches cleared before each check) and by `npm test`.
+
+### Phase 5 — UI
+
+- **P5.1 Dark mode** (`1bde1b5`): `styles.css` dark overrides under `html[data-theme="dark"]`;
+  `theme.js` (new) in the `<head>` of all 7 HTML pages (no flash; follows
+  `prefers-color-scheme` by default, override in `localStorage.cc_theme`); `.theme-toggle`
+  nav button cycles moon/sun. Live-verified at 360px in both themes.
+- **P5.3 Government Cards | Table toggle** (`71cd55f`, empty-table fix `94ff4ed`):
+  `#govViewCards`/`#govViewTable` buttons, preference in `localStorage.cc_gov_view`,
+  table built from the same fetched data (Post/Authority/Location/Deadline/Vacancies/Status).
+  First-click-verified live: the initial build filled the `<tbody>` before the table
+  skeleton existed, so the first switch showed 0 rows — `ensureGovTableSkeleton()` now
+  runs on every fetch. Verified: 13 rows render, toggle round-trips, persists.
+- **P5.4 Share / Report on jobs** (`39340c1`, mobile-wrap fix `da34154`): WhatsApp
+  intent + Report link on the compact explorer card (`discovery-v9.js` — this is the
+  renderer the explorers actually use; the earlier v8 `jobCard` edit was shadowed by
+  it), and on the dedicated job detail page (`v8.js` `openJob`). `.cc-compact-actions`
+  now wraps so the links stay on-card at phone widths. Verified live: 40/40 private
+  cards + 13/13 gov cards carry the links; Report routes through the SPA to /report;
+  detail page verified at 375px in dark mode.
+
+### Phase 6 — Growth, compliance, ops
+
+- **P6.1 Cloudflare migration prep** (`7b10771`): `docs/06-cloudflare-migration.md` —
+  Node catch-all → Pages Function adapter mapping, `_redirects`/`_headers`, cron →
+  GitHub Actions, exact switch steps and rollback plan (DNS TTL 60s first; Vercel
+  stays intact as rollback). No DNS changes made.
+- **P6.2 DPDP deletion** (`073cb7c`): `_api/account.js` `delete_account` deletes all
+  candidate-owned rows then bans the auth user via the Supabase admin API;
+  `account.js` "Delete my data" button with confirm; `legal.html` DPDP sections
+  (consent basis, withdraw/erase, access/correct, nominate, data-collection and
+  listing-source disclosure, grievance redressal).
+- **P6.3 Programmatic SEO** (`5a869b9`, regex fix `66d9233`): 10 roles × 12 cities
+  path space (`/site-engineer-jobs-in-pune` etc.) pre-seeds the private explorer
+  filters; unique title/description with the real live count, rewritten hero, and
+  BreadcrumbList + FAQPage JSON-LD from live data (counts never invented).
+  Verified live on /site-engineer-jobs-in-pune. Known cosmetic: after boot the SPA
+  pushState rewrites the URL to /private-jobs; page works, URL cosmetics later.
+- **P6.4 Admin KPI report** (`f51d0ae`): `_api/analytics.js` GET (owner-gated) adds a
+  `kpi` block (weekly active users, new alert subscribers, applications tracked,
+  apply rate per 1k views, page views, listings verified, scam reports) computed
+  with `Promise.allSettled`; `admin.html` renders it above the metrics. Owner-key
+  session required to view live.
+- **P6.5 Salary explorer — SKIPPED**: API returns parseable salary data for only
+  ~13 of 300 rows in messy free text; an explorer would look invented. Prerequisite:
+  numeric salary normalization at ingestion.
+
+### Data-quality fix found during verification (`dfdaca7`)
+
+The owner's round-1 sector reclass (13 rows) was undone within ~2 days: discovery
+drafts were classified from `title + snippet` only — the company name never reached
+the Private veto, and the bare token `department` matched JD section headers like
+"Department: Projects / Estimation". `classifyJobSector(title, snippet, company)` now
+passes the employer through, and `department`/`commission` were replaced with the
+qualified forms (`department of`, `public works`, `examination authority`,
+`public service commission`). Simulated against the live rows before shipping:
+11 of 13 flip to Private, 2 genuine rows stay Government, zero regressions in
+`tests/phase12-sector-quality.test.js` (extended with the live JD-header cases).
+Owner SQL for the 11 live rows: `supabase-v18-sector-fix.sql` (also contains the
+still-pending subscriber dedupe + unique constraint).
+
+### Verification this session
+
+- `npm test`: 28 passed, 0 failed (includes new sector regression cases).
+- `node scripts/launch-check.js`: 0 errors, 1 warning (`SITE_URL` not set locally).
+- Live checks: gov Cards|Table toggle round-trip with data; share/report links on
+  cards and detail; /report SPA route; programmatic page meta/JSON-LD/filters;
+  dark + light at 375px (gov cards, job detail); contact form 201 with Turnstile
+  token, 400 without (earlier in session).
+
+### Waiting on owner (this session)
+
+1. Run `supabase-v18-sector-fix.sql` steps 1–2 (reclass ~11 rows) and step 3
+   (subscriber dedupe + `subscribers_email_key` unique constraint) if not yet run.
+2. Sign in at /admin with the allowlisted owner email to see the KPI report.
+3. Brevo SMTP (Phase 2.9 steps above) — still pending; blocks the second-account
+   admin-denial demo and alert emails.
