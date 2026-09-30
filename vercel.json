@@ -590,6 +590,14 @@
       "destination": "/exam-tracker.html"
     },
     {
+      "source": "/salary",
+      "destination": "/salary.html"
+    },
+    {
+      "source": "/salary/:slug",
+      "destination": "/salary.html"
+    },
+    {
       "source": "/career-guides",
       "destination": "/career-guides.html"
     },

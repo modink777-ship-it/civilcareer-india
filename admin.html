@@ -265,6 +265,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="agent-reach">Agent Reach</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
+  <button data-tab="salary">Salary</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -618,6 +619,36 @@ Exam tracker — public page /exam-tracker
 
 </div>
 
+<div class="panel" id="panel-salary">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Salary transparency — public page /salary
+</p>
+
+<h3>Salary data review</h3>
+<p>Anonymous submissions land here <b>unverified</b>. They still count toward public ranges until reviewed — mark them verified when the numbers look plausible for the role/city, or delete obvious mistakes (e.g. ₹50,000/year or ₹2 crore fresher salaries).</p>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="loadSalaryAdmin()">⟳ Refresh</button>
+</div>
+
+<div class="import-status" id="salaryAdminStatus"></div>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">Aggregated view — role × city</h3>
+<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">What the public explorer shows: median, range and data points per role + city.</p>
+<div id="salaryAggregate">
+<p style="color:#6a8aaa;font-size:.85rem">Loading aggregate…</p>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Unverified submissions</h3>
+<div id="adminSalary">
+<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -881,6 +912,8 @@ async function loadAll(page=ccJobsPage){
   loadAgentReach();
 
   loadExamTracker().catch(() => {});
+
+  loadSalaryAdmin().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -3599,6 +3632,122 @@ Internal notes (never public)
       st.textContent = err.message;
     }
   };
+}
+
+/* ════════════════════════════════════════════════
+   SALARY ADMIN (Feature 3)
+   Unverified queue + aggregated role × city table.
+   ════════════════════════════════════════════════ */
+
+let salaryRows = [];
+
+function setSalaryStatus(msg, type='') {
+  const el = $('salaryAdminStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = `import-status show${type ? ' ' + type : ''}`;
+}
+
+const inrShort = n => {
+  n = Number(n || 0);
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2) + ' Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+  return '₹' + Number(n).toLocaleString('en-IN');
+};
+
+async function loadSalaryAdmin() {
+  try {
+    const d = await api('/api/salary?admin=1', { key: adminKey });
+    salaryRows = d.unverified || [];
+    renderSalaryAggregate(d.aggregateTable || []);
+    renderSalaryUnverified();
+  } catch (e) {
+    $('adminSalary').innerHTML =
+      `<p style="color:#fca5a5;padding:1rem">Could not load salary data: ${esc(e.message)}</p>` +
+      (/missing|not exist|PGRST205/i.test(e.message || '')
+        ? '<p style="color:#fbbf24;font-size:.82rem;padding:0 1rem">Run <b>supabase-v21-salary.sql</b> in the Supabase SQL Editor, then press Refresh.</p>'
+        : '');
+  }
+}
+
+function renderSalaryAggregate(rows) {
+  if (!rows.length) {
+    $('salaryAggregate').innerHTML = '<p style="color:#6a8aaa;padding:.5rem 1rem">No data yet.</p>';
+    return;
+  }
+  $('salaryAggregate').innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="source-health-table" style="width:100%">
+      <thead><tr><th>Role</th><th>City</th><th>Points</th><th>Min</th><th>Median</th><th>Max</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td style="color:#fff;font-weight:650">${esc(r.role)}</td>
+          <td>${esc(r.city || '—')}</td>
+          <td>${Number(r.data_points).toLocaleString('en-IN')}</td>
+          <td style="color:#6ee7b7">${inrShort(r.min_sal)}</td>
+          <td style="color:#c9973c;font-weight:750">${inrShort(r.median_sal)}</td>
+          <td style="color:#93c5fd">${inrShort(r.max_sal)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+function renderSalaryUnverified() {
+  if (!salaryRows.length) {
+    $('adminSalary').innerHTML = '<p style="color:#6a8aaa;padding:.5rem 1rem">No unverified submissions. All caught up ✓</p>';
+    return;
+  }
+  $('adminSalary').innerHTML = salaryRows.map(x => `
+    <div class="list-item" data-sal-row="${esc(x.id)}">
+      <div class="list-item-info">
+        <h4>
+          ${esc(x.role)}
+          <span style="color:#c9973c;font-weight:800">· ${inrShort(x.salary_annual)}/yr</span>
+          ${x.is_verified ? '<span class="status-badge published">Verified</span>' : '<span class="status-badge unpublished">Unverified</span>'}
+        </h4>
+        <p>
+          ${esc(x.company_type || '—')} · ${esc(x.city || '—')}${x.state ? ', ' + esc(x.state) : ''}
+          · ${esc(String(x.experience_years ?? '—'))} yrs
+          · submitted ${esc(String(x.created_at || '').slice(0, 10))}
+        </p>
+      </div>
+      <div class="mini-actions">
+        <button class="btn-publish" onclick="verifySalary('${esc(x.id)}',true)">✓ Verify</button>
+        <button onclick="verifySalary('${esc(x.id)}',false)">Unverify</button>
+        <button class="btn-delete" onclick="deleteSalary('${esc(x.id)}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function verifySalary(id, isVerified) {
+  try {
+    await api('/api/salary', {
+      method: 'PATCH',
+      key: adminKey,
+      body: JSON.stringify({ id, is_verified: isVerified }),
+    });
+    salaryRows = salaryRows.filter(z => z.id !== id);
+    renderSalaryUnverified();
+    setSalaryStatus(isVerified ? 'Submission verified ✓' : 'Submission unverified.', 'success');
+    toast(isVerified ? 'Verified ✓' : 'Unverified.');
+    loadSalaryAdmin();
+  } catch (e) {
+    setSalaryStatus(`Failed: ${e.message}`, 'error');
+  }
+}
+
+async function deleteSalary(id) {
+  if (!confirm('Delete this salary submission permanently?')) return;
+  try {
+    await api('/api/salary', { method: 'DELETE', key: adminKey, body: JSON.stringify({ id }) });
+    salaryRows = salaryRows.filter(z => z.id !== id);
+    renderSalaryUnverified();
+    toast('Submission deleted.');
+    loadSalaryAdmin();
+  } catch (e) {
+    toast(e.message);
+  }
 }
 
 /* TABS */

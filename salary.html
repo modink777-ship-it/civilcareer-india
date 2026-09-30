@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="/icons/icon-96.png">
+<title>Civil Engineer Salary India 2026 | CivilCareer</title>
+<meta name="description" content="Real civil engineering salaries in India — Site Engineer, Planning Engineer, Quantity Surveyor, Structural Engineer and more. Compare by city, experience and company type. Anonymous salary data from working engineers.">
+<meta property="og:title" content="Civil Engineer Salary in India 2026 — Real Data by Role, City & Experience">
+<meta property="og:description" content="Compare real civil engineering salaries across India by role, city, experience and company type. Submit your salary anonymously.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/salary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is the average civil engineer salary in India?","acceptedAnswer":{"@type":"Answer","text":"Entry-level civil engineers in India typically earn ₹3 lakh to ₹4.5 lakh per year, mid-level engineers with 3–7 years of experience earn ₹5 lakh to ₹10 lakh, and experienced professionals in MNCs or specialised roles can earn ₹12 lakh to ₹20 lakh+ per year. Use the salary explorer on this page for role, city and company-type specific figures."}},{"@type":"Question","name":"Which civil engineering role has the highest salary in India?","acceptedAnswer":{"@type":"Answer","text":"Quantity Surveyors and Planning Engineers at MNCs are among the highest-paid mainstream civil roles, frequently reaching ₹12 lakh to ₹20 lakh per year with 5+ years of experience. BIM engineers in Bengaluru also command strong salaries. PSU and government roles offer lower starting pay but stronger job security and allowances."}},{"@type":"Question","name":"Do government civil engineering jobs pay more than private jobs?","acceptedAnswer":{"@type":"Answer","text":"At entry level, government and PSU civil engineering roles often pay more than private-sector site roles (₹4.2 lakh+ versus ₹3.2 lakh for JE vs site engineer in many cities). Private and MNC roles overtake government pay at mid-to-senior experience levels, especially for planning, BIM and quantity surveying roles."}}]}</script>
+<style>
+/* Page-local salary styles — colors only via existing CSS variables */
+.salary-main{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
+.salary-head{display:flex;justify-content:space-between;align-items:end;gap:18px;flex-wrap:wrap}
+.salary-note{margin:0 0 22px;padding:14px 16px;border-left:3px solid var(--teal);background:#edf6f3;color:#38564f;font-size:13px;border-radius:0 10px 10px 0;line-height:1.6}
+.sal-filters{display:grid;grid-template-columns:1.3fr 1fr .9fr 1fr;gap:12px;padding:18px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+.sal-filters label{display:grid;gap:5px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sal-filters select{min-height:44px;border:1px solid #cfd8e1;border-radius:8px;background:#fbfcfe;padding:0 10px;color:var(--navy);font-size:14px;font-weight:600;outline:0;cursor:pointer}
+.sal-filters select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea812;background:#fff}
+.sal-seo{margin:26px 0 34px;padding:22px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.sal-seo h2{font-size:22px;margin:0 0 10px}
+.sal-seo p{margin:0;font-size:15px;line-height:1.75;color:#41546b}
+.sal-seo small{display:block;margin-top:10px;color:var(--muted);font-size:12px}
+.sal-card{display:flex;flex-direction:column;gap:2px;padding:22px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;transition:.17s}
+.sal-card:hover{border-color:#aab9c7;box-shadow:var(--shadow)}
+.sal-card h3{margin:10px 0 2px}
+.sal-card .sal-sub{color:#536174;font-weight:650;font-size:13px}
+.sal-range{margin:12px 0 4px;font-size:22px;font-weight:850;color:var(--navy);letter-spacing:-.4px}
+.sal-range small{display:block;font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.sal-median{display:inline-flex;align-items:baseline;gap:6px;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--soft);border:1px solid #dbe5ef;font-size:13px;color:#33475e}
+.sal-median b{color:var(--navy);font-size:16px}
+.sal-points{margin-top:10px;font-size:12px;color:var(--muted);font-weight:650}
+.sal-bar{height:7px;border-radius:4px;background:#e8edf2;overflow:hidden;margin-top:12px;position:relative}
+.sal-bar i{position:absolute;top:0;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--blue),#4a94d8)}
+.sal-submit-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.sal-privacy{margin:14px 0 0;padding:12px 14px;border:1px dashed var(--line);border-radius:9px;background:#f8fbfe;font-size:12.5px;color:var(--muted);line-height:1.6}
+.sal-empty{padding:38px 24px;text-align:center;border:1px dashed #bfcad4;border-radius:var(--radius);background:#fafbfc}
+.sal-empty p{margin:6px 0 0;color:var(--muted)}
+@media(max-width:860px){.sal-filters{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.salary-main{padding:26px 16px 64px}.sal-filters{grid-template-columns:1fr}.sal-submit-grid{grid-template-columns:1fr}.sal-range{font-size:19px}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/salary" aria-current="page">Salary Guide</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/study-materials">Study Materials</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <p class="eyebrow">Salary transparency for civil engineers</p>
+    <h1>Civil Engineer Salary in India</h1>
+    <p>Real numbers from working engineers — not job-board guesses. Compare salaries by role, city, experience and company type, then help the next engineer by adding yours anonymously.</p>
+  </div>
+</section>
+
+<main class="salary-main">
+
+  <p class="salary-note">🔒 <b>100% anonymous.</b> No name, no email, no login — salary submissions store only the numbers you type below. Nothing can be traced back to you.</p>
+
+  <!-- ═══ SECTION A — SALARY EXPLORER ═══ -->
+  <section aria-label="Salary explorer">
+    <div class="sal-filters" id="salaryFilters">
+      <label>Role
+        <select id="fRole">
+          <option value="">All roles</option>
+          <option>Site Engineer</option>
+          <option>Planning Engineer</option>
+          <option>Quantity Surveyor</option>
+          <option>Structural Engineer</option>
+          <option>Junior Engineer</option>
+          <option>Assistant Engineer</option>
+          <option>Project Engineer</option>
+          <option>BIM Engineer</option>
+          <option>QA/QC Engineer</option>
+          <option>Estimation Engineer</option>
+          <option>Highway Engineer</option>
+          <option>Geotechnical Engineer</option>
+          <option>Survey Engineer</option>
+          <option>Billing Engineer</option>
+          <option>Contracts Engineer</option>
+        </select>
+      </label>
+      <label>City
+        <select id="fCity">
+          <option value="">All cities</option>
+          <option>Bengaluru</option>
+          <option>Mumbai</option>
+          <option>Delhi</option>
+          <option>Hyderabad</option>
+          <option>Chennai</option>
+          <option>Pune</option>
+          <option>Ahmedabad</option>
+          <option>Kolkata</option>
+          <option>Kochi</option>
+          <option>Noida</option>
+          <option>Gurugram</option>
+          <option>Jaipur</option>
+        </select>
+      </label>
+      <label>Experience
+        <select id="fExp">
+          <option value="">Any</option>
+          <option value="0">Fresher (0–2 yrs)</option>
+          <option value="3">3–5 years</option>
+          <option value="6">6–9 years</option>
+          <option value="10">10+ years</option>
+        </select>
+      </label>
+      <label>Company type
+        <select id="fType">
+          <option value="">All</option>
+          <option>Private</option>
+          <option>Government</option>
+          <option>PSU</option>
+          <option>MNC</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Pre-rendered SEO copy — server-free but indexable; updates with filters -->
+    <div class="sal-seo" id="seoBlock">
+      <h2 id="seoTitle">Civil Engineer Salary in India 2026</h2>
+      <p id="seoText">The average salary for a civil engineer in India ranges from ₹3.2 lakh to ₹14 lakh per year depending on role, city and experience. Entry-level site engineers earn around ₹3.2 lakh per year, while experienced quantity surveyors and planning engineers at MNCs earn up to ₹14 lakh or more. Government junior engineers start near ₹4.2 lakh under the 7th Pay Commission.</p>
+      <small id="seoMeta">Updated with every new anonymous salary report — last refreshed today.</small>
+    </div>
+
+    <div class="cards three" id="salaryResults">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+
+    <noscript>
+      <p class="sal-empty">Enable JavaScript to explore live salary data — or use the average figures above, which cover the most common roles and cities.</p>
+    </noscript>
+  </section>
+
+  <!-- ═══ SECTION B — SUBMIT YOUR SALARY ═══ -->
+  <section id="submitSection" style="margin-top:56px" aria-label="Submit your salary anonymously">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Salary transparency</p>
+        <h2>Submit Your Salary — Anonymously</h2>
+      </div>
+    </div>
+    <form class="panel-form" id="salaryForm" style="max-width:760px">
+      <div class="sal-submit-grid">
+        <label>Role *
+          <select name="role" required>
+            <option value="">Select your role</option>
+            <option>Site Engineer</option>
+            <option>Planning Engineer</option>
+            <option>Quantity Surveyor</option>
+            <option>Structural Engineer</option>
+            <option>Junior Engineer</option>
+            <option>Assistant Engineer</option>
+            <option>Project Engineer</option>
+            <option>BIM Engineer</option>
+            <option>QA/QC Engineer</option>
+            <option>Estimation Engineer</option>
+            <option>Highway Engineer</option>
+            <option>Geotechnical Engineer</option>
+            <option>Survey Engineer</option>
+            <option>Billing Engineer</option>
+            <option>Contracts Engineer</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Company type *
+          <select name="company_type" required>
+            <option value="">Select</option>
+            <option>Private</option>
+            <option>Government</option>
+            <option>PSU</option>
+            <option>MNC</option>
+          </select>
+        </label>
+        <label>City *
+          <input name="city" required maxlength="60" placeholder="e.g. Bengaluru">
+        </label>
+        <label>State
+          <input name="state" maxlength="60" placeholder="e.g. Karnataka">
+        </label>
+        <label>Years of experience *
+          <input name="experience_years" type="number" min="0" max="45" required placeholder="e.g. 4">
+        </label>
+        <label>Annual CTC (₹ per year) *
+          <input name="salary_annual" type="number" min="50000" max="20000000" required placeholder="e.g. 650000">
+          <span style="font-size:11.5px;color:var(--muted);font-weight:600">Fixed + variable, before tax. e.g. ₹6.5 LPA = 650000</span>
+        </label>
+      </div>
+      <input class="trap" name="website" tabindex="-1" autocomplete="off">
+      <button class="btn primary" type="submit" style="margin-top:18px">Submit Anonymously</button>
+      <div class="form-status" id="salaryStatus"></div>
+      <div class="sal-privacy">ℹ No name, email or phone is collected. Your submission is combined with others and shown only as aggregated ranges and medians. Numbers are reviewed to remove obvious errors before verification.</div>
+    </form>
+    <div class="sal-empty" id="salaryThanks" hidden style="margin-top:18px">
+      <div style="font-size:34px">🙏</div>
+      <h3>Thank you!</h3>
+      <p>Your anonymous data helps 40 lakh civil engineers.</p>
+    </div>
+  </section>
+
+  <section style="margin-top:56px">
+    <h2>About this salary data</h2>
+    <p style="max-width:800px;line-height:1.75;color:#516174">CivilCareer's salary pages collect anonymous annual compensation reports from civil engineers working across India — on sites, in planning departments, in consultancies and in government offices. Every figure shown is an aggregate: we display ranges and medians, never individual submissions. Government and PSU figures reflect Pay-Commission and PSU scales; private and MNC figures come from engineers like you. A submission marked <b>verified</b> has been reviewed by the CivilCareer team against job postings and market ranges; unverified figures still count toward ranges until review completes. Salary negotiation starts with knowing the numbers — and no one should have to ask a recruiter twice.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exam-tracker">Exam Tracker</a><a href="/salary">Salary Guide</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Contribute</b><a href="/post-a-job">Post a Job</a><a href="/submit-resource">Submit Resource</a><a href="#submitSection">Submit Salary</a><a href="/report">Report Content</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a><a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">Job Scam Safety</a></div>
+  </div>
+  <div class="container footer-bottom">
+    <p>CivilCareer is an independent information directory. It is not an employer, recruitment agency, government organization or examination authority. Salary figures are self-reported estimates — always confirm compensation directly with the employer.</p>
+    <span>© 2026 CivilCareer. All rights reserved.</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ═══ Salary page — vanilla JS, no dependencies ═══ */
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const ROLE_CITY_LABELS = { 'All India': 'Pan-India' };
+const CACHE_KEY = 'cc_salary_cache_v1';
+const CACHE_TTL = 5 * 60 * 1000;
+
+let currentRows = [];
+let currentQuery = {};
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+const inr = n => {
+  n = Number(n || 0);
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(n % 10000000 ? 2 : 0) + ' Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(n % 100000 ? 1 : 0) + 'L';
+  return '₹' + n.toLocaleString('en-IN');
+};
+const expLabel = e => {
+  if (e == null || e === '') return 'Any experience';
+  const n = Number(e);
+  if (n === 0) return 'Fresher (0–2 yrs)';
+  if (n >= 10) return '10+ years';
+  return `${n}–${n + 2} years`;
+};
+
+/* ── filters → query ── */
+function readFilters() {
+  const q = {};
+  if ($('fRole').value) q.role = $('fRole').value;
+  if ($('fCity').value) q.city = $('fCity').value;
+  if ($('fExp').value !== '') q.experience = $('fExp').value;
+  if ($('fType').value) q.company_type = $('fType').value;
+  return q;
+}
+
+function qs(q) {
+  const p = new URLSearchParams();
+  Object.entries(q).forEach(([k, v]) => { if (v !== '' && v != null) p.set(k, v); });
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
+/* ── SEO text — pre-rendered in HTML, refreshed from live data ── */
+function renderSeo(rows, q) {
+  const role = q.role || 'Civil Engineer';
+  const city = q.city ? (ROLE_CITY_LABELS[q.city] || q.city) : 'India';
+  $('seoTitle').textContent = `${role} Salary in ${city} 2026`;
+
+  if (!rows.length) {
+    $('seoText').textContent = `We don't have enough verified ${role} salary reports for ${city} yet. Be the first — submit your salary anonymously below, and the next engineer searching for "${role} salary in ${city}" will see real numbers.`;
+    $('seoMeta').textContent = 'Aggregated from anonymous salary reports by working civil engineers.';
+    return;
+  }
+
+  const all = rows.flatMap(r => [r.min_sal, r.max_sal]).filter(Boolean);
+  const min = Math.min(...all);
+  const max = Math.max(...all);
+  const points = rows.reduce((s, r) => s + Number(r.data_points || 0), 0);
+  const entry = rows.reduce((m, r) => Math.min(m, r.min_sal ?? Infinity), Infinity);
+  const senior = rows.reduce((m, r) => Math.max(m, r.max_sal ?? 0), 0);
+
+  $('seoText').textContent =
+    `The average salary for a ${role} in ${city} ranges from ${inr(min)} to ${inr(max)} per year, based on ${points} anonymous salary report${points === 1 ? '' : 's'}. ` +
+    `Entry-level ${role}s in ${city} earn around ${inr(entry)} per year, while experienced professionals earn up to ${inr(senior)} or more. ` +
+    `Government and PSU roles follow Pay-Commission scales; private and MNC pay varies with project size and specialization.`;
+  $('seoMeta').textContent = `Aggregated from ${points} anonymous salary report${points === 1 ? '' : 's'} · role: ${role} · location: ${city}`;
+}
+
+/* ── result cards ── */
+function cardHTML(r) {
+  const globalMin = currentRows.length ? Math.min(...currentRows.map(x => x.min_sal ?? Infinity)) : 0;
+  const globalMax = currentRows.length ? Math.max(...currentRows.map(x => x.max_sal ?? 0)) : 1;
+  const span = Math.max(1, globalMax - (Number.isFinite(globalMin) ? globalMin : 0));
+  const left = Math.max(0, ((r.min_sal ?? 0) - (Number.isFinite(globalMin) ? globalMin : 0)) / span * 100);
+  const width = Math.max(6, ((r.max_sal ?? 0) - (r.min_sal ?? 0)) / span * 100);
+
+  return `<article class="sal-card">
+    <div><span class="pill">${esc(r.company_type || 'All types')}</span></div>
+    <h3>${esc(r.role)}</h3>
+    <p class="sal-sub">${esc(ROLE_CITY_LABELS[r.city] || r.city || 'Pan-India')} · ${esc(expLabel(r.experience_years))}</p>
+    <div class="sal-range"><small>Range</small>${inr(r.min_sal)} – ${inr(r.max_sal)}<span style="font-size:12px;font-weight:600;color:var(--muted)"> / year</span></div>
+    <span class="sal-median">Median <b>${inr(r.median_sal)}</b></span>
+    <div class="sal-bar"><i style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%"></i></div>
+    <p class="sal-points">Based on ${Number(r.data_points).toLocaleString('en-IN')} data point${Number(r.data_points) === 1 ? '' : 's'}</p>
+  </article>`;
+}
+
+function renderResults(rows, q) {
+  currentRows = rows;
+  $('salaryResults').innerHTML = rows.length
+    ? rows.map(cardHTML).join('')
+    : `<div class="sal-empty" style="grid-column:1/-1">
+         <h3>No salary data for this combination yet</h3>
+         <p>Try fewer filters — or <a href="#submitSection" class="text-link">submit your salary anonymously</a> and help the next engineer.</p>
+       </div>`;
+  renderSeo(rows, q);
+}
+
+/* ── data loading (5-min sessionStorage cache) ── */
+function readCache(key) {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+    if (c && c.k === key && Date.now() - c.at < CACHE_TTL && Array.isArray(c.rows)) return c.rows;
+  } catch (_) {}
+  return null;
+}
+function writeCache(key, rows) {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ k: key, at: Date.now(), rows })); } catch (_) {}
+}
+
+let loadSeq = 0;
+async function loadSalaries() {
+  const q = readFilters();
+  const key = JSON.stringify(q);
+  currentQuery = q;
+
+  const cached = readCache(key);
+  if (cached) { renderResults(cached, q); return; }
+
+  const seq = ++loadSeq;
+  try {
+    const r = await fetch('/api/salary' + qs(q));
+    const data = await r.json().catch(() => ({}));
+    if (seq !== loadSeq) return; /* a newer filter change superseded this */
+    if (!r.ok) throw new Error(data.error || 'Failed to load salary data');
+    const rows = data.groups || [];
+    writeCache(key, rows);
+    renderResults(rows, q);
+  } catch (err) {
+    if (seq !== loadSeq) return;
+    $('salaryResults').innerHTML = `<div class="sal-empty" style="grid-column:1/-1"><h3>Could not load salary data</h3><p>${esc(err.message)}</p><button class="btn secondary" type="button" onclick="loadSalaries()">Retry</button></div>`;
+  }
+}
+window.loadSalaries = loadSalaries;
+
+/* ── filter events (debounced; select changes are user-paced anyway) ── */
+['fRole', 'fCity', 'fExp', 'fType'].forEach(id => $(id).addEventListener('change', loadSalaries));
+
+/* ── anonymous submit ── */
+$('salaryForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.website.value) return; /* honeypot */
+
+  const payload = {
+    role: f.role.value,
+    company_type: f.company_type.value,
+    city: f.city.value.trim(),
+    state: f.state.value.trim(),
+    experience_years: f.experience_years.value,
+    salary_annual: f.salary_annual.value,
+  };
+
+  const st = $('salaryStatus');
+  st.className = 'form-status show';
+  st.textContent = 'Submitting anonymously…';
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/salary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not save your submission. Please try again.');
+
+    /* success: hide form, show thank-you, refresh data */
+    f.reset();
+    st.className = 'form-status';
+    st.textContent = '';
+    $('salaryThanks').hidden = false;
+    $('salaryThanks').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    sessionStorage.removeItem(CACHE_KEY);
+    loadSalaries();
+    toast('Salary submitted — thank you! 🙏');
+    setTimeout(() => { $('salaryThanks').hidden = true; }, 9000);
+  } catch (err) {
+    st.className = 'form-status show error';
+    st.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+loadSalaries();
+</script>
+</body>
+</html>
