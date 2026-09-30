@@ -205,3 +205,25 @@ still-pending subscriber dedupe + unique constraint).
 2. Sign in at /admin with the allowlisted owner email to see the KPI report.
 3. Brevo SMTP (Phase 2.9 steps above) — still pending; blocks the second-account
    admin-denial demo and alert emails.
+
+## 30 Sep 2026 — dark-mode contrast + admin auth hotfixes (commits `75ada8e`…`64aa5d2`)
+
+- **Dark mode invisible text**: scripted WCAG scan (alpha-composited backgrounds) found
+  headings stuck at light `--navy` (worst 1.0:1 — literally invisible), brand-blue
+  links at ~2.4:1, and light surfaces never darkened (`.empty-state`, `.quick-card`,
+  `.filters`, dialogs, chips, trust/safety strips). Rounds 2–3 in `styles.css` flip
+  them; verified by re-scan.
+- **Admin "Administrator access denied" + all tabs on Loading**: three stacked causes —
+  (a) `ADMIN_EMAIL` on the deployment differed from the address the owner signs in
+  with (sign-in succeeded, every gated call 403'd); the allowlist now accepts a
+  comma-separated list, dot-insensitive for Gmail. (b) `loadAll` used one
+  `Promise.all` so one failed endpoint blanked every tab — sources now settle
+  independently with retry notes. (c) Supabase access tokens expire after ~1h with
+  no refresh — 401s now rotate once via `/api/admin-auth` (new, server-verified
+  allowlist) and retry; `auth=1` GETs on jobs/exams/materials select the admin scope
+  so drafts, Pending Review and agent-reach items are visible in Jobs/Discovery/
+  Agent Reach. SW cache bumped to `civilcareer-v23-admin-auth-fix-20260930`.
+- **Footer layout**: below 1100px the grid drops to two columns; the bottom row is
+  tightened (no large gaps).
+- **Owner steps**: add the sign-in address to `ADMIN_EMAIL` in Vercel (comma-separated
+  with the existing one), redeploy, hard-refresh /admin (or clear SW caches once).
