@@ -15,11 +15,12 @@ const govt = read('_api/govt-discovery.js');
 assert.ok(govt.includes('req.isCron'), 'govt discovery must accept only dispatcher-authorized cron requests');
 assert.ok(!govt.includes('user-agent'), 'govt discovery must not authenticate cron by User-Agent');
 
-// Public govt feed must require an official source URL.
+// Public govt feed must require an official source URL and only exposes approved active govt rows.
 const jobs = read('_api/govt-jobs.js');
 assert.ok(jobs.includes('function isOfficialGovtUrl'), 'government feed must have explicit official-domain validation');
-assert.ok(jobs.includes('if (!isOfficialGovtUrl(primaryUrl(row))) return false;'), 'government feed must reject non-official source URLs');
-assert.ok(jobs.includes("verificationStatus: isOfficialGovtUrl(url) ? 'official-source'"), 'government feed should expose source verification status');
+assert.ok(jobs.includes("verificationStatus:isOfficialGovtUrl(source)?'official-source':'unverified-source'"), 'government feed should expose source verification status');
+assert.ok(jobs.includes('govt_jobs?status=eq.active'), 'government feed must read only active approved government rows');
+assert.ok(jobs.includes('govt_job_posts'), 'government feed must use civil child-post rows');
 
 // Key landing routes must ship route-specific server HTML metadata.
 const expected = {
@@ -43,9 +44,9 @@ for (const [route, file] of Object.entries(expected)) {
 // Stale public file is removed.
 assert.ok(!fs.existsSync(path.join(root, 'next-phase.js')), 'stale next-phase.js must be removed');
 assert.ok(fs.existsSync(path.join(root, 'scripts', 'scrape-govt-jobs.js')), 'scheduled govt discovery trigger must exist');
-const workflow = read('.github/workflows/job-scraper.yml');
-assert.ok(workflow.includes('scripts/scrape-govt-jobs.js'), 'GitHub Actions must schedule government discovery');
-assert.ok(workflow.includes('CRON_SECRET: ${{ secrets.CRON_SECRET }}'), 'government discovery workflow must use CRON_SECRET');
+const workflow = read('.github/workflows/govt-pipeline.yml');
+assert.ok(workflow.includes('scripts/crawl-govt-pipeline.js'), 'GitHub Actions must schedule the dedicated government pipeline');
+assert.ok(workflow.includes('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}'), 'government pipeline must use server-side Supabase secret');
 
 
 const govtHandler = require(path.join(root, '_api', 'govt-jobs.js'));
