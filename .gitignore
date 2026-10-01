@@ -1,0 +1,21 @@
+# Secrets — never commit real credentials (.env.example is the template)
+.env
+.env.*
+!.env.example
+
+# Local tool / agent state
+.freebuff/
+
+# Snapshot archives and scratch exports (kept outside the repo, but
+# never allow them to slip in)
+*.zip
+live-jobs-tmp.json
+
+# Dependencies and build output
+node_modules/
+dist/
+.vercel/
+
+# Logs and OS noise
+*.log
+.DS_Store
