@@ -338,6 +338,9 @@ module.exports = async function handler(req, res) {
     return j(res, 405, { error: 'Method not allowed.' });
   } catch (e) {
     console.error('profiles error:', e.message);
+    if (/PGRST205|relation .* does not exist|Could not find the table/i.test(e.message || '')) {
+      return j(res, 503, { error: 'Portfolio tables are not created yet. Run supabase-v25-portfolio-reviews.sql in the Supabase SQL editor.' });
+    }
     return j(res, 500, { error: 'Failed to process profile request' });
   }
 };
