@@ -44,6 +44,9 @@ const handlers = {
   '/api/companies':            () => require('../_api/companies'),
   '/api/companies/review':     () => require('../_api/companies'),
   '/api/seo-page':             () => require('../_api/seo-page'),
+  '/api/blog':                 () => require('../_api/blog'),
+  '/api/interview':            () => require('../_api/interview'),
+  '/api/telegram/webhook':     () => require('../_api/telegram-webhook'),
 };
 
 
@@ -85,6 +88,20 @@ const ADMIN_RULES = {
   '/api/companies':          req => ((req.method !== 'GET' && req.method !== 'POST')
                                || new URL(req.url, 'http://localhost').searchParams.get('status') === 'pending')
                                && !hasValidOwnerKey(req),
+  '/api/blog':               req => (req.method !== 'GET' || Boolean(req.headers['x-owner-key']))
+                               && !hasValidOwnerKey(req),
+  '/api/interview':          req => ((req.method !== 'GET' && req.method !== 'POST')
+                               || new URL(req.url, 'http://localhost').searchParams.get('status') === 'pending'
+                               || Boolean(req.headers['x-owner-key']))
+                               && !hasValidOwnerKey(req),
+  /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
+     Real Telegram updates are POSTs without those markers → public. */
+  '/api/telegram/webhook':   req => {
+                               if (req.method !== 'POST') return !hasValidOwnerKey(req);
+                               const b = req.body;
+                               const isMgmt = b && typeof b === 'object' && (b.action || b.key);
+                               return Boolean(isMgmt) && !hasValidOwnerKey(req);
+                             },
 };
 
 function isValidCronRequest(req) {
@@ -178,6 +195,14 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* Feature E: POST /api/interview/upvote is the same handler, flagged. */
+    if (pathName === '/api/interview/upvote') {
+      pathName = '/api/interview';
+      req.query = Object.assign({}, req.query, { action: 'upvote' });
+    }
+
+    /* Feature D: the bot webhook must bypass the blanket /api/telegram
+       admin rule, which is why it lives on its own path. */
     const match = handlers[pathName];
     if (!match) {
       return sendJson(res, 404, { error: 'Not found', path: pathName });

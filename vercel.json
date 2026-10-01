@@ -146,6 +146,22 @@
       "destination": "/profile.html"
     },
     {
+      "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/interview",
+      "destination": "/interview.html"
+    },
+    {
+      "source": "/interview/:slug",
+      "destination": "/interview.html"
+    },
+    {
       "source": "/:seoSlug",
       "destination": "/api/seo-page?slug=:seoSlug"
     }

@@ -269,6 +269,8 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="subscribers">Subscribers</button>
   <button data-tab="reviews">Reviews</button>
+  <button data-tab="blog">Blog</button>
+  <button data-tab="interview">Interview Q&A</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -746,6 +748,72 @@ Walk-in interview board — public page /walk-in
 
 </div>
 
+<div class="panel" id="panel-blog">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Blog — public page /blog
+</p>
+
+<h3>Blog posts</h3>
+<p>Articles appear on the public <a href="/blog" target="_blank" rel="noopener" style="color:#c9973c">Blog page</a> only when published. Content supports plain text with **bold** and ### headings, separated by blank lines.</p>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="loadBlogAdmin()">⟳ Refresh</button>
+<button class="btn-ghost" onclick="blogEditor()">+ New post</button>
+</div>
+
+<div class="import-status" id="blogAdminStatus"></div>
+</div>
+
+<div class="import-box" id="blogEditor" style="display:none;margin-top:14px">
+<h3 id="blogEditorTitle">New post</h3>
+<label>Title *<input id="blogTitle" placeholder="e.g. How to crack SSC JE in first attempt"></label>
+<label>Slug<span>Leave blank to auto-generate from the title</span><input id="blogSlug" placeholder="ssc-je-first-attempt"></label>
+<div class="field-grid">
+<label>Category<select id="blogCategory"><option>Career</option><option>Exams</option><option>Interviews</option><option>Salary</option><option>Technology</option><option>News</option></select></label>
+<label>Author<input id="blogAuthor" placeholder="CivilCareer Team"></label>
+<label>Tags (comma separated)<input id="blogTags" placeholder="ssc je, government, preparation"></label>
+</div>
+<label>Excerpt<span>Shown on cards and in search results</span><textarea id="blogExcerpt" rows="2"></textarea></label>
+<label>Content<textarea id="blogContent" rows="12" placeholder="Write the article here. Blank line = new paragraph. **bold** and ### heading work."></textarea></label>
+<div class="import-actions">
+<button class="btn-gold" onclick="saveBlogPost(true)">Publish</button>
+<button class="btn-ghost" onclick="saveBlogPost(false)">Save draft</button>
+<button class="btn-ghost" onclick="hideBlogEditor()">Cancel</button>
+</div>
+<div class="import-status" id="blogEditorStatus"></div>
+</div>
+
+<div id="adminBlog" style="overflow-x:auto">
+<p style="color:#6a8aaa;font-size:.85rem">Loading posts…</p>
+</div>
+
+</div>
+
+<div class="panel" id="panel-interview">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Interview Q&A — public page /interview
+</p>
+
+<h3>Community question approvals</h3>
+<p>Visitor-submitted interview questions land here <b>unapproved</b>. Approve after a sanity read — they appear on the public <a href="/interview" target="_blank" rel="noopener" style="color:#c9973c">Interview Questions page</a>. Reject removes the question permanently.</p>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="loadInterviewAdmin()">⟳ Refresh</button>
+</div>
+
+<div class="import-status" id="interviewAdminStatus"></div>
+</div>
+
+<div id="adminInterview" style="overflow-x:auto">
+<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -1017,6 +1085,10 @@ async function loadAll(page=ccJobsPage){
   loadWaSubs().catch(() => {});
 
   loadCompanyReviews().catch(() => {});
+
+  loadBlogAdmin().catch(() => {});
+
+  loadInterviewAdmin().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -4156,6 +4228,193 @@ async function approveReview(id, approve) {
     ccReviews = ccReviews.filter(x => x.id !== id);
     renderCompanyReviews();
     toast(approve ? 'Review approved ✓' : 'Review rejected.');
+  } catch (e) {
+    toast(e.message || 'Action failed.');
+  }
+}
+
+/* ══════════ BLOG (Feature C) ══════════ */
+
+let ccBlog = [];
+let ccBlogEditingSlug = null;
+
+async function loadBlogAdmin() {
+  const root = $('adminBlog');
+  if (!root) return;
+  root.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">Loading posts…</p>';
+  try {
+    const d = await authedApi('/api/blog', {});
+    ccBlog = d.posts || [];
+    renderBlogAdmin();
+  } catch (e) {
+    root.innerHTML = `<p style="color:#fca5a5;padding:1rem">Failed to load posts: ${esc(e.message||'Unknown error')} — <button class="btn-ghost" onclick="loadBlogAdmin()">Retry</button></p>`;
+  }
+}
+
+function renderBlogAdmin() {
+  const root = $('adminBlog');
+  if (!root) return;
+  if (!ccBlog.length) {
+    root.innerHTML = '<p style="color:#6a8aaa;padding:1rem">No posts yet. Click “+ New post” to write the first article.</p>';
+    return;
+  }
+  root.innerHTML = ccBlog.map(p => `
+    <div class="list-item" data-blog-slug="${esc(p.slug)}">
+      <div class="list-item-info">
+        <h4>${esc(p.title)}
+          <span class="status-badge ${p.is_published ? 'published' : 'unpublished'}">${p.is_published ? 'Published' : 'Draft'}</span>
+        </h4>
+        <p>${esc(p.category || 'Career')} · ${esc(p.author || 'CivilCareer Team')} · ${(p.views || 0)} views · /blog/${esc(p.slug)}</p>
+      </div>
+      <div class="mini-actions">
+        <a href="/blog/${esc(p.slug)}" target="_blank" rel="noopener">View</a>
+        <button onclick="blogEditor('${esc(p.slug)}')">Edit</button>
+        <button class="btn-publish" onclick="toggleBlogPublish('${esc(p.slug)}')">${p.is_published ? 'Unpublish' : 'Publish'}</button>
+        <button class="btn-delete" onclick="deleteBlogPost('${esc(p.slug)}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function blogEditor(slug) {
+  ccBlogEditingSlug = slug || null;
+  const box = $('blogEditor');
+  if (!box) return;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (slug) {
+    const p = ccBlog.filter(x => x.slug === slug)[0];
+    if (!p) { toast('Post not found.'); return; }
+    $('blogEditorTitle').textContent = 'Edit post';
+    $('blogTitle').value = p.title || '';
+    $('blogSlug').value = p.slug || '';
+    $('blogCategory').value = p.category || 'Career';
+    $('blogAuthor').value = p.author || 'CivilCareer Team';
+    $('blogTags').value = (p.tags || []).join(', ');
+    $('blogExcerpt').value = p.excerpt || '';
+    $('blogContent').value = p.content || '';
+  } else {
+    $('blogEditorTitle').textContent = 'New post';
+    ['blogTitle','blogSlug','blogTags','blogExcerpt','blogContent'].forEach(id => { $(id).value = ''; });
+    $('blogAuthor').value = 'CivilCareer Team';
+  }
+}
+
+function hideBlogEditor() {
+  ccBlogEditingSlug = null;
+  const box = $('blogEditor');
+  if (box) box.style.display = 'none';
+}
+
+async function saveBlogPost(publish) {
+  const title = ($('blogTitle').value || '').trim();
+  if (!title) { toast('Title is required.'); return; }
+  const st = $('blogEditorStatus');
+  st.className = 'import-status show';
+  st.textContent = 'Saving…';
+  try {
+    await authedApi('/api/blog', {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        slug: ($('blogSlug').value || '').trim() || undefined,
+        category: $('blogCategory').value,
+        author: $('blogAuthor').value,
+        tags: $('blogTags').value,
+        excerpt: $('blogExcerpt').value,
+        content: $('blogContent').value,
+        is_published: Boolean(publish),
+      }),
+    });
+    st.className = 'import-status show success';
+    st.textContent = publish ? 'Published ✓' : 'Draft saved ✓';
+    toast(publish ? 'Post published.' : 'Draft saved.');
+    hideBlogEditor();
+    await loadBlogAdmin();
+  } catch (e) {
+    st.className = 'import-status show error';
+    st.textContent = e.message || 'Save failed.';
+  }
+}
+
+async function toggleBlogPublish(slug) {
+  const p = ccBlog.filter(x => x.slug === slug)[0];
+  if (!p) return;
+  try {
+    await authedApi('/api/blog', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: p.title, slug: p.slug, category: p.category, author: p.author,
+        tags: (p.tags || []).join(','), excerpt: p.excerpt, content: p.content,
+        is_published: !p.is_published,
+      }),
+    });
+    toast(p.is_published ? 'Post unpublished.' : 'Post published.');
+    await loadBlogAdmin();
+  } catch (e) {
+    toast(e.message || 'Action failed.');
+  }
+}
+
+async function deleteBlogPost(slug) {
+  if (!confirm('Permanently delete this post?')) return;
+  try {
+    await authedApi(`/api/blog?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+    ccBlog = ccBlog.filter(x => x.slug !== slug);
+    renderBlogAdmin();
+    toast('Post deleted.');
+  } catch (e) {
+    toast(e.message || 'Delete failed.');
+  }
+}
+
+/* ══════════ INTERVIEW Q&A (Feature E) ══════════ */
+
+let ccInterview = [];
+
+async function loadInterviewAdmin() {
+  const root = $('adminInterview');
+  if (!root) return;
+  root.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>';
+  try {
+    const d = await authedApi('/api/interview?status=pending', {});
+    ccInterview = d.questions || [];
+    renderInterviewAdmin();
+  } catch (e) {
+    root.innerHTML = `<p style="color:#fca5a5;padding:1rem">Failed to load submissions: ${esc(e.message||'Unknown error')} — <button class="btn-ghost" onclick="loadInterviewAdmin()">Retry</button></p>`;
+  }
+}
+
+function renderInterviewAdmin() {
+  const root = $('adminInterview');
+  if (!root) return;
+  if (!ccInterview.length) {
+    root.innerHTML = '<p style="color:#6a8aaa;padding:1rem">No questions awaiting moderation. Visitor submissions appear here automatically on refresh.</p>';
+    return;
+  }
+  root.innerHTML = ccInterview.map(q => `
+    <div class="list-item" data-question-id="${esc(q.id)}">
+      <div class="list-item-info">
+        <h4>${esc(q.company)}
+          <span class="status-badge unpublished">${esc(q.round || 'Technical')} · ${esc(q.difficulty || 'medium')}</span>
+        </h4>
+        <p>${esc(q.role)}${q.year ? ' · ' + esc(q.year) : ''} · ${esc(String(q.created_at || '').slice(0, 10))}</p>
+        <p style="white-space:pre-wrap;color:#cbd5e1">${esc(q.question)}</p>
+        ${q.answer ? `<p><b>Answer:</b> ${esc(q.answer)}</p>` : ''}
+      </div>
+      <div class="mini-actions">
+        <button class="btn-publish" onclick="approveQuestion('${esc(q.id)}',true)">Approve</button>
+        <button class="btn-delete" onclick="approveQuestion('${esc(q.id)}',false)">Reject</button>
+      </div>
+    </div>`).join('');
+}
+
+async function approveQuestion(id, approve) {
+  if (!approve && !confirm('Reject and permanently delete this question?')) return;
+  try {
+    await authedApi('/api/interview', { method: 'PATCH', body: JSON.stringify({ id, is_approved: approve }) });
+    ccInterview = ccInterview.filter(x => x.id !== id);
+    renderInterviewAdmin();
+    toast(approve ? 'Question approved ✓' : 'Question rejected.');
   } catch (e) {
     toast(e.message || 'Action failed.');
   }

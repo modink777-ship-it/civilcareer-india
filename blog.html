@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Civil Engineering Blog — Careers, Exams, Salary & Site Guides | CivilCareer</title>
+<meta name="description" content="Practical guides for Indian civil engineers — how to get site engineer jobs, crack SSC JE and GATE, salary expectations, interview preparation and site execution tips.">
+<meta property="og:title" content="Civil Engineering Blog | CivilCareer">
+<meta property="og:description" content="Career guides, exam strategies and site tips for India's civil engineers.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/blog">
+<style>
+.bl-main{max-width:860px;margin:0 auto;padding:32px 20px 90px}
+.bl-hero{margin-bottom:26px}
+.bl-hero h1{margin:0 0 8px;font-size:1.9rem;letter-spacing:-.02em}
+.bl-hero p{color:var(--text);margin:0;max-width:70ch;line-height:1.65}
+.bl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));margin-top:22px}
+.bl-card{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--white);display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit;transition:box-shadow .15s}
+.bl-card:hover{box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08))}
+.bl-badge{align-self:flex-start;background:var(--soft);color:var(--blue);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:3px 10px;border-radius:99px}
+.bl-card h2{font-size:16px;margin:0;line-height:1.4}
+.bl-card p{color:var(--text);font-size:13.5px;margin:0;line-height:1.55}
+.bl-meta{color:var(--muted);font-size:12px;margin-top:auto}
+.bl-post h1{font-size:1.75rem;letter-spacing:-.02em;line-height:1.25;margin:6px 0 10px}
+.bl-post .bl-lead{color:var(--muted);font-size:1.02rem;line-height:1.6}
+.bl-content{margin-top:24px;line-height:1.75;color:var(--ink);font-size:15.5px}
+.bl-content p{margin:0 0 16px}
+.bl-content strong{color:var(--navy)}
+.bl-content h3{margin:26px 0 10px;font-size:1.15rem;color:var(--navy)}
+.bl-share{display:flex;gap:10px;flex-wrap:wrap;margin:28px 0 6px;padding-top:18px;border-top:1px solid var(--line)}
+.bl-share button,.bl-share a{border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:10px;padding:9px 16px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+.bl-share button:hover,.bl-share a:hover{border-color:var(--teal);color:var(--teal)}
+.bl-cta{margin-top:30px;border:1px solid var(--line);border-left:4px solid var(--teal);background:var(--soft);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.bl-cta h3{margin:0 0 4px;font-size:1rem}
+.bl-cta p{margin:0;color:var(--text);font-size:13.5px}
+.btn{border:none;border-radius:10px;padding:11px 20px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.teal{background:var(--teal);color:#fff}
+.btn.teal:hover{filter:brightness(1.08)}
+.bl-back{font-size:13.5px;text-decoration:none;color:var(--blue)}
+.bl-loading,.bl-error{color:var(--muted);padding:24px 0;font-size:14.5px}
+.bl-tags{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 0}
+.bl-tags span{background:var(--soft);color:var(--text);font-size:11.5px;padding:3px 10px;border-radius:99px}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/blog" aria-current="page">Blog</a>
+    </nav>
+  </div>
+</header>
+
+<main class="bl-main" id="blMain">
+  <div class="bl-loading">Loading articles…</div>
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/interview">Interview Questions</a><a href="/walk-in">Walk-In Interviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+var SITE = location.origin;
+var CH_URL = 'https://t.me/CivilCareerIndiaJobs';
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function slugFromPath(){
+  var m = location.pathname.match(/^\/blog\/([^\/]+)\/?$/);
+  return m ? decodeURIComponent(m[1]).replace(/[^a-z0-9-]/gi,'').toLowerCase() : '';
+}
+function fmtDate(v){
+  var d = new Date(v);
+  return isNaN(d) ? '' : d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+}
+function shareButtons(title){
+  var url = SITE + location.pathname;
+  var text = encodeURIComponent(title + ' — CivilCareer');
+  return '<div class="bl-share" role="group" aria-label="Share this article">' +
+    '<a href="https://wa.me/?text=' + text + '%20' + encodeURIComponent(url) + '" target="_blank" rel="noopener">💬 WhatsApp</a>' +
+    '<a href="https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + text + '" target="_blank" rel="noopener">✈️ Telegram</a>' +
+    '<button type="button" onclick="copyLink(this)">🔗 Copy link</button>' +
+  '</div>';
+}
+function copyLink(btn){
+  var url = SITE + location.pathname;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function(){ btn.textContent='✓ Copied!'; setTimeout(function(){btn.textContent='🔗 Copy link';},1800); });
+  } else {
+    var ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');btn.textContent='✓ Copied!';setTimeout(function(){btn.textContent='🔗 Copy link';},1800);}catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+function ctaBlock(){
+  return '<div class="bl-cta">' +
+    '<div><h3>Never miss a job alert</h3><p>Daily civil engineering jobs, exam updates and walk-in drives — free on Telegram.</p></div>' +
+    '<a class="btn teal" href="' + CH_URL + '" target="_blank" rel="noopener">Join Telegram →</a>' +
+  '</div>';
+}
+
+/* Minimal markdown: **bold**, ### headings, blank-line paragraphs. */
+function renderContent(raw){
+  var blocks = String(raw||'').split(/\n{2,}/);
+  return blocks.map(function(b){
+    b = b.trim();
+    if(!b) return '';
+    var html = esc(b)
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/^###\s+(.+)$/,'<h3>$1</h3>');
+    if(html.indexOf('<h3>')===0) return html;
+    return '<p>'+html.replace(/\n/g,'<br>')+'</p>';
+  }).join('');
+}
+
+/* ── LIST VIEW ─────────────────────────────────────────────── */
+function renderList(){
+  document.title = 'Civil Engineering Blog — Careers, Exams, Salary & Site Guides | CivilCareer';
+  var main = document.getElementById('blMain');
+  main.innerHTML =
+    '<div class="bl-hero"><h1>Civil Engineering Blog</h1>' +
+    '<p>Practical, India-specific guides for civil engineers — landing your first site job, cracking government exams, understanding salaries and growing from site to planning to design roles.</p></div>' +
+    '<div class="bl-grid" id="blGrid"><div class="bl-loading">Loading articles…</div></div>' + ctaBlock();
+
+  fetch('/api/blog').then(function(r){return r.json();}).then(function(d){
+    var posts = d.posts || [];
+    var grid = document.getElementById('blGrid');
+    if(!posts.length){
+      grid.innerHTML = '<p class="bl-loading">No articles published yet — check back soon.</p>';
+      return;
+    }
+    grid.innerHTML = posts.map(function(p){
+      return '<a class="bl-card" href="/blog/'+encodeURIComponent(p.slug)+'">' +
+        '<span class="bl-badge">'+esc(p.category||'Career')+'</span>' +
+        '<h2>'+esc(p.title)+'</h2>' +
+        (p.excerpt ? '<p>'+esc(p.excerpt)+'</p>' : '') +
+        '<span class="bl-meta">'+fmtDate(p.updated_at||p.created_at)+' · '+(p.views||0)+' views</span>' +
+      '</a>';
+    }).join('');
+  }).catch(function(){
+    document.getElementById('blGrid').innerHTML = '<p class="bl-error">Could not load articles. <button class="btn teal" onclick="renderList()">Retry</button></p>';
+  });
+}
+
+/* ── POST VIEW ─────────────────────────────────────────────── */
+function renderPost(slug){
+  var main = document.getElementById('blMain');
+  main.innerHTML = '<div class="bl-loading">Loading article…</div>';
+  fetch('/api/blog?slug='+encodeURIComponent(slug)).then(function(r){
+    if(!r.ok) throw new Error('not found');
+    return r.json();
+  }).then(function(d){
+    var p = d.post;
+    if(!p) throw new Error('not found');
+    var title = p.title + ' | CivilCareer Blog';
+    document.title = title;
+    var desc = document.querySelector('meta[name="description"]');
+    if(desc && p.excerpt) desc.setAttribute('content', p.excerpt);
+    var can = document.querySelector('link[rel="canonical"]');
+    if(can) can.setAttribute('href', SITE + '/blog/' + encodeURIComponent(p.slug));
+
+    main.innerHTML =
+      '<p><a href="/blog" class="bl-back">← All articles</a></p>' +
+      '<article class="bl-post">' +
+        '<span class="bl-badge">'+esc(p.category||'Career')+'</span>' +
+        '<h1>'+esc(p.title)+'</h1>' +
+        '<p class="bl-lead">'+esc(p.excerpt||'')+'</p>' +
+        '<p class="bl-meta">By '+esc(p.author||'CivilCareer Team')+' · '+fmtDate(p.updated_at||p.created_at)+' · '+(p.views||0)+' views</p>' +
+        '<div class="bl-content">'+renderContent(p.content||p.excerpt||'')+'</div>' +
+        (p.tags && p.tags.length ? '<div class="bl-tags">'+p.tags.map(function(t){return '<span>'+esc(t)+'</span>';}).join('')+'</div>' : '') +
+        shareButtons(p.title) +
+      '</article>' + ctaBlock();
+  }).catch(function(){
+    main.innerHTML =
+      '<p><a href="/blog" class="bl-back">← All articles</a></p>' +
+      '<p class="bl-error">This article does not exist or is not published yet.</p>' + ctaBlock();
+  });
+}
+
+/* ── ROUTER ────────────────────────────────────────────────── */
+(function(){
+  var slug = slugFromPath();
+  if(slug) renderPost(slug); else renderList();
+})();
+</script>
+</body>
+</html>

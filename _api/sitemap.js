@@ -88,6 +88,8 @@ module.exports = async function handler(req, res) {
       ['/exam-tracker', '0.8', 'daily'],
       ['/walk-in', '0.8', 'daily'],
       ['/companies', '0.7', 'daily'],
+      ['/blog', '0.6', 'weekly'],
+      ['/interview', '0.7', 'daily'],
       ['/create-profile', '0.7', 'weekly'],
       ['/talent', '0.7', 'daily'],
       ['/civil-engineer-jobs', '0.8', 'daily'],
