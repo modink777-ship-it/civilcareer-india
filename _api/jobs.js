@@ -2020,6 +2020,8 @@ module.exports = async function handler(req, res) {
 // Internals exposed for unit-style testing only. Vercel invokes the exported
 // handler function directly; these extra properties never execute in prod.
 module.exports._internal = {
+  escapeHtml,
+  stripHtml,
   pipelineValidateItem,
   discoveryFetchHopin,
   discoveryFetchJobicy,

@@ -982,6 +982,7 @@ async function refreshSession(){
     adminRefresh=x.refresh_token||adminRefresh;
     sessionStorage.setItem('cc_admin_token',adminKey);
     sessionStorage.setItem('cc_admin_refresh',adminRefresh);
+    setAdminSessionCookie(adminKey,x.expires_in||3600);
     return true;
   }catch{return false}
 }
@@ -1015,6 +1016,14 @@ function formObject(form){
   );
 }
 
+/* A3 gate: /admin is served by /api/admin-page only after the
+   caller's session passes the admin allowlist. The cookie carries
+   the same short-lived ACCESS token that is already in
+   sessionStorage (never the refresh token) so the gate recognises
+   this browser on the next /admin visit. */
+function setAdminSessionCookie(token,maxAge){document.cookie='cc_admin_session='+encodeURIComponent(token)+'; path=/; same-site=lax; max-age='+(parseInt(maxAge,10)||3600);}
+function clearAdminSessionCookie(){document.cookie='cc_admin_session=; path=/; same-site=lax; max-age=0';}
+
 /* AUTH — Supabase password login. Server enforces ADMIN_EMAIL / ADMIN_USER_ID. */
 async function getAuthConfig(){
   const r=await fetch('/api/auth-config',{cache:'no-store'});
@@ -1035,6 +1044,7 @@ async function doLogin(){
     adminRefresh=x.refresh_token||'';
     sessionStorage.setItem('cc_admin_token',adminKey);
     if(adminRefresh)sessionStorage.setItem('cc_admin_refresh',adminRefresh);
+    setAdminSessionCookie(adminKey,x.expires_in||3600);
     $('loginError').style.display='none';
     await showDashboard();
   }catch(e){
@@ -1042,7 +1052,7 @@ async function doLogin(){
     $('loginError').textContent=e.message||'Administrator sign-in failed.';
   }
 }
-function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
+function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');clearAdminSessionCookie();$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
 async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboard').style.display='block'; await loadAll(); }
 (function restoreAdminSession(){
   adminKey=sessionStorage.getItem('cc_admin_token')||'';

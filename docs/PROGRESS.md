@@ -259,3 +259,74 @@ still-pending subscriber dedupe + unique constraint).
   test run above.
 - Open blockers: none for P0.
 - Owner manual steps: none new yet (v27 already applied in Supabase).
+
+## 2 Oct 2026 — Phase 1: security hardening (branch `security-hardening`)
+
+- A1 subscribe service-role: VERIFIED — `_api/subscribe.js` writes
+  to `/rest/v1/subscribers` with the service-role Bearer; the anon
+  key is never used. Re-tested end-to-end by the new suite.
+- A2 RLS-dependent features: `_api/account.js` verifies the bearer
+  against Supabase Auth, then scopes every read/write to
+  `user_id = u.id` with the service-role key; Supabase RLS
+  policies remain the backstop (owner audit via docs/rls-audit.sql).
+- A3 admin page gated: `/admin` and `/admin.html` rewrite to the new
+  `_api/admin-page` function. Anonymous and non-allowlisted callers
+  get a minimal sign-in shell; the generated `admin.html` bundle is
+  served only after `verifyAdminToken` (Bearer or `cc_admin_session`
+  cookie). `admin.html` sets/clears the session cookie on
+  login/refresh/signOut; `scripts/build-admin-bundle.js` regenerates
+  `_api/admin-page-html.js` (tests assert a byte-identical
+  round-trip between bundle and source admin.html).
+- A4 anonymous writes hardened: `subscribe.js` now runs per-IP
+  rateLimit (10) → honeypot → Turnstile verification → validation
+  → service-role write. `account.js` POST/DELETE writes are
+  per-IP rate-limited (60) BEFORE auth so unauthenticated floods
+  are bounded too.
+- A5 RLS audit script: added `docs/rls-audit.sql` — read-only,
+  uses `pg_tables.rowsecurity` + `has_table_privilege` + a
+  `pg_policies` inventory (deliberately NOT
+  `information_schema.tables.row_security`, the v27 verify-section
+  mistake). Owner runs it in the Supabase SQL editor.
+- A6 secret hygiene: full `git log -p --all` scan found ZERO
+  secrets (no provider tokens, JWTs, AWS/GitHub/Slack keys, or
+  PEM material). Rotation list (variable NAMES only, never
+  values) written to `docs/secret-rotation-list.md`;
+  `.gitignore` reconfirmed; gitleaks workflow already active.
+- A7 render-time escaping: `_api/seo-page.js` escapes every scraped
+  field in job cards (esc()) AND inside the JSON-LD `<script>`
+  blocks (jsonLd() unicode-escapes `<`, `>`, `&`, U+2028/U+2029
+  to prevent script breakouts); `_api/jobs.js` HTML render escapes
+  role/company/location via escapeHtml; `_api/account.js`
+  cleanProfile already type-checks and slices. CSP still carries
+  `script-src 'unsafe-inline'` because existing pages use inline
+  scripts — tightening it is a breaking change, deferred and
+  documented here per the gap report.
+- A8 regression tests: `tests/phase1-security.test.js` now has 27
+  tests — escapeHtml unit, seo-page escaping, subscribe (405 GET,
+  429 after 10, honeypot with no DB write, 400 missing Turnstile,
+  200 with verified token + service-role Bearer, fail-open on
+  Turnstile network error, 400 invalid email/pref), account (429
+  after 60 writes, 401 unauthenticated even when unconfigured),
+  admin-page gate (shell for anonymous, fail-closed when
+  unconfigured, shell for non-allowlisted valid session, full
+  bundle for allowlisted, cookie credential, dot-insensitive Gmail,
+  ADMIN_USER_ID match, vercel.json /admin + /admin.html rewrites,
+  dispatcher registration, bundle == admin.html byte-for-byte,
+  admin.html cookie wiring), and stray `api/govt-discovery.js`
+  stays removed.
+- Two regressions found by the new tests and fixed: (1) seo-page
+  JSON-LD interpolated raw scraped text — fixed with jsonLd();
+  (2) `_api/account.js` userFromToken called config() before
+  checking the Authorization header, so unauthenticated requests on
+  an unconfigured deployment returned 500 instead of 401 — the
+  header check now runs first.
+- Suite: 59 tests, 56 pass, 3 fail — the 3 are the documented P0
+  baseline failures (missing `.github/workflows/govt-pipeline.yml`,
+  a P8 deliverable; docs/00-gap-report.md §2). No P1 regressions.
+- Status words: A1–A8 IMPLEMENTED and TESTED by the new suite;
+  A5's SQL audit is owner-run (no Supabase access from this
+  environment, so it is not claimed as executed).
+- Open blockers: none.
+- Owner manual steps: run `docs/rls-audit.sql` in Supabase and
+  review the §2/§6 output (expect zero rows); keep
+  `docs/secret-rotation-list.md` for any future exposure.

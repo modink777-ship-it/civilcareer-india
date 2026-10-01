@@ -7,6 +7,8 @@
    all endpoints, identical behavior.
    ═══════════════════════════════════════════════════════════════════ */
 
+const { verifyAdminToken } = require('../lib/security');
+
 const handlers = {
   '/api/jobs': () => require('../_api/jobs'),
   '/api/account': () => require('../_api/account'),
@@ -16,6 +18,9 @@ const handlers = {
   '/api/agent-reach-ingest': () => require('../_api/agent-reach-ingest'),
   '/api/analytics': () => require('../_api/analytics'),
   '/api/admin-auth': () => require('../_api/admin-auth'),
+  /* A3: the /admin rewrite lands here. The handler runs the same
+     allowlist check as requireAdmin before serving the admin bundle. */
+  '/api/admin-page': () => require('../_api/admin-page'),
   '/api/auth-config': () => require('../_api/auth-config'),
   '/api/employer-submissions': () => require('../_api/employer-submissions'),
   '/api/employers': () => require('../_api/employers'),
@@ -128,37 +133,14 @@ function hasValidOwnerKey(req) {
   return false;
 }
 
+/* The token check itself lives in lib/security.js (verifyAdminToken)
+   so the gated admin page (/api/admin-page) enforces the identical
+   allowlist rule as every admin JSON endpoint. */
 async function requireAdmin(req) {
   const auth = String(req.headers.authorization || '');
   if (!/^Bearer\s+\S+$/i.test(auth)) return { ok: false, status: 401, error: 'Admin authentication required.' };
   const token = auth.replace(/^Bearer\s+/i, '').trim();
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
-  const adminEmail = String(process.env.ADMIN_EMAIL || '');
-  const adminUserId = String(process.env.ADMIN_USER_ID || '').trim();
-  if (!supabaseUrl || !anonKey || (!adminEmail.trim() && !adminUserId)) {
-    return { ok: false, status: 503, error: 'Admin authentication is not configured.' };
-  }
-  try {
-    const r = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
-    });
-    if (!r.ok) return { ok: false, status: 401, error: 'Invalid admin session.' };
-    const user = await r.json();
-    /* Multiple addresses allowed, comma separated, so modin7174@ and
-       modink777@ can both be the owner. Dot-insensitive for GMail. */
-    const gotEmail = String(user.email || '').toLowerCase().replace(/\.$/, '');
-    const emailOk = adminEmail.split(',').some(e => {
-      const want = e.trim().toLowerCase().replace(/\.$/, '');
-      if (!want) return false;
-      return gotEmail === want || gotEmail.replace(/\./g, '') === want.replace(/\./g, '');
-    });
-    const idOk = adminUserId && String(user.id || '') === adminUserId;
-    if (!emailOk && !idOk) return { ok: false, status: 403, error: 'Administrator access denied.' };
-    return { ok: true, user };
-  } catch (_) {
-    return { ok: false, status: 503, error: 'Could not verify administrator session.' };
-  }
+  return verifyAdminToken(token);
 }
 
 function sendJson(res, status, obj) {

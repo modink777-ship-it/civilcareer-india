@@ -1,11 +1,27 @@
+/* CivilCareer — newsletter/alert subscription (anonymous write).
+   P1 A4 hardening: per-IP rate limit + Cloudflare Turnstile +
+   honeypot, matching the other anonymous write forms (contact,
+   reports, employer/resource submissions). Turnstile is enforced
+   only when the widget keys are configured on the deployment;
+   the limiter and honeypot always apply. */
+const { rateLimit, verifyTurnstile } = require('../lib/rate-limit');
+
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
+    if (!rateLimit(req, { key: 'subscribe', max: 10 })) {
+      return res.status(429).json({ error: 'Too many subscriptions. Please try again later.' })
+    }
+
     const body = req.body && typeof req.body === 'object' ? req.body : {}
+    /* Honeypot: bots fill hidden fields; real users never do. */
     if (String(body.website || '').trim()) return res.status(200).json({ success: true })
+
+    const turnstile = await verifyTurnstile(req, body.turnstile_token)
+    if (!turnstile.ok) return res.status(400).json({ error: turnstile.error })
 
     const email = String(body.email || '').trim().toLowerCase()
     const phone = String(body.phone || '').trim().slice(0, 30)

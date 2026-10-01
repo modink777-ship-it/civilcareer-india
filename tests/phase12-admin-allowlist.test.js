@@ -5,13 +5,17 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const dispatchSource = require('fs').readFileSync(path.join(root, 'api', '[[...path]].js'), 'utf8');
+const securitySource = require('fs').readFileSync(path.join(root, 'lib', 'security.js'), 'utf8');
 const dispatcher = require(path.join(root, 'api', '[[...path]].js'));
 
 /* The dispatcher must verify the Supabase session server-side and compare it
-   against the allowlist before touching any handler. */
-assert(dispatchSource.includes('ADMIN_EMAIL'), 'allowlist must support ADMIN_EMAIL');
-assert(dispatchSource.includes('ADMIN_USER_ID'), 'allowlist must support ADMIN_USER_ID');
-assert(dispatchSource.includes('/auth/v1/user'), 'admin check must verify the session against Supabase Auth');
+   against the allowlist before touching any handler. The check itself lives
+   in lib/security.js (verifyAdminToken) so the gated admin page enforces
+   the identical rule; the dispatcher delegates to it. */
+assert(dispatchSource.includes('verifyAdminToken'), 'dispatcher must delegate admin verification to verifyAdminToken');
+assert(securitySource.includes('ADMIN_EMAIL'), 'allowlist must support ADMIN_EMAIL');
+assert(securitySource.includes('ADMIN_USER_ID'), 'allowlist must support ADMIN_USER_ID');
+assert(securitySource.includes('/auth/v1/user'), 'admin check must verify the session against Supabase Auth');
 
 /* Simulated request to an admin-gated endpoint. global.fetch is stubbed to act
    as Supabase Auth: a VALID token resolves to the throwaway user (valid

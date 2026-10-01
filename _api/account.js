@@ -1,10 +1,16 @@
 function send(res,status,body,headers={}){Object.entries(headers).forEach(([k,v])=>res.setHeader(k,v));res.status(status).json(body)}
+const { rateLimit } = require('../lib/rate-limit');
 function config(){const url=process.env.SUPABASE_URL,anon=process.env.SUPABASE_ANON_KEY,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!anon||!key)throw Error('Account service is not configured.');return{url,anon,key}}
 async function rest(path,opts={}){const{url,key}=config();const r=await fetch(`${url}/rest/v1/${path}`,{...opts,headers:{apikey:key,authorization:`Bearer ${key}`,'content-type':'application/json',prefer:'return=representation',...(opts.headers||{})}});const text=await r.text();if(!r.ok)throw Error(text||'Database request failed.');return text?JSON.parse(text):[]}
-async function userFromToken(req){const {url,anon}=config();const h=String(req.headers.authorization||'');if(!/^Bearer\s+[^\s]+$/i.test(h))return null;const token=h.replace(/^Bearer\s+/i,'');const r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:anon,authorization:`Bearer ${token}`}});if(!r.ok)return null;const u=await r.json();return u&&u.id?{id:u.id,email:u.email||''}:null}
+async function userFromToken(req){const h=String(req.headers.authorization||'');if(!/^Bearer\s+[^\s]+$/i.test(h))return null;const {url,anon}=config();const token=h.replace(/^Bearer\s+/i,'');const r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:anon,authorization:`Bearer ${token}`}});if(!r.ok)return null;const u=await r.json();return u&&u.id?{id:u.id,email:u.email||''}:null}
 function uuid(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v||''))}
 function cleanProfile(b){const skills=Array.isArray(b.skills)?b.skills.map(x=>String(x).trim()).filter(Boolean).slice(0,30):[];return{role:String(b.role||'').slice(0,120),location:String(b.location||'').slice(0,180),stage:String(b.stage||'').slice(0,80),project:String(b.project||'').slice(0,120),work:String(b.work||'').slice(0,80),environment:String(b.environment||b.env||'').slice(0,100),education:String(b.education||'').slice(0,180),skills}}
-module.exports=async(req,res)=>{res.setHeader('Cache-Control','private, no-store');try{const u=await userFromToken(req);if(!u)return send(res,401,{error:'Sign in required.'});if(req.method==='GET'){
+module.exports=async(req,res)=>{res.setHeader('Cache-Control','private, no-store');try{
+/* P1 A4: authenticated writes are per-IP throttled (Turnstile is
+   for anonymous forms — the bearer token already proves the user).
+   Applied before auth so unauthenticated write floods are bounded too. */
+if(req.method==='POST'||req.method==='DELETE'){if(!rateLimit(req,{key:'account-write',max:60}))return send(res,429,{error:'Too many requests. Please try again later.'});}
+const u=await userFromToken(req);if(!u)return send(res,401,{error:'Sign in required.'});if(req.method==='GET'){
 const [profiles,saved,applications]=await Promise.all([
   rest(`candidate_profiles?user_id=eq.${u.id}&select=user_id,role,location,stage,project,work,environment,education,skills,created_at,updated_at&limit=1`),
   rest(`candidate_saved_jobs?user_id=eq.${u.id}&select=job_id,saved_at&order=saved_at.desc&limit=500`),

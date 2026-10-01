@@ -116,6 +116,18 @@ function jobCard(j) {
   </a>`;
 }
 
+/* JSON-LD is embedded in a <script> block: escape HTML-significant
+   characters as unicode escapes so scraped text can never break out
+   of the script context (OWASP rule for data in script tags). */
+function jsonLd(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 function page({ title, heading, description, canonical, intro, jobs, companies, cityName, roleName, faq }) {
   const cards = jobs.map(jobCard).join('\n');
   const jobLd = {
@@ -146,8 +158,8 @@ function page({ title, heading, description, canonical, intro, jobs, companies, 
 <meta property="og:type" content="website">
 <meta name="robots" content="index,follow">
 <link rel="stylesheet" href="/styles.css?v=20260926-400">
-<script type="application/ld+json">${JSON.stringify(jobLd)}</script>
-<script type="application/ld+json">${JSON.stringify(faqLd)}</script>
+<script type="application/ld+json">${jsonLd(jobLd)}</script>
+<script type="application/ld+json">${jsonLd(faqLd)}</script>
 <style>
 .cc-seo-wrap{max-width:960px;margin:0 auto;padding:2rem 1rem}
 .cc-seo-wrap h1{font-size:1.9rem;line-height:1.25}
