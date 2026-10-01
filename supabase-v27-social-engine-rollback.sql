@@ -1,56 +1,73 @@
--- ═══════════════════════════════════════════════════════════════════
--- CivilCareer v27 — SOCIAL CONTENT ENGINE — ROLLBACK
+-- ==========================================================
+-- CivilCareer v27 - SOCIAL CONTENT ENGINE - ROLLBACK
+-- DO NOT RUN unless you need to undo supabase-v27-social-engine.sql.
 --
--- USE ONLY IF you need to undo supabase-v27-social-engine.sql.
---
--- WHAT IT DOES: drops the three tables the migration added
---   (social_publishes, social_suggestions, social_connections)
---   together with their indexes, policies and grants.
---
--- WHAT IT DOES NOT DO:
---   • It does NOT touch jobs, exam_tracker or any other table —
---     the v27 migration was purely additive.
---   • It does NOT delete anything already published to
---     Telegram / LinkedIn / Instagram — those posts live on the
---     platforms themselves. This only removes the local ledger
---     that records where they went.
---   • It does NOT undo any code that reads these tables. After
---     running this, the engine API routes will report the
---     tables as missing (they fail safe with a clear error,
---     like the exam-tracker table-missing path).
---
--- HOW TO RUN: paste into the Supabase SQL Editor and run once.
--- Safe to re-run (IF EXISTS). Nothing outside these three
--- tables can be affected.
---
--- HOW TO VERIFY (run after, expect 'NULL NULL NULL' and 'no'):
---   select to_regclass('public.social_suggestions'),
---          to_regclass('public.social_publishes'),
---          to_regclass('public.social_connections');
---   select exists (select 1 from information_schema.tables
---                  where table_schema='public'
---                    and table_name='social_suggestions') as still_there;
---
--- TO RE-APPLY: run supabase-v27-social-engine.sql again.
--- ═══════════════════════════════════════════════════════════════════
+-- Section A (SOFT, active): renames the 4 tables to *_bak_<YYYYMMDD>.
+--   Nothing is deleted; the publish ledger survives.
+-- Section B (HARD, commented out): drops everything.
+--   WARNING: dropping the ledger erases the record of what was posted.
+--   If v27 is re-applied later, the engine has no memory of past sends
+--   and could publish DUPLICATE posts. Export the tables to CSV first.
+-- Run exactly ONE section, never both.
+-- Posts already published on Telegram / LinkedIn / Instagram are NOT deleted.
+-- ==========================================================
 
+-- SECTION A - SOFT ROLLBACK
 begin;
 
--- Child first: social_publishes references social_suggestions.
-drop table if exists public.social_publishes;
-drop table if exists public.social_suggestions;
-drop table if exists public.social_connections;
+drop trigger if exists social_suggestions_touch on public.social_suggestions;
+drop trigger if exists social_publishes_touch   on public.social_publishes;
+drop trigger if exists social_connections_touch on public.social_connections;
+drop trigger if exists social_settings_touch    on public.social_settings;
+
+drop function if exists public.social_set_updated_at();
+
+-- Explicitly named indexes keep their names after a table rename and would make
+-- a later re-apply silently skip them. Drop them first (backups need no indexes).
+drop index if exists public.social_suggestions_source_dedupe;
+drop index if exists public.social_suggestions_status_idx;
+drop index if exists public.social_suggestions_source_idx;
+drop index if exists public.social_suggestions_template_idx;
+drop index if exists public.social_publishes_one_real_per_platform;
+drop index if exists public.social_publishes_status_idx;
+drop index if exists public.social_publishes_suggestion_idx;
+drop index if exists public.social_publishes_platform_day_idx;
+drop index if exists public.social_connections_platform_idx;
+drop index if exists public.social_connections_one_primary;
+
+do $$
+declare
+  day text := to_char(current_date, 'YYYYMMDD');
+begin
+  if to_regclass('public.social_publishes_bak_'   || day) is not null
+     or to_regclass('public.social_suggestions_bak_' || day) is not null
+     or to_regclass('public.social_connections_bak_' || day) is not null
+     or to_regclass('public.social_settings_bak_'    || day) is not null then
+    raise exception 'A backup from today (%) already exists. Rename or drop it first.', day;
+  end if;
+
+  if to_regclass('public.social_publishes') is not null then
+    execute 'alter table public.social_publishes rename to social_publishes_bak_' || day;
+  end if;
+  if to_regclass('public.social_suggestions') is not null then
+    execute 'alter table public.social_suggestions rename to social_suggestions_bak_' || day;
+  end if;
+  if to_regclass('public.social_connections') is not null then
+    execute 'alter table public.social_connections rename to social_connections_bak_' || day;
+  end if;
+  if to_regclass('public.social_settings') is not null then
+    execute 'alter table public.social_settings rename to social_settings_bak_' || day;
+  end if;
+end;
+$$;
 
 commit;
 
--- Verify the rollback (expect NULL, NULL, NULL):
-select to_regclass('public.social_suggestions')  as suggestions,
-       to_regclass('public.social_publishes')    as publishes,
-       to_regclass('public.social_connections')  as connections;
-
--- Must print 'no' (f = false):
-select exists (
-  select 1 from information_schema.tables
-  where table_schema = 'public'
-    and table_name in ('social_suggestions','social_publishes','social_connections')
-) as engine_tables_still_present;
+-- SECTION B - HARD ROLLBACK (commented out; uncomment to use instead of A)
+-- begin;
+-- drop table if exists public.social_publishes;
+-- drop table if exists public.social_suggestions;
+-- drop table if exists public.social_connections;
+-- drop table if exists public.social_settings;
+-- drop function if exists public.social_set_updated_at();
+-- commit;
