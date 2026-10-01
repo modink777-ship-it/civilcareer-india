@@ -40,6 +40,10 @@ const handlers = {
   '/api/whatsapp-subscribe':   () => require('../_api/whatsapp-subscribe'),
   '/api/morning-brief':        () => require('../_api/morning-brief'),
   '/api/civil-scraper':        () => require('../_api/civil-scraper'),
+  '/api/profiles':             () => require('../_api/profiles'),
+  '/api/companies':            () => require('../_api/companies'),
+  '/api/companies/review':     () => require('../_api/companies'),
+  '/api/seo-page':             () => require('../_api/seo-page'),
 };
 
 
@@ -65,6 +69,22 @@ const ADMIN_RULES = {
   '/api/resource-submissions': req => req.method !== 'POST',
   '/api/telegram': () => true,
   '/api/youtube-materials': () => true,
+  /* These handlers check the owner key themselves (lib/security.js), but the
+     dashboard signs in with a Supabase session and cannot hold the raw key.
+     Elevate non-public requests through the allowlist unless the caller is
+     already authenticated with the real owner key (scripts, cron curls). */
+  '/api/exam-tracker':       req => req.method !== 'GET' && !hasValidOwnerKey(req),
+  '/api/salary':             req => (req.method !== 'GET'
+                               || new URL(req.url, 'http://localhost').searchParams.has('admin')
+                               || new URL(req.url, 'http://localhost').searchParams.has('unverified'))
+                               && !hasValidOwnerKey(req),
+  '/api/walkin':             req => (req.method !== 'GET'
+                               || new URL(req.url, 'http://localhost').searchParams.has('admin'))
+                               && !hasValidOwnerKey(req),
+  '/api/whatsapp-subscribe': req => req.method === 'GET' && !hasValidOwnerKey(req),
+  '/api/companies':          req => ((req.method !== 'GET' && req.method !== 'POST')
+                               || new URL(req.url, 'http://localhost').searchParams.get('status') === 'pending')
+                               && !hasValidOwnerKey(req),
 };
 
 function isValidCronRequest(req) {
@@ -72,6 +92,21 @@ function isValidCronRequest(req) {
   if (!secret) return false;
   const auth = String(req.headers.authorization || '');
   return auth === `Bearer ${secret}`;
+}
+
+/* True when the request already carries the real owner credential
+   (header, Bearer or body key). Used by ADMIN_RULES so that direct
+   owner-key scripts keep working while dashboard sessions (Supabase
+   Bearer tokens) are elevated through the allowlist instead. */
+function hasValidOwnerKey(req) {
+  const expected = String(process.env.OWNER_KEY || '');
+  if (!expected) return false;
+  if (String(req.headers?.['x-owner-key'] || '') === expected) return true;
+  if (String(req.headers?.authorization || '') === `Bearer ${expected}`) return true;
+  try {
+    if (req.body && typeof req.body === 'object' && String(req.body.key || '') === expected) return true;
+  } catch (_) { /* body not parsed */ }
+  return false;
 }
 
 async function requireAdmin(req) {

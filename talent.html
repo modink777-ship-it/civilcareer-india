@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Browse Civil Engineer Portfolios — Hire Verified Talent | CivilCareer</title>
+<meta name="description" content="Browse civil engineering portfolios across India — site engineers, planning engineers, quantity surveyors and more. Filter by role, city, experience and skills. Free for employers.">
+<meta property="og:title" content="Hire Civil Engineers — Browse Portfolios">
+<meta property="og:description" content="Filter civil engineer portfolios by role, city, experience and skills. Free for employers.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/talent">
+<style>
+.tl-main{max-width:1160px;margin:0 auto;padding:32px 20px 90px}
+.tl-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;border:1px solid var(--line);border-radius:var(--radius,12px);padding:16px;background:var(--white);margin:18px 0 24px}
+.tl-filters label{display:grid;gap:4px;font-size:12px;font-weight:700;color:var(--muted)}
+.tl-filters input,.tl-filters select{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;font-size:13.5px}
+.tl-count{color:var(--muted);font-size:13px;font-weight:650;margin-bottom:12px}
+.tl-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.tl-card{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--white);display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit}
+.tl-card:hover{box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08))}
+.tl-avatar{width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.tl-role{font-weight:800;font-size:15px;margin:0}
+.tl-sub{color:var(--muted);font-size:13px;margin:0}
+.tl-skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.tl-skill{border:1px solid var(--line);background:var(--soft);color:var(--navy);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
+.tl-view{margin-top:auto;padding-top:10px;color:var(--blue);font-weight:700;font-size:13px}
+.tl-cta{border:1px dashed var(--teal);background:#eef5f4;border-radius:12px;padding:16px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tl-cta p{margin:0;color:var(--text);font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/talent" aria-current="page">Talent</a>
+    </nav>
+  </div>
+</header>
+
+<main class="tl-main">
+  <h1>Hire Civil Engineers — Browse Portfolios</h1>
+  <p style="color:var(--text);max-width:70ch">Real portfolios from civil engineers across India: their projects, software skills and experience. Filter, open a profile, and reach out directly — free for employers.</p>
+
+  <div class="tl-cta">
+    <p><b>Employer?</b> Post your opening and reach thousands of civil engineers — free, or ⭐ Featured for top placement.</p>
+    <a class="btn primary" href="/post-a-job">Post a Job</a>
+  </div>
+
+  <div class="tl-filters">
+    <label>Role <select id="fRole"><option value="">Any role</option><option>Site Engineer</option><option>Planning Engineer</option><option>Quantity Surveyor</option><option>Structural Engineer</option><option>Project Engineer</option><option>BIM Engineer</option></select></label>
+    <label>City <input id="fCity" placeholder="e.g. Bengaluru"></label>
+    <label>State <input id="fState" placeholder="e.g. Karnataka"></label>
+    <label>Min. experience <select id="fExp"><option value="">Any</option><option value="1">1+ yrs</option><option value="3">3+ yrs</option><option value="5">5+ yrs</option><option value="10">10+ yrs</option></select></label>
+    <label>Skill <input id="fSkill" placeholder="e.g. STAAD.Pro"></label>
+    <label>&nbsp;<button class="btn primary" type="button" id="goBtn" style="width:100%">Search</button></label>
+  </div>
+
+  <div class="tl-count" id="tlCount"></div>
+  <div class="tl-grid" id="tlGrid">
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  </div>
+  <noscript><p>Enable JavaScript to browse engineer portfolios, or <a href="/create-profile">create your own portfolio</a>.</p></noscript>
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/walk-in">Walk-In Interviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  var grid = document.getElementById('tlGrid');
+  var count = document.getElementById('tlCount');
+
+  function initials(name){
+    return String(name||'?').trim().split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+  }
+
+  function load(){
+    var p = new URLSearchParams();
+    var role = document.getElementById('fRole').value;
+    var city = document.getElementById('fCity').value.trim();
+    var state = document.getElementById('fState').value.trim();
+    var exp = document.getElementById('fExp').value;
+    var skill = document.getElementById('fSkill').value.trim();
+    if (role) p.set('role', role);
+    if (city) p.set('city', city);
+    if (state) p.set('state', state);
+    if (exp) p.set('min_exp', exp);
+    if (skill) p.set('skills', skill);
+    grid.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+    fetch('/api/profiles?' + p.toString())
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var list = d.profiles || [];
+        count.textContent = list.length ? list.length + ' engineer(s) found' : 'No portfolios match yet.';
+        if (!list.length) {
+          grid.innerHTML =
+            '<div style="grid-column:1/-1;border:1px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--muted)">'+
+            '<p style="margin:0 0 10px">No public portfolios match these filters yet.</p>'+
+            '<a class="btn secondary" href="/create-profile">Are you an engineer? Create your free portfolio</a></div>';
+          return;
+        }
+        grid.innerHTML = list.map(function(pr){
+          return '<a class="tl-card" href="/profile/'+encodeURIComponent(pr.slug)+'">'+
+            '<span class="tl-avatar">'+esc(initials(pr.name))+'</span>'+
+            '<p class="tl-role">'+esc(pr.current_role||'Civil Engineer')+'</p>'+
+            '<p class="tl-sub">'+esc(pr.name||'')+(pr.city?' · 📍 '+esc(pr.city):'')+(pr.years_experience!=null?' · '+esc(pr.years_experience)+' yrs':'')+'</p>'+
+            '<div class="tl-skills">'+(pr.skills||[]).slice(0,4).map(function(s){return '<span class="tl-skill">'+esc(s)+'</span>';}).join('')+'</div>'+
+            '<span class="tl-view">View Profile →</span>'+
+          '</a>';
+        }).join('');
+      })
+      .catch(function(){
+        count.textContent='';
+        grid.innerHTML = '<div style="grid-column:1/-1;color:var(--red)">Could not load portfolios. Please refresh and try again.</div>';
+      });
+  }
+
+  document.getElementById('goBtn').addEventListener('click', load);
+  [ 'fRole', 'fExp' ].forEach(function(id){
+    document.getElementById(id).addEventListener('change', load);
+  });
+  ['fCity','fState','fSkill'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){ if (e.key === 'Enter') load(); });
+  });
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Civil Engineering Company Reviews — L&T, NCC, Tata Projects, PSUs | CivilCareer</title>
+<meta name="description" content="Anonymous company reviews from Indian civil engineers — salary timeliness, growth, work-life balance and management ratings for L&T Construction, NCC, Tata Projects, AECOM, PSUs and more.">
+<meta property="og:title" content="Civil Engineering Company Reviews | CivilCareer">
+<meta property="og:description" content="Read and write anonymous reviews of companies hiring civil engineers in India.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/companies">
+<style>
+.cm-main{max-width:1060px;margin:0 auto;padding:32px 20px 90px}
+.cm-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:20px}
+.cm-card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--white);display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit}
+.cm-card:hover{box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08))}
+.cm-name{font-weight:800;font-size:14.5px;margin:0}
+.cm-type{color:var(--muted);font-size:12px;margin:0}
+.cm-stats{color:var(--navy);font-size:12.5px;font-weight:700;margin-top:auto}
+.cm-search{width:100%;max-width:460px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font:inherit;font-size:14px}
+.cm-overview{color:var(--text);max-width:72ch;line-height:1.7}
+.cm-bars{display:grid;gap:10px;max-width:460px;margin:16px 0}
+.cm-bar-row{display:grid;grid-template-columns:130px 1fr 46px;align-items:center;gap:10px;font-size:13px}
+.cm-bar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden}
+.cm-bar i{display:block;height:100%;background:var(--teal);border-radius:99px}
+.cm-pcts{display:flex;gap:22px;flex-wrap:wrap;margin:14px 0;color:var(--text);font-size:14px}
+.cm-review{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--white);margin-bottom:12px}
+.cm-review .stars{color:#9a6114;font-weight:800}
+.cm-review .meta{color:var(--muted);font-size:12.5px;margin:4px 0 8px}
+.cm-review p{margin:6px 0;font-size:14px;color:var(--text)}
+.cm-form{border:1px solid var(--line);border-radius:var(--radius,12px);padding:20px;background:var(--white);margin-top:20px}
+.cm-form label{display:grid;gap:4px;font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:12px}
+.cm-form input,.cm-form select,.cm-form textarea{border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;font-size:14px}
+.cm-form .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.cm-stars{display:flex;gap:4px;flex-wrap:wrap}
+.cm-stars label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:8px;padding:6px 9px;cursor:pointer;margin:0}
+.cm-stars label:has(input:checked){border-color:var(--teal);background:#eef5f4}
+.cm-actions{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+@media(max-width:640px){.cm-form .grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/companies" aria-current="page">Companies</a>
+    </nav>
+  </div>
+</header>
+
+<main class="cm-main" id="cmMain"></main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/walk-in">Walk-In Interviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+var COMPANIES = [
+  {slug:'lt-construction', name:'L&T Construction', type:'EPC & Construction'},
+  {slug:'ncc-limited', name:'NCC Limited', type:'Construction & Infra'},
+  {slug:'shapoorji-pallonji', name:'Shapoorji Pallonji', type:'Construction'},
+  {slug:'tata-projects', name:'Tata Projects', type:'EPC & Infra'},
+  {slug:'aecom-india', name:'AECOM India', type:'Design Consultancy'},
+  {slug:'wsp-india', name:'WSP India', type:'Design Consultancy'},
+  {slug:'afcons-infrastructure', name:'AFCONS Infrastructure', type:'Marine & Infra EPC'},
+  {slug:'dilip-buildcon', name:'Dilip Buildcon', type:'Roads & Highways'},
+  {slug:'kec-international', name:'KEC International', type:'Power Transmission & EPC'},
+  {slug:'stup-consultants', name:'STUP Consultants', type:'Design Consultancy'},
+  {slug:'feedback-infra', name:'Feedback Infra', type:'Infra Consultancy'},
+  {slug:'gmr-group', name:'GMR Group', type:'Airports & Infra'},
+  {slug:'rites', name:'RITES', type:'Rail & Transport PSU'},
+  {slug:'nbcc', name:'NBCC (India)', type:'Government PSU'},
+  {slug:'cpwd', name:'CPWD', type:'Government Department'},
+  {slug:'nhai', name:'NHAI', type:'Highways Authority'},
+  {slug:'ntpc', name:'NTPC', type:'Power PSU'},
+  {slug:'nhpc', name:'NHPC', type:'Hydropower PSU'},
+  {slug:'wapcos', name:'WAPCOS', type:'Water & Power PSU'},
+  {slug:'bro', name:'BRO', type:'Border Roads Organisation'},
+  {slug:'pwd', name:'PWD (State)', type:'State Government Dept'},
+  {slug:'irb-infrastructure', name:'IRB Infrastructure', type:'Roads & BOT'},
+  {slug:'megha-engineering', name:'Megha Engineering (MEIL)', type:'Infra EPC'},
+  {slug:'gawar-construction', name:'Gawar Construction', type:'Roads & Highways'},
+  {slug:'l-and-t-projects', name:'L&T Projects (Heavy Civil)', type:'Heavy Civil'}
+];
+var TYPES = {};
+COMPANIES.forEach(function(c){ TYPES[c.slug] = c.type; });
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function slugFromPath(){
+  var m = location.pathname.match(/^\/companies\/([^\/]+)\/?$/);
+  return m ? decodeURIComponent(m[1]).replace(/[^a-z0-9-]/gi,'').toLowerCase() : '';
+}
+function stars(n){ n = Math.round(n||0); return n ? '★'.repeat(n)+'☆'.repeat(5-n) : '—'; }
+function slugifyName(s){return String(s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
+
+/* ── LIST VIEW ─────────────────────────────────────────────── */
+function renderList(){
+  document.title = 'Civil Engineering Company Reviews — L&T, NCC, Tata Projects, PSUs | CivilCareer';
+  var main = document.getElementById('cmMain');
+  main.innerHTML =
+    '<h1>Company Reviews for Civil Engineers</h1>'+
+    '<p style="color:var(--text);max-width:70ch">Anonymous reviews from civil engineers working at India\'s biggest contractors, consultancies, PSUs and government departments. Read before you join — share after you have worked there.</p>'+
+    '<input class="cm-search" id="cmSearch" placeholder="Search companies…" aria-label="Search companies">'+
+    '<div class="cm-grid" id="cmGrid"></div>'+
+    '<p style="color:var(--muted);font-size:13px;margin-top:22px">Ratings appear once reviews are approved by the moderation team. Never share personal or confidential information in a review.</p>';
+
+  var grid = document.getElementById('cmGrid');
+  var stats = {};
+  fetch('/api/companies').then(function(r){return r.json();}).then(function(d){
+    (d.companies||[]).forEach(function(c){ stats[c.company_slug] = c; });
+    draw('');
+  }).catch(function(){ draw(''); });
+
+  function draw(q){
+    q = q.toLowerCase();
+    var list = COMPANIES.filter(function(c){ return !q || c.name.toLowerCase().indexOf(q) !== -1 || c.type.toLowerCase().indexOf(q) !== -1; });
+    grid.innerHTML = list.map(function(c){
+      var s = stats[c.slug];
+      var stat = s && s.review_count
+        ? '★ '+(s.avg_overall!=null?s.avg_overall:'—')+' · '+s.review_count+' review'+(s.review_count>1?'s':'')
+        : 'Be the first to review';
+      return '<a class="cm-card" href="/companies/'+c.slug+'">'+
+        '<p class="cm-name">'+esc(c.name)+'</p>'+
+        '<p class="cm-type">'+esc(c.type)+'</p>'+
+        '<span class="cm-stats">'+stat+'</span>'+
+      '</a>';
+    }).join('') || '<p style="color:var(--muted)">No company matches that search.</p>';
+  }
+  document.getElementById('cmSearch').addEventListener('input', function(e){ draw(e.target.value); });
+}
+
+/* ── DETAIL VIEW ───────────────────────────────────────────── */
+function renderDetail(slug){
+  var meta = TYPES[slug];
+  if (!meta) { renderList(); return; }
+  var name = (COMPANIES.filter(function(c){return c.slug===slug;})[0] || {name: slug.replace(/-/g,' ')}).name;
+  document.title = name + ' — Civil Engineer Reviews | CivilCareer';
+  var descMeta = document.querySelector('meta[name="description"]');
+  if (descMeta) descMeta.setAttribute('content', 'Anonymous reviews of '+name+' from civil engineers — salary timeliness, growth, work-life balance and management. Read before you join.');
+  var main = document.getElementById('cmMain');
+
+  main.innerHTML =
+    '<p><a href="/companies" class="text-link">← All companies</a></p>'+
+    '<h1>'+esc(name)+' — Reviews</h1>'+
+    '<p class="cm-type">'+esc(meta)+'</p>'+
+    '<p class="cm-overview">'+esc(name)+' hires civil engineers across India for site execution, planning, quality, billing and design roles. Reviews below come from verified-employment-era civil engineers and are moderated before publishing. Ratings update automatically as reviews are approved. Always weigh multiple reviews — one experience is not the whole picture.</p>'+
+    '<section class="cm-bars" id="cmBars"></section>'+
+    '<div class="cm-pcts" id="cmPcts"></div>'+
+    '<h2>Engineer reviews</h2><div id="cmReviews"><div class="skeleton"></div></div>'+
+    '<button class="btn primary" type="button" id="writeBtn">Write a Review</button>'+
+    '<form class="cm-form" id="cmForm" hidden>'+
+      '<h3 style="margin-top:0">Review '+esc(name)+' — anonymous</h3>'+
+      '<p style="color:var(--muted);font-size:13px">No name, email or login required. Reviews appear after moderation.</p>'+
+      '<div class="grid2">'+
+        '<label>Your role there<input name="reviewer_role" maxlength="60" placeholder="e.g. Site Engineer"></label>'+
+        '<label>Experience<select name="reviewer_experience"><option value="">Select</option><option>0-2 years</option><option>2-5 years</option><option>5-10 years</option><option>10+ years</option></select></label>'+
+        '<label>City posted<input name="reviewer_city" maxlength="60" placeholder="e.g. Nashik"></label>'+
+        '<label>Overall rating<select name="rating_overall" required><option value="">Select</option><option value="5">★★★★★ 5 — Excellent</option><option value="4">★★★★ 4 — Good</option><option value="3">★★★ 3 — Average</option><option value="2">★★ 2 — Poor</option><option value="1">★ 1 — Bad</option></select></label>'+
+        '<label>Salary rating<select name="rating_salary"><option value="">Select</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>'+
+        '<label>Growth rating<select name="rating_growth"><option value="">Select</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>'+
+        '<label>Work-life rating<select name="rating_worklife"><option value="">Select</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>'+
+        '<label>Management rating<select name="rating_management"><option value="">Select</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>'+
+        '<label>Salary paid on time<select name="salary_paid_on_time"><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select></label>'+
+        '<label>Would you recommend?<select name="would_recommend"><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select></label>'+
+      '</div>'+
+      '<label>Pros<textarea name="pros" rows="2" maxlength="1000" placeholder="What is good about working here?"></textarea></label>'+
+      '<label>Cons<textarea name="cons" rows="2" maxlength="1000" placeholder="What could be better?"></textarea></label>'+
+      '<label>Advice to management<textarea name="advice" rows="2" maxlength="1000"></textarea></label>'+
+      '<input name="company_name" type="hidden" value="'+esc(name)+'">'+
+      '<input name="website" class="trap" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">'+
+      '<div class="cm-actions"><button class="btn primary" type="submit">Submit Review</button></div>'+
+      '<p class="form-status" id="cmStatus" hidden></p>'+
+    '</form>';
+
+  function drawStats(s){
+    var bars = [
+      ['Overall', s.avg_overall], ['Salary', s.avg_salary], ['Growth', s.avg_growth],
+      ['Work-life', s.avg_worklife], ['Management', s.avg_management]
+    ];
+    document.getElementById('cmBars').innerHTML = bars.map(function(b){
+      var pctv = b[1] ? (b[1]/5)*100 : 0;
+      return '<div class="cm-bar-row"><span>'+b[0]+'</span><span class="cm-bar"><i style="width:'+pctv+'%"></i></span><b>'+(b[1]!=null?b[1]:'—')+'</b></div>';
+    }).join('');
+    document.getElementById('cmPcts').innerHTML =
+      '<span><b>'+(s.pct_recommend!=null?s.pct_recommend+'%':'—')+'</b> recommend this company</span>'+
+      '<span><b>'+(s.pct_paid_on_time!=null?s.pct_paid_on_time+'%':'—')+'</b> say salary is paid on time</span>'+
+      '<span><b>'+s.review_count+'</b> approved review'+(s.review_count===1?'':'s')+'</span>';
+  }
+
+  fetch('/api/companies?slug='+encodeURIComponent(slug))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      drawStats(d.stats || {review_count:0});
+      var revs = d.reviews || [];
+      document.getElementById('cmReviews').innerHTML = revs.length ? revs.map(function(r){
+        return '<article class="cm-review">'+
+          '<span class="stars">'+stars(r.rating_overall)+'</span>'+
+          '<div class="meta">'+esc(r.reviewer_role||'Civil engineer')+(r.reviewer_experience?' · '+esc(r.reviewer_experience):'')+(r.reviewer_city?' · '+esc(r.reviewer_city):'')+' · '+esc(String(r.created_at||'').slice(0,10))+'</div>'+
+          (r.pros?'<p><b>Pros:</b> '+esc(r.pros)+'</p>':'')+
+          (r.cons?'<p><b>Cons:</b> '+esc(r.cons)+'</p>':'')+
+          (r.advice?'<p><b>Advice:</b> '+esc(r.advice)+'</p>':'')+
+          (r.would_recommend!=null?'<p class="meta">Recommends: '+(r.would_recommend?'Yes':'No')+'</p>':'')+
+        '</article>';
+      }).join('') : '<p style="color:var(--muted)">No approved reviews yet for this company. Worked here? Be the first to share your experience.</p>';
+    })
+    .catch(function(){
+      document.getElementById('cmReviews').innerHTML = '<p style="color:var(--muted)">Could not load reviews right now.</p>';
+    });
+
+  document.getElementById('writeBtn').addEventListener('click', function(){
+    document.getElementById('cmForm').hidden = false;
+    this.hidden = true;
+  });
+
+  document.getElementById('cmForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var st = document.getElementById('cmStatus');
+    var f = e.target;
+    var fd = new FormData(f);
+    var body = {};
+    ['reviewer_role','reviewer_experience','reviewer_city','rating_overall','rating_salary','rating_growth','rating_worklife','rating_management','pros','cons','advice','company_name'].forEach(function(k){ body[k] = fd.get(k) || ''; });
+    body.salary_paid_on_time = fd.get('salary_paid_on_time') === 'yes' ? true : fd.get('salary_paid_on_time') === 'no' ? false : null;
+    body.would_recommend = fd.get('would_recommend') === 'yes' ? true : fd.get('would_recommend') === 'no' ? false : null;
+    if (fd.get('website')) return; /* honeypot */
+    var btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
+    fetch('/api/companies/review', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error(res.d.error || 'Submission failed.');
+        st.hidden = false; st.className='form-status show'; st.style.color='var(--teal)';
+        st.textContent = res.d.message || 'Thank you — your review is awaiting moderation.';
+        f.reset(); f.hidden = true;
+      })
+      .catch(function(err){ st.hidden=false; st.className='form-status show error'; st.textContent = err.message; })
+      .then(function(){ btn.disabled = false; });
+  });
+}
+
+(function(){
+  var slug = slugFromPath();
+  if (slug) renderDetail(slug); else renderList();
+})();
+</script>
+</body>
+</html>

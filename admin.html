@@ -268,6 +268,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="salary">Salary</button>
   <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="subscribers">Subscribers</button>
+  <button data-tab="reviews">Reviews</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -731,6 +732,20 @@ Walk-in interview board — public page /walk-in
 
 </div>
 
+<div class="panel" id="panel-reviews">
+
+<div class="import-actions" style="margin-bottom:14px">
+<button class="btn-ghost" onclick="loadCompanyReviews()">⟳ Refresh reviews</button>
+</div>
+
+<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">Reviews land here unapproved. Approve only after a sanity read — ratings for a company appear publicly once at least one review is approved. Reject removes the review permanently.</p>
+
+<div id="adminCompanyReviews" style="overflow-x:auto">
+<p style="color:#6a8aaa;font-size:.85rem">Loading reviews…</p>
+</div>
+
+</div>
+
 <div class="panel" id="panel-materials">
 
 <div class="admin-actions">
@@ -1000,6 +1015,8 @@ async function loadAll(page=ccJobsPage){
   loadWalkinAdmin().catch(() => {});
 
   loadWaSubs().catch(() => {});
+
+  loadCompanyReviews().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -4083,6 +4100,65 @@ function exportWaCSV() {
   a.download = 'whatsapp-subscribers-' + new Date().toISOString().slice(0, 10) + '.csv';
   a.click();
   toast(`Exported ${rows.length} subscribers ✓`);
+}
+
+/* ══════════ COMPANY REVIEWS (Feature 5) ══════════ */
+
+let ccReviews = [];
+
+async function loadCompanyReviews() {
+  const root = $('adminCompanyReviews');
+  if (!root) return;
+  root.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">Loading reviews…</p>';
+  try {
+    const d = await authedApi('/api/companies?status=pending', {});
+    ccReviews = d.reviews || [];
+    renderCompanyReviews();
+  } catch (e) {
+    root.innerHTML = `<p style="color:#fca5a5;padding:1rem">Failed to load reviews: ${esc(e.message||'Unknown error')} — <button class="btn-ghost" onclick="loadCompanyReviews()">Retry</button></p>`;
+  }
+}
+
+function renderCompanyReviews() {
+  const root = $('adminCompanyReviews');
+  if (!root) return;
+  if (!ccReviews.length) {
+    root.innerHTML = '<p style="color:#6a8aaa;padding:1rem">No reviews awaiting moderation. New submissions appear here automatically on refresh.</p>';
+    return;
+  }
+  const stars = n => n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '—';
+  root.innerHTML = ccReviews.map(r => `
+    <div class="list-item" data-review-id="${esc(r.id)}">
+      <div class="list-item-info">
+        <h4>${esc(r.company_name)}
+          <span class="status-badge unpublished">${stars(r.rating_overall)} (${r.rating_overall || '—'}/5)</span>
+        </h4>
+        <p>${esc(r.reviewer_role || 'Civil engineer')}${r.reviewer_experience ? ' · ' + esc(r.reviewer_experience) : ''}${r.reviewer_city ? ' · ' + esc(r.reviewer_city) : ''} · ${esc(String(r.created_at || '').slice(0, 10))}</p>
+        ${r.pros ? `<p><b>Pros:</b> ${esc(r.pros)}</p>` : ''}
+        ${r.cons ? `<p><b>Cons:</b> ${esc(r.cons)} </p>` : ''}
+        ${r.advice ? `<p><b>Advice:</b> ${esc(r.advice)}</p>` : ''}
+        <p style="color:#94a3b8;font-size:.78rem">
+          Salary on time: ${r.salary_paid_on_time == null ? '—' : (r.salary_paid_on_time ? 'Yes' : 'No')}
+          · Recommends: ${r.would_recommend == null ? '—' : (r.would_recommend ? 'Yes' : 'No')}
+        </p>
+      </div>
+      <div class="mini-actions">
+        <button onclick="approveReview('${esc(r.id)}',true)">Approve</button>
+        <button class="btn-delete" onclick="approveReview('${esc(r.id)}',false)">Reject</button>
+      </div>
+    </div>`).join('');
+}
+
+async function approveReview(id, approve) {
+  if (!approve && !confirm('Reject and permanently delete this review?')) return;
+  try {
+    await authedApi('/api/companies', { method: 'PATCH', body: JSON.stringify({ id, is_approved: approve }) });
+    ccReviews = ccReviews.filter(x => x.id !== id);
+    renderCompanyReviews();
+    toast(approve ? 'Review approved ✓' : 'Review rejected.');
+  } catch (e) {
+    toast(e.message || 'Action failed.');
+  }
 }
 
 /* TABS */

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Create Your Civil Engineer Portfolio — Free | CivilCareer</title>
+<meta name="description" content="Build a free civil engineering portfolio in minutes — projects, skills, software and experience. Get a shareable profile link employers can browse. No login needed.">
+<meta property="og:title" content="Create Your Civil Engineer Portfolio — Free">
+<meta property="og:description" content="Showcase your projects, skills and experience to employers hiring civil engineers across India.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/create-profile">
+<style>
+.cp-main{max-width:860px;margin:0 auto;padding:32px 20px 90px}
+.cp-steps{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 26px}
+.cp-step{display:flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--white)}
+.cp-step.active{border-color:var(--navy);color:var(--navy);background:var(--soft)}
+.cp-step.done{border-color:var(--teal);color:var(--teal)}
+.cp-panel{border:1px solid var(--line);border-radius:var(--radius,12px);padding:22px;background:var(--white);box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08))}
+.cp-panel[hidden]{display:none}
+.cp-field{display:grid;gap:5px;margin-bottom:14px}
+.cp-field label{font-size:12.5px;font-weight:750;color:var(--ink)}
+.cp-field input,.cp-field select,.cp-field textarea{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:14px;background:var(--white);color:var(--ink)}
+.cp-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.cp-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 14px}
+.cp-legend{font-weight:800;font-size:13px;margin:18px 0 8px;color:var(--navy)}
+.cp-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.cp-checks label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--white)}
+.cp-checks label:has(input:checked){border-color:var(--teal);background:#eef5f4}
+.cp-nav{display:flex;justify-content:space-between;gap:12px;margin-top:20px}
+.cp-proj{border:1px dashed var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.cp-proj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cp-preview h2{margin:.2rem 0 .8rem}
+.cp-prev-sec{margin-bottom:14px}
+.cp-chip{display:inline-block;border:1px solid var(--line);background:var(--soft);color:var(--navy);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;margin:0 6px 6px 0}
+.cp-result{border:1px solid var(--teal);background:#eef5f4;border-radius:12px;padding:18px;margin-top:16px}
+.cp-editlink{width:100%;font-size:13px;padding:10px;border:1px dashed var(--teal);border-radius:8px;background:var(--white);color:var(--ink);word-break:break-all}
+@media(max-width:640px){.cp-grid2,.cp-grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/talent" aria-current="page">Talent</a>
+    </nav>
+  </div>
+</header>
+
+<main class="cp-main">
+  <h1>Create Your Civil Engineer Portfolio</h1>
+  <p style="color:var(--text);max-width:64ch">Free, no login needed. Four quick steps — basic info, skills, projects, publish. You get a public profile link to share with employers and a private edit link to update it later.</p>
+
+  <div class="cp-steps" id="cpSteps">
+    <span class="cp-step active" data-step="1">1 · Basic Info</span>
+    <span class="cp-step" data-step="2">2 · Skills</span>
+    <span class="cp-step" data-step="3">3 · Projects</span>
+    <span class="cp-step" data-step="4">4 · Publish</span>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="cp-panel" id="panel1">
+    <div class="cp-grid2">
+      <div class="cp-field"><label for="pfName">Full name *</label><input id="pfName" maxlength="80" placeholder="e.g. Rahul Sharma"></div>
+      <div class="cp-field"><label for="pfRole">Current role</label>
+        <select id="pfRole"><option>Site Engineer</option><option>Planning Engineer</option><option>Quantity Surveyor</option><option>Structural Engineer</option><option>Project Engineer</option><option>BIM Engineer</option><option>Other</option></select></div>
+      <div class="cp-field"><label for="pfYears">Years experience</label><input id="pfYears" type="number" min="0" max="50" placeholder="e.g. 4"></div>
+      <div class="cp-field"><label for="pfCity">City</label><input id="pfCity" maxlength="60" placeholder="e.g. Bengaluru"></div>
+      <div class="cp-field"><label for="pfState">State</label><input id="pfState" maxlength="60" placeholder="e.g. Karnataka"></div>
+      <div class="cp-field"><label for="pfEmail">Email (private — shown only to you)</label><input id="pfEmail" type="email" maxlength="120" placeholder="you@example.com"></div>
+      <div class="cp-field"><label for="pfWa">WhatsApp (private)</label><input id="pfWa" maxlength="20" placeholder="+91XXXXXXXXXX"></div>
+      <div class="cp-field"><label for="pfLi">LinkedIn URL (optional)</label><input id="pfLi" type="url" maxlength="300" placeholder="https://linkedin.com/in/…"></div>
+    </div>
+    <div class="cp-field"><label for="pfBio">Short bio</label><textarea id="pfBio" rows="3" maxlength="1200" placeholder="2–3 lines about your experience and what you are looking for."></textarea></div>
+    <div class="cp-nav"><span></span><button class="btn primary" type="button" onclick="cpGo(2)">Next: Skills →</button></div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="cp-panel" id="panel2" hidden>
+    <p class="cp-legend">Software</p>
+    <div class="cp-checks" id="skillsSoftware"></div>
+    <p class="cp-legend">Technical skills</p>
+    <div class="cp-checks" id="skillsTechnical"></div>
+    <p class="cp-legend">Target roles</p>
+    <div class="cp-checks" id="targetRoles"></div>
+    <div class="cp-grid3" style="margin-top:16px">
+      <div class="cp-field"><label for="pfWork">Work type</label>
+        <select id="pfWork"><option value="">Any</option><option>Site</option><option>Office</option><option>Both</option></select></div>
+      <div class="cp-field" style="grid-column:span 2"><label>Sector preference</label>
+        <div class="cp-checks" id="sectorPref"></div></div>
+    </div>
+    <div class="cp-nav"><button class="btn secondary" type="button" onclick="cpGo(1)">← Back</button><button class="btn primary" type="button" onclick="cpGo(3)">Next: Projects →</button></div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="cp-panel" id="panel3" hidden>
+    <p style="color:var(--text);font-size:14px">Add up to 5 projects. The strongest portfolios have 2–3 with concrete detail — what you did, not just the project name.</p>
+    <div id="projList"></div>
+    <button class="btn secondary" type="button" id="addProj" onclick="cpAddProject()">+ Add project</button>
+    <div class="cp-nav"><button class="btn secondary" type="button" onclick="cpGo(2)">← Back</button><button class="btn primary" type="button" onclick="cpPreview()">Next: Preview →</button></div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="cp-panel cp-preview" id="panel4" hidden>
+    <h2>Preview</h2>
+    <div id="previewBox"></div>
+    <div class="cp-nav"><button class="btn secondary" type="button" onclick="cpGo(3)">← Back</button><button class="btn primary" type="button" id="publishBtn" onclick="cpPublish()">Publish Portfolio</button></div>
+    <div class="cp-result" id="cpResult" hidden></div>
+    <p class="form-status" id="cpStatus" hidden></p>
+  </section>
+
+  <noscript><p style="margin-top:24px">Enable JavaScript to build your portfolio.</p></noscript>
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/walk-in">Walk-In Interviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+var SOFTWARE = ['AutoCAD','STAAD.Pro','Primavera P6','MS Project','Revit','Navisworks','SAP2000','ETABS','Civil 3D','AutoCAD MEP','Tekla','ANSYS'];
+var TECHNICAL = ['BOQ Preparation','Rate Analysis','Estimation','Bar Bending Schedule','Soil Testing','Survey','Quality Testing','RCC Design','Steel Design'];
+var ROLES = ['Site Engineer','Planning Engineer','Quantity Surveyor','Structural Engineer','Project Engineer','BIM Engineer'];
+var SECTORS = ['Government','Private','PSU','MNC'];
+var PROJECT_TYPES = ['Road/Highway','Bridge','Building','Metro','Water','Irrigation','Industrial','Airport','Other'];
+var PROJ_SOFTWARE = ['AutoCAD','STAAD.Pro','ETABS','Primavera P6','MS Project','Revit','Civil 3D','Other'];
+
+function checks(containerId, items, name) {
+  var el = document.getElementById(containerId);
+  el.innerHTML = items.map(function(s){
+    return '<label><input type="checkbox" name="'+name+'" value="'+s+'"> '+s+'</label>';
+  }).join('');
+}
+checks('skillsSoftware', SOFTWARE, 'sw');
+checks('skillsTechnical', TECHNICAL, 'tech');
+checks('targetRoles', ROLES, 'roles');
+checks('sectorPref', SECTORS, 'sector');
+
+function checked(name){return Array.prototype.slice.call(document.querySelectorAll('input[name="'+name+'"]:checked')).map(function(i){return i.value;});}
+function val(id){return (document.getElementById(id).value||'').trim();}
+function $(id){return document.getElementById(id);}
+
+var step = 1;
+function cpGo(n){
+  if (n === 2 && !val('pfName')) { alert('Please enter your name first.'); return; }
+  step = n;
+  [1,2,3,4].forEach(function(i){ $('panel'+i).hidden = i !== n; });
+  Array.prototype.forEach.call(document.querySelectorAll('.cp-step'), function(s){
+    var sn = parseInt(s.dataset.step,10);
+    s.classList.toggle('active', sn === n);
+    s.classList.toggle('done', sn < n);
+  });
+  if (n !== 4) $('cpResult').hidden = true;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+var projCount = 0;
+function cpAddProject(){
+  if (projCount >= 5) { alert('Up to 5 projects.'); return; }
+  projCount++;
+  var i = projCount;
+  var div = document.createElement('div');
+  div.className = 'cp-proj'; div.id = 'proj'+i;
+  div.innerHTML =
+    '<div class="cp-proj-head"><b>Project '+i+'</b><button type="button" class="btn secondary" style="min-height:30px;padding:0 10px;font-size:12px" onclick="this.closest(\'.cp-proj\').remove()">Remove</button></div>'+
+    '<div class="cp-grid2">'+
+    '<div class="cp-field"><label>Project name *</label><input data-p="project_name" maxlength="120"></div>'+
+    '<div class="cp-field"><label>Type</label><select data-p="project_type">'+PROJECT_TYPES.map(function(t){return '<option>'+t+'</option>';}).join('')+'</select></div>'+
+    '<div class="cp-field"><label>Your role</label><input data-p="role_played" maxlength="60" placeholder="e.g. Site Engineer"></div>'+
+    '<div class="cp-field"><label>Duration (months)</label><input data-p="duration_months" type="number" min="0" max="600"></div>'+
+    '<div class="cp-field"><label>Location</label><input data-p="location" maxlength="100"></div>'+
+    '<div class="cp-field"><label>Project value (optional)</label><input data-p="project_value" maxlength="60" placeholder="e.g. ₹45 Cr"></div>'+
+    '</div>'+
+    '<div class="cp-field"><label>Description — what you did, challenges, results</label><textarea data-p="description" rows="3" maxlength="1500"></textarea></div>'+
+    '<div class="cp-field"><label>Photo URL (optional — Imgur / Drive link)</label><input data-p="photo_url" type="url" maxlength="500"></div>'+
+    '<div class="cp-field"><label>Completion year</label><input data-p="completion_year" type="number" min="1970" max="2100"></div>'+
+    '<p class="cp-legend">Software used</p><div class="cp-checks">'+
+    PROJ_SOFTWARE.map(function(s){return '<label><input type="checkbox" data-sw="'+s+'"> '+s+'</label>';}).join('')+
+    '</div>';
+  $('projList').appendChild(div);
+}
+
+function collectProjects(){
+  var out = [];
+  Array.prototype.forEach.call(document.querySelectorAll('.cp-proj'), function(p){
+    var o = {};
+    Array.prototype.forEach.call(p.querySelectorAll('[data-p]'), function(inp){
+      o[inp.dataset.p] = inp.value.trim();
+    });
+    o.software_used = Array.prototype.map.call(p.querySelectorAll('[data-sw]:checked'), function(i){return i.dataset.sw;});
+    if (o.project_name) out.push(o);
+  });
+  return out.slice(0,5);
+}
+
+function cpPreview(){
+  var projects = collectProjects();
+  var box = $('previewBox');
+  box.innerHTML =
+    '<div class="cp-prev-sec"><b>'+val('pfName')+'</b> — '+val('pfRole')+' · '+(val('pfYears')||'0')+' yrs · '+(val('pfCity')||'—')+'</div>'+
+    '<div class="cp-prev-sec">'+checked('sw').concat(checked('tech')).map(function(s){return '<span class="cp-chip">'+s+'</span>';}).join('')+'</div>'+
+    '<div class="cp-prev-sec"><b>'+projects.length+'</b> project(s) added</div>';
+  cpGo(4);
+}
+
+function cpPublish(){
+  var btn = $('publishBtn'); var st = $('cpStatus');
+  btn.disabled = true; st.hidden = false; st.className='form-status show'; st.textContent='Publishing…';
+  var payload = {
+    name: val('pfName'),
+    current_role: val('pfRole'),
+    years_experience: parseInt(val('pfYears'),10) || 0,
+    city: val('pfCity'), state: val('pfState'),
+    email: val('pfEmail'), whatsapp: val('pfWa'),
+    linkedin_url: val('pfLi'), bio: val('pfBio'),
+    skills: checked('sw').concat(checked('tech')),
+    target_roles: checked('roles'),
+    sector_preference: checked('sector'),
+    work_type: val('pfWork') || null,
+    projects: collectProjects()
+  };
+  fetch('/api/profiles', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok, d:d};});})
+    .then(function(res){
+      if (!res.ok) throw new Error(res.d.error || 'Publish failed.');
+      var d = res.d;
+      var link = location.origin + '/edit-profile?token=' + d.edit_token;
+      $('cpResult').hidden = false;
+      $('cpResult').innerHTML =
+        '<h3 style="margin-top:0">✅ Portfolio published!</h3>'+
+        '<p><b>Your public profile:</b><br><a href="'+d.profile_url+'" id="pubLink">'+location.origin+d.profile_url+'</a></p>'+
+        '<p><b>Save your edit link — bookmark this. It is the only way to edit your profile:</b><br>'+
+        '<input class="cp-editlink" readonly value="'+link+'" onclick="this.select()"></p>'+
+        '<p style="color:var(--muted);font-size:13px">Write it down or bookmark it now — we cannot recover it for you.</p>';
+      st.hidden = true;
+      btn.disabled = false;
+    })
+    .catch(function(e){ st.className='form-status show error'; st.textContent=e.message; btn.disabled=false; });
+}
+</script>
+</body>
+</html>

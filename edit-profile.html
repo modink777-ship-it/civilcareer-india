@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Edit Your Portfolio | CivilCareer</title>
+<meta name="description" content="Edit your civil engineering portfolio on CivilCareer using your private edit link.">
+<meta property="og:title" content="Edit Your Portfolio | CivilCareer">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/edit-profile">
+<style>
+.ep-main{max-width:860px;margin:0 auto;padding:32px 20px 90px}
+.ep-panel{border:1px solid var(--line);border-radius:var(--radius,12px);padding:22px;background:var(--white);box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08));margin-bottom:18px}
+.ep-panel h2{margin:0 0 14px;font-size:1.1rem}
+.ep-field{display:grid;gap:5px;margin-bottom:14px}
+.ep-field label{font-size:12.5px;font-weight:750;color:var(--ink)}
+.ep-field input,.ep-field select,.ep-field textarea{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:14px}
+.ep-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.ep-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.ep-checks label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.ep-checks label:has(input:checked){border-color:var(--teal);background:#eef5f4}
+.ep-legend{font-weight:800;font-size:13px;margin:16px 0 8px;color:var(--navy)}
+.ep-status{margin:14px 0}
+.ep-proj{border:1px dashed var(--line);border-radius:10px;padding:14px;margin-bottom:12px;color:var(--muted);font-size:13.5px}
+@media(max-width:640px){.ep-grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/talent">Talent</a>
+    </nav>
+  </div>
+</header>
+
+<main class="ep-main" id="epMain">
+  <h1>Edit Your Portfolio</h1>
+  <p class="ep-status" id="epStatus">Loading your portfolio…</p>
+
+  <div id="epForm" hidden>
+    <section class="ep-panel">
+      <h2>Basic info</h2>
+      <div class="ep-grid2">
+        <div class="ep-field"><label>Current role</label>
+          <select id="pfRole"><option>Site Engineer</option><option>Planning Engineer</option><option>Quantity Surveyor</option><option>Structural Engineer</option><option>Project Engineer</option><option>BIM Engineer</option><option>Other</option></select></div>
+        <div class="ep-field"><label>Years experience</label><input id="pfYears" type="number" min="0" max="50"></div>
+        <div class="ep-field"><label>City</label><input id="pfCity" maxlength="60"></div>
+        <div class="ep-field"><label>State</label><input id="pfState" maxlength="60"></div>
+        <div class="ep-field"><label>Email (private)</label><input id="pfEmail" type="email" maxlength="120"></div>
+        <div class="ep-field"><label>WhatsApp (private)</label><input id="pfWa" maxlength="20"></div>
+        <div class="ep-field"><label>LinkedIn URL</label><input id="pfLi" type="url" maxlength="300"></div>
+        <div class="ep-field"><label>Work type</label>
+          <select id="pfWork"><option value="">Any</option><option>Site</option><option>Office</option><option>Both</option></select></div>
+      </div>
+      <div class="ep-field"><label>Bio</label><textarea id="pfBio" rows="3" maxlength="1200"></textarea></div>
+    </section>
+
+    <section class="ep-panel">
+      <h2>Skills & preferences</h2>
+      <p class="ep-legend">Software</p><div class="ep-checks" id="skillsSoftware"></div>
+      <p class="ep-legend">Technical skills</p><div class="ep-checks" id="skillsTechnical"></div>
+      <p class="ep-legend">Target roles</p><div class="ep-checks" id="targetRoles"></div>
+      <p class="ep-legend">Sector preference</p><div class="ep-checks" id="sectorPref"></div>
+    </section>
+
+    <section class="ep-panel">
+      <h2>Your projects</h2>
+      <div id="projList"></div>
+      <p class="ep-legend">Add a project</p>
+      <div class="ep-grid2">
+        <div class="ep-field"><label>Project name *</label><input id="npName" maxlength="120"></div>
+        <div class="ep-field"><label>Type</label><select id="npType"><option>Road/Highway</option><option>Bridge</option><option>Building</option><option>Metro</option><option>Water</option><option>Irrigation</option><option>Industrial</option><option>Airport</option><option>Other</option></select></div>
+        <div class="ep-field"><label>Your role</label><input id="npRole" maxlength="60"></div>
+        <div class="ep-field"><label>Duration (months)</label><input id="npMonths" type="number" min="0" max="600"></div>
+      </div>
+      <div class="ep-field"><label>Description</label><textarea id="npDesc" rows="3" maxlength="1500"></textarea></div>
+      <button class="btn secondary" type="button" id="addProjBtn">+ Add this project</button>
+      <p class="ep-status" id="projStatus" hidden></p>
+    </section>
+
+    <div style="display:flex;gap:12px;align-items:center">
+      <button class="btn primary" type="button" id="saveBtn">Save Changes</button>
+      <a class="btn secondary" id="viewLink" href="#" target="_blank">View public profile ↗</a>
+    </div>
+    <p class="ep-status" id="saveStatus" hidden></p>
+  </div>
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var SOFTWARE = ['AutoCAD','STAAD.Pro','Primavera P6','MS Project','Revit','Navisworks','SAP2000','ETABS','Civil 3D','AutoCAD MEP','Tekla','ANSYS'];
+  var TECHNICAL = ['BOQ Preparation','Rate Analysis','Estimation','Bar Bending Schedule','Soil Testing','Survey','Quality Testing','RCC Design','Steel Design'];
+  var ROLES = ['Site Engineer','Planning Engineer','Quantity Surveyor','Structural Engineer','Project Engineer','BIM Engineer'];
+  var SECTORS = ['Government','Private','PSU','MNC'];
+
+  var params = new URLSearchParams(location.search);
+  var token = (params.get('token') || '').slice(0, 80);
+  var status = document.getElementById('epStatus');
+  var slug = '';
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function checks(id, items, name){
+    document.getElementById(id).innerHTML = items.map(function(s){
+      return '<label><input type="checkbox" name="'+name+'" value="'+esc(s)+'"> '+esc(s)+'</label>';
+    }).join('');
+  }
+  checks('skillsSoftware', SOFTWARE, 'sw');
+  checks('skillsTechnical', TECHNICAL, 'tech');
+  checks('targetRoles', ROLES, 'roles');
+  checks('sectorPref', SECTORS, 'sector');
+  function setChecks(name, arr){
+    arr = arr || [];
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="'+name+'"]'), function(i){
+      i.checked = arr.indexOf(i.value) !== -1;
+    });
+  }
+  function checked(name){
+    return Array.prototype.map.call(document.querySelectorAll('input[name="'+name+'"]:checked'), function(i){return i.value;});
+  }
+  function val(id){return (document.getElementById(id).value||'').trim();}
+
+  if (!token) {
+    status.textContent = 'This page needs your private edit link: /edit-profile?token=… — check the bookmark you saved when publishing.';
+    return;
+  }
+
+  fetch('/api/profiles?token=' + encodeURIComponent(token))
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(res){
+      if (!res.ok) throw new Error(res.d.error || 'Edit link not recognised.');
+      var p = res.d.profile;
+      slug = p.slug;
+      document.getElementById('pfRole').value = p.current_role || 'Site Engineer';
+      document.getElementById('pfYears').value = p.years_experience != null ? p.years_experience : '';
+      document.getElementById('pfCity').value = p.city || '';
+      document.getElementById('pfState').value = p.state || '';
+      document.getElementById('pfEmail').value = p.email || '';
+      document.getElementById('pfWa').value = p.whatsapp || '';
+      document.getElementById('pfLi').value = p.linkedin_url || '';
+      document.getElementById('pfWork').value = p.work_type || '';
+      document.getElementById('pfBio').value = p.bio || '';
+      setChecks('sw', p.skills);
+      setChecks('tech', p.skills);
+      setChecks('roles', p.target_roles);
+      setChecks('sector', p.sector_preference);
+      document.getElementById('viewLink').href = '/profile/' + encodeURIComponent(slug);
+      renderProjects(res.d.projects || []);
+      status.hidden = true;
+      document.getElementById('epForm').hidden = false;
+    })
+    .catch(function(e){ status.textContent = e.message; });
+
+  function renderProjects(list){
+    var el = document.getElementById('projList');
+    el.innerHTML = list.length
+      ? list.map(function(pr){ return '<div class="ep-proj"><b>'+esc(pr.project_name)+'</b> — '+esc(pr.project_type||'')+(pr.location?' · '+esc(pr.location):'')+'</div>'; }).join('')
+      : '<div class="ep-proj">No projects yet — add your first below.</div>';
+  }
+
+  document.getElementById('addProjBtn').addEventListener('click', function(){
+    var st = document.getElementById('projStatus');
+    if (!val('npName')) { st.hidden=false; st.textContent='Project name is required.'; return; }
+    var btn = this; btn.disabled = true;
+    fetch('/api/profiles?action=project', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        edit_token: token,
+        project_name: val('npName'),
+        project_type: val('npType'),
+        role_played: val('npRole'),
+        duration_months: parseInt(val('npMonths'),10) || null,
+        description: val('npDesc')
+      })})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error(res.d.error || 'Could not add project.');
+        ['npName','npRole','npMonths','npDesc'].forEach(function(id){document.getElementById(id).value='';});
+        return fetch('/api/profiles?token=' + encodeURIComponent(token));
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderProjects(d.projects || []); st.hidden = true; })
+      .catch(function(e){ st.hidden=false; st.textContent = e.message; })
+      .then(function(){ btn.disabled = false; });
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', function(){
+    var st = document.getElementById('saveStatus');
+    var btn = this; btn.disabled = true; st.hidden=false; st.className='ep-status'; st.textContent='Saving…';
+    fetch('/api/profiles', {method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        edit_token: token,
+        current_role: val('pfRole'),
+        years_experience: parseInt(val('pfYears'),10) || 0,
+        city: val('pfCity'), state: val('pfState'),
+        email: val('pfEmail'), whatsapp: val('pfWa'),
+        linkedin_url: val('pfLi'), work_type: val('pfWork') || null,
+        bio: val('pfBio'),
+        skills: checked('sw').concat(checked('tech')),
+        target_roles: checked('roles'),
+        sector_preference: checked('sector')
+      })})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error(res.d.error || 'Save failed.');
+        st.className='ep-status'; st.style.color='var(--teal)'; st.textContent='Saved ✓ Your public profile is updated.';
+      })
+      .catch(function(e){ st.style.color='var(--red)'; st.textContent = e.message; })
+      .then(function(){ btn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

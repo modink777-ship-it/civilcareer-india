@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Civil Engineer Portfolio | CivilCareer</title>
+<meta name="description" content="Verified civil engineering portfolio — projects, skills, software and experience.">
+<meta property="og:title" content="Civil Engineer Portfolio | CivilCareer">
+<meta property="og:description" content="Projects, skills and experience of a civil engineer on CivilCareer.">
+<meta property="og:type" content="profile">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/profile">
+<style>
+.pf-main{max-width:860px;margin:0 auto;padding:32px 20px 90px}
+.pf-head{border:1px solid var(--line);border-radius:var(--radius,12px);padding:22px;background:var(--white);box-shadow:var(--shadow,0 12px 32px rgba(11,31,58,.08))}
+.pf-name{font-size:1.6rem;margin:0}
+.pf-sub{color:var(--text);margin:.3rem 0 0}
+.pf-meta{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;color:var(--muted);font-size:14px}
+.pf-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.pf-chip{border:1px solid var(--line);background:var(--soft);color:var(--navy);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700}
+.pf-sec{margin-top:26px}
+.pf-sec h2{font-size:1.15rem;margin:0 0 12px}
+.pf-bio{color:var(--text);line-height:1.7;max-width:70ch}
+.pf-card{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--white);margin-bottom:14px}
+.pf-card h3{margin:0 0 4px;font-size:1.02rem}
+.pf-card .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+.pf-card p{color:var(--text);font-size:14px;line-height:1.6;margin:8px 0 0}
+.pf-photo{width:100%;max-height:260px;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-bottom:10px}
+.pf-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.pf-status{margin-top:18px;color:var(--red)}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/talent">Talent</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pf-main" id="pfMain">
+  <div class="skeleton" style="height:120px"></div>
+  <noscript><p>This portfolio requires JavaScript to load. Browse <a href="/talent">all civil engineer profiles</a> instead.</p></noscript>
+  <p class="pf-status" id="pfStatus" hidden></p>
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/walk-in">Walk-In Interviews</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var slug = decodeURIComponent((location.pathname.split('/').pop() || '')).replace(/[^a-zA-Z0-9-]/g, '');
+  var main = document.getElementById('pfMain');
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  fetch('/api/profiles?slug=' + encodeURIComponent(slug))
+    .then(function(r){ if (r.status === 404) throw new Error('notfound'); return r.json(); })
+    .then(function(d){
+      var p = d.profile;
+      if (!p) throw new Error('notfound');
+      document.title = p.name + ' — ' + (p.current_role || 'Civil Engineer') + ' | CivilCareer';
+      var meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute('content', p.name + ' — ' + (p.current_role || 'Civil Engineer') + (p.city ? ' in ' + p.city : '') + '. Projects, skills and experience.');
+      var ld = document.createElement('script');
+      ld.type = 'application/ld+json';
+      ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'Person',
+        name: p.name, jobTitle: p.current_role || 'Civil Engineer',
+        address: { '@type': 'PostalAddress', addressLocality: p.city || undefined, addressRegion: p.state || undefined, addressCountry: 'IN' },
+        knowsAbout: (p.skills || []).slice(0, 15),
+        url: location.href
+      });
+      document.head.appendChild(ld);
+
+      var chips = (p.skills || []).map(function(s){return '<span class="pf-chip">'+esc(s)+'</span>';}).join('');
+      var projects = (d.projects || []).map(function(pr){
+        return '<article class="pf-card">'+
+          (pr.photo_url ? '<img class="pf-photo" src="'+esc(pr.photo_url)+'" alt="'+esc(pr.project_name)+'" loading="lazy" referrerpolicy="no-referrer">' : '')+
+          '<h3>'+esc(pr.project_name)+'</h3>'+
+          '<div class="meta">'+esc(pr.project_type||'')+(pr.project_type&&pr.location?' · ':'')+esc(pr.location||'')+(pr.duration_months?' · '+esc(pr.duration_months)+' months':'')+(pr.completion_year?' · '+esc(pr.completion_year):'')+'</div>'+
+          (pr.role_played ? '<div class="meta"><b>Role:</b> '+esc(pr.role_played)+'</div>' : '')+
+          (pr.software_used && pr.software_used.length ? '<div class="meta">Software: '+esc(pr.software_used.join(', '))+'</div>' : '')+
+          (pr.description ? '<p>'+esc(pr.description)+'</p>' : '')+
+        '</article>';
+      }).join('') || '<p style="color:var(--muted)">No projects listed yet.</p>';
+
+      main.innerHTML =
+        '<div class="pf-head">'+
+          '<h1 class="pf-name">'+esc(p.name)+'</h1>'+
+          '<p class="pf-sub">'+esc(p.current_role || 'Civil Engineer')+(p.years_experience!=null ? ' · '+esc(p.years_experience)+' years experience' : '')+'</p>'+
+          '<div class="pf-meta">'+
+            (p.city||p.state ? '<span>📍 '+esc([p.city,p.state].filter(Boolean).join(', '))+'</span>' : '')+
+            (p.work_type ? '<span>💼 '+esc(p.work_type)+' work</span>' : '')+
+            (p.sector_preference && p.sector_preference.length ? '<span>Sector: '+esc(p.sector_preference.join(', '))+'</span>' : '')+
+            (p.profile_views ? '<span>👁 '+esc(p.profile_views)+' views</span>' : '')+
+          '</div>'+
+          (chips ? '<div class="pf-chips">'+chips+'</div>' : '')+
+        '</div>'+
+        (p.bio ? '<section class="pf-sec"><h2>About</h2><p class="pf-bio">'+esc(p.bio)+'</p></section>' : '')+
+        (p.target_roles && p.target_roles.length ? '<section class="pf-sec"><h2>Looking for</h2><p class="pf-bio">'+esc(p.target_roles.join(', '))+'</p></section>' : '')+
+        '<section class="pf-sec"><h2>Projects</h2>'+projects+'</section>'+
+        '<div class="pf-actions">'+
+          (p.linkedin_url ? '<a class="btn secondary" href="'+esc(p.linkedin_url)+'" target="_blank" rel="noopener">LinkedIn ↗</a>' : '')+
+          '<button class="btn primary" type="button" onclick="window.print()">Save as PDF</button>'+
+          '<button class="btn secondary" type="button" id="shareBtn">Share Profile</button>'+
+        '</div>'+
+        '<p style="color:var(--muted);font-size:12.5px;margin-top:18px">This portfolio is self-reported by the engineer. Verify credentials independently before hiring. Are you '+esc(p.name)+'? Use your edit link to update this page, or <a href="/create-profile">create your own portfolio</a>.</p>';
+
+      var sb = document.getElementById('shareBtn');
+      if (sb) sb.addEventListener('click', function(){
+        var url = location.href;
+        if (navigator.share) { navigator.share({title: p.name + ' — Civil Engineer Portfolio', url: url}).catch(function(){}); return; }
+        if (navigator.clipboard) navigator.clipboard.writeText(url);
+        sb.textContent = 'Link copied ✓';
+      });
+    })
+    .catch(function(){
+      main.innerHTML =
+        '<div class="pf-head"><h1 class="pf-name">Profile not found</h1>'+
+        '<p class="pf-sub">This portfolio does not exist or is not public.</p>'+
+        '<p style="margin-top:14px"><a class="btn primary" href="/talent">Browse all engineer profiles</a> <a class="btn secondary" href="/create-profile">Create your own — free</a></p></div>';
+    });
+})();
+</script>
+</body>
+</html>
