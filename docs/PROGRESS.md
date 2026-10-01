@@ -235,3 +235,27 @@ still-pending subscriber dedupe + unique constraint).
 - Removed unused stale `next-phase.js`.
 - Added route-specific static HTML metadata shells for key landing routes and rewrote those routes to their shells.
 - Added regression tests in `tests/phase13-production-integrity.test.js`.
+
+## 2 Oct 2026 — Phase 0: gap report (branch `audit`, commit `ad619e8`)
+
+- P0 gate PASSED: the repo's v27 SQL was stale; both files were
+  overwritten byte-for-byte with the owner's FINAL applied versions
+  (is_test, last_attempt_at, media_url, approved_content_hash,
+  caps_timezone all present). The two v27 files are now FROZEN and are
+  never edited again. New migrations start at v28.
+- Baseline `npm test`: 35 tests, 32 pass, 3 PRE-EXISTING failures
+  (phase13-production-integrity: stray api/govt-discovery.js still
+  present + missing .github/workflows/govt-pipeline.yml; govt-pipeline
+  + govt-crawler-hardening: missing govt-pipeline.yml). The civil
+  classifier itself passes. These are P1/P8 deliverables, not regressions.
+- Wrote docs/00-gap-report.md: v27 gate check, baseline run, branch
+  topology (incl. the social-engine name-collision resolution), full
+  Block A-H gap table with file:line evidence, free-tier limits with
+  doc pages, prompt-vs-codebase conflicts, owner checklist, dead-code list.
+- Branch topology: P0 lives on `audit` (branched from `social-engine`
+  HEAD). P2 will fast-forward the existing `social-engine` branch onto
+  the chain so the name is reused without deleting anything.
+- Status words: gap report IMPLEMENTED; nothing claimed TESTED beyond the
+  test run above.
+- Open blockers: none for P0.
+- Owner manual steps: none new yet (v27 already applied in Supabase).
