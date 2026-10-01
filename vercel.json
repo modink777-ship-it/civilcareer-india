@@ -146,7 +146,7 @@
       "destination": "/profile.html"
     },
     {
-      "source": ":seoSlug",
+      "source": "/:seoSlug",
       "destination": "/api/seo-page?slug=:seoSlug"
     }
   ],
