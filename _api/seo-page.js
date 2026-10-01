@@ -71,26 +71,27 @@ function esc(s) {
 
 function parseSlug(slug) {
   const s = String(slug || '').toLowerCase().replace(/\/+$/, '');
-  if (!s.endsWith('-jobs')) return null;
-  const parts = s.slice(0, -5); // strip "-jobs"
 
-  const inMatch = parts.match(/^(.*)-in-([a-z-]+)$/);
+  /* City pages: the "-jobs" sits in the middle — civil-engineer-jobs-in-bengaluru */
+  const inMatch = s.match(/^([a-z0-9-]*)-jobs-in-([a-z-]+)$/);
   if (inMatch) {
-    const roleKey = inMatch[1];
-    const cityKey = inMatch[2];
-    const city = CITIES[cityKey];
+    const roleKey = inMatch[1] || 'civil-engineer';
+    const city = CITIES[inMatch[2]];
     if (!city) return null;
-    if (roleKey === 'civil-engineer' || roleKey === '') {
-      return { city, role: 'Civil Engineer', roleKey: 'civil-engineer' };
+    if (roleKey === 'civil-engineer') {
+      return { city, role: 'Civil Engineer', roleKey };
     }
     const role = ROLES[roleKey];
     if (!role) return null;
     return { city, role, roleKey };
   }
 
-  const role = ROLES[parts];
+  /* Role-only pages: site-engineer-jobs, civil-engineer-jobs */
+  if (!s.endsWith('-jobs')) return null;
+  const roleKey = s.slice(0, -5);
+  const role = ROLES[roleKey];
   if (!role) return null;
-  return { city: null, role, roleKey: parts };
+  return { city: null, role, roleKey };
 }
 
 function salaryText(j) {
