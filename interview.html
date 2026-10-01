@@ -126,7 +126,7 @@ try { upvoted = JSON.parse(sessionStorage.getItem('iv_upvoted')||'{}'); } catch(
 function upvote(id, btn){
   if(upvoted[id]){ btn.textContent='▲ Already upvoted'; return; }
   btn.disabled = true;
-  fetch('/api/interview/upvote', {
+  fetch('/api/interview?action=upvote', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({id:id})
   }).then(function(r){return r.json();}).then(function(d){

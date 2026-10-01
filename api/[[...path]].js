@@ -47,7 +47,8 @@ const handlers = {
   '/api/seo-page':             () => require('../_api/seo-page'),
   '/api/blog':                 () => require('../_api/blog'),
   '/api/interview':            () => require('../_api/interview'),
-  '/api/telegram/webhook':     () => require('../_api/telegram-webhook'),
+  '/api/companies-review':     () => require('../_api/companies'),
+  '/api/telegram-webhook':     () => require('../_api/telegram-webhook'),
 };
 
 
@@ -97,7 +98,7 @@ const ADMIN_RULES = {
                                && !hasValidOwnerKey(req),
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
-  '/api/telegram/webhook':   req => {
+  '/api/telegram-webhook':   req => {
                                if (req.method !== 'POST') return !hasValidOwnerKey(req);
                                const b = req.body;
                                const isMgmt = b && typeof b === 'object' && (b.action || b.key);
@@ -202,8 +203,18 @@ module.exports = async function handler(req, res) {
       req.query = Object.assign({}, req.query, { action: 'upvote' });
     }
 
-    /* Feature D: the bot webhook must bypass the blanket /api/telegram
-       admin rule, which is why it lives on its own path. */
+    /* Feature C/D: two-segment /api/* URLs (e.g. /api/companies/review,
+       /api/telegram/webhook) cannot reach this function on Vercel's router
+       — plain-Node optional catch-alls only match 0-1 segments. The action
+       lives on a single-segment alias instead; the canonical spellings are
+       kept working via the generic /api/:path* rewrite + these mappings. */
+    if (pathName === '/api/companies-review') {
+      pathName = '/api/companies';
+      req.query = Object.assign({}, req.query, { action: 'review' });
+    }
+    if (pathName === '/api/telegram/webhook') {
+      pathName = '/api/telegram-webhook';
+    }
     const match = handlers[pathName];
     if (!match) {
       return sendJson(res, 404, { error: 'Not found', path: pathName });

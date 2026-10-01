@@ -111,6 +111,9 @@ module.exports = async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const q = url.searchParams;
   const body = parseBody(req);
+  /* POST ?action=upvote reserves a per-article reaction counter without
+     any auth — the same pattern the interview page uses. */
+  const isUpvote = q.get('action') === 'upvote';
   const wantsAdmin =
     Boolean(req.headers['x-owner-key']) || (req.method !== 'GET' && Boolean(body.key));
 
@@ -154,6 +157,26 @@ module.exports = async function handler(req, res) {
         posts: rows.map(summaryRow),
         categories: CATEGORIES,
       });
+    }
+
+    /* ── PUBLIC POST ?action=upvote — reaction counter ───────── */
+    if (req.method === 'POST' && isUpvote) {
+      if (!rateLimit(req, { windowMs: 60 * 60 * 1000, max: 30, key: 'blog-upvote' })) {
+        return j(res, 429, { error: 'Too many requests from this network. Try later.' });
+      }
+      const slug = cleanText(body.slug, 90);
+      if (!slug) return j(res, 400, { error: 'slug is required' });
+      const rows = await readJson(
+        await supa(`blog_posts?select=id,views&slug=eq.${encodeURIComponent(slug)}&limit=1`)
+      );
+      if (!rows.length) return j(res, 404, { error: 'Post not found' });
+      const likes = (Number(rows[0].views) || 0) + 1;
+      await supa(`blog_posts?id=eq.${rows[0].id}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ views: likes }),
+      });
+      return j(res, 200, { ok: true, upvotes: likes });
     }
 
     /* ── ADMIN POST — create / update (upsert on slug) ───────── */

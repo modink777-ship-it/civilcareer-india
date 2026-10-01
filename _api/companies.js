@@ -140,6 +140,11 @@ module.exports = async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const q = url.searchParams;
   const body = parseBody(req);
+  /* POST /api/companies?action=review is the review form. The two-segment
+     spelling /api/companies/review cannot reach the function on Vercel's
+     router (plain-Node optional catch-alls only match 0-1 segments), so the
+     dispatcher maps it here with the flag set. */
+  const isReviewPost = q.get('action') === 'review';
   const isAdmin = Boolean(
     req.headers['x-owner-key'] ||
     (req.method !== 'GET' && body.key)
@@ -186,7 +191,7 @@ module.exports = async function handler(req, res) {
     }
 
     /* ── PUBLIC POST: submit a review (moderated) ──────────── */
-    if (req.method === 'POST') {
+    if (req.method === 'POST' && isReviewPost) {
       if (!rateLimit(req, { key: 'company-review', max: 3 })) {
         return j(res, 429, { error: 'Too many reviews submitted. Please try again later.' });
       }
