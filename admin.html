@@ -275,6 +275,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
   <button data-tab="contact">Contact</button>
+  <button data-tab="review-jobs">⚡ Review Jobs</button>
 </div>
 
 <div class="panel active" id="panel-analytics">
@@ -842,6 +843,62 @@ Interview Q&A — public page /interview
 <div id="adminContact">
 <p style="color:#6a8aaa;font-size:.85rem">Loading messages…</p>
 </div>
+</div>
+
+<!-- ⚡ REVIEW JOBS PANEL -->
+<div class="panel" id="panel-review-jobs">
+<style>
+.rj-scraper-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#071828;border:1px solid rgba(201,151,60,.2);border-radius:10px;margin-bottom:14px;align-items:center}
+.rj-scraper-bar span{font-size:.78rem;color:#6a8aaa;flex:1}
+.rj-tabs{display:flex;gap:4px;margin-bottom:14px;background:#071828;padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+.rj-tabs button{padding:7px 14px;border-radius:7px;border:none;background:transparent;color:#6a8aaa;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.rj-tabs button.active{background:#c9973c;color:#0b1f3a}
+.rj-tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
+.rj-bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:10px;margin-bottom:10px}
+.rj-bulk-bar label{font-size:.8rem;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer}
+.rj-count{font-size:.78rem;color:#6a8aaa}
+.btn-pub-bulk{background:rgba(5,150,105,.15);color:#6ee7b7;border:1px solid rgba(5,150,105,.35);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.btn-pub-bulk:hover{background:rgba(5,150,105,.3)}
+.btn-rej-bulk{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.btn-del-bulk{background:rgba(100,50,50,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.2);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.rj-search{width:100%;padding:9px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box}
+.rj-search:focus{border-color:#c9973c}
+.rj-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+.rj-item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:#c9973c}
+.rj-item-body{flex:1;min-width:0}
+.rj-item-body h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 3px;line-height:1.35}
+.rj-item-body p{font-size:.75rem;color:#6a8aaa;margin:0 0 6px}
+.rj-item-actions{display:flex;gap:6px;flex-wrap:wrap}
+.rj-tg-badge{font-size:.65rem;padding:2px 7px;border-radius:999px;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);font-weight:600;margin-left:6px}
+.rj-tg-no{background:rgba(100,100,100,.1);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
+.rj-pager{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+</style>
+
+<div class="rj-scraper-bar">
+  <span>Scrape 9 portals for civil engineering jobs → saved as pending review</span>
+  <button class="btn-gold" onclick="rjRunScraper()" id="rjScraperBtn">🔍 Run Scraper Now</button>
+  <button class="btn-ghost" onclick="rjLoadTab(rjActiveTab)">⟳ Refresh</button>
+</div>
+
+<div class="rj-tabs">
+  <button class="active" data-rjtab="review" onclick="rjLoadTab('review')">📋 Pending Review <span id="rjReviewCount"></span></button>
+  <button data-rjtab="published" onclick="rjLoadTab('published')">✅ Published <span id="rjPubCount"></span></button>
+  <button data-rjtab="deleted" onclick="rjLoadTab('deleted')">🗑️ Deleted <span id="rjDelCount"></span></button>
+</div>
+
+<input class="rj-search" id="rjSearch" placeholder="Search by job title…" oninput="rjFilterList()">
+
+<div class="rj-bulk-bar">
+  <label><input type="checkbox" id="rjSelAll" onchange="rjToggleAll(this.checked)"> Select all</label>
+  <span class="rj-count" id="rjSelCount">0 selected</span>
+  <button class="btn-pub-bulk" onclick="rjBulk('publish')">✅ Publish</button>
+  <button class="btn-rej-bulk" onclick="rjBulk('reject')">✕ Reject</button>
+  <button class="btn-del-bulk" onclick="rjBulk('delete')">🗑 Delete</button>
+  <button class="btn-ghost" onclick="rjBulk('restore')" style="font-size:.75rem">↩ Restore</button>
+</div>
+
+<div id="rjList"><p style="color:#6a8aaa;font-size:.85rem;padding:1rem 0">Click a tab above to load jobs.</p></div>
+<div class="rj-pager" id="rjPager"></div>
 </div>
 
 </div>
@@ -4629,6 +4686,115 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('admin-jobs-delete-selected')?.addEventListener('click',deleteSelectedAdminJobs);
   syncAdminJobSelection();
 });
+</script>
+
+<script>
+/* ═══════════════════════════════════════
+   REVIEW JOBS SYSTEM
+   ═══════════════════════════════════════ */
+let rjActiveTab='review', rjPage=1;
+const rjLimit=50;
+
+async function rjLoadTab(tab){
+  rjActiveTab=tab; rjPage=1;
+  document.querySelectorAll('.rj-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.rjtab===tab));
+  $('rjList').innerHTML='<p style="color:#6a8aaa;font-size:.85rem;padding:1rem 0">Loading…</p>';
+  $('rjSelAll').checked=false; $('rjSelCount').textContent='0 selected';
+  await rjFetch(tab,1);
+}
+
+async function rjFetch(tab,page){
+  try{
+    const s=($('rjSearch').value||'').trim();
+    const url='/api/admin-jobs?tab='+tab+'&page='+page+'&limit='+rjLimit+(s?'&search='+encodeURIComponent(s):'')+'&key='+encodeURIComponent(adminKey);
+    const res=await fetch(url);
+    const data=await res.json();
+    const jobs=data.jobs||[];
+    const total=data.total||0;
+    if(tab==='review') $('rjReviewCount').textContent='('+total+')';
+    if(tab==='published') $('rjPubCount').textContent='('+total+')';
+    if(tab==='deleted') $('rjDelCount').textContent='('+total+')';
+    rjRender(jobs,total,page);
+  }catch(e){
+    $('rjList').innerHTML='<p style="color:#fca5a5;font-size:.85rem">Error: '+e.message+'</p>';
+  }
+}
+
+function rjRender(jobs,total,page){
+  if(!jobs.length){
+    $('rjList').innerHTML='<p style="color:#6a8aaa;padding:1rem 0">No jobs found.</p>';
+    $('rjPager').innerHTML=''; return;
+  }
+  $('rjList').innerHTML=jobs.map(j=>{
+    const tg=j.telegram_posted
+      ?'<span class="rj-tg-badge">📢 TG</span>'
+      :'<span class="rj-tg-badge rj-tg-no">Not sent</span>';
+    const dl=j.deadline?'· ⏰ '+j.deadline:'';
+    const src=j.source_name?'· 📡 '+j.source_name:'';
+    const vac=j.vacancy_count?'· 👥 '+j.vacancy_count+' posts':'';
+    return '<div class="rj-item" id="rji-'+j.id+'">'
+      +'<input type="checkbox" class="rj-cb" value="'+j.id+'" onchange="rjUpdSel()">'
+      +'<div class="rj-item-body">'
+      +'<h4>'+(j.role||'Untitled').replace(/</g,'&lt;')+' '+tg+'</h4>'
+      +'<p>'+(j.company||'').replace(/</g,'&lt;')+' · '+(j.sector||'')+' · '+(j.location||'India').replace(/</g,'&lt;')+' '+dl+' '+vac+' '+src+'</p>'
+      +'<div class="rj-item-actions">'
+      +(rjActiveTab!=='published'?'<button class="btn-publish" onclick="rjOne(\'publish\',\''+j.id+'\')">✅ Publish</button>':'')
+      +(rjActiveTab==='published'?'<button class="btn-ghost" style="font-size:.73rem" onclick="rjOne(\'reject\',\''+j.id+'\')">Unpublish</button>':'')
+      +(rjActiveTab!=='deleted'?'<button class="btn-reject" onclick="rjOne(\'delete\',\''+j.id+'\')">🗑 Delete</button>':'')
+      +(rjActiveTab==='deleted'?'<button class="btn-ghost" style="font-size:.73rem" onclick="rjOne(\'restore\',\''+j.id+'\')">↩ Restore</button>':'')
+      +(j.source_url?'<a class="btn-open-src" href="'+j.source_url+'" target="_blank" rel="noopener noreferrer">View Source ↗</a>':'')
+      +'</div></div></div>';
+  }).join('');
+
+  const pages=Math.ceil(total/rjLimit);
+  $('rjPager').innerHTML=pages>1
+    ?'<button class="btn-ghost" '+(page<=1?'disabled':'')+' onclick="rjGoPage('+(page-1)+')">← Prev</button>'
+    +'<span style="color:#6a8aaa;font-size:.82rem">Page '+page+' of '+pages+' · '+total+' jobs</span>'
+    +'<button class="btn-ghost" '+(page>=pages?'disabled':'')+' onclick="rjGoPage('+(page+1)+')">Next →</button>'
+    :'<span style="color:#6a8aaa;font-size:.78rem">'+total+' job'+(total!==1?'s':'')+'</span>';
+}
+
+function rjGoPage(p){rjPage=p;rjFetch(rjActiveTab,p);}
+function rjFilterList(){clearTimeout(rjFilterList._t);rjFilterList._t=setTimeout(()=>rjFetch(rjActiveTab,1),400);}
+function rjToggleAll(c){document.querySelectorAll('.rj-cb').forEach(cb=>cb.checked=c);rjUpdSel();}
+function rjUpdSel(){const n=document.querySelectorAll('.rj-cb:checked').length;$('rjSelCount').textContent=n+' selected';}
+function rjGetSel(){return[...document.querySelectorAll('.rj-cb:checked')].map(cb=>cb.value);}
+async function rjOne(action,id){await rjDoAction(action,[id]);}
+async function rjBulk(action){
+  const ids=rjGetSel();
+  if(!ids.length){toast('Select at least one job first.');return;}
+  await rjDoAction(action,ids);
+}
+async function rjDoAction(action,ids){
+  try{
+    const res=await fetch('/api/admin-jobs',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:adminKey,action,ids})
+    });
+    const data=await res.json();
+    const label={publish:'Published',reject:'Rejected',delete:'Deleted',restore:'Restored'}[action]||action;
+    toast(label+' '+data.affected+' job'+(data.affected!==1?'s':'')+' ✓');
+    if(action==='publish') toast('📢 Posting to Telegram…');
+    await rjFetch(rjActiveTab,rjPage);
+    $('rjSelAll').checked=false; $('rjSelCount').textContent='0 selected';
+  }catch(e){toast('Error: '+e.message);}
+}
+async function rjRunScraper(){
+  const btn=$('rjScraperBtn');
+  btn.disabled=true; btn.textContent='⏳ Scraping…';
+  try{
+    const res=await fetch('/api/civil-scraper',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:adminKey})
+    });
+    const data=await res.json();
+    toast('Scraper done — '+(data.new_jobs_saved||0)+' new jobs saved for review ✓');
+    if(rjActiveTab==='review') await rjFetch('review',1);
+  }catch(e){toast('Scraper error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='🔍 Run Scraper Now';}
+}
 </script>
 </body>
 </html>
