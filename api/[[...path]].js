@@ -197,10 +197,12 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    /* Feature E: POST /api/interview/upvote is the same handler, flagged. */
+    /* Feature E: POST /api/interview/upvote is the same handler, flagged.
+       req.url is rewritten too because the handler parses the URL itself. */
     if (pathName === '/api/interview/upvote') {
       pathName = '/api/interview';
       req.query = Object.assign({}, req.query, { action: 'upvote' });
+      try { req.url = '/api/interview?action=upvote'; } catch (_) { /* keep */ }
     }
 
     /* Feature C/D: two-segment /api/* URLs (e.g. /api/companies/review,
@@ -211,6 +213,12 @@ module.exports = async function handler(req, res) {
     if (pathName === '/api/companies-review') {
       pathName = '/api/companies';
       req.query = Object.assign({}, req.query, { action: 'review' });
+      try { req.url = '/api/companies?action=review'; } catch (_) { /* keep */ }
+    }
+    /* Legacy F5 spelling: route to the review branch explicitly. */
+    if (pathName === '/api/companies/review') {
+      pathName = '/api/companies';
+      try { req.url = '/api/companies?action=review'; } catch (_) { /* keep */ }
     }
     if (pathName === '/api/telegram/webhook') {
       pathName = '/api/telegram-webhook';
