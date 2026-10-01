@@ -1,0 +1,18 @@
+name: Daily Civil Scraper
+
+on:
+  schedule:
+    # 20:00 UTC = 01:30 IST — daily
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Civil Scraper
+        run: |
+          curl -sS -X POST "${{ secrets.SITE_URL }}/api/civil-scraper" \
+            -H "Content-Type: application/json" \
+            -H "x-owner-key: ${{ secrets.OWNER_KEY }}" \
+            -d "{}"

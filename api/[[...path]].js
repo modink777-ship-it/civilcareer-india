@@ -38,6 +38,8 @@ const handlers = {
   '/api/salary':               () => require('../_api/salary'),
   '/api/walkin':               () => require('../_api/walkin'),
   '/api/whatsapp-subscribe':   () => require('../_api/whatsapp-subscribe'),
+  '/api/morning-brief':        () => require('../_api/morning-brief'),
+  '/api/civil-scraper':        () => require('../_api/civil-scraper'),
 };
 
 

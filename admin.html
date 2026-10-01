@@ -1462,9 +1462,15 @@ function renderSubmissions(emp,res){
                 href="${esc(x.official_url||'#')}"
                 target="_blank"
                 style="color:#c9973c">
+                ${x.is_featured?'<span class="status-badge published">⭐ FEATURED</span>':''}
+              <a
+                href="${esc(x.official_url||'#')}"
+                target="_blank"
+                style="color:#c9973c">
                 View URL →
               </a>
             </p>
+            ${x.payment_utr?`<p>UTR: <code>${esc(x.payment_utr)}</code></p>`:''}
 
           </div>
 
