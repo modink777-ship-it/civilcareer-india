@@ -199,7 +199,12 @@ function notFoundHtml(slug) {
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
-    const slug = url.searchParams.get('slug') || '';
+    /* The dispatcher injects req.query.slug for /<...>-jobs paths; the
+       rewritten query string is the fallback when present. */
+    const qSlug = req.query && req.query.slug;
+    const slug = url.searchParams.get('slug')
+      || (Array.isArray(qSlug) ? qSlug[0] : qSlug)
+      || '';
     const parsed = parseSlug(slug);
 
     if (!parsed) {

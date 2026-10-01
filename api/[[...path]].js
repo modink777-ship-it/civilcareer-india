@@ -166,6 +166,18 @@ module.exports = async function handler(req, res) {
       req.query = Object.assign({}, req.query, { slug, render: 'html' });
     }
 
+    /* Dynamic SEO pages (Feature 12): /<role>-jobs[-in-<city>] URLs resolve
+       here as well — Vercel rewrites can leave req.url as the original path,
+       so the slug is derived from it directly instead of relying on the
+       rewritten query string. */
+    if (!handlers[pathName]) {
+      const seoSlug = pathName.match(/^\/([a-z0-9]+(?:-[a-z0-9]+)*-jobs(?:-in-[a-z0-9-]+)?)$/i);
+      if (seoSlug) {
+        pathName = '/api/seo-page';
+        req.query = Object.assign({}, req.query, { slug: seoSlug[1] });
+      }
+    }
+
     const match = handlers[pathName];
     if (!match) {
       return sendJson(res, 404, { error: 'Not found', path: pathName });
