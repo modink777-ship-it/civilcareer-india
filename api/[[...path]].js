@@ -40,6 +40,7 @@ const handlers = {
   '/api/whatsapp-subscribe':   () => require('../_api/whatsapp-subscribe'),
   '/api/morning-brief':        () => require('../_api/morning-brief'),
   '/api/civil-scraper':        () => require('../_api/civil-scraper'),
+  '/api/admin-jobs':           () => require('../_api/admin-jobs'),
   '/api/profiles':             () => require('../_api/profiles'),
   '/api/companies':            () => require('../_api/companies'),
   '/api/companies/review':     () => require('../_api/companies'),
