@@ -798,89 +798,19 @@ async function resolveLedger(id, body) {
  * never imply exam-alert or discovery-crawler access.
  */
 function isSocialCronRequest(req) {
-  const secret = String(
-    process.env.SOCIAL_CRON_SECRET ||
-    process.env.CRON_SECRET || ''
-  ).trim();
+  const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
   if (secret) {
     if (String(req.headers.authorization || '') === `Bearer ${secret}`) return true;
     if (String(req.headers['x-cron-secret'] || '') === secret) return true;
   }
+  /* Owner key remains available for the Admin "Run now" action.
+     It is never placed in the GitHub Actions workflow. */
   const ownerKey = String(process.env.OWNER_KEY || '').trim();
   if (ownerKey) {
     if (String(req.headers['x-owner-key'] || '') === ownerKey) return true;
     if (String(req.headers.authorization || '') === `Bearer ${ownerKey}`) return true;
   }
-  /* No secret configured: only the Vercel Cron user agent. */
-  if (!secret && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) return true;
   return false;
-}
-
-/** Publish every approved suggestion (oldest first). Each row
- *  runs the FULL publish pipeline — Truth Lock, content lock,
- *  per-platform claim, daily caps — and one bad row never
- *  stops the drain. */
-async function drainQueue(limit) {
-  const settings = await getSettings();
-  if (settings._error) {
-    return { status: 503, error: 'Social engine settings missing — run supabase-v27-social-engine.sql' }; 
-  }
-  if (settings.kill_switch) {
-    return { status: 403, error: 'Kill switch is ON — publishing is disabled' };
-  }
-
-  const max = Math.min(Math.max(Number(limit) || 20, 1), 50);
-  const r = await supa(
-    `social_suggestions?status=eq.approved&order=created_at.asc&limit=${max}`,
-  );
-  if (!r.ok) {
-    const detail = await r.text();
-    return { status: 500, error: 'Queue could not be loaded', details: detail.slice(0, 300) };
-  }
-  const queued = await r.json();
-
-  const results = [];
-  for (const suggestion of Array.isArray(queued) ? queued : []) {
-    const out = await publishSuggestion(suggestion.id, {});
-    const outcomes = (out.result && out.result.results) || [];
-    results.push({
-      id: suggestion.id,
-      source_type: suggestion.source_type,
-      template_key: suggestion.template_key,
-      status: out.status === 200 ? 'ok' : 'skipped',
-      reason: out.status === 200 ? null : out.error,
-      sent: outcomes.filter((x) => x.ok && !x.skipped).length,
-      platforms: outcomes.map((x) => ({
-        platform: x.platform,
-        ok: Boolean(x.ok),
-        skipped: Boolean(x.skipped),
-        error: x.error ? redactSecrets(x.error) : null,
-      })),
-    });
-  }
-
-  return {
-    status: 200,
-    result: {
-      drained: results.length,
-      published: results.filter((x) => x.sent > 0).length,
-      results,
-    },
-  };
-}
-
-/* ── settings ───────────────────────────────────────── */
-
-const IANA_ZONE_RE = /^[A-Za-z_]+(?:\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)?$/;
-
-function validTimezone(tz) {
-  if (!IANA_ZONE_RE.test(String(tz || ''))) return false;
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: String(tz) }).format(new Date());
-    return true;
-  } catch (_) {
-    return false;
-  }
 }
 
 async function updateSettings(body) {
