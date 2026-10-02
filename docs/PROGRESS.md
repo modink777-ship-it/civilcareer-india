@@ -524,6 +524,7 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 ## 2 Oct 2026 — Exams clean-route follow-up
 - Branch: `fix/exams-route` (based on merged `main`).
 - Moved the exact `/exams` rewrite before `/exams/:path*`; added an order/destination regression test.
+- Fix commit: `faa963a4e72ec96d5478dd4f6dac067479208d58` (pushed to origin).
 - Tests: focused SEO/routing tests 3/3 passed; syntax check passed; full suite 162 passed, 1 failed on the existing A8 generated-admin-bundle byte-sync assertion.
 - Status: route fix IMPLEMENTED and TESTED locally; production NOT YET VERIFIED.
 - Owner step: review the preview deployment, then merge the PR. Recheck `/exams` title and canonical after production deployment.
