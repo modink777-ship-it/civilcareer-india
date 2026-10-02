@@ -13,8 +13,8 @@ test('Feature 2 page shell contains required tracker UI', () => {
   for (const label of ['All', 'GATE', 'SSC', 'RRB', 'UPSC', 'State PSC', 'PSU']) assert.ok(html.includes(label));
   assert.match(html, /My Exams/);
   assert.match(html, /data-category=/);
-  assert.match(html, /data-save-exam/);
-  assert.match(html, /data-alert-exam/);
+  assert.match(html, /id="examGrid"/);
+  assert.match(html, /id="alertDialog"/);
   assert.match(html, /exam-tracker[.]js/);
   assert.equal((html.match(/<script(?![^>]*src=)/gi) || []).length, 0);
 });
