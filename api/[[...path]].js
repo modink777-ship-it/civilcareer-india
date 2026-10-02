@@ -58,6 +58,7 @@ const handlers = {
      connections and settings. Admin-only on every method. */
   '/api/social':               () => require('../_api/social'),
   '/api/social-graphics':       () => require('../_api/social-graphics'),
+  '/api/social-graphics-v4':    () => require('../_api/social-graphics-v4'),
 };
 
 
