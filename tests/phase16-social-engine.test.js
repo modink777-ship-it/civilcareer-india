@@ -775,6 +775,7 @@ const GOVT_JOB_ROW = {
   scope: 'state', state: 'Maharashtra', status: 'active',
   civil_posts_count: 120, total_posts_in_notification: 300,
   deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026',
+  reviewed_at: '2026-09-01T00:00:00Z',
   official_notice_url: 'https://maharashtra.gov.in',
 };
 
