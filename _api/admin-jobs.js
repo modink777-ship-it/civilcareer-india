@@ -55,6 +55,9 @@ function readOwnerKey(req) {
   if (req && req.headers && req.headers['x-owner-key']) {
     return String(req.headers['x-owner-key']).trim();
   }
+  if (req && req.body && typeof req.body === 'object' && req.body.key) {
+    return String(req.body.key).trim();
+  }
   try {
     const url = new URL(req.url, 'http://localhost');
     const q = url.searchParams.get('key');
@@ -163,6 +166,7 @@ function buildWhere(tab, search) {
      any value that merely contains the word. */
   if (tab === 'published') parts.push('published=eq.true', 'review_state=neq.deleted', 'review_state=neq.Deleted');
   else if (tab === 'deleted') parts.push('or=(review_state=ilike.*deleted*,review_state=eq.deleted)');
+  else if (tab === 'rejected') parts.push('published=eq.false', 'review_state=ilike.*rejected*');
   else parts.push('published=eq.false', 'or=(review_state=ilike.*pending*,review_state=is.null)');
 
   const term = String(search || '').trim();
@@ -184,6 +188,9 @@ async function handleGet(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
     const tab = String(url.searchParams.get('tab') || 'review').toLowerCase();
+    if (!['review', 'published', 'deleted', 'rejected'].includes(tab)) {
+      return res.status(400).json({ error: 'Unknown jobs tab' });
+    }
     const search = String(url.searchParams.get('search') || '').trim().slice(0, 200);
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const perPage = Math.min(200, Math.max(1, parseInt(url.searchParams.get('per_page') || '50', 10) || 50));
@@ -294,6 +301,7 @@ async function handlePost(req, res) {
   else if (action === 'restore') { updates.published = false; updates.review_state = 'Pending Review'; }
 
   let updated = 0;
+  let updateErrors = 0;
   const CHUNK = 100;
 
   for (let i = 0; i < ids.length; i += CHUNK) {
@@ -303,6 +311,7 @@ async function handlePost(req, res) {
     try {
       const r = await supa(`jobs?${inClause}`, {
         method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify(updates),
       });
       if (r.ok) {
@@ -315,11 +324,21 @@ async function handlePost(req, res) {
           updated += chunk.length;
         }
       } else {
+        updateErrors += 1;
         console.error('admin-jobs patch status:', r.status, action, chunk.length);
       }
     } catch (e) {
+      updateErrors += 1;
       console.error('admin-jobs patch error:', e && e.message);
     }
+  }
+
+  if (updateErrors) {
+    return res.status(500).json({
+      error: 'One or more job updates failed.',
+      updated,
+      requested: ids.length,
+    });
   }
 
   /* Publish hook. Two mutually exclusive paths so a job can
@@ -366,7 +385,7 @@ async function handlePost(req, res) {
     })();
   }
 
-  return res.status(200).json({ ok: true, action, updated });
+  return res.status(200).json({ ok: true, action, updated, requested: ids.length });
 }
 
 module.exports = async function adminJobsHandler(req, res) {

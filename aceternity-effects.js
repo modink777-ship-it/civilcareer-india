@@ -20,6 +20,13 @@
     svg.setAttribute('viewBox', '0 0 1440 700');
     svg.setAttribute('preserveAspectRatio', 'none');
     svg.setAttribute('aria-hidden', 'true');
+    svg.style.position = 'absolute';
+    svg.style.inset = '0';
+    svg.style.display = 'block';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '1';
 
     var paths = [
       'M-20 545 C170 545 230 535 340 475 C445 418 485 425 585 455 C690 487 725 390 835 398 C950 407 1000 490 1120 462 C1230 436 1290 350 1460 360',

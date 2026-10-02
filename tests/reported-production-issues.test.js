@@ -19,6 +19,27 @@ test('homepage background photos are disabled while other route visuals remain',
   assert.match(source, /const hero=active\.querySelector\('\.hero, \.careerhub-hero'\)/);
 });
 
+test('homepage popular roles section is removed from public markup', () => {
+  const source = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.equal(source.includes('Most searched roles'), false);
+  assert.equal(source.includes('Popular civil engineering job paths'), false);
+});
+
+test('decorative hero SVG is positioned out of document flow at creation time', () => {
+  const source = fs.readFileSync(path.join(root, 'aceternity-effects.js'), 'utf8');
+  assert.match(source, /svg\.style\.position = 'absolute'/);
+  assert.match(source, /svg\.style\.inset = '0'/);
+  assert.match(source, /svg\.style\.pointerEvents = 'none'/);
+});
+
+test('shared design CSS does not use late font imports and collapses layouts responsively', () => {
+  const source = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+  assert.equal(/@import\b/i.test(source), false);
+  assert.match(source, /@media \(max-width: 900px\)[\s\S]*?\.tools-row\s*\{\s*display:\s*none/);
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*?\.cards\.three[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(source, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
 test('small-screen homepage shows its content without the promo panel or tools row', () => {
   const source = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
   assert.match(source, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.tools-row\s*\{\s*display:\s*none/);

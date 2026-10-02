@@ -47,7 +47,6 @@ const handlers = {
   '/api/morning-brief':        () => require('../_api/morning-brief'),
   '/api/civil-scraper':        () => require('../_api/civil-scraper'),
   '/api/admin-jobs':           () => require('../_api/admin-jobs'),
-   '/api/admin-jobs':           () => require('../_api/admin-jobs'),
 '/api/mock-tests': () => require('./mock-tests'),
 '/api/blog':                 () => require('../_api/blog'),
 '/api/interview':            () => require('../_api/interview'),
@@ -96,6 +95,8 @@ const ADMIN_RULES = {
      Elevate non-public requests through the allowlist unless the caller is
      already authenticated with the real owner key (scripts, cron curls). */
   '/api/exam-tracker':       req => req.method !== 'GET' && !hasValidOwnerKey(req),
+  '/api/admin-jobs':         req => !hasValidOwnerKey(req),
+  '/api/civil-scraper':      req => !hasValidOwnerKey(req),
   '/api/salary':             req => (req.method !== 'GET'
                                || new URL(req.url, 'http://localhost').searchParams.has('admin')
                                || new URL(req.url, 'http://localhost').searchParams.has('unverified'))
@@ -118,7 +119,16 @@ const ADMIN_RULES = {
      dashboard sessions through the allowlist unless the caller
      already holds the real owner key. */
   '/api/social': req => !hasValidOwnerKey(req),
-  '/api/social-graphics': req => false, /* handler authenticates; Phase 3 cron delegate */
+  '/api/social-graphics': req => {
+    let delegate = '';
+    try { delegate = new URL(req.url, 'http://localhost').searchParams.get('delegate') || ''; } catch (_) {}
+    if (delegate !== 'social-cron' || hasValidOwnerKey(req)) return false;
+    const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
+    if (!secret) return true;
+    const auth = String(req.headers.authorization || '');
+    return auth !== `Bearer ${secret}` && String(req.headers['x-cron-secret'] || '') !== secret;
+  },
+  '/api/social-graphics-v4': req => !hasValidOwnerKey(req),
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
   '/api/telegram-webhook':   req => {

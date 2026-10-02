@@ -201,6 +201,11 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 @media(max-width:560px){.review-modal{padding:16px}.review-modal .rm-actions{flex-direction:column}}
 
 </style>
+<style id="admin-muted-text-contrast">
+.admin-body :is(.login-card p,.metric span,.tabs button:not(.active),.import-box p,.import-box label span,.list-item-info p,.dialog-head button,.bar-row span,.discovery-note,.discovery-result p,.source-health-table th,.sh-nc,.discovery-summary,.dr-date,.btn-open-src,.rq-empty,.review-modal .rm-label,.ar-item p,.rm-close,.rj-scraper-bar span,.rj-tabs button:not(.active),.rj-count,.rj-item-body p,.rj-pager span,.rj-tg-no){color:#9fb0c6!important}
+.admin-body [style*="#6a8aaa"],.admin-body [style*="#4a6a8a"]{color:#9fb0c6!important}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#9fb0c6!important;opacity:1}
+</style>
 <script src="/theme.js"></script>
 <style id="admin-jobs-bulk-style">
 .admin-jobs-bulkbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#102a49;min-height:48px}
@@ -582,14 +587,19 @@ Notification reader
 </p>
 
 <h3>Import an official exam PDF</h3>
-<p>Select a text-based government notification PDF.</p>
+<p>Extract selectable PDF text in your browser at no cost, then verify it and enter exam details manually. Scanned PDFs need OCR and are not supported here.</p>
 
 <div class="import-actions">
 <input type="file" id="importExamPdf" accept="application/pdf,.pdf">
-<button class="btn-gold" id="importExamBtn" onclick="importExamPdf()">Read PDF</button>
+<button class="btn-gold" id="importExamBtn" onclick="importExamPdf()">Extract text</button>
 </div>
 
 <div class="import-status" id="importExamStatus"></div>
+<div id="importExamTextWrap" style="display:none;margin-top:12px">
+  <label for="importExamText">Extracted notification text — verify every value against the official source</label>
+  <textarea id="importExamText" rows="10" readonly style="width:100%;box-sizing:border-box"></textarea>
+  <button class="btn-ghost" type="button" onclick="copyExamPdfText()">Copy extracted text</button>
+</div>
 </div>
 
 <div class="admin-actions">
@@ -941,6 +951,7 @@ Interview Q&A — public page /interview
 
 <div class="rj-tabs">
   <button class="active" data-rjtab="review" onclick="rjLoadTab('review')">📋 Pending Review <span id="rjReviewCount"></span></button>
+  <button data-rjtab="rejected" onclick="rjLoadTab('rejected')">✕ Rejected <span id="rjRejectedCount"></span></button>
   <button data-rjtab="published" onclick="rjLoadTab('published')">✅ Published <span id="rjPubCount"></span></button>
   <button data-rjtab="deleted" onclick="rjLoadTab('deleted')">🗑️ Deleted <span id="rjDelCount"></span></button>
 </div>
@@ -2940,48 +2951,29 @@ async function importExamPdf(){
 
   btn.disabled=true;
 
-  btn.textContent='Reading…';
+  btn.textContent='Extracting…';
+  $('importExamTextWrap').style.display='none';
+  $('importExamText').value='';
 
   setImportStatus(
     'importExamStatus',
-    'Extracting text…'
+    'Extracting text locally in this browser…'
   );
 
   try{
 
-    const text=
-      await pdfText(file);
+    const text=(await pdfText(file)).trim();
+    if(!text){
+      throw new Error('No selectable text found. This may be a scanned PDF; use the official PDF alongside manual entry.');
+    }
 
+    $('importExamText').value=text.slice(0,30000);
+    $('importExamTextWrap').style.display='block';
     setImportStatus(
       'importExamStatus',
-      'Organizing fields with AI…'
-    );
-
-    const data=
-      await api(
-        '/api/exam-extract',
-        {
-          method:'POST',
-          key:adminKey,
-          body:JSON.stringify({text})
-        }
-      );
-
-    const x=data.exam||{};
-
-    x.last_verified=
-      new Date()
-      .toISOString()
-      .slice(0,10);
-
-    setImportStatus(
-      'importExamStatus',
-      data.warning||
-      'Done. Verify all fields before saving.',
+      `Extracted ${Math.min(text.length,30000).toLocaleString()} of ${text.length.toLocaleString()} characters. No AI or paid service was used. Add exam details manually and verify them before saving.`,
       'success'
     );
-
-    examEditor(x);
 
   }catch(err){
 
@@ -2995,7 +2987,22 @@ async function importExamPdf(){
 
     btn.disabled=false;
 
-    btn.textContent='Read PDF';
+    btn.textContent='Extract text';
+  }
+}
+
+async function copyExamPdfText(){
+  const text=$('importExamText').value;
+  try{
+    if(!navigator.clipboard||!navigator.clipboard.writeText){
+      $('importExamText').focus();
+      $('importExamText').select();
+      throw new Error('Text selected. Copy it with Ctrl+C (or the Copy command on your device).');
+    }
+    await navigator.clipboard.writeText(text);
+    setImportStatus('importExamStatus','Extracted text copied. Verify all details against the official notification.','success');
+  }catch(err){
+    setImportStatus('importExamStatus',err.message||'Could not copy the text. Select it and copy manually.','error');
   }
 }
 
@@ -5124,6 +5131,10 @@ document
 
       $('panel-'+b.dataset.tab)
         .classList.add('active');
+
+      if(b.dataset.tab==='review-jobs'){
+        rjLoadTab(rjActiveTab);
+      }
     };
   });
 
@@ -5329,17 +5340,30 @@ async function rjLoadTab(tab){
 async function rjFetch(tab,page){
   try{
     const s=($('rjSearch').value||'').trim();
-    const url='/api/admin-jobs?tab='+tab+'&page='+page+'&limit='+rjLimit+(s?'&search='+encodeURIComponent(s):'')+'&key='+encodeURIComponent(adminKey);
-    const res=await fetch(url);
-    const data=await res.json();
-    const jobs=data.jobs||[];
-    const total=data.total||0;
+    const params=new URLSearchParams({tab,page:String(page),per_page:String(rjLimit)});
+    if(s)params.set('search',s);
+    const data=await authedApi('/api/admin-jobs?'+params.toString(),{});
+    if(!Array.isArray(data.jobs)||!Number.isFinite(data.total)){
+      throw new Error(data.error||'Jobs review API returned an invalid response.');
+    }
+    const jobs=data.jobs;
+    const total=data.total;
     if(tab==='review') $('rjReviewCount').textContent='('+total+')';
+    if(tab==='rejected') $('rjRejectedCount').textContent='('+total+')';
     if(tab==='published') $('rjPubCount').textContent='('+total+')';
     if(tab==='deleted') $('rjDelCount').textContent='('+total+')';
     rjRender(jobs,total,page);
   }catch(e){
-    $('rjList').innerHTML='<p style="color:#fca5a5;font-size:.85rem">Error: '+e.message+'</p>';
+    $('rjList').innerHTML='<p style="color:#fca5a5;font-size:.85rem">Could not load this queue: '+esc(e.message||'Unknown error')+'</p>';
+  }
+}
+
+function rjSafeUrl(value){
+  try{
+    const url=new URL(String(value||''));
+    return ['http:','https:'].includes(url.protocol)?esc(url.href):'';
+  }catch(_){
+    return '';
   }
 }
 
@@ -5352,22 +5376,28 @@ function rjRender(jobs,total,page){
     const tg=j.telegram_posted
       ?'<span class="rj-tg-badge">📢 TG</span>'
       :'<span class="rj-tg-badge rj-tg-no">Not sent</span>';
-    const dl=j.deadline?'· ⏰ '+j.deadline:'';
-    const src=j.source_name?'· 📡 '+j.source_name:'';
-    const vac=j.vacancy_count?'· 👥 '+j.vacancy_count+' posts':'';
-    return '<div class="rj-item" id="rji-'+j.id+'">'
-      +'<input type="checkbox" class="rj-cb" value="'+j.id+'" onchange="rjUpdSel()">'
+    const dl=j.deadline?'· ⏰ '+esc(j.deadline):'';
+    const src=j.source_name?'· 📡 '+esc(j.source_name):'';
+    const vac=j.vacancy_count?'· 👥 '+esc(j.vacancy_count)+' posts':'';
+    const id=esc(j.id);
+    const sourceUrl=rjSafeUrl(j.source_url);
+    return '<div class="rj-item" id="rji-'+id+'">'
+      +'<input type="checkbox" class="rj-cb" value="'+id+'" onchange="rjUpdSel()">'
       +'<div class="rj-item-body">'
-      +'<h4>'+(j.role||'Untitled').replace(/</g,'&lt;')+' '+tg+'</h4>'
-      +'<p>'+(j.company||'').replace(/</g,'&lt;')+' · '+(j.sector||'')+' · '+(j.location||'India').replace(/</g,'&lt;')+' '+dl+' '+vac+' '+src+'</p>'
+      +'<h4>'+esc(j.role||'Untitled')+' '+tg+'</h4>'
+      +'<p>'+esc(j.company||'')+' · '+esc(j.sector||'')+' · '+esc(j.location||'India')+' '+dl+' '+vac+' '+src+'</p>'
       +'<div class="rj-item-actions">'
-      +(rjActiveTab!=='published'?'<button class="btn-publish" onclick="rjOne(\'publish\',\''+j.id+'\')">✅ Publish</button>':'')
-      +(rjActiveTab==='published'?'<button class="btn-ghost" style="font-size:.73rem" onclick="rjOne(\'reject\',\''+j.id+'\')">Unpublish</button>':'')
-      +(rjActiveTab!=='deleted'?'<button class="btn-reject" onclick="rjOne(\'delete\',\''+j.id+'\')">🗑 Delete</button>':'')
-      +(rjActiveTab==='deleted'?'<button class="btn-ghost" style="font-size:.73rem" onclick="rjOne(\'restore\',\''+j.id+'\')">↩ Restore</button>':'')
-      +(j.source_url?'<a class="btn-open-src" href="'+j.source_url+'" target="_blank" rel="noopener noreferrer">View Source ↗</a>':'')
+      +(rjActiveTab==='review'?'<button class="btn-rej-bulk" data-rj-action="reject" data-rj-id="'+id+'">✕ Reject</button>':'')
+      +(rjActiveTab!=='published'?'<button class="btn-publish" data-rj-action="publish" data-rj-id="'+id+'">✅ Publish</button>':'')
+      +(rjActiveTab==='published'?'<button class="btn-ghost" style="font-size:.73rem" data-rj-action="unpublish" data-rj-id="'+id+'">Unpublish</button>':'')
+      +(rjActiveTab!=='deleted'?'<button class="btn-del-bulk" data-rj-action="delete" data-rj-id="'+id+'">🗑 Delete</button>':'')
+      +(rjActiveTab==='deleted'?'<button class="btn-ghost" style="font-size:.73rem" data-rj-action="restore" data-rj-id="'+id+'">↩ Restore</button>':'')
+      +(sourceUrl?'<a class="btn-open-src" href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">View Source ↗</a>':'')
       +'</div></div></div>';
   }).join('');
+  $('rjList').querySelectorAll('[data-rj-action]').forEach(button=>{
+    button.addEventListener('click',()=>rjOne(button.dataset.rjAction,button.dataset.rjId));
+  });
 
   const pages=Math.ceil(total/rjLimit);
   $('rjPager').innerHTML=pages>1
@@ -5378,7 +5408,7 @@ function rjRender(jobs,total,page){
 }
 
 function rjGoPage(p){rjPage=p;rjFetch(rjActiveTab,p);}
-function rjFilterList(){clearTimeout(rjFilterList._t);rjFilterList._t=setTimeout(()=>rjFetch(rjActiveTab,1),400);}
+function rjFilterList(){clearTimeout(rjFilterList._t);rjFilterList._t=setTimeout(()=>{rjPage=1;rjFetch(rjActiveTab,1);},400);}
 function rjToggleAll(c){document.querySelectorAll('.rj-cb').forEach(cb=>cb.checked=c);rjUpdSel();}
 function rjUpdSel(){const n=document.querySelectorAll('.rj-cb:checked').length;$('rjSelCount').textContent=n+' selected';}
 function rjGetSel(){return[...document.querySelectorAll('.rj-cb:checked')].map(cb=>cb.value);}
@@ -5390,30 +5420,39 @@ async function rjBulk(action){
 }
 async function rjDoAction(action,ids){
   try{
-    const res=await fetch('/api/admin-jobs',{
+    const data=await authedApi('/api/admin-jobs',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:adminKey,action,ids})
+      body:JSON.stringify({action,ids})
     });
-    const data=await res.json();
-    const label={publish:'Published',reject:'Rejected',delete:'Deleted',restore:'Restored'}[action]||action;
-    toast(label+' '+data.affected+' job'+(data.affected!==1?'s':'')+' ✓');
-    if(action==='publish') toast('📢 Posting to Telegram…');
+    if(data.ok!==true||!Number.isFinite(data.updated)){
+      throw new Error(data.error||'Jobs review API returned an invalid update response.');
+    }
+    const label={publish:'Published',unpublish:'Unpublished',reject:'Rejected',delete:'Deleted',restore:'Restored'}[action]||action;
+    const updated=data.updated;
+    toast(updated===ids.length
+      ?label+' '+updated+' job'+(updated!==1?'s':'')+' ✓'
+      :label+' '+updated+' of '+ids.length+' selected jobs.');
     await rjFetch(rjActiveTab,rjPage);
     $('rjSelAll').checked=false; $('rjSelCount').textContent='0 selected';
-  }catch(e){toast('Error: '+e.message);}
+  }catch(e){
+    toast('Error: '+e.message);
+    if(e.status>=500) await rjFetch(rjActiveTab,rjPage);
+  }
 }
 async function rjRunScraper(){
   const btn=$('rjScraperBtn');
   btn.disabled=true; btn.textContent='⏳ Scraping…';
   try{
-    const res=await fetch('/api/civil-scraper',{
+    const data=await authedApi('/api/civil-scraper',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:adminKey})
+      body:JSON.stringify({})
     });
-    const data=await res.json();
-    toast('Scraper done — '+(data.new_jobs_saved||0)+' new jobs saved for review ✓');
+    if(data.ok!==true||!Number.isFinite(data.added)){
+      throw new Error(data.error||'Scraper API returned an invalid result.');
+    }
+    toast('Scraper done — '+data.added+' new job'+(data.added!==1?'s':'')+' saved for review.');
     if(rjActiveTab==='review') await rjFetch('review',1);
   }catch(e){toast('Scraper error: '+e.message);}
   finally{btn.disabled=false;btn.textContent='🔍 Run Scraper Now';}

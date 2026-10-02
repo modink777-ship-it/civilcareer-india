@@ -218,9 +218,6 @@ nav a[data-count]::after{content:attr(data-count);background:#c9973c;color:#0b1f
    Colours, fonts, full-width, bold typography
 ═══════════════════════════════════════════════════════════ */
 
-/* ── Google Font — Plus Jakarta Sans (bold, clean) ───────── */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
-
 /* ── Root color overrides ────────────────────────────────── */
 :root{
   --cc-navy:     #0d1b3e;
@@ -2333,5 +2330,178 @@ html[data-theme="dark"] .highlight-item small {
     right: 16px !important;
     bottom: max(16px, env(safe-area-inset-bottom)) !important;
     max-width: calc(100vw - 32px) !important;
+  }
+}
+
+/* Shared page layout: consistent rhythm, responsive cards, and an above-fold hero. */
+html {
+  scroll-padding-top: 76px;
+}
+
+body {
+  background: #f7f8fa;
+  background-image: none;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+h1, h2, h3, h4, .logo {
+  font-family: "Plus Jakarta Sans", Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.hero-grid,
+.page-hero .container,
+.careerhub-hero .container {
+  position: relative;
+  z-index: 2;
+}
+
+.hero > .cc-aceternity-paths,
+.page-hero > .cc-aceternity-paths,
+.careerhub-hero > .cc-aceternity-paths {
+  z-index: 1 !important;
+}
+
+.hero > .hero-lines {
+  z-index: 0;
+}
+
+.quick-card,
+.job-card,
+.exam-card,
+.material-card,
+.panel-form,
+.login-card,
+.dash-card {
+  border-radius: 14px;
+}
+
+button,
+a.btn,
+input,
+select,
+textarea,
+.exam-chips button,
+.filter-chip {
+  min-height: 44px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #d4a72c;
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .tools-row {
+    display: none !important;
+  }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 44px 0 48px !important;
+  }
+
+  .hero-panel {
+    display: none !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.25rem, 7.2vw, 3.5rem) !important;
+    letter-spacing: -.04em !important;
+  }
+
+  .section {
+    padding-top: 52px;
+    padding-bottom: 52px;
+  }
+
+  .quick-grid,
+  .cards.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .split,
+  .trust-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+
+@media (max-width: 560px) {
+  .container {
+    width: min(100% - 32px, 1160px);
+  }
+
+  .hero-grid {
+    padding: 34px 0 38px !important;
+  }
+
+  .hero .lead {
+    margin: 16px 0;
+    font-size: 16px;
+  }
+
+  .hero-actions {
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .quick-grid,
+  .cards.three,
+  .cards.two,
+  .grid2,
+  .grid3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-head h2,
+  h2 {
+    font-size: clamp(1.65rem, 7vw, 2.15rem);
+  }
+
+  .smart-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .smart-search label {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 6px 10px;
+  }
+
+  .smart-search .btn {
+    width: 100%;
+  }
+
+  .table-wrap,
+  .table-responsive,
+  .cc-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
 }
