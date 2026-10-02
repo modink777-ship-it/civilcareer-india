@@ -827,9 +827,8 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
 test('F7 admin-jobs: legacy Telegram autopost defaults OFF after private-job migration', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
   assert.match(src, /LEGACY_AUTOPOST_ON/);
-  /* Approved transition plan: legacy private-job autopost remains enabled
-     until private jobs are supported as a Social Engine source. */
-  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'true'/);
+  /* Phase 3 migration: private-job publishes now flow through the Social Engine queue. */
+  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
   /* the gate sits on the publish hook */
   assert.match(src, /action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON/);
   /* Phase 3 wiring: publishes create source_type 'job'
