@@ -399,8 +399,8 @@ test('A8 admin route: dispatcher normalises /admin and /admin.html (Vercel passe
   }
 });
 
-test('A8 admin bundle: generated file matches admin.html byte-for-byte', () => {
-  const src = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
+test('A8 admin bundle: generated file matches admin.html with normalized line endings', () => {
+  const src = fs.readFileSync(path.join(root, 'admin.html'), 'utf8').replace(/\r\n?/g, '\n');
   assert.equal(ADMIN_BUNDLE, src);
 });
 
