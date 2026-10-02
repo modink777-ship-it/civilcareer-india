@@ -57,7 +57,7 @@ const publishers = require('../lib/social-publishers');
 
 const {
   PLATFORMS, SOURCE_TYPES, CLAIMABLE_STATUSES,
-  contentHash, truthHash, validateContent, linkUrlAllowed,
+  contentHash, truthHash, validateContent, validateFacts, linkUrlAllowed,
   redactSecrets, rollupStatus, zonedDayStartUtc, attemptsToday,
   isUncertainPublishing, isPublishable,
 } = core;
@@ -129,6 +129,36 @@ async function fetchSourceRow(sourceType, sourceId) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
+async function sourceIsVerified(sourceType, row) {
+  if (!row) return { ok: false, error: 'Source record not found' };
+
+  if (sourceType === 'exam_tracker') {
+    if (row.is_active === false) return { ok: false, error: 'Exam source is inactive' };
+    return { ok: true };
+  }
+
+  if (sourceType === 'job') {
+    if (row.published !== true) return { ok: false, error: 'Private job is not published/verified yet' };
+    return { ok: true };
+  }
+
+  if (sourceType === 'govt_job') {
+    if (String(row.status || '').toLowerCase() !== 'active') {
+      return { ok: false, error: 'Government job is not active' };
+    }
+    if (!row.reviewed_at) {
+      return { ok: false, error: 'Government job has not been reviewed by an admin' };
+    }
+    const civil = Number(row.civil_posts_count);
+    if (!Number.isFinite(civil) || civil <= 0) {
+      return { ok: false, error: 'Government job has no verified civil posts' };
+    }
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'Unsupported source type' };
+}
+
 /* ── suggestion list ────────────────────────────────── */
 
 async function listSuggestions(query) {
@@ -167,6 +197,8 @@ async function createSuggestion(body, req) {
 
   const row = await fetchSourceRow(sourceType, sourceId);
   if (!row) return { status: 404, error: 'Source record not found' };
+  const verified = await sourceIsVerified(sourceType, row);
+  if (!verified.ok) return { status: 409, error: verified.error };
 
   const settings = await getSettings();
   const built = templates.buildSuggestion(sourceType, sourceId, row, {
@@ -183,6 +215,8 @@ async function createSuggestion(body, req) {
 
   const check = validateContent(suggestion);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
+  const factCheck = validateFacts(suggestion, built.snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { status: 400, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
   if (!linkUrlAllowed(suggestion.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
@@ -244,7 +278,14 @@ async function editSuggestion(id, body, req) {
   const merged = { ...current, ...payload };
   const check = validateContent(merged);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
-  if (!linkUrlAllowed(merged.link_url, (await getSettings()).site_url || SITE_URL)) {
+  const settings = await getSettings();
+  const source = await fetchSourceRow(current.source_type, current.source_id);
+  const verified = await sourceIsVerified(current.source_type, source);
+  if (!verified.ok) return { status: 409, error: verified.error };
+  const snapshot = templates.buildSnapshot(current.source_type, source);
+  const factCheck = validateFacts(merged, snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { status: 400, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
+  if (!linkUrlAllowed(merged.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
 
@@ -274,6 +315,8 @@ async function approveSuggestion(id, req) {
   const check = validateContent(current);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
   const settings = await getSettings();
+  const lock = await truthLock(current);
+  if (!lock.ok) return { status: 409, error: lock.error };
   if (!linkUrlAllowed(current.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
@@ -347,7 +390,12 @@ async function truthLock(suggestion) {
     }).catch(() => {});
     return { ok: false, error: 'TRUTH LOCK: the source record changed after this suggestion was generated. Regenerate the suggestion.' };
   }
-  return { ok: true, liveRow, snapshot };
+  const verified = await sourceIsVerified(suggestion.source_type, liveRow);
+  if (!verified.ok) return { ok: false, error: 'TRUTH LOCK: ' + verified.error };
+  const settings = await getSettings();
+  const factCheck = validateFacts(suggestion, snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { ok: false, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
+  return { ok: true, liveRow, snapshot, factCheck };
 }
 
 /**
