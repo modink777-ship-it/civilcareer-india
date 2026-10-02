@@ -1,162 +1,54 @@
 # CivilCareer Social Content Engine
 
-## Phase 1 status
+## Purpose
+One verified CivilCareer record becomes platform-specific content, passes Truth Lock, waits for human approval, then publishes through the single Social Engine and its publication ledger.
 
-Phase 1 provides a verified-data social content queue with deterministic templates, Truth Lock, human approval, Telegram publishing, duplicate protection, manual WhatsApp sharing, safety controls and testable platform adapters.
+## Sources
+- approved government jobs with reviewed civil posts
+- active Exam Tracker rows
+- reviewed private jobs
 
-The current production Telegram destination is the existing CivilCareer public channel configured by `TELEGRAM_CHANNEL_ID`.
-
-No separate Telegram test channel is required. `TELEGRAM_TEST_CHANNEL_ID` remains an optional isolated-test setting only; leaving it empty is the normal production configuration.
+Approval creates a suggestion only. It never publishes.
 
 ## Architecture
+Verified source → deterministic platform templates → Truth Lock → human approval → per-platform publish → social_publishes ledger → roll-up status
 
-Agent Reach / Jobs / Exam Tracker
--> verified source record
--> Social Content Engine suggestion
--> Truth Lock
--> admin approval
--> one platform per publish request
--> publication ledger
-
-Agent Reach remains the discovery layer. The Social Engine does not create a second government crawler.
-
-## Verification
-
-Government-job social suggestions require:
-
-- active `govt_jobs` row
-- `reviewed_at` set
-- at least one verified Civil vacancy
-
-Published private jobs are eligible as `job` sources, but their legacy direct Telegram path remains enabled by default until private-job migration is completed.
-
-Exam Tracker rows must be active.
-
-## Truth Lock
-
-The engine stores a source truth hash when a suggestion is created.
-
-At edit, approval and publish time it checks the live source again.
-
-A changed deadline, vacancy, status, exam date or URL invalidates stale approval.
-
-Generated content is also checked for:
-
-- unsupported numbers
-- wrong Civil vacancy numbers
-- unsupported URLs
-- platform length limits
-
-Example: a source with 487 Civil vacancies must never produce 500, 500+ or 1000 as the Civil vacancy figure.
+Agent Reach remains the government discovery layer. The Social Engine does not create another crawler.
 
 ## Telegram
-
-Telegram publishing uses the official Bot API and:
-
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHANNEL_ID`
-
-The bot must be an administrator of the destination channel.
-
-Real publishing requires:
-
-1. verified source
-2. Truth Lock pass
-3. explicit admin approval
-4. current source hash
-5. kill switch OFF
-6. daily-cap headroom
-7. no existing real ledger send
-
-A definite Telegram API error is recorded as a failure.
-
-A timeout or ambiguous network result is recorded as `uncertain` and is never automatically retried.
-
-The legacy private-job path keeps its existing Markdown fallback for definite parse errors. Social Engine Telegram content is plain text, so it does not need a Markdown parse fallback.
-
-## Admin workflow
-
-Open Admin -> Social Engine.
-
-For each suggestion:
-
-- Preview
-- Edit
-- Approve
-- Publish Telegram
-- Publish Everywhere
-- Copy WhatsApp
-- View ledger
-- Retry/resolve failed or uncertain sends
-
-Publish Everywhere is browser orchestration: each platform is a separate HTTP request. The API itself accepts one platform per publish request so a Vercel invocation does not become a long multi-platform worker.
-
-Phase 1 only enables Telegram for actual publication. LinkedIn and Instagram remain disabled until their approved phases.
-
-## WhatsApp
-
-Ordinary WhatsApp Group auto-posting is not supported through an official free API route.
-
-Phase 1 provides:
-
-- Copy for WhatsApp
-- manual share workflow
-- optional `wa.me/?text=` helper
-
-No WhatsApp Web automation or unofficial wrapper is used.
+Production variables: TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID.
+Optional isolated test destination: TELEGRAM_TEST_CHANNEL_ID.
+The engine uses the official Telegram Bot API. Test sends use is_test=true and do not consume real caps or roll-up status.
 
 ## LinkedIn
-
-Phase 4 target: personal LinkedIn profile through the official member-sharing route.
-
-Company-page publishing is a separate official-permission path and is not enabled by Phase 1.
+The current phase is member/personal-profile publishing through the official LinkedIn Posts API.
+Variables: LINKEDIN_ACCESS_TOKEN, LINKEDIN_AUTHOR_URN, LINKEDIN_API_VERSION=202609.
+Organization/company-page publishing is intentionally not enabled by the personal-profile phase.
 
 ## Instagram
+The current implementation uses the official Instagram API with Instagram Login on graph.instagram.com.
+Variables: INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_BUSINESS_ACCOUNT_ID, INSTAGRAM_API_VERSION=v26.0.
+Publishing is two-step: create a media container using a public JPEG image_url, then later check readiness and call media_publish.
+The ledger records needs_second_step, expired, failed, uncertain or sent explicitly. A follow-up request can check readiness only once per 60 seconds, and containers older than 24 hours are expired.
 
-Phase 5 target: official Instagram publishing for a professional account.
+## Truth Lock
+At generation, edit, approval and publish time, protected facts are checked against the live source row. A stale source or changed approved content invalidates the action.
+Protected facts include organization, post names, Civil vacancy counts, deadlines, application start, qualification, age limit, pay, location, exam date, official/apply URL.
+Missing facts are omitted or shown as to be announced. Multi-post notifications must distinguish total notification vacancies from Civil vacancies.
 
-The approved architecture is two requests:
+## Daily Radar
+The Admin Social tab includes a read-only Daily CivilCareer Radar preview. It computes due events from verified records and returns platform-specific content without inserting suggestions or sending posts.
+The preview reports writes_performed: 0 and sends_performed: 0.
 
-1. create media container
-2. publish the container
+## Safety controls
+Publishing is blocked by the kill switch, required approval, Truth Lock failure, stale approval/content hash mismatch, duplicate ledger rows, daily caps, or missing platform credentials.
+Telegram timeouts are uncertain and never auto-retried. Instagram ambiguous responses are also retained explicitly.
 
-The current Phase 1 adapter is disabled until Phase 5.
-
-## Zero-cost design
-
-The core engine does not require an AI API.
-
-Content is generated with deterministic JavaScript templates.
-
-No paid scheduler, queue, database, image generator or social SaaS is required.
+## WhatsApp
+WhatsApp auto-posting is not implemented. The supported workflow is Copy for WhatsApp or the optional wa.me helper. No browser/session automation is used.
 
 ## Scheduling
+The sub-daily Social Engine drain is designed for GitHub Actions, not a Vercel Hobby cron. The protected social-cron route uses SOCIAL_CRON_SECRET and constant-time comparison.
 
-Automatic sub-daily scheduling belongs to Phase 2.
-
-The planned scheduler is GitHub Actions calling the protected Social Engine drain endpoint.
-
-Use an Admin "Run now" action as a manual fallback.
-
-The repository documentation should note that GitHub may automatically disable scheduled workflows in public repositories after extended inactivity (approximately 60 days).
-
-## Secrets
-
-Never commit or expose:
-
-- `OWNER_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `TELEGRAM_BOT_TOKEN`
-- `LINKEDIN_ACCESS_TOKEN`
-- `META_ACCESS_TOKEN`
-- other platform credentials
-
-Credentials belong only in Vercel/GitHub secret storage as appropriate.
-
-## Current phase boundary
-
-Do not disable `LEGACY_TELEGRAM_AUTOPOST` for private jobs yet.
-
-That flag defaults to ON.
-
-It may be turned OFF only after private jobs are fully routed through the Social Engine in a later phase.
+## Transition state
+Private-job direct Telegram autopost is disabled in the Social Engine transition. Published private jobs flow into the Social Engine queue instead of bypassing Truth Lock.
