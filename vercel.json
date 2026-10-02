@@ -38,6 +38,18 @@
       "destination": "/api/govt-public?scope=central"
     },
     {
+      "source": "/government-jobs/state/:state",
+      "destination": "/api/govt-public?state=:state"
+    },
+    {
+      "source": "/government-jobs/department/:dept",
+      "destination": "/api/govt-public?department=:dept"
+    },
+    {
+      "source": "/government-jobs/role/:role",
+      "destination": "/api/govt-public?role=:role"
+    },
+    {
       "source": "/government-jobs/:slug",
       "destination": "/api/govt-public?job=:slug"
     },
