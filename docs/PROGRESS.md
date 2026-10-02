@@ -409,3 +409,34 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
   `SOCIAL_CRON_SECRET` in Vercel; until then it is reserved and unconsumed.
   Keep `LEGACY_TELEGRAM_AUTOPOST=true` until Phase 3 wires job publishes
   into the engine.
+
+
+## 2 Oct 2026 — Phase 3: Social Content Engine Phase 2 (branch `social-engine`) — PARTIAL
+
+- Deadline Radar service added for `job` and `govt_job` verified sources.
+- Radar events implemented: newly announced, applications open, 7 days, 3 days,
+  24 hours, closing today, and closed.
+- Non-fixed government deadlines are skipped; no relative date is invented.
+- Update detection compares protected fields and uses `previous_apply_end`
+  when a government deadline is extended.
+- `SOCIAL_CRON_SECRET` uses constant-time comparison in `_api/social-cron.js`.
+- GitHub Actions scheduler added at `17,47 * * * *` and the duplicate legacy
+  scheduler is left manual-only.
+- Admin Run Now now triggers Radar generation and the approved queue drain.
+- Private-job legacy Telegram autopost default switched OFF; published private jobs
+  are queued through the Social Engine path.
+- Deterministic SVG graphics core was added as the P4 foundation.
+
+### Verification
+- Gitleaks: TESTED — PASS.
+- Vercel Preview: CONFIGURED/TESTED by Vercel integration — deployment reported Ready.
+- Social Engine CI: current full suite is still failing on the legacy radar test module,
+  an admin-bundle byte-sync check, and one stale scheduler assertion. These are recorded
+  in `docs/BLOCKERS.md`; no success is claimed for the full P3 suite.
+- Status: P3 PARTIAL.
+
+### Open blockers
+- Repository write safety currently prevents replacing the legacy `lib/social-radar.js`
+  and regenerating `_api/admin-page-html.js` directly through the integration.
+- The next autonomous pass should resolve those test/bundle blockers before declaring
+  P3 TESTED.
