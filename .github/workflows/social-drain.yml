@@ -2,9 +2,9 @@ name: Social Engine Drain
 
 on:
   schedule:
-    # Every 15 minutes — Vercel Hobby crons are limited to once per day,
-    # so the queue drain runs here instead (see docs/00-gap-report.md F10).
-    - cron: '*/15 * * * *'
+    # Phase 2 scheduler: GitHub Actions is used because Vercel Hobby
+    # supports at most daily Cron runs. 30 minutes is conservative for free usage.
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -13,5 +13,7 @@ jobs:
     steps:
       - name: Drain the social publish queue
         run: |
-          curl -sS -X POST "${{ secrets.SITE_URL }}/api/social?op=drain" \
-            -H "Authorization: Bearer ${{ secrets.SOCIAL_CRON_SECRET || secrets.OWNER_KEY }}"
+          test -n "${{ secrets.SITE_URL }}" || { echo "SITE_URL secret is missing"; exit 1; }
+          test -n "${{ secrets.SOCIAL_CRON_SECRET }}" || { echo "SOCIAL_CRON_SECRET secret is missing"; exit 1; }
+          curl -fsS -X POST "${{ secrets.SITE_URL }}/api/social?op=drain" \
+            -H "Authorization: Bearer ${{ secrets.SOCIAL_CRON_SECRET }}"
