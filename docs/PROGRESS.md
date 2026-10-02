@@ -513,3 +513,10 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Updated README, Social Engine README/runbook, government runbook, environment notes, and added FINAL-REPORT.md.
 - Production promotion remains blocked by current Vercel connector authorization for scope modinsaheb.
 - Status word: TESTED. Final docs/release CI is green on commit b6b2249ebce4e07aff1b5f38b8abf41438b7dc3b; Vercel production promotion remains connector-scope blocked.
+
+## 2 Oct 2026 — Landing-page SEO copy follow-up
+- Branch: seo-page-copy
+- Updated homepage, private jobs, government jobs, exams, study materials, and career guides page copy/metadata.
+- Commit: 8b37b8ffb3e9976e2008f1a860584e4cc4abacf5 (pushed to origin).
+- Checks: syntax and launch checks passed; launch check reports `SITE_URL` unset. Six edited pages have unique titles and canonical URLs. Test suite: 161 passed, 1 failed (`A8 admin bundle: generated file matches admin.html byte-for-byte`).
+- Open blockers: review the admin-bundle test failure; configure `SITE_URL`; create/review the PR and verify any Vercel preview. No production merge or deployment performed.
