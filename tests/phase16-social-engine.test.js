@@ -699,7 +699,10 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   assert.match(dispatch, /req\.isSocialCron = true/);
   /* the CRON_SECRET routes stay exam-alerts + govt-discovery only:
      scheduler access to the drain must never imply crawler access */
-  assert.match(dispatch, /const CRON_ROUTES = new Set\(\[\s*'\/api\/exam-alerts',\s*'\/api\/govt-discovery',\s*\]\)/);
+  assert.match(dispatch, /const CRON_ROUTES = new Set\(\[/);
+  assert.ok(dispatch.includes("'/api/exam-alerts'"));
+  assert.ok(dispatch.includes("'/api/govt-discovery'"));
+  assert.ok(dispatch.includes("'/api/govt-expiry'"));
   /* Vercel Hobby crons run at most once per day — a 15-minute
      drain FAILS the whole deployment, so the scheduler lives in
      GitHub Actions instead (docs/00-gap-report.md F10). */
