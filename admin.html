@@ -638,6 +638,7 @@ Social Content Engine — v27
 
 <div class="import-actions" style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="btn-gold" onclick="loadSocial()">⟳ Refresh</button>
+<button class="btn-ghost" onclick="socialRunNow()">▶ Run approved queue now</button>
 <span style="font-size:.76rem;color:#6a8aaa;padding:7px 0">Phase 1: Telegram publishing + review controls</span>
 </div>
 
@@ -4272,6 +4273,18 @@ async function socialArchive(id) {
     await loadSocial();
   } catch (e) {
     setSocialStatus('❌ Archive: ' + e.message, 'error');
+  }
+}
+
+async function socialRunNow() {
+  if (!window.confirm('Run the approved Social Engine queue now? Only approved, configured platforms can publish.')) return;
+  try {
+    const d = await socialApi('drain', { limit: 5 });
+    const count = d.published != null ? d.published : 0;
+    setSocialStatus(`Run now finished — ${count} publication(s) processed`, 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Run now: ' + e.message, 'error');
   }
 }
 
