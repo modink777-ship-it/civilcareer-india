@@ -2125,3 +2125,5 @@ html[data-theme="dark"] .exam-status.application-open,html[data-theme="dark"] .e
 html[data-theme="dark"] .exam-status.application-closed{background:var(--navy);color:var(--amber)}
 html[data-theme="dark"] .exam-date-list b{color:var(--white)}
 html[data-theme="dark"] .panel-form-label{color:var(--soft)}
+
+.form-consent{font-size:.76rem;color:var(--muted);margin:0 0 1rem}.form-consent a{color:var(--blue);font-weight:700}
