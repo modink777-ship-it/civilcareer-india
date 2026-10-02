@@ -533,6 +533,7 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
     result = await publishers.sendLinkedIn({
       token: env.LINKEDIN_ACCESS_TOKEN,
       organizationId: env.LINKEDIN_ORGANIZATION_ID,
+      authorUrn: env.LINKEDIN_AUTHOR_URN,
       apiVersion: env.LINKEDIN_API_VERSION,
       text: suggestion.body_linkedin || suggestion.title,
       mediaUrl: suggestion.media_url,
