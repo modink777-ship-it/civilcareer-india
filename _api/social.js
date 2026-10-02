@@ -790,6 +790,64 @@ async function resolveLedger(id, body) {
 /* ── scheduled queue drain (SOCIAL_CRON_SECRET) ── */
 
 /**
+ * Drain a bounded set of already-approved suggestions.
+ * Phase 1/2 safety: publishSuggestion accepts exactly one platform
+ * per request. The default drain therefore selects Telegram only;
+ * later schedulers may invoke individual platform drains explicitly.
+ */
+async function drainQueue(limit) {
+  const settings = await getSettings();
+  if (settings._error) {
+    return { status: 503, error: 'Social engine settings missing — run supabase-v27-social-engine.sql' };
+  }
+  if (settings.kill_switch) {
+    return { status: 403, error: 'Kill switch is ON — publishing is disabled' };
+  }
+
+  const max = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const r = await supa(
+    `social_suggestions?status=eq.approved&order=created_at.asc&limit=${max}`,
+  );
+  if (!r.ok) {
+    const detail = await r.text();
+    return { status: 500, error: 'Queue could not be loaded', details: detail.slice(0, 300) };
+  }
+
+  const queued = await r.json();
+  const results = [];
+
+  for (const suggestion of Array.isArray(queued) ? queued : []) {
+    const out = await publishSuggestion(suggestion.id, { platform: 'telegram' });
+    const outcomes = (out.result && out.result.results) || [];
+    results.push({
+      id: suggestion.id,
+      source_type: suggestion.source_type,
+      template_key: suggestion.template_key,
+      status: out.status === 200 ? 'ok' : 'skipped',
+      reason: out.status === 200 ? null : out.error,
+      sent: outcomes.filter((x) => x.ok && !x.skipped).length,
+      platforms: outcomes.map((x) => ({
+        platform: x.platform,
+        ok: Boolean(x.ok),
+        skipped: Boolean(x.skipped),
+        error: x.error ? redactSecrets(x.error) : null,
+      })),
+    });
+  }
+
+  return {
+    status: 200,
+    result: {
+      drained: results.length,
+      published: results.filter((x) => x.sent > 0).length,
+      results,
+    },
+  };
+}
+
+
+
+/**
  * The scheduler credential. SOCIAL_CRON_SECRET (with a
  * CRON_SECRET fallback) is accepted as a Bearer token or the
  * x-cron-secret header; the owner key keeps working for manual
@@ -1033,8 +1091,8 @@ module.exports = async function handler(req, res) {
      BEFORE requireOwner — the scheduler credential is never
      conflated with admin access, and a missing credential is a
      401 rather than a Supabase configuration disclosure. */
-  if (isDrain && !isSocialCronRequest(req)) {
-    return sendJson(res, 401, { error: 'SOCIAL_CRON_SECRET required' });
+  if (isDrain && !isSocialCronRequest(req) && !req.adminUser) {
+    return sendJson(res, 401, { error: 'SOCIAL_CRON_SECRET or authenticated admin required' });
   }
 
   /* Every other route is admin-only (dispatcher elevates the
