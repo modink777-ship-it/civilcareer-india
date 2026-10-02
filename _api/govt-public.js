@@ -36,8 +36,22 @@ module.exports=async function(req,res){
       const left=days(j.apply_end);
       const deadline=j.deadline_kind==='fixed'?(j.apply_end?new Date(j.apply_end+'T00:00:00Z').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Not announced'):(j.deadline_text||'Notified Soon');
       const body=`<p class="eyebrow">Government Civil Recruitment · ${esc(j.scope==='state'?'State':'Central')}</p><h1>${esc(j.title)}</h1><p class="lead">${esc(j.organization)} · ${esc(j.state||'All India')}</p><p><strong>Reviewed on ${esc(j.reviewed_at?new Date(j.reviewed_at).toLocaleDateString('en-IN'):'—')}</strong></p><div class="callout"><strong>Verify at the official source.</strong><p>Dates, vacancies, eligibility, fees and application rules can change.</p><p>Deadline: <b>${esc(deadline)}</b>${left!==null&&left>=0?' · '+esc(left===0?'Closing today':left+' days left'):''}</p></div><h2>Civil posts</h2><div style="overflow-x:auto"><table><thead><tr><th>Post</th><th>Vacancies</th><th>Qualification</th><th>Pay</th><th>Selection</th></tr></thead><tbody>${posts.map(x=>'<tr><td>'+esc(x.post_name)+'</td><td>'+esc(x.vacancies==null?'—':x.vacancies)+'</td><td>'+esc(x.qualification||'—')+'</td><td>'+esc(typeof x.pay==='object'?JSON.stringify(x.pay):x.pay||'—')+'</td><td>'+esc(x.selection_process||'—')+'</td></tr>').join('')}</tbody></table></div><h2>Recruitment details</h2><p>${esc(j.summary||'No additional summary available. Use the official notification for complete conditions.')}</p><p><strong>Notification:</strong> ${j.notification_no?esc(j.notification_no):'Not stated'}<br><strong>Deadline:</strong> ${esc(deadline)}<br><strong>Application:</strong> ${esc(j.official_apply_url?'Official application link available':'See official notice')}</p><p><a class="btn primary" href="${esc(officialUrl||'#')}" target="_blank" rel="noopener noreferrer">Open Official Notification ↗</a></p><p style="margin-top:24px"><a class="text-link" href="/government-jobs">← Government Civil Jobs</a></p>`;
+      const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'JobPosting',
+        title: j.title,
+        description: j.summary || 'Civil-focused government recruitment listing.',
+        datePosted: j.published_at || j.reviewed_at || undefined,
+        validThrough: j.apply_end ? `${j.apply_end}T23:59:59Z` : undefined,
+        employmentType: ({ apprentice: 'INTERN', trainee: 'INTERN', contract: 'CONTRACTOR', regular: 'FULL_TIME' })[String(j.job_type || '').toLowerCase()] || 'FULL_TIME',
+        hiringOrganization: { '@type': 'Organization', name: j.organization },
+        jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressRegion: j.state || 'All India', addressCountry: 'IN' } },
+        identifier: { '@type': 'PropertyValue', name: j.organization, value: j.notification_no || j.slug },
+        url: `${SITE}/government-jobs/${slug(j.slug)}`,
+      };
+      const schemaScript = '<script type="application/ld+json">' + JSON.stringify(schema).replace(/</g,'\\u003c') + '</script>';
       res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, s-maxage=600, stale-while-revalidate=1800');
-      return res.status(200).send(layout(j.title+' | CivilCareer',j.summary||'Civil-focused government recruitment details.',SITE+'/government-jobs/'+slug(j.slug),body));
+      return res.status(200).send(layout(j.title+' | CivilCareer',j.summary||'Civil-focused government recruitment details.',SITE+'/government-jobs/'+slug(j.slug),schemaScript+body));
     }
     const jobs=await rowsByFilter(p);
     const kind=p.get('kind')||'All India'; const label=p.get('role')?'Role: '+p.get('role'):p.get('department')?'Department: '+p.get('department'):p.get('state')?'Government Jobs in '+p.get('state'):p.get('scope')?(p.get('scope')==='state'?'State Government Jobs':'Central Government Jobs'):'Government Civil Jobs in India';
