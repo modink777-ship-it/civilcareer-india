@@ -25,3 +25,7 @@ Graphics export/upload implementation is present and the full CI suite is green 
 ## Phase 6 — TESTED
 
 Instagram Login two-step publishing is implemented and covered by mocked API tests. CI is green on `social-engine-5` commit `c0fee84a46760f0a7f5c3239b0904d27e2988007`.
+
+## Phase 7 — TESTED
+
+Daily Radar preview is implemented as a read-only admin operation. CI is green at 146/146 tests on `social-engine-6` commit `32beeb2673ecab7650e8074f297656d47ab3b575`.
