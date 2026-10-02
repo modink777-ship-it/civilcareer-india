@@ -6,6 +6,18 @@
   },
   "rewrites": [
     {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/disclaimer.html"
+    },
+    {
       "source": "/role/:role",
       "destination": "/api/govt-public?role=:role"
     },
