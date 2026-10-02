@@ -606,5 +606,7 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Browser smoke checks: 360px viewport has no horizontal overflow; header search is visible; mobile hero canvas displays; dark hero heading computes to white. At 390px, the same checks passed. Earlier local browser checks confirmed the search overlay opens/closes, About and Post a Job content display, and homepage hero strings switch to Hindi and Tamil.
 - Validation: focused public UX regressions **7/7 passed**; full `npm test` **203/203 passed**; `npm run check:syntax` **0 errors**, with the existing local `SITE_URL` unset warning; `git diff --check` passed.
 - No Supabase schema/data changes, SQL, paid services, or new dependencies.
-- Deployment status: not live-verified. This change is prepared on `main` for push/review; verify the resulting Vercel deployment before production promotion.
+- Vercel: commit `3393059` is **Ready** and **Staged** in the Production environment; Vercel skipped assigning custom domains. Review URL: <https://civilcareer-india-qstwt5pbn-modinsaheb.vercel.app/>.
+- Live preview check at 360px: no horizontal overflow; hero canvas visible; Tamil hero text rendered; search overlay opened and Escape closed it; About and Post a Job content/form were present.
+- The configured `civilcareer-india-two.vercel.app` alias still serves its previous translation bundle (English/Hindi/Kannada/Telugu only), while the staged preview exposes Tamil as well. No manual promotion or custom-domain assignment was performed; review the staged deployment before promoting it.
 - Implementation commit: `52398bc00a25458001d7cc720aef13323a02e89a`.
