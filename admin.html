@@ -664,9 +664,11 @@ Social Content Engine — v27
 
 <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Connections</h3>
 <p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">Non-secret metadata only — platform tokens live in the deployment environment (see <code>.env.example</code>), never in the database.</p>
+<div id="socialPlatformStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:10px"></div>
 <div id="socialConnections">
 <p style="color:#6a8aaa;font-size:.85rem">Loading connections…</p>
 </div>
+<p style="color:#6a8aaa;font-size:.76rem;margin:8px 0">WhatsApp supports manual copy/share only. CivilCareer cannot automatically post to personal or group chats.</p>
 
 <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Content queue</h3>
 <div class="import-actions" style="margin-bottom:10px">
@@ -2176,18 +2178,6 @@ ${j._keepUnpublished
           j._submission,
           'Approved'
         );
-      }
-
-      if(!j.id){
-
-        fetch('/api/telegram',{
-          method:'POST',
-          headers:{
-            'content-type':'application/json'
-          },
-          body:JSON.stringify({job:d})
-        }).catch(()=>{});
-
       }
 
       st.className=
@@ -4011,7 +4001,7 @@ async function loadSocial() {
     const d = await api('/api/social', { key: adminKey });
     socialRows = d.suggestions || [];
     renderSocialSettings(d.settings || {});
-    renderSocialConnections(d.connections || []);
+    renderSocialConnections(d.connections || [], d.platformReadiness || {});
     renderSocialQueue();
   } catch (e) {
     const el = $('socialQueue');
@@ -4064,8 +4054,7 @@ function renderSocialSettings(s) {
         <span>Kill switch<br><span style="color:#6a8aaa;font-size:.72rem">blocks all publishing instantly</span></span>
       </label>
       <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:#e2e8f0">
-        <input type="checkbox" id="ssApproval" ${s.require_approval !== false ? 'checked' : ''}>
-        <span>Require approval<br><span style="color:#6a8aaa;font-size:.72rem">new suggestions wait in the queue</span></span>
+        <span>Human approval: always required<br><span style="color:#6a8aaa;font-size:.72rem">No content publishes until an administrator approves the exact text.</span></span>
       </label>
       <label style="font-size:.8rem;color:#cbd5e1">Telegram / day
         <input type="number" min="0" max="1000" id="ssCapTg" value="${caps.telegram != null ? caps.telegram : 5}" style="width:90px">
@@ -4098,7 +4087,6 @@ function renderSocialSettings(s) {
         method: 'PATCH', key: adminKey,
         body: JSON.stringify({
           kill_switch: $('ssKill').checked,
-          require_approval: $('ssApproval').checked,
           per_platform_daily_caps: {
             telegram: Number($('ssCapTg').value) || 0,
             linkedin: Number($('ssCapLi').value) || 0,
@@ -4119,12 +4107,46 @@ function renderSocialSettings(s) {
 
 /* ── connections ──────────────────────────── */
 
-function renderSocialConnections(conns) {
+function renderSocialConnections(conns, readiness) {
   const el = $('socialConnections');
   if (!el) return;
+  const statusRoot = $('socialPlatformStatus');
+  if (statusRoot) {
+    const labels = [
+      ['telegram', 'Telegram'],
+      ['linkedin', 'LinkedIn'],
+      ['instagram', 'Instagram'],
+    ];
+    statusRoot.innerHTML = labels.map(([key, label]) => {
+      const state = readiness[key] || {};
+      const configured = state.configured === true;
+      const successfulSend = socialRows
+        .flatMap(row => Array.isArray(row.social_publishes) ? row.social_publishes : [])
+        .filter(row => row.platform === key && row.status === 'sent' && !row.is_test)
+        .sort((a, b) => String(b.sent_at || '').localeCompare(String(a.sent_at || '')))[0];
+      const detail = key === 'telegram' && state.last_verified_at
+        ? `Read-only bot verification: ${esc(socialWhen(state.last_verified_at))}`
+        : successfulSend
+          ? `Recent successful publish: ${esc(socialWhen(successfulSend.sent_at))}`
+          : key === 'telegram'
+          ? 'Not verified yet — use Verify for a read-only bot check.'
+          : 'API permission is unverified until an approved post succeeds.';
+      return `<div style="padding:9px 11px;border:1px solid #23405c;border-radius:8px;background:#0d1b29">
+        <b style="color:#e2e8f0">${label}</b>
+        <div style="font-size:.75rem;color:${configured ? '#6ee7b7' : '#fbbf24'}">${configured ? 'Credentials configured' : 'Credentials missing'}</div>
+        <div style="font-size:.7rem;color:#6a8aaa">${detail}</div>
+      </div>`;
+    }).join('') + `<div style="padding:9px 11px;border:1px solid #23405c;border-radius:8px;background:#0d1b29">
+      <b style="color:#e2e8f0">WhatsApp</b>
+      <div style="font-size:.75rem;color:#fbbf24">Automatic posting unsupported</div>
+      <div style="font-size:.7rem;color:#6a8aaa">Manual copy/share only.</div>
+    </div>`;
+  }
   const list = conns.map(c => {
     const actions = [
-      `<button onclick="socialConnAction(${c.id},'verify')">Verify</button>`,
+      c.platform === 'telegram'
+        ? `<button onclick="socialConnAction(${c.id},'verify')">Verify</button>`
+        : '<span style="color:#6a8aaa;font-size:.72rem">Verification occurs on first approved publish</span>',
       c.is_primary
         ? '<span style="color:#c9973c;font-size:.75rem">★ primary</span>'
         : `<button onclick="socialConnAction(${c.id},'primary')">Make primary</button>`,
@@ -4206,33 +4228,44 @@ async function socialAddConnection() {
 function renderSocialQueue() {
   const el = $('socialQueue');
   if (!el) return;
+  const totals = socialRows.reduce((counts, row) => {
+    counts[row.status] = (counts[row.status] || 0) + 1;
+    return counts;
+  }, {});
+  const summary = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:7px;margin-bottom:12px">
+    ${[['pending','Pending'],['approved','Approved'],['publishing','Publishing'],['published','Published'],['partial','Partial'],['rejected','Rejected'],['archived','Archived']].map(([key,label]) =>
+      `<div style="padding:8px 10px;border:1px solid #23405c;border-radius:8px;background:#0d1b29"><b style="color:#e2e8f0">${totals[key] || 0}</b><div style="font-size:.7rem;color:#6a8aaa">${label}</div></div>`
+    ).join('')}
+  </div>`;
   const rows = socialFilter
     ? socialRows.filter(r => r.status === socialFilter)
     : socialRows;
   if (!rows.length) {
-    el.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">No suggestions' +
+    el.innerHTML = summary + '<p style="color:#6a8aaa;font-size:.85rem">No suggestions' +
       (socialFilter ? ` with status “${socialFilter}”` : ' yet') +
       '. Suggestions appear automatically when an exam enters “Applications Open”, a job is published, or a government vacancy is verified.</p>';
     return;
   }
-  el.innerHTML = rows.map(s => {
+  el.innerHTML = summary + rows.map(s => {
     const ledger = Array.isArray(s.social_publishes) ? s.social_publishes : [];
     const real = ledger.filter(r => !r.is_test);
+    const humanApproved = Boolean(s.approved_by && String(s.approved_by).toLowerCase() !== 'auto' && s.approved_at && s.approved_content_hash);
     const open = socialExpanded === s.id;
     const actions = [];
     const sid = esc(s.id);
-    if (s.status === 'pending' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialApprove('${sid}')">✅ Approve</button>`);
+    if (s.status === 'pending' || s.status === 'partial' || (s.status === 'approved' && !humanApproved)) {
+      actions.push(`<button class="btn-gold" onclick="socialApprove('${sid}')">✅ ${s.status === 'approved' ? 'Re-approve' : 'Approve'}</button>`);
       actions.push(`<button onclick="socialReject('${sid}')">🚫 Reject</button>`);
     }
     actions.push(`<button onclick="socialPreview('${sid}')">👁 Preview</button>`);
     if (s.status !== 'publishing' && s.status !== 'published' && s.status !== 'rejected' && s.status !== 'archived') {
       actions.push(`<button onclick="socialEdit('${sid}')">✏️ Edit</button>`);
     }
-    if (s.status === 'approved' || s.status === 'partial') {
+    if ((s.status === 'approved' || s.status === 'partial') && humanApproved) {
       actions.push(`<button class="btn-gold" onclick="socialPublish('${sid}','telegram')">📣 Publish Telegram</button>`);
       actions.push(`<button onclick="socialPublishEverywhere('${sid}')">🌐 Publish Everywhere</button>`);
       actions.push(`<button onclick="socialCopyWhatsApp('${sid}')">📋 Copy WhatsApp</button>`);
+      actions.push(`<button onclick="socialShareWhatsApp('${sid}')">↗ Share via WhatsApp</button>`);
     }
 
     if (s.truth_state === 'stale') {
@@ -4273,6 +4306,7 @@ function renderSocialQueue() {
             <span style="color:#6a8aaa;font-size:.72rem">${esc(s.source_type)} #${esc(s.source_id)} · ${esc(s.template_key)}</span>
           </div>
           <b style="color:#e2e8f0;font-size:.95rem">${esc(s.title)}</b>
+          ${s.status === 'approved' && !humanApproved ? '<div style="color:#fbbf24;font-size:.75rem;margin-top:4px">Legacy approval detected — re-approve this exact content before publishing.</div>' : ''}
           <div style="color:#6a8aaa;font-size:.72rem;margin-top:2px">created ${socialWhen(s.created_at)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">${actions.join('')}</div>
@@ -4469,6 +4503,16 @@ async function socialCopyWhatsApp(id) {
     catch (e) { setSocialStatus('Copy failed: ' + e.message, 'error'); }
     ta.remove();
   }
+}
+
+function socialShareWhatsApp(id) {
+  const suggestion = socialRows.find(row => row.id === id);
+  if (!suggestion) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
+  const text = String(suggestion.whatsapp_text || '');
+  if (!text) return setSocialStatus('No WhatsApp text available.', 'error');
+  const opened = window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  if (!opened) return setSocialStatus('WhatsApp share window was blocked. Use Copy WhatsApp instead.', 'error');
+  setSocialStatus('WhatsApp share opened — review and send manually in WhatsApp.', 'success');
 }
 
 async function socialRegenerate(id) {

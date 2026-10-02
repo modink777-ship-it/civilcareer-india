@@ -468,6 +468,27 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - CI: **PASS** on commit `c0fee84a46760f0a7f5c3239b0904d27e2988007`; syntax + full test suite green.
 - Status word: **TESTED**. No real Instagram post was performed; production credentials/controlled test publication remain owner-side configuration.
 
+## Social Engine approval and source-truth closure
+
+- Human approval is now mandatory at the API, Admin UI, and publish paths.
+  Legacy rows previously marked approved automatically must be re-approved;
+  scheduled jobs, source triggers, test sends, retries, and Instagram's second
+  publishing step cannot bypass the human approval record.
+- Direct job Telegram sends and the standalone Morning Brief broadcast are
+  retired. Published jobs and exam events only enqueue Social Engine content;
+  the existing scheduled engine still drains already-approved content.
+- Government suggestions now include the verified Civil child-post rows in
+  their Truth Lock snapshot. Application-deadline claims are checked against
+  deadline source fields rather than unrelated dates on the same record.
+- Admin now shows queue counters, truthful per-platform configuration and
+  verification state, and copy/manual `wa.me` sharing. WhatsApp personal/group
+  auto-posting remains unsupported.
+- Frozen `supabase-v27-social-engine.sql` was not changed. Focused Social
+  Engine tests: **74/74 pass**; full project suite: **176/176 pass**; syntax
+  check: **0 errors, 1 warning** (`SITE_URL` is not set locally).
+- No production deployment, live credential verification, or real social post
+  is claimed from this checkout.
+
 ## 2 Oct 2026 — Phase 7 Daily Radar preview
 
 - Branch: `social-engine-6`

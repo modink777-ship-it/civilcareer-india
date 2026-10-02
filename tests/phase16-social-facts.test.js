@@ -62,6 +62,17 @@ test('Truth Lock: wrong deadline fails', () => {
   assert.equal(result.ok, false);
 });
 
+test('Truth Lock: an exam date cannot be reused as an application deadline', () => {
+  const source = { ...snapshot, exam_date: '2026-10-15' };
+  const content = {
+    ...baseContent,
+    body_telegram: baseContent.body_telegram.replace('12 Oct 2026', '15 Oct 2026'),
+  };
+  const result = core.validateFacts(content, source, 'https://civilcareer-india-two.vercel.app');
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(' '), /application deadline .* does not match/);
+});
+
 test('Truth Lock: disallowed URL fails', () => {
   const content = { ...baseContent, body_telegram: baseContent.body_telegram.replace('https://ssc.gov.in', 'https://evil.example.com') };
   const result = core.validateFacts(content, snapshot, 'https://civilcareer-india-two.vercel.app');

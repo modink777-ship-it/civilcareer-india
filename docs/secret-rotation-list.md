@@ -56,7 +56,7 @@ columns — see `.env.example` for the canonical list):
 
 Non-secret operational variables (`SITE_URL`,
 `CIVILCAREER_SITE_URL`, `TELEGRAM_CHANNEL_ID`,
-`TELEGRAM_TEST_CHANNEL_ID`, `LEGACY_TELEGRAM_AUTOPOST`,
+`TELEGRAM_TEST_CHANNEL_ID`,
 `*_MODEL`, `*_TIMEOUT_MS`, `SCRAPER_*`, `GOVT_MAX_*`,
 `AI_TIMEOUT_MS`) need no rotation.
 

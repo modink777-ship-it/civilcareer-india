@@ -22,7 +22,7 @@ function sameSecret(supplied, expected) {
 
 function suppliedOwner(req) {
   if (req && req.headers && req.headers['x-owner-key']) return String(req.headers['x-owner-key']);
-  try { return new URL(req.url, 'http://localhost').searchParams.get('key') || ''; } catch (_) { return ''; }
+  return '';
 }
 
 function cronAuthorized(req) {

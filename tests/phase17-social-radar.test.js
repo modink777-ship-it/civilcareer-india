@@ -143,8 +143,25 @@ test('P3 dispatcher-safe rewrite exposes social-cron URL without a second functi
   assert.equal(r.destination, '/api/social-graphics?delegate=social-cron');
 });
 
-test('P3 legacy private-job direct Telegram default is off', () => {
+test('P3 social cron never accepts owner credentials from the URL', () => {
+  const previous = process.env.OWNER_KEY;
+  process.env.OWNER_KEY = 'owner-secret';
+  try {
+    assert.equal(cron._internal.ownerAuthorized({
+      url: '/api/social-cron?key=owner-secret',
+      headers: {},
+    }), false);
+    assert.equal(cron._internal.ownerAuthorized({
+      headers: { 'x-owner-key': 'owner-secret' },
+    }), true);
+  } finally {
+    if (previous === undefined) delete process.env.OWNER_KEY;
+    else process.env.OWNER_KEY = previous;
+  }
+});
+
+test('P3 private-job publishing has no direct Telegram path', () => {
   const src = fs.readFileSync(path.join(root, '_api/admin-jobs.js'), 'utf8');
-  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
+  assert.ok(!src.includes('LEGACY_TELEGRAM_AUTOPOST'));
   assert.match(src, /queueJobSuggestion\(id\)/);
 });

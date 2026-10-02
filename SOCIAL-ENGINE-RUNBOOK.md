@@ -1,7 +1,7 @@
 # CivilCareer Social Engine Runbook
 
 ## 1. Production prerequisites
-Set these in Vercel Production: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, OWNER_KEY, ADMIN_EMAIL and/or ADMIN_USER_ID, SITE_URL, CRON_SECRET, SOCIAL_CRON_SECRET, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY, LEGACY_TELEGRAM_AUTOPOST=false, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID.
+Set these in Vercel Production: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, OWNER_KEY, ADMIN_EMAIL and/or ADMIN_USER_ID, SITE_URL, CRON_SECRET, SOCIAL_CRON_SECRET, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID.
 For LinkedIn: LINKEDIN_ACCESS_TOKEN, LINKEDIN_AUTHOR_URN, LINKEDIN_API_VERSION=202609.
 For Instagram: INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_BUSINESS_ACCOUNT_ID, INSTAGRAM_API_VERSION=v26.0.
 
@@ -33,7 +33,7 @@ Admin → Social → Daily CivilCareer Radar → Refresh Radar Preview. This per
 Turn ON the Social Engine kill switch before investigating unsafe content or unexpected publishing. Inspect the ledger before changing credentials or retrying.
 
 ## 10. WhatsApp
-Supported flow: preview, Copy for WhatsApp, paste manually. Unsupported: WhatsApp Web automation, stored session cookies, browser scripting, unofficial posting wrappers.
+Supported flow: preview, copy or open the `wa.me` share link, review and send manually. Personal/group automatic posting is unsupported. Also unsupported: WhatsApp Web automation, stored session cookies, browser scripting, unofficial posting wrappers.
 
 ## 11. Credential rotation
 Rotate at provider, update Vercel/GitHub secret, run the controlled test, revoke the old credential, confirm no secret values exist in logs or repository history.
@@ -49,7 +49,7 @@ The Social Engine drain uses GitHub Actions with SOCIAL_CRON_SECRET. Manual fall
 Instagram needs_second_step → wait, then use the Admin second-step action after the 60-second guard.
 
 ## 14. Preview environment
-Preview uses its own environment variables, preview SITE_URL, LEGACY_TELEGRAM_AUTOPOST=false, TELEGRAM_BOT_TOKEN and TELEGRAM_TEST_CHANNEL_ID. Do not put TELEGRAM_CHANNEL_ID in Preview.
+Preview uses its own environment variables, preview SITE_URL, TELEGRAM_BOT_TOKEN and TELEGRAM_TEST_CHANNEL_ID. Do not put TELEGRAM_CHANNEL_ID in Preview. Approval remains mandatory in all environments.
 No real production social destination should be present in Preview.
 
 ## 15. Shutdown

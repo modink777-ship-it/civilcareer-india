@@ -25,6 +25,8 @@ const templates = require('../lib/social-templates');
 const publishers = require('../lib/social-publishers');
 const social = require('../_api/social');
 const examTracker = require('../_api/exam-tracker');
+const retiredTelegram = require('../_api/telegram');
+const retiredMorningBrief = require('../_api/morning-brief');
 
 const root = path.join(__dirname, '..');
 
@@ -214,6 +216,18 @@ test('F1 isPublishable: only approved/partial suggestions may publish', () => {
   assert.equal(core.isPublishable({ status: 'rejected' }), false);
 });
 
+test('Human approval: auto-approved legacy rows are blocked until an admin re-approves', () => {
+  assert.equal(social._internal.hasHumanApproval({
+    status: 'approved', approved_by: 'auto', approved_at: '2026-01-01', approved_content_hash: 'hash',
+  }), false);
+  assert.equal(social._internal.hasHumanApproval({
+    status: 'approved', approved_by: 'owner@example.test', approved_at: '2026-01-01', approved_content_hash: 'hash',
+  }), true);
+  const src = fs.readFileSync(path.join(root, '_api', 'social.js'), 'utf8');
+  assert.match(src, /Explicit human approval is required before publishing/);
+  assert.match(src, /Explicit human approval is required before sending a test post/);
+});
+
 /* ═══ F2 — lib/social-templates.js ═══════════════ */
 
 const EXAM_ROW = {
@@ -266,6 +280,20 @@ test('F2 snapshot: content fields in, volatile bookkeeping out', () => {
   assert.equal(snapshot.application_end, '2026-11-15');
   assert.equal(snapshot.created_at, undefined, 'created_at must not feed the truth hash');
   assert.equal(snapshot.updated_at, undefined, 'updated_at must not feed the truth hash');
+});
+
+test('F2 government snapshot includes verified civil post rows in the Truth Lock', () => {
+  const row = {
+    ...GOVT_JOB_ROW,
+    civil_posts: [{ post_name: 'Junior Engineer Civil', vacancies: 120 }],
+  };
+  const first = templates.buildSnapshot('govt_job', row);
+  const changed = templates.buildSnapshot('govt_job', {
+    ...row,
+    civil_posts: [{ post_name: 'Junior Engineer Civil', vacancies: 121 }],
+  });
+  assert.deepEqual(first.civil_posts, row.civil_posts);
+  assert.notEqual(core.truthHash(first), core.truthHash(changed));
 });
 
 test('F2 job template: renders for published jobs, refuses unpublished', () => {
@@ -658,7 +686,7 @@ test('F4 drain: publishes the approved queue through the full pipeline', async (
   const restore = stubFetch(async (url) => {
     const u = String(url);
     if (u.includes('social_settings')) {
-      return { ok: true, json: async () => [{ id: 1, kill_switch: false, require_approval: false, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: null }] };
+      return { ok: true, json: async () => [{ id: 1, kill_switch: false, require_approval: true, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: null }] };
     }
     if (u.includes('social_suggestions')) return { ok: true, json: async () => [] };
     return { ok: true, json: async () => [] };
@@ -774,6 +802,40 @@ test('F5 admin.html: Social tab exists and wires every queue action', () => {
   assert.ok(!src.includes('function socialTest('), 'the current public Telegram flow does not need a separate test-channel button');
   assert.match(src, /Publish Everywhere/);
   assert.match(src, /Copy WhatsApp/);
+  assert.match(src, /Share via WhatsApp/);
+  assert.match(src, /Automatic posting unsupported/);
+  assert.match(src, /Human approval: always required/);
+  assert.match(src, /socialPlatformStatus/);
+  assert.match(src, /Legacy approval detected/);
+  assert.match(src, /Verification occurs on first approved publish/);
+});
+
+test('Social Engine never allows approval policy to be disabled', async () => {
+  const restore = stubFetch(async () => {
+    throw new Error('settings must not be written for a rejected policy change');
+  });
+  try {
+    const res = mockRes();
+    await withEnv(OWNER_ENV, async () => {
+      await social({
+        method: 'PATCH',
+        url: '/api/social?op=settings',
+        headers: { 'x-owner-key': 'test-owner-key' },
+        body: { op: 'settings', require_approval: false },
+      }, res);
+    });
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.error, /human approval is mandatory/i);
+  } finally { restore(); }
+});
+
+test('Legacy Telegram broadcast routes are retired without sending', () => {
+  for (const handler of [retiredTelegram, retiredMorningBrief]) {
+    const res = mockRes();
+    handler({ method: 'POST', headers: {}, body: {} }, res);
+    assert.equal(res.statusCode, 410);
+    assert.match(res.body.error, /approve|approval-gated/i);
+  }
 });
 
 /* ═══ F6 — exam-tracker re-route ═════════════════ */
@@ -784,6 +846,7 @@ test('F6 exam-tracker: no longer talks to api.telegram.org directly', () => {
   assert.ok(!src.includes('sendMessage'), 'direct sendMessage must be gone');
   assert.match(src, /require\('\.\/social'\)/);
   assert.match(src, /source_type: 'exam_tracker'/);
+  assert.ok(!src.includes("callSocial('publish'"), 'source-triggered suggestions must never publish');
   /* the old fire-and-forget announcer helpers are removed */
   assert.ok(!src.includes('function examTelegramText'));
   assert.ok(!src.includes('function tgApi'));
@@ -821,9 +884,14 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
       return { ok: true, status: 201, json: async () => [{ ...created, id: 'sug-1' }] };
     }
     if (u.includes('social_settings')) {
-      return { ok: true, json: async () => [{ id: 1, require_approval: true, kill_switch: false, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: 'https://cc.test' }] };
+      return { ok: true, json: async () => [{ id: 1, require_approval: false, kill_switch: false, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: 'https://cc.test' }] };
     }
     if (u.includes('govt_jobs')) return { ok: true, json: async () => [GOVT_JOB_ROW] };
+    if (u.includes('govt_job_posts')) return { ok: true, json: async () => [{
+      post_name: 'Junior Engineer Civil', discipline: 'Civil', vacancies: 120,
+      qualification: 'Diploma Civil', qualification_levels: ['Diploma'],
+      selection_process: 'Written exam',
+    }] };
     return { ok: true, json: async () => [] };
   });
   try {
@@ -844,20 +912,18 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
     assert.match(suggestion.title, /Junior Engineer \(Civil\)/);
     assert.equal(suggestion.link_url, 'https://cc.test/government-jobs/pwd-je-civil-2026');
     assert.ok(suggestion.truth_hash, 'truth hash must be locked at creation');
+    assert.notEqual(suggestion.status, 'approved', 'legacy require_approval=false must not auto-approve content');
+    assert.equal(suggestion.source_snapshot.civil_posts[0].post_name, 'Junior Engineer Civil');
   } finally { restore(); }
 });
 
-/* ═══ F7 — admin-jobs legacy autopost gate ══════ */
+/* ═══ F7 — admin-jobs approval-gated queue ══════ */
 
-test('F7 admin-jobs: legacy Telegram autopost defaults OFF after private-job migration', () => {
+test('F7 admin-jobs: all published jobs use the approval-gated Social queue', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
-  assert.match(src, /LEGACY_AUTOPOST_ON/);
-  /* Phase 3 migration: private-job publishes now flow through the Social Engine queue. */
-  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
-  /* the gate sits on the publish hook */
-  assert.match(src, /action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON/);
-  /* Phase 3 wiring: publishes create source_type 'job'
-     suggestions through the engine queue. */
+  assert.ok(!src.includes('autoPostToTelegram'));
+  assert.ok(!src.includes('LEGACY_TELEGRAM_AUTOPOST'));
+  assert.match(src, /action === 'publish' && updated > 0/);
   assert.match(src, /async function queueJobSuggestion/);
   assert.match(src, /op: 'create', source_type: 'job'/);
   assert.match(src, /queueJobSuggestion\(id\)/);
@@ -875,7 +941,7 @@ test('F8 .env.example documents every engine variable', () => {
     'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY',
     'OWNER_KEY', 'SITE_URL', 'CRON_SECRET', 'SOCIAL_CRON_SECRET',
     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHANNEL_ID', 'TELEGRAM_TEST_CHANNEL_ID',
-    'LEGACY_TELEGRAM_AUTOPOST', 'ADMIN_EMAIL', 'ADMIN_USER_ID',
+    'ADMIN_EMAIL', 'ADMIN_USER_ID',
     'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_AUTHOR_URN', 'LINKEDIN_ORGANIZATION_ID',
     'LINKEDIN_API_VERSION', 'META_ACCESS_TOKEN', 'META_INSTAGRAM_ACCOUNT_ID',
     'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY',

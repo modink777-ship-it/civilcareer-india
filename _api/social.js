@@ -115,7 +115,7 @@ async function getSettings() {
   const r = await supa('social_settings?id=eq.1&limit=1');
   if (!r.ok) return { ...DEFAULT_SETTINGS, _error: true };
   const rows = await r.json();
-  return rows && rows[0] ? rows[0] : { ...DEFAULT_SETTINGS };
+  return { ...(rows && rows[0] ? rows[0] : DEFAULT_SETTINGS), require_approval: true };
 }
 
 async function fetchSourceRow(sourceType, sourceId) {
@@ -126,7 +126,18 @@ async function fetchSourceRow(sourceType, sourceId) {
   );
   if (!r.ok) return null;
   const rows = await r.json();
-  return Array.isArray(rows) ? rows[0] || null : null;
+  const row = Array.isArray(rows) ? rows[0] || null : null;
+  if (!row || sourceType !== 'govt_job') return row;
+
+  const posts = await supa(
+    `govt_job_posts?govt_job_id=eq.${encodeURIComponent(sourceId)}&is_civil=eq.true&select=post_name,discipline,vacancies,pay,qualification,qualification_levels,selection_process&order=post_name.asc`,
+  );
+  if (!posts.ok) {
+    const detail = await posts.text();
+    throw new Error(`Government civil-post details could not be verified: ${detail.slice(0, 200)}`);
+  }
+  row.civil_posts = await posts.json();
+  return row;
 }
 
 async function sourceIsVerified(sourceType, row) {
@@ -221,15 +232,6 @@ async function createSuggestion(body, req) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
 
-  /* Approval policy: when approval is not required the suggestion
-     is born approved with its content hash locked. */
-  if (settings.require_approval === false) {
-    suggestion.status = 'approved';
-    suggestion.approved_content_hash = contentHash(suggestion);
-    suggestion.approved_by = 'auto';
-    suggestion.approved_at = new Date().toISOString();
-  }
-
   const r = await supa('social_suggestions', {
     method: 'POST',
     body: JSON.stringify(suggestion),
@@ -306,11 +308,22 @@ async function editSuggestion(id, body, req) {
   return { status: 200, result: { suggestion: Array.isArray(rows) ? rows[0] : rows } };
 }
 
+function hasHumanApproval(suggestion) {
+  return Boolean(
+    suggestion &&
+    suggestion.approved_by &&
+    String(suggestion.approved_by).toLowerCase() !== 'auto' &&
+    suggestion.approved_at &&
+    suggestion.approved_content_hash
+  );
+}
+
 async function approveSuggestion(id, req) {
   const current = await loadSuggestion(id);
   if (!current) return { status: 404, error: 'Suggestion not found' };
-  if (current.status !== 'pending' && current.status !== 'partial') {
-    return { status: 400, error: `Only pending/partial suggestions can be approved (now "${current.status}")` };
+  const needsHumanApproval = current.status === 'approved' && !hasHumanApproval(current);
+  if (current.status !== 'pending' && current.status !== 'partial' && !needsHumanApproval) {
+    return { status: 400, error: `Only pending/partial or legacy auto-approved suggestions can be approved (now "${current.status}")` };
   }
   const check = validateContent(current);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
@@ -612,6 +625,9 @@ async function publishSuggestion(id, body, opts = {}) {
   if (!isPublishable(suggestion)) {
     return { status: 400, error: `Suggestion status "${suggestion.status}" cannot be published` };
   }
+  if (!hasHumanApproval(suggestion)) {
+    return { status: 403, error: 'Explicit human approval is required before publishing this suggestion.' };
+  }
 
   /* Truth Lock — recomputed from the LIVE source row. */
   const lock = await truthLock(suggestion);
@@ -704,6 +720,9 @@ async function testSend(id, body) {
   }
   const suggestion = await loadSuggestion(id);
   if (!suggestion) return { status: 404, error: 'Suggestion not found' };
+  if (!hasHumanApproval(suggestion)) {
+    return { status: 403, error: 'Explicit human approval is required before sending a test post.' };
+  }
 
   const platform = String(body.platform || 'telegram').toLowerCase();
   if (!PLATFORMS.includes(platform)) {
@@ -749,6 +768,9 @@ async function testSend(id, body) {
 }
 
 async function publishInstagramSecondStep(id, suggestion, row) {
+  if (!hasHumanApproval(suggestion)) {
+    return { status: 403, error: 'Explicit human approval is required before publishing this Instagram post.' };
+  }
   if (row.status !== 'needs_second_step') {
     return { status: 400, error: 'Instagram ledger row is not awaiting its second step' };
   }
@@ -1013,7 +1035,10 @@ async function updateSettings(body) {
     payload.kill_switch = Boolean(body.kill_switch);
   }
   if (Object.prototype.hasOwnProperty.call(body, 'require_approval')) {
-    payload.require_approval = Boolean(body.require_approval);
+    if (body.require_approval !== true) {
+      return { status: 400, error: 'Explicit human approval is mandatory and cannot be disabled.' };
+    }
+    payload.require_approval = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, 'per_platform_daily_caps')) {
     const caps = body.per_platform_daily_caps;
@@ -1079,6 +1104,29 @@ async function listConnections() {
     return { error: detail.slice(0, 300) };
   }
   return { connections: await r.json() };
+}
+
+function platformReadiness(connections) {
+  const rows = Array.isArray(connections) ? connections : [];
+  const telegram = rows
+    .filter((c) => c.platform === 'telegram' && c.status !== 'disabled' && c.last_verified_at)
+    .sort((a, b) => String(b.last_verified_at).localeCompare(String(a.last_verified_at)))[0];
+  return {
+    telegram: {
+      configured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHANNEL_ID),
+      last_verified_at: telegram ? telegram.last_verified_at : null,
+    },
+    linkedin: {
+      configured: Boolean(
+        process.env.LINKEDIN_ACCESS_TOKEN &&
+        (process.env.LINKEDIN_ORGANIZATION_ID || process.env.LINKEDIN_AUTHOR_URN)
+      ),
+    },
+    instagram: {
+      configured: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID),
+    },
+    whatsapp: { supported: false },
+  };
 }
 
 async function createConnection(body, req) {
@@ -1254,6 +1302,7 @@ module.exports = async function handler(req, res) {
           suggestions: list.suggestions,
           settings: settings._error ? DEFAULT_SETTINGS : settings,
           connections: connections.connections || [],
+          platformReadiness: platformReadiness(connections.connections),
         });
       }
       if (op === 'settings') {
@@ -1353,6 +1402,6 @@ module.exports = async function handler(req, res) {
 module.exports._internal = {
   truthLock, contentLock, claimLedgerRow, ensureLedgerRow,
   capHeadroom, sendPlatform, updateSettings, validTimezone,
-  isSocialCronRequest, drainQueue,
+  isSocialCronRequest, drainQueue, hasHumanApproval,
   DEFAULT_SETTINGS, SOURCE_TABLES,
 };

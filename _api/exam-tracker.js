@@ -89,15 +89,9 @@ function cleanPayload(raw) {
 }
 
 /* ── Social Content Engine announcement on application_open ────────
-   The pre-engine direct Telegram post bypassed the engine's Truth
-   Lock, approval queue and daily caps. Status transitions now become
-   social_suggestions through the /api/social handler, invoked
-   in-process (same runtime — no network self-call):
-     * require_approval ON (default) → the announcement waits in the
-       Social tab queue for review before anything is sent;
-     * require_approval OFF → the engine publishes immediately, still
-       enforcing Truth Lock, the one-send-per-platform ledger and the
-       per-platform daily caps.
+   Status transitions create a pending suggestion through the /api/social
+   handler. This source path never publishes; an administrator must approve
+   the exact text in the Social tab before any platform send.
    The engine's unique index makes the announcement once-per-change:
    re-running the transition returns the existing suggestion, and a
    platform that already sent is skipped, never re-posted.
@@ -138,26 +132,11 @@ async function announceOpening(examId) {
     const err = created.body && (created.body.error || created.body.details);
     return { sent: false, error: err || 'Social engine did not create a suggestion' };
   }
-  if (suggestion.status !== 'approved') {
-    return {
-      sent: false,
-      queued: true,
-      suggestion_id: suggestion.id,
-      reason: 'Queued for approval in the Social tab',
-    };
-  }
-  /* Auto-approval is ON — publish through the engine
-     (Truth Lock + caps + one-send-per-platform). */
-  const published = await callSocial('publish', { op: 'publish', id: suggestion.id });
-  const outcomes = (published.body && published.body.result && published.body.result.results) || [];
-  const sent = outcomes.some((o) => o.ok && !o.skipped);
-  if (sent) return { sent: true, suggestion_id: suggestion.id, via: 'social-engine' };
-  const firstError = (outcomes.find((o) => !o.ok) || {}).error;
-  const already = outcomes.length > 0 && outcomes.every((o) => o.skipped);
   return {
     sent: false,
+    queued: true,
     suggestion_id: suggestion.id,
-    reason: already ? 'Already announced' : (firstError || 'Social engine could not publish'),
+    reason: 'Queued for explicit administrator approval in the Social tab',
   };
 }
 

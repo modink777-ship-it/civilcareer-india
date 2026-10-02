@@ -10,18 +10,6 @@
  *       actions: publish | reject | delete | restore
  */
 
-const { autoPostToTelegram } = require('../lib/telegram-auto');
-
-/* F7 / private-job transition: legacy direct Telegram auto-post gate.
-   'true'/'1' = ON — the pre-engine behaviour. Phase 3 flips
-   the DEFAULT OFF: job publishes now create source_type 'job'
-   suggestions in the Social Content Engine (approval queue +
-   Truth Lock + per-platform daily caps) unless the owner
-   explicitly re-enables the legacy direct post. */
-const LEGACY_AUTOPOST_ON = ['true', '1'].includes(
-  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'false').trim().toLowerCase()
-);
-
 const OWNER_KEY = String(process.env.OWNER_KEY || '').trim();
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
@@ -322,37 +310,8 @@ async function handlePost(req, res) {
     }
   }
 
-  /* Publish hook. Two mutually exclusive paths so a job can
-     never be announced twice:
-       * legacy gate OPEN (LEGACY_TELEGRAM_AUTOPOST=true/1) —
-         the pre-engine direct Telegram post (F7). Duplicate
-         safety lives entirely in lib/telegram-auto.js:
-         autoPostToTelegram atomically claims telegram_posted
-         false→true before sending, so only ONE caller ever
-         posts a given job.
-       * future Social Engine path — after the private-job migration is enabled:
-         source_type 'job' suggestion in the Social Content
-         Engine queue (approval + Truth Lock + caps). The
-         engine's ledger dedupes sends per platform.
-     Both paths are fire-and-forget and sequential: never
-     blocks or fails the response. */
-  if (action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON) {
-    (async () => {
-      for (const id of ids) {
-        try {
-          const fr = await supa(`jobs?select=*&id=eq.${encodeURIComponent(id)}&published=eq.true&limit=1`);
-          if (!fr.ok) continue;
-          const rows = await fr.json();
-          if (Array.isArray(rows) && rows[0]) {
-            await autoPostToTelegram(rows[0]);
-            await new Promise((r) => setTimeout(r, 1200)); // Telegram rate limit
-          }
-        } catch (_) { /* keep going */ }
-      }
-    })();
-  } else if (action === 'publish' && updated > 0) {
-    /* Future default after the private-job migration: queue the
-       published jobs in the Social engine (see queueJobSuggestion above). */
+  /* Published jobs are queued in the Social Engine; no legacy direct sends. */
+  if (action === 'publish' && updated > 0) {
     (async () => {
       for (const id of ids) {
         try {

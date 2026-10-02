@@ -21,7 +21,7 @@ Vercel Hobby, Supabase Free and GitHub Actions are the intended deployment/opera
 ## Environment
 Required server-side production values include `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OWNER_KEY`, `ADMIN_EMAIL` and/or `ADMIN_USER_ID`, `SITE_URL`, `CRON_SECRET`, `SOCIAL_CRON_SECRET`, Turnstile keys and Telegram variables.
 Optional social variables are `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN`, `LINKEDIN_API_VERSION`, `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ACCOUNT_ID` and `INSTAGRAM_API_VERSION`.
-`LEGACY_TELEGRAM_AUTOPOST=false` is the Social Engine transition setting.
+All social publishing is approval-gated through the Social Engine; the legacy direct Telegram and Morning Brief broadcast routes are retired.
 
 ## Government pipeline
 Government records are not public until human review. Hard negatives are excluded from staging; `discipline_unknown` remains reviewable as `needs_info`. Expired fixed-deadline government rows are closed by the protected expiry sweep.

@@ -8,7 +8,10 @@ One verified CivilCareer record becomes platform-specific content, passes Truth 
 - active Exam Tracker rows
 - reviewed private jobs
 
-Approval creates a suggestion only. It never publishes.
+Source events create pending suggestions only. Human approval is mandatory and
+cannot be disabled; the scheduled drain only processes previously approved
+content. The legacy direct Telegram and Morning Brief broadcast routes are
+retired.
 
 ## Architecture
 Verified source → deterministic platform templates → Truth Lock → human approval → per-platform publish → social_publishes ledger → roll-up status
@@ -33,7 +36,7 @@ The ledger records needs_second_step, expired, failed, uncertain or sent explici
 
 ## Truth Lock
 At generation, edit, approval and publish time, protected facts are checked against the live source row. A stale source or changed approved content invalidates the action.
-Protected facts include organization, post names, Civil vacancy counts, deadlines, application start, qualification, age limit, pay, location, exam date, official/apply URL.
+Protected facts include organization, post names, Civil vacancy counts, deadlines, application start, qualification, age limit, pay, location, exam date, official/apply URL. Date claims such as an application deadline are checked against their corresponding source fields instead of any unrelated source date. Government snapshots include the verified `govt_job_posts` Civil child rows so a change to a post or its vacancies invalidates an older suggestion.
 Missing facts are omitted or shown as to be announced. Multi-post notifications must distinguish total notification vacancies from Civil vacancies.
 
 ## Daily Radar
@@ -41,14 +44,14 @@ The Admin Social tab includes a read-only Daily CivilCareer Radar preview. It co
 The preview reports writes_performed: 0 and sends_performed: 0.
 
 ## Safety controls
-Publishing is blocked by the kill switch, required approval, Truth Lock failure, stale approval/content hash mismatch, duplicate ledger rows, daily caps, or missing platform credentials.
+Publishing is blocked by the kill switch, mandatory human approval, Truth Lock failure, stale approval/content hash mismatch, duplicate ledger rows, daily caps, or missing platform credentials.
 Telegram timeouts are uncertain and never auto-retried. Instagram ambiguous responses are also retained explicitly.
 
 ## WhatsApp
-WhatsApp auto-posting is not implemented. The supported workflow is Copy for WhatsApp or the optional wa.me helper. No browser/session automation is used.
+WhatsApp auto-posting to personal or group chats is not supported. The Admin offers copy and a `wa.me` share link; the operator must review and send manually. No browser/session automation is used.
 
 ## Scheduling
-The sub-daily Social Engine drain is designed for GitHub Actions, not a Vercel Hobby cron. The protected social-cron route uses SOCIAL_CRON_SECRET and constant-time comparison.
+The sub-daily Social Engine drain is designed for GitHub Actions, not a Vercel Hobby cron. The protected social-cron route uses SOCIAL_CRON_SECRET and constant-time comparison. Owner credentials are accepted only in request headers, never query strings.
 
 ## Transition state
-Private-job direct Telegram autopost is disabled in the Social Engine transition. Published private jobs flow into the Social Engine queue instead of bypassing Truth Lock.
+Private-job and exam source events flow into the Social Engine queue instead of bypassing approval and Truth Lock. Platform readiness distinguishes configured credentials from independently verified permissions; LinkedIn and Instagram remain unverified until a real approved publish succeeds.
