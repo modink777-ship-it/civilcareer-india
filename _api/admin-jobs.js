@@ -19,7 +19,7 @@ const { autoPostToTelegram } = require('../lib/telegram-auto');
    Truth Lock + per-platform daily caps) unless the owner
    explicitly re-enables the legacy direct post. */
 const LEGACY_AUTOPOST_ON = ['true', '1'].includes(
-  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'true').trim().toLowerCase()
+  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'false').trim().toLowerCase()
 );
 
 const OWNER_KEY = String(process.env.OWNER_KEY || '').trim();
