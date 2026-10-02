@@ -21,7 +21,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: JavaScript syntax checks
         run: |
           node --check lib/social-core.js
