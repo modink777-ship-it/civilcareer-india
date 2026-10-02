@@ -568,3 +568,13 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Validation: `npm test` — 184 passed, 0 failed; `npm run check:syntax` — 0 errors and the existing local `SITE_URL`-unset warning; `git diff --check` passed.
 - Browser smoke check: local admin sign-in page at 360px had document width equal to viewport (no horizontal overflow); placeholder and hint computed to `rgb(159, 176, 198)`. This checked the login shell and contrast styling, not every authenticated admin panel.
 - Deployment status: NOT LIVE-VERIFIED. No preview or production deployment was made. The tested commits were pushed to `origin/main` for review at the owner's request. This push may trigger Vercel depending on project settings; the previously reported free daily-deployment limit remains a possible blocker.
+
+## 3 Oct 2026 — Government Jobs landing route and source trust
+
+- Branch: `main`, continuing from the pushed review head `35a620a`.
+- Live baseline read with agent-reach Web/Jina Reader: `/government-jobs` returned the homepage content (including the general hero and site-wide counts), not the Government Jobs listing. The old Vercel rewrite sent the exact route to `government-jobs.html`, a copied SPA page.
+- `/government-jobs` now rewrites to the government-only SSR handler; the legacy `/government-jobs.html` URL permanently redirects to the clean path. Catch-all dispatch also normalizes original landing, detail, central, state, department and role paths before the generic SEO-slug matcher.
+- Government approval now rejects non-government/non-approved PSU notification sources and non-official apply URLs. Public SSR filters out records without an approved official notification host, shows official source domain and last-reviewed date, and no longer calls the list "Verified public-sector". Failed listing/post queries return an explicit server error rather than rendering an empty success page.
+- No SQL/schema or dependency change. No unrelated public pages were changed.
+- Validation: Government routing/source tests passed; full `npm test` — 192 passed, 0 failed; `npm run check:syntax` — 0 errors (existing local `SITE_URL` unset warning); `git diff --check` passed.
+- Status: tested locally, not deployed/live-verified after the change. Continue implementation within the Government Jobs boundary.

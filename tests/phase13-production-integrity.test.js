@@ -25,13 +25,15 @@ assert.ok(jobs.includes('govt_job_posts'), 'government feed must use civil child
 // Key landing routes must ship route-specific server HTML metadata.
 const expected = {
   '/private-jobs': 'private-jobs.html',
-  '/government-jobs': 'government-jobs.html',
   '/exams': 'exams.html',
   '/study-materials': 'study-materials.html',
   '/for-you': 'for-you.html',
   '/career-paths': 'career-paths.html',
 };
 const vercel = JSON.parse(read('vercel.json'));
+const govtLanding = vercel.rewrites.find(x => x.source === '/government-jobs');
+assert.ok(govtLanding && govtLanding.destination === '/api/govt-public', '/government-jobs must use government SSR');
+assert.ok(vercel.redirects.some(x => x.source === '/government-jobs.html' && x.destination === '/government-jobs' && x.permanent), 'legacy government HTML route must redirect to the clean route');
 for (const [route, file] of Object.entries(expected)) {
   assert.ok(fs.existsSync(path.join(root, file)), `${file} must exist`);
   const r = vercel.rewrites.find(x => x.source === route);

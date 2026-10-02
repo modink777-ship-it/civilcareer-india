@@ -30,12 +30,16 @@
       "destination": "/api/govt-public?state=:state"
     },
     {
-      "source": "/government-jobs/:slug",
-      "destination": "/api/govt-public?job=:slug"
+      "source": "/government-jobs",
+      "destination": "/api/govt-public"
     },
     {
       "source": "/government-jobs/central",
       "destination": "/api/govt-public?scope=central"
+    },
+    {
+      "source": "/government-jobs/:slug",
+      "destination": "/api/govt-public?job=:slug"
     },
     {
       "source": "/api/social-graphics",
@@ -108,10 +112,6 @@
     {
       "source": "/private-jobs",
       "destination": "/private-jobs.html"
-    },
-    {
-      "source": "/government-jobs",
-      "destination": "/government-jobs.html"
     },
     {
       "source": "/study-materials",
@@ -298,6 +298,11 @@
     {
       "source": "/job-alerts.html",
       "destination": "/job-alerts",
+      "permanent": true
+    },
+    {
+      "source": "/government-jobs.html",
+      "destination": "/government-jobs",
       "permanent": true
     }
   ]

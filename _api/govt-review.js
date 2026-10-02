@@ -1,6 +1,7 @@
 'use strict';
 
 const { allowSameOrigin } = require('../lib/security');
+const { isOfficialGovtUrl } = require('./govt-jobs');
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
 
@@ -24,6 +25,18 @@ async function approve(id, user, payloadOverride = null) {
   const p = payloadOverride || item.payload || {};
   const title = String(p.title || 'Government Civil Recruitment').trim();
   const organization = String(p.organization || p.organization_hint || 'Government organization').trim();
+  const officialNoticeUrl = String(p.official_notice_url || p.source_url || '').trim();
+  const officialApplyUrl = String(p.official_apply_url || '').trim();
+  if (!isOfficialGovtUrl(officialNoticeUrl)) {
+    const error = new Error('Official notification must use a government or approved PSU domain.');
+    error.status = 400;
+    throw error;
+  }
+  if (officialApplyUrl && !isOfficialGovtUrl(officialApplyUrl)) {
+    const error = new Error('Application URL must use a government or approved PSU domain.');
+    error.status = 400;
+    throw error;
+  }
   let slug = slugify(`${organization}-${title}`);
   const existing = await db(`govt_jobs?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`);
   if (existing.ok && (await existing.json()).length) slug = `${slug}-${String(id).slice(0, 8)}`;
@@ -57,8 +70,8 @@ async function approve(id, user, payloadOverride = null) {
     language_required: p.language_required || null,
     local_cadre_or_domicile: p.local_cadre_or_domicile || null,
     reservation_notes: p.reservation_notes || null,
-    official_notice_url: String(p.official_notice_url || p.source_url || '').trim(),
-    official_apply_url: p.official_apply_url || null,
+    official_notice_url: officialNoticeUrl,
+    official_apply_url: officialApplyUrl || null,
     official_site_url: p.official_site_url || null,
     summary: p.summary || p.excerpt || null,
     status: deadline.date && deadline.date < new Date().toISOString().slice(0, 10) ? 'closed' : 'active',
@@ -181,6 +194,6 @@ module.exports = async function handler(req, res) {
     }
     return res.status(400).json({ ok: false, error: 'Unsupported action.' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message || 'Government review failed.' });
+    return res.status(e.status || 500).json({ ok: false, error: e.message || 'Government review failed.' });
   }
 };

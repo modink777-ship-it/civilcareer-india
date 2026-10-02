@@ -15,3 +15,14 @@ test('P9 government SSR handler is wired through single-segment API alias',()=>{
     assert.ok(vercel.rewrites.some(x=>x.source===source),source+' rewrite missing');
   }
 });
+
+test('government jobs landing URL uses government SSR and old HTML URL redirects',()=>{
+  const vercel=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8'));
+  const landing=vercel.rewrites.findIndex(x=>x.source==='/government-jobs');
+  const detail=vercel.rewrites.findIndex(x=>x.source==='/government-jobs/:slug');
+  assert.notEqual(landing,-1,'clean Government Jobs landing rewrite exists');
+  assert.equal(vercel.rewrites[landing].destination,'/api/govt-public');
+  assert.ok(landing<detail,'the exact landing route must precede the detail route');
+  assert.ok(!vercel.rewrites.some(x=>x.source==='/government-jobs'&&x.destination==='/government-jobs.html'));
+  assert.ok(vercel.redirects.some(x=>x.source==='/government-jobs.html'&&x.destination==='/government-jobs'&&x.permanent));
+});

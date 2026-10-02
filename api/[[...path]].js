@@ -215,6 +215,28 @@ module.exports = async function handler(req, res) {
       req.query = Object.assign({}, req.query, { slug, render: 'html' });
     }
 
+    /* Government Jobs clean URLs may reach the catch-all with their original
+       path rather than the rewritten API path. Resolve them before dynamic SEO
+       slugs so /government-jobs cannot be mistaken for a role landing page. */
+    const govtDetail = pathName.match(/^\/government-jobs\/([^/]+)$/);
+    const govtFacet = pathName.match(/^\/(state|department|role)\/([^/]+)$/);
+    if (pathName === '/government-jobs' || govtDetail || govtFacet) {
+      const original = new URL(req.url, 'http://localhost');
+      const params = original.searchParams;
+      if (govtDetail) {
+        let value = govtDetail[1];
+        try { value = decodeURIComponent(value); } catch (_) { /* keep raw */ }
+        if (value.toLowerCase() === 'central') params.set('scope', 'central');
+        else params.set('job', value);
+      } else if (govtFacet) {
+        let value = govtFacet[2];
+        try { value = decodeURIComponent(value); } catch (_) { /* keep raw */ }
+        params.set(({ state: 'state', department: 'department', role: 'role' })[govtFacet[1]], value);
+      }
+      pathName = '/api/govt-public';
+      req.url = pathName + (params.size ? `?${params.toString()}` : '');
+    }
+
     /* Dynamic SEO pages (Feature 12): /<role>-jobs[-in-<city>] URLs resolve
        here as well — Vercel rewrites can leave req.url as the original path,
        so the slug is derived from it directly instead of relying on the
