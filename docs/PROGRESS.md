@@ -559,7 +559,7 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 
 ## 3 Oct 2026 — Admin review workflow and contrast
 
-- Branch: `main`, based on `00a55e5`. Implementation commit: `062e7f9` (local; not pushed).
+- Branch: `main`, based on `00a55e5`. Implementation commit: `062e7f9`; progress update: `95b9fc5`.
 - Review Jobs now loads when its tab is opened; its queue requests use the allowlisted Supabase session via the Authorization header rather than exposing the session token in a query string or JSON body.
 - Added a visible Rejected queue, corrected pagination to `per_page`, aligned mutation/scraper feedback with the actual `updated`/`added` response fields, and made failed database updates return an explicit error instead of a success-shaped result.
 - `/api/admin-jobs`, `/api/civil-scraper`, and Social Graphics routes now use the dispatcher’s admin allowlist path for dashboard sessions. The existing `SOCIAL_CRON_SECRET` path remains separately accepted by the social-cron handler.
@@ -567,5 +567,4 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Improved the fixed-dark admin dashboard's muted text and input placeholders. The new text color measures 6.71:1 against the `#0f2847` card background. Added [admin-usage-guide.md](./admin-usage-guide.md).
 - Validation: `npm test` — 184 passed, 0 failed; `npm run check:syntax` — 0 errors and the existing local `SITE_URL`-unset warning; `git diff --check` passed.
 - Browser smoke check: local admin sign-in page at 360px had document width equal to viewport (no horizontal overflow); placeholder and hint computed to `rgb(159, 176, 198)`. This checked the login shell and contrast styling, not every authenticated admin panel.
-- Deployment status: NOT LIVE-VERIFIED. No preview or production deployment was made. The previously reported Vercel free daily deployment limit remains a blocker; pushing `main` may also trigger a deployment depending on project settings.
-- Waiting on owner: confirm whether to push `062e7f9` to `origin/main` now (which could trigger Vercel), or keep it committed locally until a preview-only path is available.
+- Deployment status: NOT LIVE-VERIFIED. No preview or production deployment was made. The tested commits were pushed to `origin/main` for review at the owner's request. This push may trigger Vercel depending on project settings; the previously reported free daily-deployment limit remains a possible blocker.
