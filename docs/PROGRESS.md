@@ -467,3 +467,12 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Added ledger-backed `needs_second_step`, 60-second poll guard, 24-hour expiry, Truth Lock/content-lock recheck, and an Admin second-step action.
 - CI: **PASS** on commit `c0fee84a46760f0a7f5c3239b0904d27e2988007`; syntax + full test suite green.
 - Status word: **TESTED**. No real Instagram post was performed; production credentials/controlled test publication remain owner-side configuration.
+
+## 2 Oct 2026 — Phase 7 Daily Radar preview
+
+- Branch: `social-engine-6`
+- Added an admin-only Daily CivilCareer Radar preview endpoint and Admin panel.
+- Preview computes due events from verified job/government rows and rendered platform variants without inserting suggestions or sending posts.
+- Protected admin bundle regenerated after UI changes.
+- CI: **PASS** on commit `32beeb2673ecab7650e8074f297656d47ab3b575`; 146/146 tests passing, syntax checks passing.
+- Status word: **TESTED**. Radar remains preview-only as required for this phase.
