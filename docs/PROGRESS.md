@@ -458,3 +458,12 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Added 1080x1080 and 1080x1350 regression coverage, SVG escaping coverage, and 8 MB output guard.
 - CI: **PASS** on commit `242d80f`; syntax and full test suite passed.
 - Status word: **TESTED**.
+
+## 2 Oct 2026 — Phase 6 Instagram Login
+
+- Branch: `social-engine-5`
+- Replaced legacy Facebook-Graph Instagram publishing with the Instagram Login route using `graph.instagram.com`.
+- Enforced public JPEG media URLs and split container creation from final `media_publish`.
+- Added ledger-backed `needs_second_step`, 60-second poll guard, 24-hour expiry, Truth Lock/content-lock recheck, and an Admin second-step action.
+- CI: **PASS** on commit `c0fee84a46760f0a7f5c3239b0904d27e2988007`; syntax + full test suite green.
+- Status word: **TESTED**. No real Instagram post was performed; production credentials/controlled test publication remain owner-side configuration.
