@@ -4210,10 +4210,13 @@ function renderSocialQueue() {
               ${r.last_error ? `<div style="color:#f87171;font-size:.75rem;margin-top:2px">${esc(r.last_error)}</div>` : ''}
             </div>
             <div style="display:flex;gap:6px">
-              ${['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
-                ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
-                   <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
-                : ''}
+              ${r.status === 'needs_second_step' && r.platform === 'instagram'
+                ? `<button class="btn-gold" onclick="socialResolve(${s.id},'instagram','publish_container')">▶ Publish Instagram container</button>
+                   <button onclick="socialResolve(${s.id},'instagram','cancel')">✖ Cancel</button>`
+                : ['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
+                  ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
+                     <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
+                  : ''}
             </div>
           </div>`).join('')
         : '<p style="color:#6a8aaa;font-size:.78rem;margin:0">No real sends yet.</p>'}
