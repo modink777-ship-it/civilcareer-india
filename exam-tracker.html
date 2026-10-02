@@ -1,131 +1,156 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="index,follow">
-<link rel="stylesheet" href="/styles.css">
-<script src="/translations.js" defer></script>
-<link rel="icon" href="/icons/icon-96.png">
-<title>Civil Engineering Exam Tracker 2026 — GATE, SSC JE, RRB JE, UPSC ESE, State PSC | CivilCareer</title>
-<meta name="description" content="Track every civil engineering exam in one place — GATE CE, SSC JE, RRB JE, UPSC ESE, State PSC AE and PSU recruitment. Notification dates, application windows, exam dates, vacancies and eligibility. Free WhatsApp alerts.">
-<meta property="og:title" content="Civil Engineering Exam Tracker — Never Miss a Notification">
-<meta property="og:description" content="Notification dates, application windows, exam dates, vacancies and eligibility for every major civil engineering exam in India. Free WhatsApp alerts.">
-<meta property="og:type" content="website">
-<link rel="canonical" href="https://civilcareer-india-two.vercel.app/exam-tracker">
-<style>
-/* Page-local exam styles — colors only via existing CSS variables */
-.exam-track-main{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
-.exam-track-head{display:flex;justify-content:space-between;align-items:end;gap:18px;flex-wrap:wrap;margin-bottom:6px}
-.exam-count{color:var(--muted);font-size:13px;font-weight:650}
-.xt-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:850;letter-spacing:.05em;text-transform:uppercase}
-.xt-status i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}
-.xt-upcoming{background:#eef1f5;color:#5a6a7d;border:1px solid #dbe2ea}
-.xt-notification_out{background:#e8f1fa;color:#155a99;border:1px solid #c3d9ef}
-.xt-application_open{background:#e6f4ec;color:#1a7f4b;border:1px solid #b5e0c7}
-.xt-application_open i{animation:xtPulse 1.4s infinite}
-.xt-application_closed{background:#fdf1e4;color:#9a5b14;border:1px solid #f0d9b3}
-.xt-admit_card{background:#f1ebfa;color:#6b46b8;border:1px solid #ddccf2}
-.xt-exam_scheduled{background:#fdf6e3;color:#8a6414;border:1px solid #ecd9a8}
-.xt-result_out{background:#e6f1ed;color:#247568;border:1px solid #bcd8cc}
-@keyframes xtPulse{0%,100%{opacity:1}50%{opacity:.35}}
-.exam-card{position:relative}
-.xt-star{position:absolute;top:14px;right:14px}
-.xt-star.saved{color:#9a6114;border-color:#c9973c;background:#fdf6e9}
-.xt-dates{margin:13px 0 0;padding:0;list-style:none;display:grid;gap:6px}
-.xt-dates li{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px dashed #e4eaf1;padding-bottom:5px}
-.xt-dates li:last-child{border-bottom:0;padding-bottom:0}
-.xt-dates span{color:var(--muted);font-weight:650;flex:0 0 auto}
-.xt-dates b{color:var(--ink);text-align:right;font-weight:650}
-.xt-dates b.none{color:#9aa8b8;font-weight:500}
-.xt-elig{margin:12px 0 0;font-size:13px;line-height:1.55;color:#516174}
-.xt-closes{display:inline-block;margin-top:10px;background:#fdeeee;color:#a93f38;border:1px solid #f2cfcf;border-radius:6px;font-size:11.5px;font-weight:750;padding:3px 9px}
-.xt-actions{display:flex;gap:10px;align-items:center;margin-top:auto;padding-top:16px}
-.xt-actions .btn{min-height:40px;padding:0 14px;font-size:13px;border-radius:8px}
-.xt-cat{display:inline-flex;padding:4px 8px;border-radius:5px;background:#eef4fa;color:#155a99;border:1px solid #d5e4f2;font-size:10px;font-weight:820;text-transform:uppercase;letter-spacing:.04em}
-.my-exams{margin:26px 0 34px;padding:20px;border:1px solid #c9973c55;border-left:4px solid #c9973c;border-radius:12px;background:#fffdf7}
-.my-exams-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.my-exams-head h2{margin:0;font-size:20px}
-.xt-note{margin:14px 0 0;padding:14px 16px;border-left:3px solid #247568;background:#edf6f3;color:#38564f;font-size:13px;border-radius:0 10px 10px 0;line-height:1.6}
-.alert-ok{display:none;text-align:center;padding:10px 0 4px}
-.alert-ok .big{font-size:34px}
-.alert-ok b{display:block;margin:6px 0 4px;color:var(--navy)}
-.alert-ok p{margin:0;color:var(--muted);font-size:13px}
-.xt-dialog-label{display:block;margin:12px 0;color:#354459;font-size:12px;font-weight:750}
-.xt-dialog-label input{width:100%;margin-top:5px;border:1px solid #cfd8e1;border-radius:7px;background:#fff;padding:10px;color:var(--ink);outline:0}
-.xt-dialog-label input:focus{border-color:#155ea8;box-shadow:0 0 0 3px #155ea812}
-@media(max-width:760px){.exam-track-main{padding:26px 16px 64px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#0b1f3a">
+  <link rel="canonical" href="https://civilcareer-india-two.vercel.app/exam-tracker">
+  <link rel="stylesheet" href="/styles.css?v=20260926-400">
+  <script src="/theme.js" defer></script>
+  <script src="/translations.js" defer></script>
+  <title> Civil Engineering Exam Tracker 2026 | GATE, SSC JE, RRB JE, UPSC ESE | CivilCareer</title>
+  <meta name="description" content="Track Civil Engineering exams in India including GATE CE, SSC JE, RRB JE, UPSC ESE, State PSC and PSU recruitment. See dates, vacancies, eligibility and free alerts.">
+  <meta property="og:title" content="Civil Engineering Exam Tracker | CivilCareer">
+  <meta property="og:description" content="Never miss a Civil Engineering exam notification or application deadline.">
+  <meta property="og:type" content="website">
 </head>
 <body>
+<a class="skip" href="#content">Skip to content</a>
 
 <header class="site-header">
   <div class="container nav">
     <a class="logo" href="/">Civil<span>Career</span></a>
-    <nav>
-      <a href="/private-jobs">Jobs</a>
-      <a href="/government-jobs">Government</a>
-      <a href="/exams">Exams</a>
-      <a href="/exam-tracker" aria-current="page">Exam Tracker</a>
-      <a href="/study-materials">Study Materials</a>
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Open navigation" aria-expanded="false">
+      <i></i><i></i><i></i>
+    </button>
+    <nav id="mainNav" aria-label="Primary navigation">
+      <div class="mobile-nav-grid">
+        <a href="/private-jobs">Jobs</a>
+        <a href="/government-jobs">Govt Jobs</a>
+        <a href="/exams" aria-current="page">Exams</a>
+        <a href="/study-materials">Prepare</a>
+        <a href="/for-you">For You</a>
+        <a href="/job-alerts.html">Alerts</a>
+      </div>
     </nav>
+    <div class="nav-tools">
+      <a class="icon-btn" href="/search" aria-label="Search">Search</a>
+      <a class="about-link" href="/about">About</a>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button type="button" class="lang-option" data-lang="en">EN</button>
+        <button type="button" class="lang-option" data-lang="hi">हिं</button>
+        <button type="button" class="lang-option" data-lang="kn">ಕ</button>
+        <button type="button" class="lang-option" data-lang="te">తె</button>
+      </div>
+      <button class="theme-toggle" type="button" aria-label="Switch theme">☾</button>
+    </div>
+  </div>
+  <div class="tools-row">
+    <div class="container tools-row-inner">
+      <span class="tools-label">Career Tools:</span>
+      <a href="/salary">Salary Guide</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/create-profile">Create Portfolio</a>
+      <a href="/talent">Browse Talent</a>
+      <a href="/companies">Company Reviews</a>
+      <a href="/interview">Interview Q&amp;A</a>
+      <a href="/blog">Blog</a>
+      <a href="/walk-in">Walk-In Interviews</a>
+    </div>
   </div>
 </header>
 
-<section class="page-hero">
-  <div class="container">
-    <p class="eyebrow">Civil engineering examinations · India</p>
-    <h1>Track All Civil Engineering Exams</h1>
-    <p>Never miss a notification or deadline. GATE, SSC JE, RRB JE, UPSC ESE, State PSC and PSU recruitment — notification dates, application windows, exam schedules, vacancies and eligibility, updated in one place.</p>
-  </div>
-</section>
-
-<main class="exam-track-main">
-
-  <section id="myExamsSection" class="my-exams" hidden>
-    <div class="my-exams-head">
-      <h2>⭐ My Exams</h2>
-      <button class="btn secondary" id="clearTracked" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px">Clear all</button>
+<main id="content">
+  <section class="page-hero">
+    <div class="container">
+      <p class="eyebrow">Civil engineering examinations · India</p>
+      <h1>Track All Civil Engineering Exams</h1>
+      <p>Never miss a notification or deadline.</p>
     </div>
-    <div class="cards three" id="myExamsGrid"></div>
   </section>
 
-  <div class="exam-track-head">
-    <div class="chips" id="categoryChips" style="margin:18px 0 22px">
-      <button class="active" data-cat="">All</button>
-      <button data-cat="GATE">GATE</button>
-      <button data-cat="SSC">SSC</button>
-      <button data-cat="RRB">RRB</button>
-      <button data-cat="UPSC">UPSC</button>
-      <button data-cat="STATE_PSC">State PSC</button>
-      <button data-cat="PSU">PSU</button>
+  <section class="section" aria-labelledby="exam-filter-heading">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow"><span class="sec-no">01 /</span> Exam tracker</p>
+          <h2 id="exam-filter-heading">Find the exams you care about</h2>
+        </div>
+        <span id="examCount" class="verified-date" aria-live="polite"></span>
+      </div>
+
+      <div class="chips" id="examFilters" role="tablist" aria-label="Exam category filters">
+        <button type="button" class="active" data-category="">All</button>
+        <button type="button" data-category="GATE">GATE</button>
+        <button type="button" data-category="SSC">SSC</button>
+        <button type="button" data-category="RRB">RRB</button>
+        <button type="button" data-category="UPSC">UPSC</button>
+        <button type="button" data-category="STATE_PSC">State PSC</button>
+        <button type="button" data-category="PSU">PSU</button>
+      </div>
+
+      <div class="cards three" id="examGrid" aria-live="polite">
+        <div class="skeleton" aria-hidden="true"></div>
+        <div class="skeleton" aria-hidden="true"></div>
+        <div class="skeleton" aria-hidden="true"></div>
+      </div>
     </div>
-    <span class="exam-count" id="examCount"></span>
-  </div>
-
-  <div class="cards three" id="examGrid">
-    <div class="skeleton"></div>
-    <div class="skeleton"></div>
-    <div class="skeleton"></div>
-  </div>
-
-  <noscript>
-    <p class="xt-note" style="margin-top:24px">Enable JavaScript to load the live exam list. All exam data comes from the official recruiting authorities — always verify dates and eligibility on the official website before applying.</p>
-  </noscript>
-
-  <section style="margin-top:56px">
-    <h2>About the Exam Tracker</h2>
-    <p style="max-width:760px;line-height:1.7;color:#516174">The CivilCareer Exam Tracker follows every major civil engineering recruitment examination in India — GATE Civil Engineering, SSC Junior Engineer, RRB Junior Engineer, UPSC Engineering Services (ESE), State Public Service Commission Assistant Engineer exams (KPSC, TSPSC, MPSC, UPPSC) and PSU recruitment (NHPC, NTPC and more). For each exam you can see the notification date, application start and end dates, exam schedule, result date, expected vacancies and eligibility summary, with a direct link to the official website. Star the exams you are preparing for to keep them at the top of this page — no login or account is needed. Tap <b>Alert Me</b> and we will notify you on WhatsApp when an exam's status changes: notification out, applications open, admit card, or result. CivilCareer is an independent information platform and never charges candidates — always verify every detail in the original official notification before applying.</p>
   </section>
 
+  <section class="section soft" id="myExamsSection" hidden aria-labelledby="myExamsHeading">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow"><span class="sec-no">02 /</span> Saved by you</p>
+          <h2 id="myExamsHeading">My Exams</h2>
+        </div>
+        <button class="btn secondary" id="clearSaved" type="button">Clear saved</button>
+      </div>
+      <div class="cards three" id="myExamsGrid"></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="tracker-note-heading">
+    <div class="container article-page" style="padding-top:0">
+      <div class="callout">
+        <h2 id="tracker-note-heading">Use the original notification before applying</h2>
+        <p>Dates, vacancies, eligibility, fees and age limits can change. CivilCareer organizes the information in one place; the official authority remains the source to verify before you apply.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="container footer-grid">
-    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
-    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
-    <div><b>Contribute</b><a href="/post-a-job">Post a Job</a><a href="/submit-resource">Submit Resource</a><a href="/report">Report Content</a></div>
-    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a><a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">Job Scam Safety</a></div>
+    <div>
+      <a class="logo" href="/">Civil<span>Career</span></a>
+      <p>India's Civil Engineering Career Platform</p>
+    </div>
+    <div>
+      <b>Explore</b>
+      <a href="/private-jobs">Private Jobs</a>
+      <a href="/government-jobs">Government Civil Jobs</a>
+      <a href="/exams">Civil Engineering Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/study-materials">Study Materials</a>
+    </div>
+    <div>
+      <b>Career Tools</b>
+      <a href="/salary">Salary Guide</a>
+      <a href="/create-profile">Create Portfolio</a>
+      <a href="/talent">Browse Talent</a>
+      <a href="/companies">Company Reviews</a>
+      <a href="/interview">Interview Questions</a>
+      <a href="/walk-in">Walk-In Interviews</a>
+    </div>
+    <div>
+      <b>Company</b>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/legal">Terms · Privacy · Disclaimer</a>
+      <a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">Job Scam Safety</a>
+    </div>
   </div>
   <div class="container footer-bottom">
     <p>CivilCareer is an independent information directory. It is not an employer, recruitment agency, government organization or examination authority. Always verify important information with the original official source.</p>
@@ -133,282 +158,36 @@
   </div>
 </footer>
 
-<dialog id="alertDialog">
+<dialog id="alertDialog" aria-labelledby="alertDialogTitle">
   <div class="dialog-head">
-    <h2 id="alertTitle">Get Exam Alerts</h2>
+    <h2 id="alertDialogTitle">Get exam alerts</h2>
     <button type="button" data-close aria-label="Close">×</button>
   </div>
   <div class="dialog-body">
-    <p id="alertExamName" style="margin:0 0 4px;color:var(--navy);font-weight:750"></p>
-    <p style="margin:0 0 8px;font-size:12.5px;color:var(--muted)">Free alerts on WhatsApp when this exam's status changes — notification out, applications open, admit card or result.</p>
+    <p id="alertExamName" class="organization" style="margin-top:0"></p>
+    <p class="verified-date">Free WhatsApp alerts when this exam changes status.</p>
     <form id="alertForm">
-      <label class="xt-dialog-label">Name *
-        <input id="alertName" required maxlength="80" autocomplete="name" placeholder="Your name">
+      <label class="panel-form-label" for="alertName">Name
+        <input id="alertName" name="name" maxlength="80" autocomplete="name" required>
       </label>
-      <label class="xt-dialog-label">WhatsApp number *
-        <input id="alertWhatsApp" required inputmode="tel" autocomplete="tel" maxlength="16" placeholder="10-digit mobile number">
+      <label class="panel-form-label" for="alertWhatsApp">WhatsApp number
+        <input id="alertWhatsApp" name="whatsapp" maxlength="16" inputmode="tel" autocomplete="tel" required placeholder="10-digit Indian mobile number">
       </label>
-      <label class="xt-dialog-label">Email (optional)
-        <input id="alertEmail" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+      <label class="panel-form-label" for="alertEmail">Email <span class="verified-date">(optional)</span>
+        <input id="alertEmail" name="email" type="email" maxlength="120" autocomplete="email">
       </label>
-      <button class="btn primary wide" type="submit" style="width:100%;margin-top:14px">Notify Me — Free</button>
-      <div class="form-status" id="alertStatus"></div>
+      <button class="btn primary" type="submit">Alert Me — Free</button>
+      <div id="alertStatus" class="form-status" role="status" aria-live="polite"></div>
     </form>
-    <div class="alert-ok" id="alertDone">
-      <div class="big">✅</div>
-      <b>You're on the alert list!</b>
-      <p>We'll alert you on WhatsApp when this exam updates.<br>Meanwhile, join <a href="https://t.me/CivilCareerIndiaJobs" target="_blank" rel="noopener" style="color:#155ea8;font-weight:700">t.me/CivilCareerIndiaJobs</a> for instant job alerts.</p>
+    <div id="alertSuccess" hidden>
+      <p class="eyebrow">You're subscribed</p>
+      <h3>Alert saved.</h3>
+      <p>We'll use the details you submitted for this exam alert.</p>
     </div>
   </div>
 </dialog>
 
-<div class="toast" id="toast" role="status"></div>
-
-<script>
-/* ═══ Exam Tracker — vanilla JS, no dependencies ═══ */
-const API = '/api/exam-tracker';
-const TRACK_KEY = 'cc_tracked_exams_v1';
-const ALERT_KEY = 'cc_exam_alerts_v1';
-const CACHE_KEY = 'cc_examtracker_cache_v1';
-const CACHE_TTL = 5 * 60 * 1000;
-
-const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-let exams = [];
-let filter = '';
-
-/* ── localStorage helpers (preferences only — never sensitive data) ── */
-function loadJSON(key, fallback) {
-  try { const v = JSON.parse(localStorage.getItem(key) || ''); return Array.isArray(v) ? v : fallback; }
-  catch (_) { return fallback; }
-}
-function saveJSON(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
-}
-let tracked = loadJSON(TRACK_KEY, []);
-let alerted = loadJSON(ALERT_KEY, []);
-
-/* ── formatting helpers ── */
-function fmtDate(value) {
-  if (!value) return null;
-  const d = new Date(value + (String(value).length === 10 ? 'T00:00:00' : ''));
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-function daysLeft(value) {
-  if (!value) return null;
-  const d = new Date(value + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.ceil((d.getTime() - Date.now()) / 86400000);
-}
-const STATUS_META = {
-  upcoming:          { label: 'Awaited',    cls: 'xt-upcoming' },
-  notification_out:  { label: 'Notified',   cls: 'xt-notification_out' },
-  application_open:  { label: 'Apply Now',  cls: 'xt-application_open' },
-  application_closed:{ label: 'Closed',     cls: 'xt-application_closed' },
-  admit_card:        { label: 'Admit Card', cls: 'xt-admit_card' },
-  exam_scheduled:    { label: 'Exam Soon',  cls: 'xt-exam_scheduled' },
-  result_out:        { label: 'Result Out', cls: 'xt-result_out' },
-};
-function statusMeta(status) { return STATUS_META[String(status || 'upcoming')] || STATUS_META.upcoming; }
-const CAT_LABELS = { STATE_PSC: 'State PSC' };
-function catLabel(category) { return CAT_LABELS[category] || category || 'Exam'; }
-
-function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-/* ── card renderer ── */
-function dateRow(label, value) {
-  const shown = fmtDate(value);
-  return `<li><span>${label}</span><b class="${shown ? '' : 'none'}">${esc(shown || 'TBA')}</b></li>`;
-}
-
-function cardHTML(exam) {
-  const meta = statusMeta(exam.status);
-  const isTracked = tracked.includes(exam.id);
-  const isAlerted = alerted.includes(exam.id);
-  const left = daysLeft(exam.application_end);
-  const closesSoon = exam.status === 'application_open' && left !== null && left >= 0 && left <= 7;
-  return `<article class="exam-card" data-id="${esc(exam.id)}">
-    <div class="card-top">
-      <span class="xt-status ${meta.cls}"><i></i>${esc(meta.label)}</span>
-      <span class="xt-cat">${esc(catLabel(exam.category))}</span>
-    </div>
-    <button class="btn-save xt-star ${isTracked ? 'saved' : ''}" type="button" data-star="${esc(exam.id)}"
-      aria-label="${isTracked ? 'Remove from My Exams' : 'Save to My Exams'}" title="${isTracked ? 'Remove from My Exams' : 'Save to My Exams'}">${isTracked ? '★' : '☆'}</button>
-    <h3>${esc(exam.name || 'Exam')}</h3>
-    <p class="organization">${esc(exam.authority || '')}</p>
-    <ul class="xt-dates">
-      ${dateRow('📋 Notification', exam.notification_date)}
-      ${dateRow('📝 Apply from', exam.application_start)}
-      ${dateRow('⏰ Apply by', exam.application_end)}
-      ${dateRow('📅 Exam', exam.exam_date)}
-      ${dateRow('🏆 Result', exam.result_date)}
-    </ul>
-    ${exam.vacancy_count ? `<span class="vacancy-badge" style="margin-top:10px">👥 ~${Number(exam.vacancy_count).toLocaleString('en-IN')} vacancies</span>` : ''}
-    ${closesSoon ? `<span class="xt-closes">⚡ Closes in ${left === 0 ? 'less than a day' : left + ' day' + (left === 1 ? '' : 's')}</span>` : ''}
-    ${exam.eligibility_summary ? `<p class="xt-elig">🎓 ${esc(exam.eligibility_summary)}</p>` : ''}
-    <div class="xt-actions">
-      <button class="btn secondary" type="button" data-alert="${esc(exam.id)}" ${isAlerted ? 'disabled' : ''}>${isAlerted ? '✓ Alert on' : '🔔 Alert Me'}</button>
-      ${exam.official_url ? `<a class="text-link" href="${esc(exam.official_url)}" target="_blank" rel="noopener noreferrer">Official Site ↗</a>` : ''}
-    </div>
-  </article>`;
-}
-
-function render() {
-  const byId = id => exams.find(x => x.id === id);
-  const trackedExams = tracked.map(byId).filter(Boolean);
-  const seen = new Set(trackedExams.map(x => x.id));
-  tracked = tracked.filter(id => seen.has(id));
-
-  /* My Exams section (starred) */
-  const mySection = $('myExamsSection');
-  mySection.hidden = trackedExams.length === 0;
-  $('myExamsGrid').innerHTML = trackedExams.map(cardHTML).join('');
-
-  /* Main grid with category filter */
-  const list = filter ? exams.filter(x => x.category === filter) : exams;
-  $('examCount').textContent = exams.length ? `${list.length} of ${exams.length} exams` : '';
-  $('examGrid').innerHTML = list.length
-    ? list.map(cardHTML).join('')
-    : '<div class="empty-state"><h3>No exams in this category yet</h3><p>Try another filter — or check back soon, new exams are added regularly.</p></div>';
-}
-
-/* ── event delegation (cards re-render freely) ── */
-function findExam(id) { return exams.find(x => x.id === id); }
-
-document.addEventListener('click', e => {
-  const star = e.target.closest('[data-star]');
-  if (star) {
-    const id = star.getAttribute('data-star');
-    tracked = tracked.includes(id) ? tracked.filter(x => x !== id) : [...tracked, id];
-    saveJSON(TRACK_KEY, tracked);
-    render();
-    toast(tracked.includes(id) ? '⭐ Added to My Exams' : 'Removed from My Exams');
-    return;
-  }
-  const alertBtn = e.target.closest('[data-alert]');
-  if (alertBtn && !alertBtn.disabled) openAlertDialog(alertBtn.getAttribute('data-alert'));
-});
-
-/* ── category filter tabs ── */
-$('categoryChips').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-cat]');
-  if (!btn) return;
-  filter = btn.getAttribute('data-cat');
-  document.querySelectorAll('#categoryChips button').forEach(b => b.classList.toggle('active', b === btn));
-  render();
-});
-
-$('clearTracked').addEventListener('click', () => {
-  tracked = [];
-  saveJSON(TRACK_KEY, tracked);
-  render();
-  toast('My Exams cleared.');
-});
-
-/* ── Alert Me modal ── */
-let alertExamId = null;
-
-function openAlertDialog(examId) {
-  const exam = findExam(examId);
-  if (!exam) return;
-  alertExamId = examId;
-  $('alertTitle').textContent = '🔔 Get Exam Alerts';
-  $('alertExamName').textContent = exam.name || '';
-  $('alertForm').style.display = '';
-  $('alertDone').style.display = 'none';
-  $('alertStatus').className = 'form-status';
-  $('alertStatus').textContent = '';
-  $('alertDialog').showModal();
-  $('alertName').focus();
-}
-
-$('alertDialog').addEventListener('click', e => {
-  if (e.target.hasAttribute('data-close')) $('alertDialog').close();
-});
-
-function normalizeWhatsApp(raw) {
-  const digits = String(raw || '').replace(/\D/g, '');
-  const local = digits.replace(/^91(?=\d{10}$)/, '');
-  return /^[6-9]\d{9}$/.test(local) ? '+91' + local : null;
-}
-
-$('alertForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const name = $('alertName').value.trim();
-  const whatsapp = normalizeWhatsApp($('alertWhatsApp').value);
-  const email = $('alertEmail').value.trim();
-
-  const st = $('alertStatus');
-  if (!whatsapp) {
-    st.className = 'form-status show error';
-    st.textContent = 'Please enter a valid 10-digit Indian mobile number.';
-    return;
-  }
-  st.className = 'form-status show';
-  st.textContent = 'Saving…';
-
-  const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
-  try {
-    const r = await fetch('/api/exam-alert-subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, whatsapp, email, exam_id: alertExamId }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || 'Could not save your alert. Please try again.');
-    if (!alerted.includes(alertExamId)) alerted = [...alerted, alertExamId];
-    saveJSON(ALERT_KEY, alerted);
-    $('alertForm').style.display = 'none';
-    $('alertDone').style.display = 'block';
-    render();
-    toast('✓ Alert saved — we will WhatsApp you.');
-  } catch (err) {
-    st.className = 'form-status show error';
-    st.textContent = err.message;
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-/* ── data loading with 5-minute sessionStorage cache ── */
-function readCache() {
-  try {
-    const c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
-    if (c && Date.now() - c.at < CACHE_TTL && Array.isArray(c.exams)) return c.exams;
-  } catch (_) {}
-  return null;
-}
-function writeCache(examsList) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), exams: examsList })); } catch (_) {}
-}
-
-async function loadExams() {
-  const cached = readCache();
-  if (cached) { exams = cached; render(); return; }
-  try {
-    const r = await fetch(API);
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || 'Failed to load exams');
-    exams = data.exams || [];
-    writeCache(exams);
-    render();
-  } catch (err) {
-    $('examGrid').innerHTML = `<div class="empty-state"><h3>Could not load exams</h3><p>${esc(err.message)}</p><button class="btn secondary" type="button" onclick="location.reload()">Retry</button></div>`;
-    $('examCount').textContent = '';
-  }
-}
-
-render();
-loadExams();
-</script>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/exam-tracker.js" defer></script>
 </body>
 </html>
