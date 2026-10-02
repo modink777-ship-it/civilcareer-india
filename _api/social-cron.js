@@ -47,9 +47,18 @@ function json(res, status, body) {
 }
 
 async function settings() {
-  const internal = social._internal || {};
-  const getSettings = internal.getSettings;
-  return getSettings ? getSettings() : { caps_timezone: 'Asia/Kolkata', site_url: process.env.SITE_URL || '' };
+  const url = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
+  if (!url || !key) return { caps_timezone: 'Asia/Kolkata', site_url: process.env.SITE_URL || '' };
+  try {
+    const r = await fetch(url + '/rest/v1/social_settings?id=eq.1&limit=1', {
+      headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+    });
+    const rows = await r.json();
+    return Array.isArray(rows) && rows[0] ? rows[0] : { caps_timezone: 'Asia/Kolkata', site_url: process.env.SITE_URL || '' };
+  } catch (_) {
+    return { caps_timezone: 'Asia/Kolkata', site_url: process.env.SITE_URL || '' };
+  }
 }
 
 module.exports = async function socialCronHandler(req, res) {
