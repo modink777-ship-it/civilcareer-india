@@ -6,6 +6,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/social-graphics",
+      "destination": "/api/social-graphics-v4"
+    },
+    {
       "source": "/api/social-cron",
       "destination": "/api/social-graphics?delegate=social-cron"
     },
