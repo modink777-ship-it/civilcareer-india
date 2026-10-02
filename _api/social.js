@@ -1270,6 +1270,24 @@ module.exports = async function handler(req, res) {
         }
         return sendJson(res, 200, { connections: connections.connections });
       }
+      if (op === 'radar-preview') {
+        const settings = await getSettings();
+        if (settings._error) {
+          return sendJson(res, 503, { error: 'Social engine settings missing — run supabase-v27-social-engine.sql' });
+        }
+        const sourceType = query.source_type && ['job', 'govt_job'].includes(String(query.source_type))
+          ? String(query.source_type)
+          : undefined;
+        const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 100);
+        const preview = await radarService.previewRadar({
+          sourceType,
+          limit,
+          now: query.now ? Number(query.now) : undefined,
+          settings,
+          createdBy: actor(req),
+        });
+        return sendJson(res, 200, preview);
+      }
       if (op === 'ledger') {
         const id = String(query.id || '');
         if (!id) return sendJson(res, 400, { error: 'Missing id' });
