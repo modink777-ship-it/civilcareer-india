@@ -2114,11 +2114,14 @@ footer{
 .exam-date-list b{text-align:right;color:var(--navy);font-weight:700}
 .panel-form-label{display:block;margin:14px 0;color:var(--text);font-size:12px;font-weight:750}
 .panel-form-label input{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--white);padding:10px 12px;color:var(--ink)}
-.panel-form-label input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,94,168,.08);outline:0}
+.panel-form-label input:focus{border-color:var(--blue);outline:0}
 @media(max-width:760px){.exam-save{top:14px;right:14px}.exam-date-list div{align-items:flex-start}}
-html[data-theme="dark"] .exam-status.upcoming{background:#17263a;color:#a7b7cb}
-html[data-theme="dark"] .exam-status.notification-out,html[data-theme="dark"] .exam-status.admit-card,html[data-theme="dark"] .exam-status.exam-scheduled{background:#18314b;color:#a9c6e8}
-html[data-theme="dark"] .exam-status.application-open,html[data-theme="dark"] .exam-status.result-out{background:#18372f;color:#9fd2c2}
-html[data-theme="dark"] .exam-status.application-closed{background:#3a2d1c;color:#e3bc79}
-html[data-theme="dark"] .exam-date-list b{color:#e6edf5}
-html[data-theme="dark"] .panel-form-label{color:#c7d3e2}
+html[data-theme="dark"] .exam-card{background:var(--navy);border-color:var(--line);color:var(--white)}
+html[data-theme="dark"] .exam-card h3,html[data-theme="dark"] .exam-date-list b{color:var(--white)}
+html[data-theme="dark"] .exam-card .organization,html[data-theme="dark"] .exam-card .card-copy{color:var(--soft)}
+html[data-theme="dark"] .exam-status.upcoming{background:var(--navy);color:var(--white)}
+html[data-theme="dark"] .exam-status.notification-out,html[data-theme="dark"] .exam-status.admit-card,html[data-theme="dark"] .exam-status.exam-scheduled{background:var(--navy);color:var(--blue)}
+html[data-theme="dark"] .exam-status.application-open,html[data-theme="dark"] .exam-status.result-out{background:var(--navy);color:var(--teal)}
+html[data-theme="dark"] .exam-status.application-closed{background:var(--navy);color:var(--amber)}
+html[data-theme="dark"] .exam-date-list b{color:var(--white)}
+html[data-theme="dark"] .panel-form-label{color:var(--soft)}
