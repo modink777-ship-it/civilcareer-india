@@ -467,6 +467,9 @@ test('F3 Instagram: container → publish → permalink', async () => {
       assert.equal(params.get('image_url'), 'https://cc.test/og.jpg');
       return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-1' }) };
     }
+    if (method === 'GET' && url.includes('fields=status_code,status')) {
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ status_code: 'FINISHED', status: 'Finished' }) };
+    }
     if (method === 'POST' && url.endsWith('/media_publish')) {
       const params = new URLSearchParams(init.body);
       assert.equal(params.get('creation_id'), 'container-1');
@@ -499,27 +502,18 @@ test('F3 Instagram: a container failure is honest, not a silent skip', async () 
     const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://x/y.png' });
     assert.equal(out.ok, false);
     assert.equal(out.retryable, false);
-    assert.match(out.error, /Invalid image URL/);
+    assert.match(out.error, /public JPEG media_url/);
   } finally { restore(); }
 });
 
-test('F3 Instagram: a video media_url posts as video_url', async () => {
-  const restore = stubFetch(async (url, init) => {
-    if (String(url).endsWith('/media')) {
-      const params = new URLSearchParams(init.body);
-      assert.equal(params.get('video_url'), 'https://cc.test/reel.mp4');
-      assert.equal(params.has('image_url'), false);
-      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-2' }) };
-    }
-    if (String(url).endsWith('/media_publish')) {
-      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'm2' }) };
-    }
-    return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({}) };
-  });
+test('P6 Instagram: non-JPEG media is rejected before any network call', async () => {
+  let calls = 0;
+  const restore = stubFetch(async () => { calls++; throw new Error('network must not be touched'); });
   try {
     const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://cc.test/reel.mp4' });
-    assert.equal(out.ok, true);
-    assert.equal(out.externalId, 'm2');
+    assert.equal(out.ok, false);
+    assert.match(out.error, /public JPEG media_url/);
+    assert.equal(calls, 0);
   } finally { restore(); }
 });
 
