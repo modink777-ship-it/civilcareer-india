@@ -517,6 +517,13 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 ## 2 Oct 2026 — Landing-page SEO copy follow-up
 - Branch: seo-page-copy
 - Updated homepage, private jobs, government jobs, exams, study materials, and career guides page copy/metadata.
-- Commit: 8b37b8ffb3e9976e2008f1a860584e4cc4abacf5 (pushed to origin).
+- Commit: `a8488b13ef42990771563ecf864f61adfe4b14e2` (pushed; author corrected to the owner email).
 - Checks: syntax and launch checks passed; launch check reports `SITE_URL` unset. Six edited pages have unique titles and canonical URLs. Test suite: 161 passed, 1 failed (`A8 admin bundle: generated file matches admin.html byte-for-byte`).
-- Open blockers: review the admin-bundle test failure; configure `SITE_URL`; create/review the PR and verify any Vercel preview. No production merge or deployment performed.
+- PR merged to `main` by owner as `d7892b2`. Production pages verified afterward; clean `/exams` route remained incorrect and is tracked below.
+
+## 2 Oct 2026 — Exams clean-route follow-up
+- Branch: `fix/exams-route` (based on merged `main`).
+- Moved the exact `/exams` rewrite before `/exams/:path*`; added an order/destination regression test.
+- Tests: focused SEO/routing tests 3/3 passed; syntax check passed; full suite 162 passed, 1 failed on the existing A8 generated-admin-bundle byte-sync assertion.
+- Status: route fix IMPLEMENTED and TESTED locally; production NOT YET VERIFIED.
+- Owner step: review the preview deployment, then merge the PR. Recheck `/exams` title and canonical after production deployment.

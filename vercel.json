@@ -54,6 +54,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/exams",
+      "destination": "/exams.html"
+    },
+    {
       "source": "/exams/:path*",
       "destination": "/index.html"
     },
@@ -108,10 +112,6 @@
     {
       "source": "/government-jobs",
       "destination": "/government-jobs.html"
-    },
-    {
-      "source": "/exams",
-      "destination": "/exams.html"
     },
     {
       "source": "/study-materials",
