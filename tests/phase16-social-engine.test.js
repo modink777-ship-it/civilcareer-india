@@ -316,21 +316,49 @@ test('F2 telegram text is plain text (no Markdown tokens that need a parse mode)
 test('F3 platformConfigured: each platform reports its own env readiness', () => {
   const env = {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'c',
-    LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org',
+    LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org', LINKEDIN_AUTHOR_URN: 'urn:li:person:test', LINKEDIN_API_VERSION: '202508',
     INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178',
   };
   assert.equal(publishers.platformConfigured('telegram', env), true);
-  assert.equal(publishers.platformConfigured('linkedin', env), false, 'LinkedIn is Phase 4, not enabled in Phase 1');
+  assert.equal(publishers.platformConfigured('linkedin', env), true, 'LinkedIn member publisher is enabled in Phase 5');
   assert.equal(publishers.platformConfigured('instagram', env), false, 'Instagram is Phase 5, not enabled in Phase 1');
   assert.equal(publishers.platformConfigured('telegram', {}), false);
   /* Later platforms remain disabled until their approved phases. */
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x' }), false);
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x', LINKEDIN_API_VERSION: '202508' }), true);
   assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ORGANIZATION_ID: 'org' }), false);
   assert.equal(publishers.platformConfigured('instagram', { META_ACCESS_TOKEN: 'ig', META_INSTAGRAM_ACCOUNT_ID: '178' }), false);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'prod',
   }), true);
+});
+
+test('P5 LinkedIn member publisher: posts through the Posts API', async () => {
+  const restore = stubFetch(async (url, init) => {
+    assert.equal(url, 'https://api.linkedin.com/rest/posts');
+    const payload = JSON.parse(init.body);
+    assert.equal(payload.author, 'urn:li:person:123');
+    assert.equal(payload.lifecycleState, 'PUBLISHED');
+    assert.equal(payload.visibility, 'PUBLIC');
+    assert.equal(payload.commentary, 'Hello member');
+    assert.equal(init.headers['Linkedin-Version'], '202508');
+    return {
+      status: 201,
+      headers: { get: (k) => (String(k).toLowerCase() === 'x-restli-id' ? 'urn:li:share:123' : null) },
+      text: async () => '',
+    };
+  });
+  try {
+    const out = await publishers.sendLinkedIn({
+      token: 'li-token',
+      authorUrn: 'urn:li:person:123',
+      apiVersion: '202508',
+      text: 'Hello member',
+    });
+    assert.equal(out.ok, true);
+    assert.equal(out.externalId, 'urn:li:share:123');
+    assert.match(out.externalUrl || '', /linkedin\.com\/feed\/update/);
+  } finally { restore(); }
 });
 
 test('F3 LinkedIn: validates config before any network call', async () => {
