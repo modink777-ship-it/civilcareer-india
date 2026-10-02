@@ -225,6 +225,10 @@
     {
       "path": "/api/exam-alerts",
       "schedule": "30 0 * * 1"
+    },
+    {
+      "path": "/api/govt-expiry",
+      "schedule": "20 0 * * *"
     }
   ],
   "redirects": [
