@@ -961,26 +961,30 @@ async function connectionAction(id, action) {
   }
 
   if (action === 'verify') {
-    /* Telegram: the bot token lives in env — validate it with getMe.
-       LinkedIn/Instagram verification lands with their publishers. */
+    /* Read-only Telegram verification. NEVER send a public message as
+       a connectivity probe. */
     if (connection.platform !== 'telegram') {
       return { status: 400, error: `Verification is implemented for Telegram — a ${connection.platform} connection is verified by its first real publish` };
     }
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       return { status: 400, error: 'TELEGRAM_BOT_TOKEN not set' };
     }
-    const me = await publishers.sendTelegram({
-      token: process.env.TELEGRAM_BOT_TOKEN,
-      chatId: connection.external_id,
-      text: ' ',
-    }).catch(() => ({ ok: false, error: 'Verification request failed' }));
-    /* getMe is a GET; reuse the send plumbing minimally: a send
-       with a single space is a harmless, honest connectivity probe. */
+    const token = String(process.env.TELEGRAM_BOT_TOKEN);
+    let verified = false;
+    let detail = null;
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/getMe`);
+      const payload = await response.json().catch(() => null);
+      verified = Boolean(response.ok && payload && payload.ok);
+      detail = verified ? null : (payload && payload.description) || `Telegram verification failed (HTTP ${response.status})`;
+    } catch (err) {
+      detail = err && err.message ? String(err.message) : 'Telegram verification request failed';
+    }
     const c = await supa(`social_connections?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify({
         last_verified_at: new Date().toISOString(),
-        status: me.ok ? 'active' : connection.status,
+        status: verified ? 'active' : connection.status,
       }),
     });
     if (!c.ok) return { status: 500, error: 'Connection could not be updated' };
@@ -989,8 +993,8 @@ async function connectionAction(id, action) {
       status: 200,
       result: {
         connection: Array.isArray(updated) ? updated[0] : updated,
-        verified: Boolean(me.ok),
-        error: me.ok ? null : me.error,
+        verified,
+        error: detail,
       },
     };
   }
