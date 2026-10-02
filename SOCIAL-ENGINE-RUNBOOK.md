@@ -1,180 +1,60 @@
 # CivilCareer Social Engine Runbook
 
-## 1. Before the first real Telegram publication
+## 1. Production prerequisites
+Set these in Vercel Production: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, OWNER_KEY, ADMIN_EMAIL and/or ADMIN_USER_ID, SITE_URL, CRON_SECRET, SOCIAL_CRON_SECRET, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY, LEGACY_TELEGRAM_AUTOPOST=false, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID.
+For LinkedIn: LINKEDIN_ACCESS_TOKEN, LINKEDIN_AUTHOR_URN, LINKEDIN_API_VERSION=202609.
+For Instagram: INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_BUSINESS_ACCOUNT_ID, INSTAGRAM_API_VERSION=v26.0.
 
-Confirm in Vercel:
+## 2. Telegram first real test
+Use one legitimate verified CivilCareer suggestion. Admin → Social: Preview → inspect Truth Lock → Approve → Send Telegram.
+Do not create a fake TEST announcement. A controlled real publication is the final proof.
 
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHANNEL_ID`
-- `LEGACY_TELEGRAM_AUTOPOST=true`
+## 3. LinkedIn first real test
+Create/configure the official LinkedIn developer app, authorize the personal profile, obtain the member token and author URN, store both only in Vercel, register/verify the connection in Admin, preview one verified suggestion and publish exactly one controlled real post.
+Record token expiry dates after issuance. Do not assume indefinite validity.
 
-The existing public CivilCareer channel is the production destination.
+## 4. Instagram first real test
+Use an eligible Instagram Professional account, complete the official Instagram Login connection, store the access token and account identifier in Vercel, confirm the generated media is a public JPEG, preview and approve, create the container, wait for processing, then use the Admin Publish Instagram container action after the ledger reaches needs_second_step and the container status is FINISHED.
+Never use browser automation, cookies, passwords or unofficial wrappers.
 
-No private test channel is required.
+## 5. Uncertain/duplicate safety
+Never blindly retry an uncertain ledger row. Verify the platform first, then resolve the existing ledger row from Admin.
 
-## 2. Telegram permissions
-
-The CivilCareer bot must be an administrator of the channel and have permission to post.
-
-The Social Engine uses the official Telegram Bot API.
-
-## 3. First real test
-
-Do not publish an artificial "TEST" message.
-
-Use one legitimate verified CivilCareer job or exam suggestion.
-
-In Admin -> Social Engine:
-
-1. Preview
-2. confirm Truth Lock
-3. Approve
-4. confirm Telegram is the intended destination
-5. publish Telegram
-
-For this project the first real test is a normal approved post to the existing public channel.
-
-## 4. If a Telegram request times out
-
-Do not click Retry immediately.
-
-Open the ledger.
-
-A timeout/ambiguous result is marked `uncertain`.
-
-Check the public Telegram channel manually.
-
-If the post exists:
-- Mark Published / resolve the ledger.
-
-If the post definitely does not exist:
-- Retry from the ledger.
-
-This prevents duplicate announcements.
-
-## 5. Markdown errors
-
-The legacy private-job publisher may retry a definite Telegram Markdown parse failure once using plain text.
-
-A timeout, network ambiguity or unknown response is NEVER treated as a Markdown error and is NEVER auto-retried.
-
-## 6. Kill switch
-
-Admin -> Social Engine -> Kill switch.
-
-When ON:
-- new publication attempts are blocked
-- the scheduled drain is blocked
-- manual publish is blocked
-
-Turn it OFF only when publication is intentionally resumed.
+## 6. Instagram second step
+The API enforces a public JPEG media URL, one readiness poll per 60 seconds, container expiry at 24 hours, final publish only after FINISHED, and explicit needs_second_step, expired and uncertain states.
 
 ## 7. Daily caps
+Default caps are Telegram 5, LinkedIn 2, Instagram 2. Caps use Asia/Kolkata by default. Test rows do not count; uncertain real attempts do.
 
-The default Telegram cap is 5 real attempts per day.
+## 8. Daily Radar preview
+Admin → Social → Daily CivilCareer Radar → Refresh Radar Preview. This performs no suggestion inserts and no sends.
 
-Caps use the configured timezone, default:
+## 9. Kill switch
+Turn ON the Social Engine kill switch before investigating unsafe content or unexpected publishing. Inspect the ledger before changing credentials or retrying.
 
-Asia/Kolkata
+## 10. WhatsApp
+Supported flow: preview, Copy for WhatsApp, paste manually. Unsupported: WhatsApp Web automation, stored session cookies, browser scripting, unofficial posting wrappers.
 
-Uncertain attempts count toward the cap.
+## 11. Credential rotation
+Rotate at provider, update Vercel/GitHub secret, run the controlled test, revoke the old credential, confirm no secret values exist in logs or repository history.
 
-Test ledger rows do not count.
+## 12. Scheduler
+The Social Engine drain uses GitHub Actions with SOCIAL_CRON_SECRET. Manual fallback is GitHub Actions → Social Engine Cron → Run workflow or Admin → Social → Run now.
 
-## 8. Legacy private-job transition
+## 13. Troubleshooting
+503 Social engine tables missing → confirm v27 is applied in Supabase; do not modify the frozen v27 SQL.
+409 source changed since lock → regenerate from the live source and re-approve.
+409 content edited since approval → approve the current content again.
+429 daily cap reached → wait for the next cap window.
+Instagram needs_second_step → wait, then use the Admin second-step action after the 60-second guard.
 
-Keep:
+## 14. Preview environment
+Preview uses its own environment variables, preview SITE_URL, LEGACY_TELEGRAM_AUTOPOST=false, TELEGRAM_BOT_TOKEN and TELEGRAM_TEST_CHANNEL_ID. Do not put TELEGRAM_CHANNEL_ID in Preview.
+No real production social destination should be present in Preview.
 
-`LEGACY_TELEGRAM_AUTOPOST=true`
-
-during the private-job transition.
-
-Do not turn it off until the Social Engine can safely consume private jobs and the migration has been tested.
-
-## 9. GitHub Actions scheduler
-
-The Social Engine scheduler is a Phase 2 feature.
-
-Planned configuration:
-
-- `SOCIAL_CRON_SECRET` in Vercel
-- the same value as a GitHub Actions repository secret
-- schedule approximately every 30–60 minutes
-
-GitHub scheduled workflows are best-effort and may be automatically disabled after long repository inactivity (approximately 60 days for public repositories).
-
-Admin "Run now" is the fallback.
-
-## 10. LinkedIn
-
-Phase 4:
-
-- create/use LinkedIn developer app
-- enable the official Share on LinkedIn product
-- authorize the personal LinkedIn account
-- obtain a member access token
-- configure `LINKEDIN_ACCESS_TOKEN`
-- configure `LINKEDIN_AUTHOR_URN`
-
-Do not configure an organization author for the personal-profile phase.
-
-## 11. Instagram
-
-Phase 5:
-
-- use an eligible Instagram Professional account
-- use the currently documented official Instagram Login publishing route when appropriate
-- configure the required Meta access token and account ID
-- create media container
-- publish container in a separate request
-
-Do not use browser automation.
-
-## 12. WhatsApp
-
-Phase 1 uses manual sharing only.
-
-Do not use WhatsApp Web automation, browser scripting, session persistence or unofficial wrappers.
-
-## 13. Credential rotation
-
-Rotate a credential when:
-
-- it is exposed
-- a provider marks it compromised
-- the app owner changes
-- a token expires
-
-Never paste tokens into chat or commit them to GitHub.
-
-## 14. Preview deployment testing
-
-Use the `social-engine` branch.
-
-Deploy that branch as a Vercel Preview.
-
-Set the Preview environment variables separately.
-
-Test:
-
-- Admin authentication
-- Social queue load
-- content preview
-- Truth Lock
-- approval
-- manual publish control
-- no-secret responses
-- no accidental production deployment
-
-Do not merge to `main` until the Preview passes.
-
-## 15. Safe shutdown
-
-If anything looks wrong:
-
-1. turn ON the Social Engine kill switch
-2. stop scheduled workflow runs if Phase 2 is active
-3. inspect the publication ledger
-4. do not retry uncertain sends until the channel is checked
-5. rotate credentials if any secret was exposed
-
+## 15. Shutdown
+1. enable kill switch
+2. disable scheduled workflow if necessary
+3. inspect ledger
+4. verify platform state for uncertain rows
+5. rotate credentials if exposure occurred
