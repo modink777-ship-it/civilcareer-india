@@ -1847,3 +1847,142 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .rj-scraper-bar span{font-size:.78rem;color:#6a8aaa;flex:1}
 .rj-tg-badge{font-size:.65rem;padding:2px 7px;border-radius:999px;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);font-weight:600;margin-left:6px}
 .rj-tg-badge.no{background:rgba(100,100,100,.1);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
+/* =========================================================
+   DARK MODE FIX
+   ========================================================= */
+
+html[data-theme="dark"] {
+  --navy: #e8f0f8;
+  --blue: #69aaf0;
+  --teal: #63c7b2;
+  --ink: #edf4fb;
+  --text: #c5d1de;
+  --muted: #91a3b5;
+  --line: #304255;
+  --soft: #1a2938;
+  --white: #0d1722;
+  --amber: #e4b45f;
+  --red: #e77970;
+  --shadow: 0 12px 32px rgba(0,0,0,.28);
+}
+
+html[data-theme="dark"] body {
+  color: var(--text);
+  background: #0b1420;
+  background-image: linear-gradient(160deg,#101c2a 0%,#0d1824 50%,#09131e 100%);
+}
+
+html[data-theme="dark"] .site-header {
+  background: rgba(13,23,34,.92);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .logo,
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3 {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] nav a,
+html[data-theme="dark"] .about-link {
+  color: #c5d1de;
+}
+
+html[data-theme="dark"] nav a:hover,
+html[data-theme="dark"] nav a.active,
+html[data-theme="dark"] .about-link:hover {
+  color: #fff;
+  background: #1b3044;
+}
+
+html[data-theme="dark"] .icon-btn,
+html[data-theme="dark"] .menu-btn,
+html[data-theme="dark"] .lang-btn {
+  background: #172636;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .section,
+html[data-theme="dark"] .page {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .section.soft {
+  background: #111e2c;
+}
+
+html[data-theme="dark"] .quick-card,
+html[data-theme="dark"] .job-card,
+html[data-theme="dark"] .exam-card,
+html[data-theme="dark"] .material-card,
+html[data-theme="dark"] .filters,
+html[data-theme="dark"] .panel-form,
+html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .dash-card,
+html[data-theme="dark"] .detail,
+html[data-theme="dark"] .smart-search,
+html[data-theme="dark"] .hero-panel {
+  background: #142231;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .organization,
+html[data-theme="dark"] .card-copy,
+html[data-theme="dark"] .lead,
+html[data-theme="dark"] .scope {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .card-meta span,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .detail {
+  background: #1b2d3f;
+  border-color: #34495c;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: #101c29;
+  color: var(--ink);
+  border-color: #3a4d60;
+}
+
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .chips button,
+html[data-theme="dark"] .material-tabs button,
+html[data-theme="dark"] .admin-tabs button {
+  background: #172636;
+  color: var(--ink);
+  border-color: #3a4d60;
+}
+
+html[data-theme="dark"] .btn.secondary:hover,
+html[data-theme="dark"] .chips button:hover,
+html[data-theme="dark"] .material-tabs button:hover {
+  background: #21384d;
+}
+
+html[data-theme="dark"] .empty-state {
+  background: #111e2c;
+  border-color: #3a4d60;
+}
+
+html[data-theme="dark"] .dialog-head,
+html[data-theme="dark"] dialog {
+  background: #142231;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .suggestions,
+html[data-theme="dark"] .suggestions button {
+  background: #142231;
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .suggestions button:hover {
+  background: #1b3044;
+}
