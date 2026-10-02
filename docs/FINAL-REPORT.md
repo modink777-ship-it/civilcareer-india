@@ -21,7 +21,7 @@ Target URL configured by the repository: https://civilcareer-india-two.vercel.ap
 | P10 | seo-performance | fb0ab1810a1457bd3159803fd3eedbbaa00623b5 | SEO/schema/sitemap CI green | TESTED |
 | P11 | trust-legal | 94464291e6bb6a37759db797d70a85b6aea4998e | legal/trust CI green | TESTED |
 | P12 | operations | fef916adda938da6caf391033e8f9495cfd1bfcd | operations CI green | TESTED |
-| P13 | docs-final | ffad8ab254348cf1086b2e5f6f4344f48982f734 | final CI pending after this report update | IN PROGRESS |
+| P13 | docs-final | b6b2249ebce4e07aff1b5f38b8abf41438b7dc3b | CI PASS on complete release stack | TESTED |
 
 ## What is now implemented
 
@@ -103,6 +103,6 @@ The `social-engine-2` name collision is documented in the P0 gap report: the exi
 
 ## Production deployment state
 
-`main` has not been touched by this phase stack yet. The intended release action is a merge of the verified `docs-final` branch into `main`, followed by the connected Vercel Production deployment.
+The complete release stack is CI-green. `main` is ready for the authorized merge; Vercel Production promotion remains a separate connector-scope blocker. The intended release action is a merge of the verified `docs-final` branch into `main`, followed by the connected Vercel Production deployment.
 
 Because the Vercel connector currently returns `403 Not authorized` for the `modinsaheb` scope and the team listing is empty, this report does not falsely claim a successful production promotion.
