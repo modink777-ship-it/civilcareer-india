@@ -158,10 +158,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/exams/:slug*",
-      "destination": "/index.html"
-    },
-    {
       "source": "/study-materials/:slug*",
       "destination": "/index.html"
     },
@@ -194,12 +190,32 @@
       "destination": "/profile.html"
     },
     {
+      "source": "/mock-tests",
+      "destination": "/mock-tests.html"
+    },
+    {
+      "source": "/mock-tests/:exam",
+      "destination": "/mock-tests.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/career-guides/:slug",
+      "destination": "/career-guides.html"
+    },
+    {
+      "source": "/exam-guides/:slug",
+      "destination": "/exam-guides.html"
+    },
+    {
       "source": "/blog",
       "destination": "/blog.html"
     },
     {
       "source": "/blog/:slug",
-      "destination": "/blog.html"
+      "destination": "/blog-post.html"
     },
     {
       "source": "/interview",
@@ -213,12 +229,6 @@
       "source": "/:seoSlug",
       "destination": "/api/seo-page?slug=:seoSlug"
     }
-    { "source": "/mock-tests", "destination": "/mock-tests.html" },
-{ "source": "/mock-tests/:exam", "destination": "/mock-tests.html" },
-{ "source": "/blog", "destination": "/blog.html" },
-{ "source": "/blog/:slug", "destination": "/blog-post.html" },
-{ "source": "/interview", "destination": "/interview.html" },
-{ "source": "/interview/:slug", "destination": "/interview.html" }
   ],
   "headers": [
     {
