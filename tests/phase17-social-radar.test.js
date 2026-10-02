@@ -131,7 +131,7 @@ test('P3 cron secret comparison is constant-time safe for equal-length secrets',
 
 test('P3 scheduler workflow uses a 30-minute staggered schedule and secret', () => {
   const workflow = fs.readFileSync(path.join(root, '.github/workflows/social-cron.yml'), 'utf8');
-  assert.match(workflow, /cron: '17,47 * * * *'/);
+  assert.match(workflow, /cron: '17,47 [*] [*] [*] [*]'/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
   assert.match(workflow, /\/api\/social-cron\?op=run/);
 });
