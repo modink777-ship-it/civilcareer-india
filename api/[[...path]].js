@@ -57,6 +57,7 @@ const handlers = {
   /* Social Content Engine (v27): suggestions, ledger,
      connections and settings. Admin-only on every method. */
   '/api/social':               () => require('../_api/social'),
+  '/api/social-graphics':       () => require('../_api/social-graphics'),
 };
 
 
@@ -109,6 +110,7 @@ const ADMIN_RULES = {
      dashboard sessions through the allowlist unless the caller
      already holds the real owner key. */
   '/api/social': req => !hasValidOwnerKey(req),
+  '/api/social-graphics': req => !hasValidOwnerKey(req),
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
   '/api/telegram-webhook':   req => {
