@@ -326,7 +326,7 @@ test('F3 platformConfigured: each platform reports its own env readiness', () =>
   /* Later platforms remain disabled until their approved phases. */
   assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x', LINKEDIN_API_VERSION: '202609' }), true);
   assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org', LINKEDIN_API_VERSION: '202609' }), false);
-  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178', INSTAGRAM_API_VERSION: 'v26.0' }), false);
+  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178', INSTAGRAM_API_VERSION: 'v26.0' }), true);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'prod',
@@ -464,7 +464,7 @@ test('F3 Instagram: container → publish → permalink', async () => {
     if (method === 'POST' && url.endsWith('/media')) {
       const params = new URLSearchParams(init.body);
       assert.equal(params.get('caption'), 'Hello Instagram');
-      assert.equal(params.get('image_url'), 'https://cc.test/og.png');
+      assert.equal(params.get('image_url'), 'https://cc.test/og.jpg');
       return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-1' }) };
     }
     if (method === 'POST' && url.endsWith('/media_publish')) {
@@ -479,8 +479,8 @@ test('F3 Instagram: container → publish → permalink', async () => {
   });
   try {
     const out = await publishers.sendInstagram({
-      token: 'ig-token', accountId: '17841', apiVersion: 'v21.0',
-      caption: 'Hello Instagram', mediaUrl: 'https://cc.test/og.png',
+      token: 'ig-token', accountId: '17841', apiVersion: 'v26.0',
+      caption: 'Hello Instagram', mediaUrl: 'https://cc.test/og.jpg',
     });
     assert.equal(out.ok, true);
     assert.equal(out.externalId, '17895695668004550');
