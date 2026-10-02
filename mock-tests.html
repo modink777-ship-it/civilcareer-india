@@ -319,17 +319,29 @@ function shareResult() {
 }
 
 function startTimer(totalSecs) {
-  let remaining = totalSecs;
-  timerInterval = setInterval(() => {
-    remaining--;
-    const m = Math.floor(remaining/60), s = remaining%60;
-    const el = document.getElementById('timer');
-    el.textContent = m + ':' + String(s).padStart(2,'0');
-    el.classList.toggle('urgent', remaining < 300);
-    if (remaining <= 0) { clearInterval(timerInterval); submitTest(); }
-  }, 1000);
-}
+  clearInterval(timerInterval);
 
+  const endTime = Date.now() + totalSecs * 1000;
+  const el = document.getElementById('timer');
+
+  function tick() {
+    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+
+    el.textContent = m + ':' + String(s).padStart(2, '0');
+    el.classList.toggle('urgent', remaining < 300);
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      submitTest();
+    }
+  }
+
+  tick();
+  timerInterval = setInterval(tick, 250);
+}
+  
 // Load stats
 (async function() {
   try {
