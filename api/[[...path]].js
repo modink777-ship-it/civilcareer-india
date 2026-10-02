@@ -8,7 +8,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 const { verifyAdminToken } = require('../lib/security');
-
+require('@supabase/supabase-js');
 const handlers = {
   '/api/jobs': () => require('../_api/jobs'),
   '/api/account': () => require('../_api/account'),
