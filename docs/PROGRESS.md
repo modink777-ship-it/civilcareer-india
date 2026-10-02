@@ -488,6 +488,13 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
   check: **0 errors, 1 warning** (`SITE_URL` is not set locally).
 - No production deployment, live credential verification, or real social post
   is claimed from this checkout.
+- The PR's Node 20 CI run exposed an existing Interview API failure caused by
+  initializing Supabase JS without native WebSocket support. The Interview
+  endpoint now uses the same authenticated PostgREST REST pattern as the other
+  server APIs, preserving pagination, filtering and exact counts while returning
+  the actionable missing-table response.
+- Updated validation after this compatibility fix: **177/177 tests pass**;
+  syntax check remains at **0 errors** with only the local `SITE_URL` warning.
 
 ## 2 Oct 2026 — Phase 7 Daily Radar preview
 

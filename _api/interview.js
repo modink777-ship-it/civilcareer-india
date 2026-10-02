@@ -1,15 +1,50 @@
 'use strict';
 
-const { createClient } = require('@supabase/supabase-js');
-
 const TABLE_SETUP_ERROR =
   'Interview questions table is not created yet. Run supabase-v26-blog-interview.sql in the Supabase SQL editor.';
 
-function sb() {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
-  );
+function tableRequest(params, options = {}) {
+  const baseUrl = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  const query = params instanceof URLSearchParams ? params.toString() : String(params || '');
+  const url = `${baseUrl}/rest/v1/interview_questions${query ? `?${query}` : ''}`;
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+    ...(options.headers || {}),
+  };
+  if (options.single) headers.Accept = 'application/vnd.pgrst.object+json';
+
+  return fetch(url, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body,
+  }).then(async response => {
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) {}
+    if (!response.ok) {
+      return {
+        error: {
+          code: data && data.code,
+          message: data && data.message ? data.message : text || `Supabase returned HTTP ${response.status}`,
+          details: data && data.details,
+        },
+      };
+    }
+    const range = response.headers && response.headers.get('content-range');
+    const count = range && range.includes('/')
+      ? Number.parseInt(range.split('/').pop(), 10)
+      : null;
+    return { data, count: Number.isFinite(count) ? count : null };
+  });
+}
+
+function ilikePattern(value) {
+  const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `ilike."%${escaped}%"`;
 }
 
 function json(res, status, obj) {
@@ -95,17 +130,19 @@ module.exports = async function interview(req, res) {
     }
 
     const result = await queryOrRespond(res, 'load interview questions', () => {
-      let query = sb().from('interview_questions')
-        .select('id,company,role,question,answer,difficulty,round,year,upvotes,created_at', { count: 'exact' })
-        .eq('is_approved', !pendingOnly)
-        .order('upvotes', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
-      if (company) query = query.ilike('company', `%${company}%`);
-      if (role) query = query.ilike('role', `%${role}%`);
-      return query;
+      const params = new URLSearchParams({
+        select: 'id,company,role,question,answer,difficulty,round,year,upvotes,created_at',
+        is_approved: `eq.${!pendingOnly}`,
+        order: 'upvotes.desc',
+        offset: String((page - 1) * limit),
+        limit: String(limit),
+      });
+      if (company) params.set('company', ilikePattern(company));
+      if (role) params.set('role', ilikePattern(role));
+      return tableRequest(params, { headers: { Prefer: 'count=exact' } });
     });
     if (!result) return;
-    return json(res, 200, { questions: result.data || [], total: result.count || 0, page, limit });
+    return json(res, 200, { questions: Array.isArray(result.data) ? result.data : [], total: result.count || 0, page, limit });
   }
 
   const body = await readBody(req);
@@ -115,11 +152,14 @@ module.exports = async function interview(req, res) {
     const { id } = body;
     if (!id) return json(res, 400, { error: 'id required' });
     const found = await queryOrRespond(res, 'load interview question', () =>
-      sb().from('interview_questions').select('upvotes').eq('id', id).single()
+      tableRequest(new URLSearchParams({ select: 'upvotes', id: `eq.${id}` }), { single: true })
     );
     if (!found) return;
     const updated = await queryOrRespond(res, 'update interview question', () =>
-      sb().from('interview_questions').update({ upvotes: (found.data?.upvotes || 0) + 1 }).eq('id', id)
+      tableRequest(new URLSearchParams({ id: `eq.${id}` }), {
+        method: 'PATCH',
+        body: JSON.stringify({ upvotes: (found.data?.upvotes || 0) + 1 }),
+      })
     );
     if (!updated) return;
     return json(res, 200, { ok: true });
@@ -131,7 +171,7 @@ module.exports = async function interview(req, res) {
       return json(res, 400, { error: 'company and question required' });
     }
     const inserted = await queryOrRespond(res, 'submit interview question', () =>
-      sb().from('interview_questions').insert({
+      tableRequest('', { method: 'POST', body: JSON.stringify({
         company: companyName,
         role: jobRole || '',
         question,
@@ -142,7 +182,7 @@ module.exports = async function interview(req, res) {
         is_approved: false,
         upvotes: 0,
         created_at: new Date().toISOString(),
-      })
+      }) })
     );
     if (!inserted) return;
     return json(res, 200, { ok: true, message: 'Submitted for review. Thank you!' });
@@ -153,7 +193,10 @@ module.exports = async function interview(req, res) {
     const { id, approved } = body;
     if (!id) return json(res, 400, { error: 'id required' });
     const updated = await queryOrRespond(res, 'moderate interview question', () =>
-      sb().from('interview_questions').update({ is_approved: !!approved }).eq('id', id)
+      tableRequest(new URLSearchParams({ id: `eq.${id}` }), {
+        method: 'PATCH',
+        body: JSON.stringify({ is_approved: !!approved }),
+      })
     );
     if (!updated) return;
     return json(res, 200, { ok: true });

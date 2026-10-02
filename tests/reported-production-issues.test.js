@@ -119,10 +119,65 @@ test('interview moderation gives an actionable 503 when the v26 table is missing
   }
 });
 
+test('interview list preserves filters, pagination, count and service-role auth without an SDK client', async () => {
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const originalFetch = global.fetch;
+  let requestUrl;
+  let requestInit;
+  process.env.SUPABASE_URL = 'https://supabase.test';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
+  global.fetch = async (url, init) => {
+    requestUrl = String(url);
+    requestInit = init;
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-range': '20-39/47' }),
+      text: async () => JSON.stringify([{ id: 'q-1', company: 'ABC Infra', upvotes: 5 }]),
+    };
+  };
+
+  try {
+    const handleInterview = require('../_api/interview');
+    const res = {
+      statusCode: 0,
+      headers: {},
+      setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
+      end(body) { this.body = body ? JSON.parse(String(body)) : this.body; },
+    };
+    await handleInterview({
+      method: 'GET',
+      url: '/api/interview?page=2&company=ABC%20Infra&role=Engineer',
+      headers: {},
+    }, res);
+
+    const params = new URL(requestUrl).searchParams;
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.total, 47);
+    assert.equal(res.body.page, 2);
+    assert.deepEqual(res.body.questions, [{ id: 'q-1', company: 'ABC Infra', upvotes: 5 }]);
+    assert.equal(params.get('is_approved'), 'eq.true');
+    assert.equal(params.get('offset'), '20');
+    assert.equal(params.get('limit'), '20');
+    assert.equal(params.get('company'), 'ilike."%ABC Infra%"');
+    assert.equal(params.get('role'), 'ilike."%Engineer%"');
+    assert.equal(requestInit.headers.Authorization, 'Bearer test-service-key');
+    assert.equal(requestInit.headers.Prefer, 'count=exact');
+  } finally {
+    global.fetch = originalFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
+  }
+});
+
 test('interview pending queue is admin-only and missing table response points to v26 setup', () => {
   const source = fs.readFileSync(path.join(root, '_api', 'interview.js'), 'utf8');
   assert.match(source, /pendingOnly && !isAdmin\(req, \{\}\)/);
-  assert.match(source, /\.eq\('is_approved', !pendingOnly\)/);
+  assert.match(source, /is_approved: `eq\.\$\{!pendingOnly\}`/);
+  assert.match(source, /tableRequest\(params, \{ headers: \{ Prefer: 'count=exact' \} \}\)/);
   assert.match(source, /supabase-v26-blog-interview\.sql/);
 });
 
