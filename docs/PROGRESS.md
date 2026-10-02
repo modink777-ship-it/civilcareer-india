@@ -607,4 +607,4 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Validation: focused public UX regressions **7/7 passed**; full `npm test` **203/203 passed**; `npm run check:syntax` **0 errors**, with the existing local `SITE_URL` unset warning; `git diff --check` passed.
 - No Supabase schema/data changes, SQL, paid services, or new dependencies.
 - Deployment status: not live-verified. This change is prepared on `main` for push/review; verify the resulting Vercel deployment before production promotion.
-- Implementation commit: to be recorded in the follow-up progress entry.
+- Implementation commit: `52398bc00a25458001d7cc720aef13323a02e89a`.
