@@ -568,3 +568,21 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Supabase owner action (no database access is available from this workspace): in the Supabase SQL Editor, run `supabase-v25-portfolio-reviews.sql`, then `supabase-v26-blog-interview.sql`. These scripts create only the missing feature tables/columns, preserve existing rows, enable RLS, revoke browser-role table privileges, and leave access to the server-side `service_role` API. Do not run an older variant of these files.
 - After applying each script, verify `rowsecurity = true` for `engineer_profiles`, `profile_projects`, `company_reviews`, `blog_posts`, and `interview_questions`; verify `anon` and `authenticated` have no table privileges and `service_role` retains API access. Retry Reviews and Interview tabs afterward.
 - Vercel deployment remains blocked by the reported free daily deployment limit. No preview or production fix is claimed until Vercel accepts a deployment and live API/browser checks pass.
+
+## 3 Oct 2026 — PR #10 CI line-ending compatibility
+
+- CI for `f074ba3` failed only at the generated admin HTML equality test:
+  Windows had embedded CRLF line endings in `_api/admin-page-html.js`, while
+  the Linux runner checked out `admin.html` with LF endings.
+- The admin bundle generator now canonicalizes source line endings to LF, the
+  regression assertion compares against normalized source, and the generated
+  bundle was refreshed. This keeps the embedded HTML equivalent across OSes.
+- Fix commit `f4df8e6c79c72e9667b0db4aca059c1884fd8a68` was pushed to
+  `fix/site-and-admin-errors` (PR #10).
+- Local verification: `npm test` **177/177 passed**; `npm run check:syntax`
+  **0 errors** and the existing local `SITE_URL` warning; `git diff --check`
+  passed.
+- CI and Gitleaks for the updated PR head were queued at the time of this note.
+  Vercel's preview check remains blocked by the free daily deployment limit;
+  no preview or production deployment is claimed. PR #10 remains open and
+  must not be merged until the checks are reviewed.
