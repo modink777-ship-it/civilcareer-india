@@ -217,6 +217,16 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* A3 gated admin page: the /admin and /admin.html rewrites can
+       reach this catch-all with the ORIGINAL path intact — the same
+       platform quirk as the job-detail and SEO-page rewrites above.
+       Normalise both spellings so the dispatcher always finds the
+       gated handler, no matter how Vercel's router passed the
+       rewrite through. */
+    if (pathName === '/admin' || pathName === '/admin.html') {
+      pathName = '/api/admin-page';
+    }
+
     /* Feature E: POST /api/interview/upvote is the same handler, flagged.
        req.url is rewritten too because the handler parses the URL itself. */
     if (pathName === '/api/interview/upvote') {

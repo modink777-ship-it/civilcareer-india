@@ -380,6 +380,25 @@ test('A8 admin route: dispatcher registers /api/admin-page', () => {
   assert.match(dispatch, /'\/api\/admin-page':\s*\(\) => require\('\.\.\/_api\/admin-page'\)/);
 });
 
+test('A8 admin route: dispatcher normalises /admin and /admin.html (Vercel passes the original path)', async () => {
+  const dispatcher = require(path.join(root, 'api', '[[...path]].js'));
+  for (const url of ['/admin', '/admin.html']) {
+    const res = {
+      statusCode: 0,
+      headers: {},
+      setHeader(k, v) { this.headers[k.toLowerCase()] = v; },
+      end(body) { this.body = body; },
+    };
+    /* Vercel's rewrite delivers the ORIGINAL path to the catch-all,
+       with no auth header — the gate must answer with the HTML
+       sign-in shell, never the JSON 404. */
+    await dispatcher({ method: 'GET', url, headers: {} }, res);
+    assert.equal(res.statusCode, 200, `${url} must reach the gated page handler`);
+    assert.match(String(res.headers['content-type'] || ''), /text\/html/);
+    assert.ok(String(res.body).includes('Administrator sign-in'), `${url} must serve the sign-in shell`);
+  }
+});
+
 test('A8 admin bundle: generated file matches admin.html byte-for-byte', () => {
   const src = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
   assert.equal(ADMIN_BUNDLE, src);
