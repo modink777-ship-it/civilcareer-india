@@ -39,7 +39,7 @@ test('P4 endpoint is admin-only and supports JPEG plus storage upload',()=>{
   const src=fs.readFileSync(path.join(__dirname,'..','_api','social-graphics-v4.js'),'utf8');
   assert.match(src,/ownerKeyMatches/);
   assert.match(src,/format==='jpeg'/);
-  assert.match(src,/storage\\/v1\\/object/);
+  assert.match(src,/storage\/v1\/object/);
   assert.match(src,/x-upsert/);
   assert.match(src,/public_url/);
 });
