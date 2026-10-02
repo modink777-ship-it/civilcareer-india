@@ -12,7 +12,7 @@
 
 const { autoPostToTelegram } = require('../lib/telegram-auto');
 
-/* F7 / Phase 3: legacy direct Telegram auto-post gate.
+/* F7 / private-job transition: legacy direct Telegram auto-post gate.
    'true'/'1' = ON — the pre-engine behaviour. Phase 3 flips
    the DEFAULT OFF: job publishes now create source_type 'job'
    suggestions in the Social Content Engine (approval queue +
@@ -330,7 +330,7 @@ async function handlePost(req, res) {
          autoPostToTelegram atomically claims telegram_posted
          false→true before sending, so only ONE caller ever
          posts a given job.
-       * default (Phase 3) — every published job becomes a
+       * future Social Engine path — after the private-job migration is enabled:
          source_type 'job' suggestion in the Social Content
          Engine queue (approval + Truth Lock + caps). The
          engine's ledger dedupes sends per platform.
@@ -351,8 +351,8 @@ async function handlePost(req, res) {
       }
     })();
   } else if (action === 'publish' && updated > 0) {
-    /* PHASE 3 default: queue the published jobs in the
-       Social engine (see queueJobSuggestion above). */
+    /* Future default after the private-job migration: queue the
+       published jobs in the Social engine (see queueJobSuggestion above). */
     (async () => {
       for (const id of ids) {
         try {
