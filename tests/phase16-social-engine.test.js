@@ -289,7 +289,7 @@ test('F2 govt job template: renders for active listings only', () => {
     id: '9', title: 'Junior Engineer (Civil)', organization: 'PWD Maharashtra',
     scope: 'state', state: 'Maharashtra', status: 'active',
     civil_posts_count: 120, total_posts_in_notification: 300,
-    deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026',
+    deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026', reviewed_at: '2026-09-01T00:00:00Z',
     official_notice_url: 'https://maharashtra.gov.in',
   };
   const out = templates.buildSuggestion('govt_job', '9', gj, { siteUrl: 'https://cc.test' });
@@ -320,16 +320,16 @@ test('F3 platformConfigured: each platform reports its own env readiness', () =>
     INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178',
   };
   assert.equal(publishers.platformConfigured('telegram', env), true);
-  assert.equal(publishers.platformConfigured('linkedin', env), true);
-  assert.equal(publishers.platformConfigured('instagram', env), true);
+  assert.equal(publishers.platformConfigured('linkedin', env), false, 'LinkedIn is Phase 4, not enabled in Phase 1');
+  assert.equal(publishers.platformConfigured('instagram', env), false, 'Instagram is Phase 5, not enabled in Phase 1');
   assert.equal(publishers.platformConfigured('telegram', {}), false);
-  /* LinkedIn needs the token AND the organization it posts as */
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li' }), false);
+  /* Later platforms remain disabled until their approved phases. */
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x' }), false);
   assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ORGANIZATION_ID: 'org' }), false);
-  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig' }), false);
+  assert.equal(publishers.platformConfigured('instagram', { META_ACCESS_TOKEN: 'ig', META_INSTAGRAM_ACCOUNT_ID: '178' }), false);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
-    TELEGRAM_BOT_TOKEN: 't', TELEGRAM_TEST_CHANNEL_ID: 'test',
+    TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'prod',
   }), true);
 });
 
@@ -495,14 +495,14 @@ test('F3 Instagram: a video media_url posts as video_url', async () => {
   } finally { restore(); }
 });
 
-test('F3 telegramTestChannel prefers the private test channel', () => {
+test('F3 Telegram test destination is optional and never falls back to production', () => {
   assert.equal(
     publishers.telegramTestChannel({ TELEGRAM_TEST_CHANNEL_ID: 'test-1', TELEGRAM_CHANNEL_ID: 'prod' }),
     'test-1'
   );
   assert.equal(
     publishers.telegramTestChannel({ TELEGRAM_CHANNEL_ID: 'prod' }),
-    'prod'
+    null
   );
   assert.equal(publishers.telegramTestChannel({}), null);
 });
@@ -689,7 +689,7 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   const workflow = fs.readFileSync(
     path.join(root, '.github', 'workflows', 'social-drain.yml'), 'utf8'
   );
-  assert.match(workflow, /'\*\/15 \* \* \* \*'/);
+  assert.match(workflow, /'\*\/30 \* \* \* \*'/);
   assert.match(workflow, /op=drain/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
 });
@@ -737,7 +737,8 @@ test('F5 admin.html: Social tab exists and wires every queue action', () => {
   assert.match(src, /id="panel-social"/);
   assert.match(src, /loadSocial\(\)/);
   for (const fn of [
-    'socialApprove', 'socialReject', 'socialPublish', 'socialTest',
+    'socialApprove', 'socialReject', 'socialPublish', 'socialPublishEverywhere',
+    'socialPreview', 'socialEdit', 'socialCopyWhatsApp',
     'socialArchive', 'socialResolve', 'socialRegenerate',
     'socialAddConnection', 'socialConnAction', 'socialSetFilter',
   ]) {
@@ -819,12 +820,12 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
 
 /* ═══ F7 — admin-jobs legacy autopost gate ══════ */
 
-test('F7 admin-jobs: legacy Telegram autopost defaults OFF — publishes queue instead', () => {
+test('F7 admin-jobs: legacy Telegram autopost defaults ON until private jobs migrate', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
   assert.match(src, /LEGACY_AUTOPOST_ON/);
-  /* Phase 3: the engine owns job posts; the legacy direct
-     post must be explicitly re-enabled. */
-  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
+  /* Approved transition plan: legacy private-job autopost remains enabled
+     until private jobs are supported as a Social Engine source. */
+  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'true'/);
   /* the gate sits on the publish hook */
   assert.match(src, /action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON/);
   /* Phase 3 wiring: publishes create source_type 'job'
@@ -847,8 +848,8 @@ test('F8 .env.example documents every engine variable', () => {
     'OWNER_KEY', 'SITE_URL', 'CRON_SECRET', 'SOCIAL_CRON_SECRET',
     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHANNEL_ID', 'TELEGRAM_TEST_CHANNEL_ID',
     'LEGACY_TELEGRAM_AUTOPOST', 'ADMIN_EMAIL', 'ADMIN_USER_ID',
-    'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_ORGANIZATION_ID', 'LINKEDIN_API_VERSION',
-    'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ACCOUNT_ID',
+    'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_AUTHOR_URN', 'LINKEDIN_ORGANIZATION_ID',
+    'LINKEDIN_API_VERSION', 'META_ACCESS_TOKEN', 'META_INSTAGRAM_ACCOUNT_ID',
     'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY',
   ];
   for (const name of required) {
