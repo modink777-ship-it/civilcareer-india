@@ -746,6 +746,9 @@ test('F5 admin.html: Social tab exists and wires every queue action', () => {
   }
   assert.match(src, /api\/social\?op=settings/);
   assert.match(src, /api\/social\?op=connections/);
+  assert.ok(!src.includes('function socialTest('), 'the current public Telegram flow does not need a separate test-channel button');
+  assert.match(src, /Publish Everywhere/);
+  assert.match(src, /Copy WhatsApp/);
 });
 
 /* ═══ F6 — exam-tracker re-route ═════════════════ */
