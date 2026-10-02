@@ -569,6 +569,17 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Browser smoke check: local admin sign-in page at 360px had document width equal to viewport (no horizontal overflow); placeholder and hint computed to `rgb(159, 176, 198)`. This checked the login shell and contrast styling, not every authenticated admin panel.
 - Deployment status: NOT LIVE-VERIFIED. No preview or production deployment was made. The tested commits were pushed to `origin/main` for review at the owner's request. This push may trigger Vercel depending on project settings; the previously reported free daily-deployment limit remains a possible blocker.
 
+## 3 Oct 2026 — Government Jobs comparison and age self-check
+
+- Branch: `main`.
+- Added a browser-local comparison table for two or three government civil recruitments, covering organization, level, state, civil-post count, deadline, official source and review date. Comparison values are rendered with DOM `textContent`; no user selections or personal data are sent or stored.
+- Added a narrowly scoped age-band self-check on government recruitment details. It runs only when category bands have a clear numeric range and the notice has a valid ISO age-reference date; otherwise the page explicitly says it cannot assess age. Results are age-band-only and direct applicants to verify qualifications, relaxation and all other rules at the official notification.
+- Added rendering regressions for comparison, supported and unsupported age data, and missing age-reference dates.
+- Validation: focused Government Jobs rendering tests **10/10 passed**; full suite **196/196 passed**; syntax checks **0 errors** (existing local `SITE_URL`-unset warning); `git diff --check` passed.
+- No database/schema changes, paid services, new dependencies, external calls, or Supabase SQL are required.
+- Deployment status: NOT LIVE-VERIFIED. No preview/production deployment was performed; the previously reported Vercel deployment quota may still block automatic review deployments.
+- Implementation commit: `2b487919e3c9c0e1f1a9ef4313a79b7fe0aa21bc`.
+
 ## 3 Oct 2026 — Government Jobs landing route and source trust
 
 - Branch: `main`, continuing from the pushed review head `35a620a`.
