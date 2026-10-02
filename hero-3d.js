@@ -3,7 +3,7 @@
    atmospheric aurora, depth fog, crane/spire details, blinking beacons,
    ground reflections, 3-layer bokeh particles, shooting light streaks,
    pointer parallax and a soft vignette. Honors prefers-reduced-motion,
-   pauses off-screen, hidden below 480px. No external requests. */
+   pauses off-screen, scales down on narrow screens. No external requests. */
 (function () {
   'use strict';
   var REDUCED = false;
@@ -12,7 +12,7 @@
   function initHero() {
     var hero = document.querySelector('.hero');
     if (!hero || hero.querySelector('.hero-3d-canvas')) return;
-    if (window.innerWidth < 480) return;
+    var SMALL = window.innerWidth < 480;
 
     var canvas = document.createElement('canvas');
     canvas.className = 'hero-3d-canvas';
@@ -59,6 +59,11 @@
       }
     })();
 
+    if (SMALL) {
+      buildings = buildings.slice(-36);
+      stars = stars.slice(0, 32);
+    }
+
     /* ── 10D layers: distant skyline silhouette (depth 2) ── */
     var skyline = [];
     (function () {
@@ -102,13 +107,14 @@
         });
       }
     })();
+    if (SMALL) parts = parts.slice(0, 22);
 
     var streak = null, nextStreak = 4;
 
     /* ── sizing ── */
     var W = 0, H = 0, DPR = 1;
     function resize() {
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      DPR = Math.min(window.devicePixelRatio || 1, SMALL ? 1.25 : 2);
       var r = hero.getBoundingClientRect();
       W = Math.max(320, r.width);
       H = Math.max(240, r.height);
@@ -142,26 +148,26 @@
       return { sx: W * 0.62 + rx * sc, sy: H * 0.80 - y * sc, s: sc };
     }
 
-    var BLUE = '21, 94, 168';
+    var BLUE = '89, 190, 255';
     function blue(a) { return 'rgba(' + BLUE + ',' + a + ')'; }
 
     /* ── aurora atmosphere ── */
     function aurora(t) {
       var ax = W * 0.72 + mx * 30, ay = H * 0.18 + my * 18;
       var g1 = ctx.createRadialGradient(ax, ay, 10, ax, ay, Math.max(W, H) * 0.55);
-      g1.addColorStop(0, 'rgba(21,94,168,0.16)');
+      g1.addColorStop(0, 'rgba(64,156,255,0.24)');
       g1.addColorStop(1, 'rgba(21,94,168,0)');
       ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
 
       var bx = W * 0.20 - mx * 24, by = H * 0.70 + my * 14;
       var g2 = ctx.createRadialGradient(bx, by, 10, bx, by, Math.max(W, H) * 0.45);
-      g2.addColorStop(0, 'rgba(36,117,104,0.12)');
+      g2.addColorStop(0, 'rgba(36,180,163,0.18)');
       g2.addColorStop(1, 'rgba(36,117,104,0)');
       ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
       var gx = W * 0.5 + Math.sin(t * 0.05) * W * 0.18;
       var g3 = ctx.createRadialGradient(gx, H * 0.35, 10, gx, H * 0.35, Math.max(W, H) * 0.40);
-      g3.addColorStop(0, 'rgba(255,255,255,0.20)');
+      g3.addColorStop(0, 'rgba(188,222,255,0.24)');
       g3.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
     }
@@ -312,7 +318,7 @@
         a = project(-EXT, 0, i); b2 = project(EXT, 0, i);
         if (a && b2) { ctx.moveTo(a.sx, a.sy); ctx.lineTo(b2.sx, b2.sy); }
       }
-      ctx.strokeStyle = blue(0.10); ctx.stroke();
+      ctx.strokeStyle = blue(0.16); ctx.stroke();
 
       var hz = project(0, 0, EXT * 0.2);
       if (hz) {
@@ -336,12 +342,21 @@
       var i;
       for (i = 0; i < 8; i++) { if (!c[i]) return; }
       var centre = project(b.x, h * 0.5, b.z);
-      var base = centre ? Math.max(0.08, Math.min(0.5, 10 / Math.max(7, centre.s))) : 0.2;
+      var base = centre ? Math.max(SMALL ? 0.30 : 0.20, Math.min(SMALL ? 0.90 : 0.78, 18 / Math.max(7, centre.s))) : 0.30;
       var edges = [
         [0, 1], [1, 2], [2, 3], [3, 0],
         [4, 5], [5, 6], [6, 7], [7, 4],
         [0, 4], [1, 5], [2, 6], [3, 7]
       ];
+
+      ctx.beginPath();
+      ctx.moveTo(c[0].sx, c[0].sy); ctx.lineTo(c[1].sx, c[1].sy);
+      ctx.lineTo(c[5].sx, c[5].sy); ctx.lineTo(c[4].sx, c[4].sy); ctx.closePath();
+      ctx.fillStyle = 'rgba(29,105,175,' + (base * 0.25) + ')'; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(c[4].sx, c[4].sy); ctx.lineTo(c[5].sx, c[5].sy);
+      ctx.lineTo(c[6].sx, c[6].sy); ctx.lineTo(c[7].sx, c[7].sy); ctx.closePath();
+      ctx.fillStyle = 'rgba(89,190,255,' + (base * 0.18) + ')'; ctx.fill();
 
       if (base > 0.30) {                       /* soft glow on near towers */
         ctx.beginPath();
@@ -349,7 +364,7 @@
           ctx.moveTo(c[edges[i][0]].sx, c[edges[i][0]].sy);
           ctx.lineTo(c[edges[i][1]].sx, c[edges[i][1]].sy);
         }
-        ctx.strokeStyle = blue(base * 0.25); ctx.lineWidth = 3; ctx.stroke();
+        ctx.strokeStyle = blue(base * 0.35); ctx.lineWidth = 4; ctx.stroke();
       }
 
       ctx.beginPath();
@@ -357,7 +372,7 @@
         ctx.moveTo(c[edges[i][0]].sx, c[edges[i][0]].sy);
         ctx.lineTo(c[edges[i][1]].sx, c[edges[i][1]].sy);
       }
-      ctx.strokeStyle = blue(base); ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = blue(base); ctx.lineWidth = SMALL ? 1.5 : 1.25; ctx.stroke();
 
       var floors = Math.max(2, Math.round(b.h * 2.4)), f, tv, pA, pB;
       ctx.beginPath();
@@ -368,7 +383,7 @@
         pA = project(b.x - hw, h * tv, b.z + hd); pB = project(b.x + hw, h * tv, b.z + hd);
         if (pA && pB) { ctx.moveTo(pA.sx, pA.sy); ctx.lineTo(pB.sx, pB.sy); }
       }
-      ctx.strokeStyle = blue(base * 0.45); ctx.stroke();
+      ctx.strokeStyle = blue(base * 0.62); ctx.stroke();
 
       if (b.spire) {                           /* antenna + blinking beacon */
         var s0 = project(b.x, h, b.z), s1 = project(b.x, h + 2.6, b.z);
@@ -446,7 +461,7 @@
 
     /* ── frame loop ── */
     var t0 = (typeof performance !== 'undefined' ? performance.now() : 0);
-    var last = t0;
+    var last = t0, lastDraw = t0;
     var rafId = null, running = false;
 
     function drawScene(t, dt) {
@@ -467,6 +482,11 @@
 
     function frame(now) {
       if (!running) return;
+      if (SMALL && now - lastDraw < 1000 / 30) {
+        rafId = requestAnimationFrame(frame);
+        return;
+      }
+      lastDraw = now;
       var t = (now - t0) / 1000;
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;

@@ -594,3 +594,17 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Follow-up: government detail SSR now renders the dates already recorded on each recruitment, age limits, fees, payment mode, qualifications, selection, required documents, application steps, category/domicile/reservation notes, and previous recorded deadline context. Missing data is labeled rather than inferred; all rendered values are escaped. No schema change.
 - Live status check via agent-reach Web/Jina after the pushes: `/government-jobs` still showed the older SPA page (including the 751 private-job count and general page sections), while direct `/api/govt-public` returned its Government Civil Jobs document. Thus the new clean-route rewrite has NOT reached the live site; likely deployment is still stale/blocked. Do not promote or claim live behavior until Vercel serves the new route.
 - Detail-render validation: full test suite — 193 passed, 0 failed; syntax — 0 errors, existing local `SITE_URL` warning; diff check passed.
+
+## 3 Oct 2026 — Homepage, search, dark mode and mobile UX repairs
+
+- Branch: `main`.
+- Corrected the homepage search/form markup so homepage sections no longer nest inside the search wrapper; About and Post a Job SPA routes now expose their existing page content correctly.
+- Wired the desktop/mobile header search overlay and mobile navigation, with focus/escape handling and visible API errors. Preserved the chosen language and rerendered dynamic homepage content when switching languages.
+- Added shared interface strings for Hindi, Kannada, Telugu and Tamil and localized dynamic job-card actions/status and homepage empty states. This covers the shared/core UI and homepage; full long-form page copy and source-language job/official notice data are not translated.
+- Improved dark-theme text, chips, stats and job-card action contrast; equalized card/action sizing; repaired narrow search and footer layouts and reduced extra bottom spacing.
+- Made the 3D hero canvas visible on narrow screens with reduced mobile pixel density, object count and 30fps rendering; increased its city/wireframe contrast. Reduced-motion preferences continue to receive one static frame.
+- Browser smoke checks: 360px viewport has no horizontal overflow; header search is visible; mobile hero canvas displays; dark hero heading computes to white. At 390px, the same checks passed. Earlier local browser checks confirmed the search overlay opens/closes, About and Post a Job content display, and homepage hero strings switch to Hindi and Tamil.
+- Validation: focused public UX regressions **7/7 passed**; full `npm test` **203/203 passed**; `npm run check:syntax` **0 errors**, with the existing local `SITE_URL` unset warning; `git diff --check` passed.
+- No Supabase schema/data changes, SQL, paid services, or new dependencies.
+- Deployment status: not live-verified. This change is prepared on `main` for push/review; verify the resulting Vercel deployment before production promotion.
+- Implementation commit: to be recorded in the follow-up progress entry.

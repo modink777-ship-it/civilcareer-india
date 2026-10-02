@@ -58,6 +58,7 @@ function sectorOf(j){
 }
 function isGovJob(j){return sectorOf(j)==='Government'}
 function normText(v){return String(v??'').toLowerCase().replace(/[^a-z0-9+.₹\-\s]/g,' ').replace(/\s+/g,' ').trim()}
+function uiText(key,fallback){return window.t?window.t(key):fallback}
 function timeAgo(v){
   if(!v)return'';
   const t=new Date(v).getTime();
@@ -138,10 +139,7 @@ function viewedLabel(jobId){
 }
 window.markViewed=markViewed;window.isViewed=isViewed;window.viewedLabel=viewedLabel;
 const pathRoute={'/':'home','/for-you':'foryou','/private-jobs':'private','/government-jobs':'government','/exams':'exams','/study-materials':'materials','/career-paths':'careerpaths','/post-a-job':'post','/submit-resource':'resource','/report':'report','/about':'about','/contact':'contact','/search':'search',};const routePath=Object.fromEntries(Object.entries(pathRoute).map(([a,b])=>[b,a]));
-/* English-only (FIX-2026-09-25): the Kannada dictionary, language toggle and
-   kn-IN locale switching have been removed. Kept as a no-op so existing
-   callers (navigate/renderHome/boot) need no changes. */
-function translate(){document.documentElement.lang='en';try{localStorage.removeItem('cc_lang')}catch{}}
+function translate(){if(window.applyLanguage){let selected='en';try{selected=localStorage.getItem('cc_lang')||'en'}catch{}window.applyLanguage(selected)}}
 function toast(msg){const x=$('toast');x.textContent=msg;x.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove('show'),2800)}function device(){const w=innerWidth;return w<600?'Mobile':w<1000?'Tablet':'Desktop'}function visitor(){let id=localStorage.getItem('cc_vid');if(!id){id=crypto.randomUUID();localStorage.setItem('cc_vid',id)}return id}async function api(url,opt={}){const started=performance.now();const r=await fetch(url,{...opt,headers:{'content-type':'application/json',...(opt.headers||{})}}),text=await r.text();const duration=performance.now()-started;window.__ccPerfSamples=window.__ccPerfSamples||[];window.__ccPerfSamples.push({url:String(url).split('?')[0],method:opt.method||'GET',status:r.status,duration_ms:Number(duration.toFixed(1)),server_timing:r.headers.get('server-timing')||''});if(window.__ccPerfSamples.length>100)window.__ccPerfSamples.shift();let data={};try{data=text?JSON.parse(text):{}}catch{}if(!r.ok){const e=Error(data.error||data.details||`Request failed (${r.status})`);e.status=r.status;throw e}return data}function track(type='pageview',label=''){api('/api/analytics',{method:'POST',body:JSON.stringify({visitor_id:visitor(),event_type:type,event_label:label,path:location.pathname,referrer:document.referrer,device_type:device()})}).catch(()=>{})}
 function navigate(next,push=true){route=next in routePath?next:'home';$$('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===route));$$('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===route));$('mainNav').classList.remove('open');$('menuBtn').setAttribute('aria-expanded','false');if(push&&location.pathname!==routePath[route])history.pushState({},'',routePath[route]);setMeta();scrollTo({top:0,behavior:'smooth'});if(route==='private')renderPrivate();if(route==='government')renderGovernment();if(route==='exams')renderExams();if(route==='materials')renderMaterials();if(route==='foryou')renderForYou();if(route==='careerpaths')renderCareerMapPage?.();translate();track()}
 /* Career Paths page (FIX-2026-09-24): the /career-paths section markup lives in
@@ -216,12 +214,12 @@ function jobCard(j,gov=false){
       ${work?`<span title="Work type">🧰 ${esc(work)}</span>`:''}
     </div>
     <div class="cc-compact-actions">
-      <button data-job="${j.id}" class="cc-view-btn">View</button>
-      ${!closed&&j.application_url||!closed&&j.apply_url||!closed&&j.source_url?`<a class="cc-apply-btn" href="${esc(j.application_url||j.apply_url||j.source_url)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">Apply</a>`:''}
-      <button class="btn-save cc-save ${saved?'saved':''}" data-save-job="${j.id}" title="${saved?'Remove bookmark':'Save job'}" aria-label="${saved?'Remove bookmark':'Save job'}">${saved?'★':'☆'}</button>
+      <button data-job="${esc(j.id)}" class="cc-view-btn" aria-label="${esc(uiText('view_job','View job details'))}">${esc(uiText('view','View'))}</button>
+      ${!closed&&j.application_url||!closed&&j.apply_url||!closed&&j.source_url?`<a class="cc-apply-btn" href="${esc(j.application_url||j.apply_url||j.source_url)}" target="_blank" rel="noopener noreferrer" data-apply-job="${esc(j.id)}">${esc(uiText('apply','Apply'))}</a>`:''}
+      <button type="button" class="btn-save cc-save ${saved?'saved':''}" data-save-job="${esc(j.id)}" title="${saved?esc(uiText('remove_saved_job','Remove saved job')):esc(uiText('save_job','Save job'))}" aria-label="${saved?esc(uiText('remove_saved_job','Remove saved job')):esc(uiText('save_job','Save job'))}">${saved?'★':'☆'}</button>
     </div>
     <div class="cc-compact-status">
-      <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?'Closed':j.featured?'Featured':verified?'Verified':'Active'}</span>
+      <span class="pill ${closed?'closed':j.featured?'featured':verified?'verified':''}">${closed?esc(uiText('closed','Closed')):j.featured?esc(uiText('featured_badge','Featured')):verified?esc(uiText('verified','Verified')):esc(uiText('active','Active'))}</span>
       <span class="cc-posted-ago">${j.created_at?esc(timeAgo(j.created_at)):(j.last_verified?'Verified '+esc(date(j.last_verified)):'')}</span>
       ${isNew?'<span class="new-badge">NEW</span>':''}
     </div>
@@ -241,7 +239,7 @@ function bindCards(){
     toast(saved?'Job saved! ★':'Bookmark removed.');
   });
 }function empty(title,text){return `<div class="empty-state"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`}
-function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>sectorOf(j)==='Private'&&live(j)).slice(0,3),g=jobs.filter(j=>isGovJob(j)&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty('Opportunities are being added','Verified civil engineering jobs will appear here as they are published.');$('homeGovernment').innerHTML=g.length?g.map(x=>jobCard(x,true)).join(''):empty('Recruitment updates are being added','Civil-focused Central and State opportunities will appear here after verification.');const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);var _cs=document.getElementById('closingSoon');if(_cs)_cs.innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||'Opportunity')}</span></div><span>${date(j.deadline)}</span></div>`).join(''):'<div class="compact-item"><span>No active deadlines published.</span></div>';var _he=document.getElementById('homeExams');if(_he)_he.innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||'Examination update')}</span></div><span>${x.application_end?date(x.application_end):'Official dates'}</span></div>`).join('')||'<div class="compact-item"><span>Exam updates are being added.</span></div>';$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards();translate();renderUrgencyStrip();}
+function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>sectorOf(j)==='Private'&&live(j)).slice(0,3),g=jobs.filter(j=>isGovJob(j)&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty(uiText('opportunities_coming','Opportunities are being added'),uiText('verified_jobs_coming','Verified civil engineering jobs will appear here as they are published.'));$('homeGovernment').innerHTML=g.length?g.map(x=>jobCard(x,true)).join(''):empty(uiText('recruitment_coming','Recruitment updates are being added'),uiText('government_jobs_coming','Civil-focused Central and State opportunities will appear here after verification.'));const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);var _cs=document.getElementById('closingSoon');if(_cs)_cs.innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||uiText('opportunity','Opportunity'))}</span></div><span>${date(j.deadline)}</span></div>`).join(''):`<div class="compact-item"><span>${esc(uiText('no_deadlines','No active deadlines published.'))}</span></div>`;var _he=document.getElementById('homeExams');if(_he)_he.innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||uiText('exam_update','Examination update'))}</span></div><span>${x.application_end?date(x.application_end):esc(uiText('official_dates','Official dates'))}</span></div>`).join('')||`<div class="compact-item"><span>${esc(uiText('exam_updates_coming','Exam updates are being added.'))}</span></div>`;$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty(uiText('resources_coming','Resources are being added'),uiText('free_resources_coming','Free civil engineering, exam and working-professional resources will appear here as they are published.'));bindCards();renderUrgencyStrip();}
 
 function renderUrgencyStrip(){
   const strip=$('urgencyStrip'),el=$('urgencyJobs');
@@ -711,7 +709,7 @@ function formObject(form){const d=Object.fromEntries(new FormData(form).entries(
 async function runCompoundSearch(q,loc='',exp=''){
   const splitList=v=>String(v||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,12);
   const roles=splitList(q),cities=splitList(loc);exp=String(exp||'').trim();
-  let jobResults=[];
+  let jobResults=[],searchFailed=false;
   try{
     const params=new URLSearchParams({page:'1',limit:'60'});
     if(roles.length)params.set('roles',roles.join(','));
@@ -720,14 +718,61 @@ async function runCompoundSearch(q,loc='',exp=''){
     if(!roles.length&&!cities.length&&!exp&&q.trim())params.set('q',q.trim());
     const data=await api(`/api/jobs?${params.toString()}`);
     jobResults=data.jobs||[];window.__ccSearchJobs=jobResults;
-  }catch(err){window.__ccSearchJobs=[]}
+  }catch(err){window.__ccSearchJobs=[];searchFailed=true}
   const results=[];jobResults.forEach(j=>results.push({type:isGovJob(j)?'Government Job':'Civil Job',title:j.role,sub:[j.company,j.location_display||j.location].filter(Boolean).join(' · '),action:`data-job="${j.id}"`}));
   const needle=roles.join(' ').toLowerCase(),place=cities.join(' ').toLowerCase();exams.forEach(x=>{if((!needle||[x.code,x.title_en,x.authority,x.post_names,x.notification_number,x.overview].join(' ').toLowerCase().includes(needle))&&(!place||[x.job_location,x.authority].join(' ').toLowerCase().includes(place)))results.push({type:'Exam',title:`${x.code} — ${x.title_en}`,sub:x.authority,action:`data-exam="${x.id}"`})});materials.forEach(m=>{if(!needle||[m.title_en,m.category,m.exam_code].join(' ').toLowerCase().includes(needle))results.push({type:'Resource',title:m.title_en,sub:m.category,action:`data-material-id="${m.id}"`})});
   const summaryBits=[roles.length?`role${roles.length>1?'s':''} “${roles.join('”, “')}”`:'',cities.length?`in ${cities.join(', ')}`:'',exp?`${exp} experience`:''].filter(Boolean);
-  $('searchSummary').textContent=results.length?`${results.length} result${results.length===1?'':'s'}${summaryBits.length?' for '+summaryBits.join(' '):''}`:'No matching results.';$('searchResults').innerHTML=results.length?results.slice(0,60).map(x=>`<article class="job-card"><span class="pill">${esc(x.type)}</span><h3>${esc(x.title)}</h3><p>${esc(x.sub||'')}</p><div class="card-actions"><button ${x.action}>View Details</button></div></article>`).join(''):empty('No results found','Try a different keyword, department or location.');bindCards();navigate('search');track('search','universal')}
+  $('searchSummary').textContent=searchFailed?uiText('search_unavailable','Search is temporarily unavailable. Please try again shortly.'):results.length?`${results.length} ${uiText(results.length===1?'result':'results',results.length===1?'result':'results')}${summaryBits.length?' for '+summaryBits.join(' '):''} `:uiText('no_jobs','No jobs found matching your criteria.');
+  $('searchResults').innerHTML=results.length?results.slice(0,60).map(x=>`<article class="job-card"><span class="pill">${esc(x.type)}</span><h3>${esc(x.title)}</h3><p>${esc(x.sub||'')}</p><div class="card-actions"><button ${x.action}>${esc(uiText('view_job','View job details'))}</button></div></article>`).join(''):empty(searchFailed?uiText('search_unavailable','Search is temporarily unavailable. Please try again shortly.'):uiText('no_results_title','No results found'),uiText('no_results_copy','Try a different keyword, department or location.'));bindCards();navigate('search');track('search','universal')}
 window.runCompoundSearch=runCompoundSearch;
 async function search(q,loc='',exp=''){return runCompoundSearch(q,loc,exp)}
 $('ccSearchInput')&&$('ccSearchInput').addEventListener('input',e=>renderCcSearch(e.target.value));
+function openCcSearch(){
+  const overlay=$('ccSearchOverlay');
+  if(!overlay)return;
+  overlay.hidden=false;
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label',uiText('search_dialog_title','Search civil engineering opportunities'));
+  document.body.classList.add('cc-search-open');
+  setTimeout(()=>$('ccSearchRoles')?.focus(),0);
+}
+function closeCcSearch(){
+  const overlay=$('ccSearchOverlay');
+  if(!overlay)return;
+  overlay.hidden=true;
+  document.body.classList.remove('cc-search-open');
+  $('searchOpen')?.focus();
+}
+$('searchOpen')?.addEventListener('click',openCcSearch);
+$('menuBtn')?.addEventListener('click',()=>{
+  const nav=$('mainNav'),button=$('menuBtn');
+  if(!nav||!button)return;
+  const opening=!nav.classList.contains('open');
+  nav.classList.toggle('open',opening);
+  button.setAttribute('aria-expanded',String(opening));
+  button.setAttribute('aria-label',opening?uiText('close_navigation','Close navigation'):uiText('open_navigation','Open navigation'));
+});
+$('ccSearchClose')?.addEventListener('click',closeCcSearch);
+$('ccSearchOverlay')?.addEventListener('click',e=>{if(e.target===$('ccSearchOverlay'))closeCcSearch()});
+$('ccSearchGo')?.addEventListener('click',()=>{
+  const roles=$('ccSearchRoles')?.value||'';
+  const cities=$('ccSearchCities')?.value||'';
+  const experience=$('ccSearchExp')?.value||'';
+  closeCcSearch();
+  runCompoundSearch(roles,cities,experience);
+});
+['ccSearchRoles','ccSearchCities','ccSearchExp'].forEach(id=>$(id)?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();$('ccSearchGo')?.click()}
+}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ccSearchOverlay')?.hidden)closeCcSearch()});
+document.addEventListener('click',e=>{
+  const nav=$('mainNav'),button=$('menuBtn');
+  if(nav?.classList.contains('open')&&!nav.contains(e.target)&&!button?.contains(e.target)){
+    nav.classList.remove('open');
+    button?.setAttribute('aria-expanded','false');
+  }
+});
 $$('#ccSearchOverlay .cc-search-hints button')&&$$('#ccSearchOverlay .cc-search-hints button').forEach(b=>b.onclick=()=>{const q=b.dataset.q;const r=$('ccSearchRoles');if(r&&/engineer|surveyor|planning|estimator/i.test(q))r.value=q;closeCcSearch();runCompoundSearch(q,'','');});
 const sug=['Civil Site Engineer','Site Engineer','Planning Engineer','Planning Manager','Quantity Surveyor','Estimator','Cost Engineer','Cost Consultant','Cost Controller','Project Controller','Project Control Analyst','BIM Engineer','Structural Engineer','Government Civil Jobs','SSC JE Civil','ESE Civil','Bengaluru','Mumbai','Chennai','Hyderabad','Noida','Gurugram','Pune','Kolkata'];$('globalQuery').oninput=e=>{const q=e.target.value.toLowerCase();const a=sug.filter(x=>x.toLowerCase().includes(q)).slice(0,5);$('suggestions').innerHTML=a.map(x=>`<button type="button">${x}</button>`).join('');$('suggestions').classList.toggle('show',q.length>0&&a.length>0);$$('#suggestions button').forEach(b=>b.onclick=()=>{$('globalQuery').value=b.textContent;$('suggestions').classList.remove('show')})};$('smartSearch').onsubmit=e=>{e.preventDefault();$('suggestions').classList.remove('show');runCompoundSearch($('globalQuery').value,$('globalLocation').value,$('globalExperience')?$('globalExperience').value:'')};
 if($('privateScopeChips'))$$('#privateScopeChips button').forEach(b=>b.onclick=()=>{$$('#privateScopeChips button').forEach(x=>x.classList.toggle('active',x===b));renderPrivate()});['privateRole','privateExperience','privateType','privateSort'].forEach(id=>{const el=$(id);if(el)el.onchange=renderPrivate});['privateLocation','privateQualification'].forEach(id=>{const el=$(id);if(el)el.oninput=renderPrivate});['govStatus','govSort'].forEach(id=>$(id)&&$(id).addEventListener('change',renderGovernment));
@@ -759,6 +804,14 @@ function ccApplyProgrammatic(){
   return 'private';
 }
 translate();navigate(ccApplyProgrammatic()||pathRoute[location.pathname]||'home',false);statsLoading();loadData();
+document.addEventListener('civilcareer:languagechange',()=>{
+  if(route==='home')renderHome();
+  else if(route==='private')renderPrivate();
+  else if(route==='government')renderGovernment();
+  else if(route==='exams')renderExams();
+  else if(route==='materials')renderMaterials();
+  else if(route==='foryou')renderForYou();
+});
 
 // Wire featured org tiles
 $$('.org-tile[data-route]').forEach(a=>a.onclick=e=>{e.preventDefault();navigate(a.dataset.route)});
