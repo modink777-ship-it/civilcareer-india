@@ -556,3 +556,16 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Validation: `npm test` 175/175 passed; `npm run check:syntax` reported 0 errors (existing local `SITE_URL` warning); `git diff --check` passed. Local browser smoke check at 390px in dark mode showed the hero at y=65px, heading at y=176px, positioned SVG as absolute, readable stat labels, and hidden tools row; desktop hero also remained within the first viewport.
 - Commit `8e23bdb` was committed on `main` and pushed to `origin/main` after owner approval of the possible automatic deployment.
 - Post-push production check still sees the previous deployed build: jobs API returns 200 with jobs, company reviews return 200, but Blog and Interview still return 500 and the hero SVG is still in normal flow. The new commit has not yet been verified live; Vercel's free daily deployment limit was previously reported.
+
+## 3 Oct 2026 — Admin review workflow and contrast
+
+- Branch: `main`, based on `00a55e5`. Implementation commit: `062e7f9` (local; not pushed).
+- Review Jobs now loads when its tab is opened; its queue requests use the allowlisted Supabase session via the Authorization header rather than exposing the session token in a query string or JSON body.
+- Added a visible Rejected queue, corrected pagination to `per_page`, aligned mutation/scraper feedback with the actual `updated`/`added` response fields, and made failed database updates return an explicit error instead of a success-shaped result.
+- `/api/admin-jobs`, `/api/civil-scraper`, and Social Graphics routes now use the dispatcher’s admin allowlist path for dashboard sessions. The existing `SOCIAL_CRON_SECRET` path remains separately accepted by the social-cron handler.
+- Replaced the non-existent `/api/exam-extract` call with browser-local PDF text extraction and a manual verification workflow; no AI provider or paid service is used for this PDF flow.
+- Improved the fixed-dark admin dashboard's muted text and input placeholders. The new text color measures 6.71:1 against the `#0f2847` card background. Added [admin-usage-guide.md](./admin-usage-guide.md).
+- Validation: `npm test` — 184 passed, 0 failed; `npm run check:syntax` — 0 errors and the existing local `SITE_URL`-unset warning; `git diff --check` passed.
+- Browser smoke check: local admin sign-in page at 360px had document width equal to viewport (no horizontal overflow); placeholder and hint computed to `rgb(159, 176, 198)`. This checked the login shell and contrast styling, not every authenticated admin panel.
+- Deployment status: NOT LIVE-VERIFIED. No preview or production deployment was made. The previously reported Vercel free daily deployment limit remains a blocker; pushing `main` may also trigger a deployment depending on project settings.
+- Waiting on owner: confirm whether to push `062e7f9` to `origin/main` now (which could trigger Vercel), or keep it committed locally until a preview-only path is available.
