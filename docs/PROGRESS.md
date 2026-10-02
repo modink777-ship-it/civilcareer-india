@@ -610,3 +610,10 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Live preview check at 360px: no horizontal overflow; hero canvas visible; Tamil hero text rendered; search overlay opened and Escape closed it; About and Post a Job content/form were present.
 - The configured `civilcareer-india-two.vercel.app` alias still serves its previous translation bundle (English/Hindi/Kannada/Telugu only), while the staged preview exposes Tamil as well. No manual promotion or custom-domain assignment was performed; review the staged deployment before promoting it.
 - Implementation commit: `52398bc00a25458001d7cc720aef13323a02e89a`.
+
+## 3 Oct 2026 — Safe repository cleanup
+
+- Removed the stale root `CHANGES-TO-MAKE.md` handoff checklist. Its API handler, page-route, and mock-test routing changes are already present in the current code; keeping the checklist risked directing future edits toward duplicate work. It had no references elsewhere in the repository.
+- Kept runtime assets and route files, SQL migrations, GitHub workflows, tests, and historical project documentation because they remain in use or provide project records. Ignored `node_modules` is local dependency installation, not tracked cleanup material.
+- Validation: repository-wide reference scan found no consumers of the removed checklist; `npm test` — 203 passed, 0 failed; `npm run check:syntax` — 0 errors, with the existing local `SITE_URL`-unset warning; `git diff --check` passed.
+- No application code, production data, SQL, or deployment configuration changed.
