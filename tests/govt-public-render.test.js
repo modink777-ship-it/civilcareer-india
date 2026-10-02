@@ -158,11 +158,30 @@ test('public government detail hides records without an approved official notifi
 });
 
 test('public government detail links show notification and only an approved official apply URL', async () => {
+  const detailedNotification = {
+    ...notification,
+    dates: {
+      notification_date: '2026-09-01',
+      application_start: '2026-10-01',
+      exam_date: '2027-01-10',
+    },
+    age_limit_by_category: { General: '18-30 years', OBC: '18-33 years' },
+    age_as_on: '2026-08-01',
+    fee_by_category: { General: '₹100', SC: 'Nil' },
+    payment_mode: 'Online',
+    required_documents: ['Photo ID', 'Degree proof'],
+    how_to_apply: 'Apply online through the official portal.',
+    previous_apply_end: '2026-10-15',
+    notification_no: 'KPSC-2026-01',
+    language_required: 'Kannada',
+    local_cadre_or_domicile: 'Karnataka domicile',
+    reservation_notes: 'See official notice',
+  };
   global.fetch = async (url) => {
     if (String(url).includes('govt_job_posts?')) {
       return { ok: true, status: 200, json: async () => [{ post_name: 'Junior Engineer (Civil)', vacancies: 10, qualification: 'Diploma Civil', pay: null, selection_process: 'Written exam' }] };
     }
-    return { ok: true, status: 200, json: async () => [notification] };
+    return { ok: true, status: 200, json: async () => [detailedNotification] };
   };
   const res = response();
   await handler({ method: 'GET', url: '/api/govt-public?job=je-civil-recruitment', headers: {} }, res);
@@ -172,6 +191,14 @@ test('public government detail links show notification and only an approved offi
   assert.match(res.body, /Open Official Notification/);
   assert.match(res.body, /Apply on Official Site/);
   assert.match(res.body, /validThrough/);
+  assert.match(res.body, /Recruitment timeline/);
+  assert.match(res.body, /2027-01-10/);
+  assert.match(res.body, /Age limits by category/);
+  assert.match(res.body, /18-30 years/);
+  assert.match(res.body, /₹100/);
+  assert.match(res.body, /Photo ID/);
+  assert.match(res.body, /Previously recorded deadline/);
+  assert.match(res.body, /KPSC-2026-01/);
 });
 
 test.after(() => {

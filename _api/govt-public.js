@@ -13,6 +13,26 @@ const days=d=>d?Math.floor((Date.parse(d+'T00:00:00Z')-Date.parse(new Date().toI
 const sourceHost=u=>{try{return official(u)?new URL(u).hostname.toLowerCase().replace(/^www\./,''):'';}catch(_){return '';}};
 function layout(title,desc,canonical,body,robots='index,follow'){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="${robots}"><title>${esc(title)}</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${esc(canonical)}"><link rel="stylesheet" href="/styles.css"><script src="/theme.js" defer></script></head><body><header class="site-header"><div class="container nav"><a class="logo" href="/">Civil<span>Career</span></a><nav><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Jobs</a><a href="/exams">Exams</a></nav></div></header><main class="container article-page" style="padding-top:48px;padding-bottom:72px">${body}</main><footer><div class="container footer-bottom"><p>CivilCareer is an independent information directory. Always verify important information with the original official source.</p><span>© 2026 CivilCareer</span></div></footer></body></html>`;}
 
+function textValue(value){
+  if(value===null||value===undefined||value==='')return 'Not disclosed';
+  if(Array.isArray(value))return value.map(textValue).join(', ');
+  if(typeof value==='object')return Object.entries(value).map(([key,item])=>`${key}: ${textValue(item)}`).join('; ');
+  return String(value).slice(0,1000);
+}
+function renderFacts(value){
+  if(!value||typeof value!=='object')return `<p>${esc(textValue(value))}</p>`;
+  const entries=Array.isArray(value)?value.map((item,index)=>[String(index+1),item]):Object.entries(value);
+  const facts=entries.filter(([,item])=>item!==null&&item!==undefined&&item!=='');
+  return facts.length?`<dl>${facts.map(([key,item])=>`<dt>${esc(String(key).replace(/[_-]+/g,' '))}</dt><dd>${esc(textValue(item))}</dd>`).join('')}</dl>`:'<p>Not disclosed</p>';
+}
+function renderTimeline(dates,applyEnd){
+  const entries=dates&&typeof dates==='object'&&!Array.isArray(dates)?Object.entries(dates):[];
+  if(applyEnd&&!entries.some(([key])=>['apply_end','application_end'].includes(String(key).toLowerCase())))entries.push(['application_end',applyEnd]);
+  const visible=entries.filter(([,value])=>value!==null&&value!==undefined&&value!=='');
+  if(!visible.length)return '<p>No recruitment dates have been disclosed. Check the official notification.</p>';
+  return `<ol>${visible.map(([key,value])=>`<li><strong>${esc(String(key).replace(/[_-]+/g,' '))}:</strong> ${esc(textValue(value))}</li>`).join('')}</ol>`;
+}
+
 async function rowsByFilter(p){
   const parts=['status=eq.active'];
   const page=Math.min(10000,Math.max(1,parseInt(p.get('page')||'1',10)||1));
@@ -68,7 +88,33 @@ module.exports=async function(req,res){
       const left=days(j.apply_end);
       const deadline=j.deadline_kind==='fixed'?(j.apply_end?new Date(j.apply_end+'T00:00:00Z').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Not announced'):(j.deadline_text||'Notified Soon');
       const reviewed=j.reviewed_at?new Date(j.reviewed_at).toLocaleDateString('en-IN'):'Not recorded';
-      const body=`<p class="eyebrow">Government Civil Recruitment · ${esc(j.scope==='state'?'State':'Central')}</p><h1>${esc(j.title)}</h1><p class="lead">${esc(j.organization)} · ${esc(j.state||'All India')}</p><p><strong>Official source:</strong> <a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer">${esc(host)} ↗</a><br><strong>Last reviewed:</strong> ${esc(reviewed)}</p><div class="callout"><strong>Verify at the official source.</strong><p>Dates, vacancies, eligibility, fees and application rules can change.</p><p>Deadline: <b>${esc(deadline)}</b>${left!==null&&left>=0?' · '+esc(left===0?'Closing today':left+' days left'):''}</p></div><h2>Civil posts</h2><div style="overflow-x:auto"><table><thead><tr><th>Post</th><th>Vacancies</th><th>Qualification</th><th>Pay</th><th>Selection</th></tr></thead><tbody>${posts.map(x=>'<tr><td>'+esc(x.post_name)+'</td><td>'+esc(x.vacancies==null?'—':x.vacancies)+'</td><td>'+esc(x.qualification||'—')+'</td><td>'+esc(typeof x.pay==='object'?JSON.stringify(x.pay):x.pay||'—')+'</td><td>'+esc(x.selection_process||'—')+'</td></tr>').join('')}</tbody></table></div><h2>Recruitment details</h2><p>${esc(j.summary||'No additional summary available. Use the official notification for complete conditions.')}</p><p><strong>Notification:</strong> ${j.notification_no?esc(j.notification_no):'Not stated'}<br><strong>Deadline:</strong> ${esc(deadline)}<br><strong>Application:</strong> ${esc(applyUrl?sourceHost(applyUrl):'See official notice')}</p><p><a class="btn primary" href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer">Open Official Notification ↗</a>${applyUrl?` <a class="btn secondary" href="${esc(applyUrl)}" target="_blank" rel="noopener noreferrer">Apply on Official Site ↗</a>`:''}</p><p style="margin-top:24px"><a class="text-link" href="/government-jobs">← Government Civil Jobs</a></p>`;
+      const timeline=renderTimeline(j.dates,j.apply_end);
+      const previousDeadline=j.previous_apply_end&&j.previous_apply_end!==j.apply_end
+        ?`<div class="callout"><strong>Previously recorded deadline:</strong> ${esc(j.previous_apply_end)}. Current recorded deadline: ${esc(j.apply_end||deadline)}. Check the official notice to confirm the change.</div>`
+        :'';
+      const body=`
+        <p class="eyebrow">Government Civil Recruitment · ${esc(j.scope==='state'?'State':'Central')}</p>
+        <h1>${esc(j.title)}</h1>
+        <p class="lead">${esc(j.organization)} · ${esc(j.state||'All India')}</p>
+        <p><strong>Official source:</strong> <a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer">${esc(host)} ↗</a><br><strong>Last reviewed:</strong> ${esc(reviewed)}</p>
+        <div class="callout"><strong>Verify at the official source.</strong><p>Dates, vacancies, eligibility, fees and application rules can change.</p><p>Deadline: <b>${esc(deadline)}</b>${left!==null&&left>=0?' · '+esc(left===0?'Closing today':left+' days left'):''}</p></div>
+        <h2>Civil posts</h2>
+        ${posts.length?`<div style="overflow-x:auto"><table><thead><tr><th>Post</th><th>Vacancies</th><th>Qualification</th><th>Pay</th><th>Selection</th></tr></thead><tbody>${posts.map(x=>'<tr><td>'+esc(x.post_name||'Not disclosed')+'</td><td>'+esc(x.vacancies==null?'Not disclosed':x.vacancies)+'</td><td>'+esc(x.qualification||'Not disclosed')+'</td><td>'+esc(textValue(x.pay))+'</td><td>'+esc(x.selection_process||'Not disclosed')+'</td></tr>').join('')}</tbody></table></div>`:'<p>Civil post details are not disclosed. Consult the official notification.</p>'}
+        <h2>Recruitment timeline</h2>${timeline}
+        <h2>Eligibility information</h2>
+        <p>Use these published criteria as a reference only; CivilCareer does not determine eligibility. Confirm category-specific rules in the official notification.</p>
+        <p><strong>Age limits by category:</strong></p>${renderFacts(j.age_limit_by_category)}
+        <p><strong>Age calculated as of:</strong> ${esc(textValue(j.age_as_on))}</p>
+        <h2>Application fee</h2>${renderFacts(j.fee_by_category)}
+        <p><strong>Payment mode:</strong> ${esc(textValue(j.payment_mode))}</p>
+        <h2>How to apply</h2><p>${esc(textValue(j.how_to_apply))}</p>
+        <h2>Required documents</h2>${renderFacts(j.required_documents)}
+        <h2>Recruitment details</h2>
+        <p>${esc(j.summary||'No additional summary available. Use the official notification for complete conditions.')}</p>
+        <p><strong>Notification:</strong> ${esc(j.notification_no||'Not disclosed')}<br><strong>Total posts in notice:</strong> ${esc(j.total_posts_in_notification==null?'Not disclosed':j.total_posts_in_notification)}<br><strong>Civil posts:</strong> ${esc(j.civil_posts_count==null?'Not disclosed':j.civil_posts_count)}<br><strong>Language / domicile rules:</strong> ${esc(textValue(j.language_required))} / ${esc(textValue(j.local_cadre_or_domicile))}<br><strong>Reservation notes:</strong> ${esc(textValue(j.reservation_notes))}<br><strong>Application link:</strong> ${esc(applyUrl?sourceHost(applyUrl):'Not disclosed')}</p>
+        ${previousDeadline}
+        <p><a class="btn primary" href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer">Open Official Notification ↗</a>${applyUrl?` <a class="btn secondary" href="${esc(applyUrl)}" target="_blank" rel="noopener noreferrer">Apply on Official Site ↗</a>`:''}</p>
+        <p style="margin-top:24px"><a class="text-link" href="/government-jobs">← Government Civil Jobs</a></p>`;
       const schema = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
