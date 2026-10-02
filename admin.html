@@ -4019,6 +4019,37 @@ async function loadSocial() {
   }
 }
 
+async function loadRadarPreview() {
+  const status = $('radarPreviewStatus');
+  const root = $('radarPreview');
+  if (!status || !root) return;
+  status.textContent = 'Refreshing preview…';
+  status.className = 'import-status show';
+  try {
+    const d = await api('/api/social?op=radar-preview&limit=50', { key: adminKey });
+    const rows = Array.isArray(d.previews) ? d.previews : [];
+    root.innerHTML = rows.length
+      ? rows.map((x) => `
+        <article style="padding:12px;margin:0 0 10px;border:1px solid #23405c;border-radius:9px;background:#0b1723">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+            <span class="status-badge published">${esc(x.event)}</span>
+            <span style="color:#6a8aaa;font-size:.72rem">${esc(x.source_type)} #${esc(x.source_id)}</span>
+            <span style="color:#6a8aaa;font-size:.72rem">${x.truth_state === 'locked' ? '✓ Truth checked' : '⚠ Fact check failed'}</span>
+          </div>
+          <b style="color:#e2e8f0">${esc(x.title)}</b>
+          <p style="color:#94a3b8;font-size:.78rem;margin:7px 0">${esc(x.body_telegram || '')}</p>
+          ${x.errors && x.errors.length ? `<div style="color:#f87171;font-size:.74rem">${esc(x.errors.join('; '))}</div>` : ''}
+        </article>`).join('')
+      : '<p style="color:#6a8aaa;font-size:.85rem">No radar events are currently due.</p>';
+    status.textContent = `Preview ready — ${rows.length} event${rows.length === 1 ? '' : 's'}; database writes: 0; sends: 0.`;
+    status.className = 'import-status show success';
+  } catch (e) {
+    root.innerHTML = `<p style="color:#fca5a5">Could not load Radar preview: ${esc(e.message || 'Unknown error')}</p>`;
+    status.textContent = 'Radar preview failed.';
+    status.className = 'import-status show error';
+  }
+}
+
 /* ── settings ─────────────────────────────── */
 
 function renderSocialSettings(s) {
