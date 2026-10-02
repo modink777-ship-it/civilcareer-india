@@ -4277,11 +4277,15 @@ async function socialArchive(id) {
 }
 
 async function socialRunNow() {
-  if (!window.confirm('Run the approved Social Engine queue now? Only approved, configured platforms can publish.')) return;
+  if (!window.confirm('Run Deadline Radar and drain the approved Social Engine queue now?')) return;
   try {
-    const d = await socialApi('drain', { limit: 5 });
-    const count = d.published != null ? d.published : 0;
-    setSocialStatus(`Run now finished — ${count} publication(s) processed`, 'success');
+    const d = await api('/api/social-cron?op=run', {
+      method: 'POST', key: adminKey,
+      body: JSON.stringify({ op: 'run', limit: 100, drain_limit: 5 }),
+    });
+    const count = Number(d.drain && d.drain.published || 0);
+    const generated = Number(d.radar && d.radar.created || 0);
+    setSocialStatus(`Run now finished — ${generated} radar suggestion(s) created; ${count} approved publication(s) processed`, 'success');
     await loadSocial();
   } catch (e) {
     setSocialStatus('❌ Run now: ' + e.message, 'error');
