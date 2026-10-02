@@ -4191,9 +4191,7 @@ function renderSocialQueue() {
       actions.push(`<button onclick="socialPublishEverywhere('${sid}')">🌐 Publish Everywhere</button>`);
       actions.push(`<button onclick="socialCopyWhatsApp('${sid}')">📋 Copy WhatsApp</button>`);
     }
-    if (s.source_type === 'job' || s.source_type === 'govt_job') {
-      actions.push(`<button onclick="socialGenerateUpdate('${sid}','${esc(s.source_type)}')">↻ Generate update</button>`);
-    }
+
     if (s.truth_state === 'stale') {
       actions.push(`<button onclick="socialRegenerate(${s.id})">↻ Regenerate</button>`);
     }
