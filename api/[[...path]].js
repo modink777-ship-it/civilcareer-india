@@ -126,19 +126,12 @@ function isValidCronRequest(req) {
   return auth === `Bearer ${secret}`;
 }
 
-/* Scheduled Social engine drain: the SOCIAL_CRON_SECRET
-   (with a CRON_SECRET fallback) authorizes ONLY op=drain
-   on /api/social — never the queue list, settings, ledger,
-   connections or any other route. The op is read from the
-   query string (Vercel Cron sends GETs) or the JSON body.
-   Deliberately separate from CRON_ROUTES: scheduler access
-   to the drain can never imply exam-alert or
-   discovery-crawler access. */
+/* Scheduled Social engine drain: only SOCIAL_CRON_SECRET authorizes
+   op=drain on /api/social. It never unlocks the queue, settings, ledger,
+   connections or unrelated cron routes. The owner key remains the manual
+   Admin Run Now credential inside the handler. */
 function isSocialDrainRequest(req) {
-  const secret = String(
-    process.env.SOCIAL_CRON_SECRET ||
-    process.env.CRON_SECRET || ''
-  ).trim();
+  const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
   if (!secret) return false;
   const auth = String(req.headers.authorization || '');
   if (auth !== `Bearer ${secret}` &&
@@ -146,12 +139,9 @@ function isSocialDrainRequest(req) {
   let op = '';
   try {
     op = String(new URL(req.url, 'http://localhost').searchParams.get('op') || '');
-  } catch (_) { /* keep empty */ }
-  if (op !== 'drain') {
-    try {
-      if (req.body && typeof req.body === 'object' &&
-          String(req.body.op || '') === 'drain') op = 'drain';
-    } catch (_) { /* body not parsed */ }
+  } catch (_) {}
+  if (op !== 'drain' && req.body && typeof req.body === 'object') {
+    op = String(req.body.op || '');
   }
   return op === 'drain';
 }
