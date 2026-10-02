@@ -586,3 +586,8 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
   Vercel's preview check remains blocked by the free daily deployment limit;
   no preview or production deployment is claimed. PR #10 remains open and
   must not be merged until the checks are reviewed.
+- Follow-up on head `3264f11`: GitHub CI on `pull_request` passed, the Social
+  Engine Phase 1 workflow passed, and Gitleaks reported **No leaks detected**.
+  The Vercel preview check is still blocked by the daily deployment cap; the
+  PR remains open, and the successful deployment notice shown by GitHub is an
+  older preview, not evidence that this fix deployed.
