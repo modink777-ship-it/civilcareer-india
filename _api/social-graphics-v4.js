@@ -14,6 +14,73 @@ function send(res,status,body){
   res.end(JSON.stringify(body));
 }
 
+function storageHeaders(key, extra = {}) {
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    ...extra,
+  };
+}
+
+async function ensureBucket(url, key) {
+  const get = await fetch(`${url}/storage/v1/bucket/${BUCKET}`, {
+    headers: storageHeaders(key, { Accept: 'application/json' }),
+  });
+  if (get.ok) return true;
+  if (get.status !== 404) return false;
+
+  const create = await fetch(`${url}/storage/v1/bucket`, {
+    method: 'POST',
+    headers: storageHeaders(key, { 'Content-Type': 'application/json', Accept: 'application/json' }),
+    body: JSON.stringify({
+      id: BUCKET,
+      name: BUCKET,
+      public: true,
+      file_size_limit: JPEG_MAX_BYTES,
+      allowed_mime_types: ['image/jpeg'],
+    }),
+  });
+  return create.ok || create.status === 409;
+}
+
+function safePathPart(value) {
+  return String(value || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
+}
+
+function objectPath(sourceType, sourceId, template, size, svg) {
+  const hash = crypto.createHash('sha256').update(svg).digest('hex').slice(0, 16);
+  return [
+    sourceType,
+    safePathPart(sourceId),
+    `${safePathPart(template)}-${safePathPart(size)}-${hash}.jpg`,
+  ].join('/');
+}
+
+async function uploadJpeg(url, key, objectName, jpegBuffer) {
+  if (!Buffer.isBuffer(jpegBuffer) || jpegBuffer.length > JPEG_MAX_BYTES) {
+    return { ok: false, error: 'JPEG output exceeds the 8 MB storage limit.' };
+  }
+
+  const encodedPath = objectName.split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(`${url}/storage/v1/object/${BUCKET}/${encodedPath}`, {
+    method: 'POST',
+    headers: storageHeaders(key, {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'x-upsert': 'true',
+    }),
+    body: jpegBuffer,
+  });
+  if (!response.ok) {
+    return { ok: false, error: `Supabase Storage upload failed (HTTP ${response.status})` };
+  }
+
+  return {
+    ok: true,
+    publicUrl: `${url}/storage/v1/object/public/${BUCKET}/${encodedPath}`,
+  };
+}
+
 module.exports = async function socialGraphicsV4(req,res){
   if(!ownerKeyMatches(req) && !req.adminUser) return send(res,401,{error:'Admin authentication required.'});
   if(req.method!=='GET' && req.method!=='POST') return send(res,405,{error:'Method not allowed'});
