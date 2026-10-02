@@ -195,10 +195,59 @@ test('public government detail links show notification and only an approved offi
   assert.match(res.body, /2027-01-10/);
   assert.match(res.body, /Age limits by category/);
   assert.match(res.body, /18-30 years/);
+  assert.match(res.body, /Age range self-check only/);
+  assert.match(res.body, /data-min="18" data-max="30"/);
+  assert.match(res.body, /Your entry stays in this browser and is not saved or sent to CivilCareer/);
   assert.match(res.body, /₹100/);
   assert.match(res.body, /Photo ID/);
   assert.match(res.body, /Previously recorded deadline/);
   assert.match(res.body, /KPSC-2026-01/);
+});
+
+test('government listing provides a safe, local comparison for up to three recruitments', async () => {
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => '0-2/2' },
+    json: async () => [
+      notification,
+      { ...notification, id: 'govt-2', slug: 'assistant-engineer-civil', title: 'Assistant Engineer Civil', scope: 'central', state: null, official_notice_url: 'https://upsc.gov.in/notice/2' },
+    ],
+  });
+  const res = response();
+  await handler({ method: 'GET', url: '/api/govt-public', headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /Compare selected/);
+  assert.match(res.body, /Compare this recruitment/);
+  assert.match(res.body, /choose up to 3/);
+  assert.match(res.body, /Government level/);
+  assert.match(res.body, /replaceChildren/);
+  assert.match(res.body, /textContent/);
+  assert.match(res.body, /data-compare=/);
+});
+
+test('government age self-check declines unsupported age formats', async () => {
+  global.fetch = async (url) => {
+    if (String(url).includes('govt_job_posts?')) return { ok: true, status: 200, json: async () => [] };
+    return { ok: true, status: 200, json: async () => [{ ...notification, age_limit_by_category: { General: 'Maximum 30 years' }, age_as_on: '2026-08-01' }] };
+  };
+  const res = response();
+  await handler({ method: 'GET', url: '/api/govt-public?job=je-civil-recruitment', headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /no automatic age assessment is available/);
+  assert.doesNotMatch(res.body, /id="govt-age-check"/);
+});
+
+test('government age self-check requires a recorded reference date', async () => {
+  global.fetch = async (url) => {
+    if (String(url).includes('govt_job_posts?')) return { ok: true, status: 200, json: async () => [] };
+    return { ok: true, status: 200, json: async () => [{ ...notification, age_limit_by_category: { General: '18-30 years' }, age_as_on: null }] };
+  };
+  const res = response();
+  await handler({ method: 'GET', url: '/api/govt-public?job=je-civil-recruitment', headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /valid reference date/);
+  assert.doesNotMatch(res.body, /id="govt-age-check"/);
 });
 
 test.after(() => {
