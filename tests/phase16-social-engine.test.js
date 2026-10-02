@@ -689,7 +689,7 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   const workflow = fs.readFileSync(
     path.join(root, '.github', 'workflows', 'social-cron.yml'), 'utf8'
   );
-  assert.match(workflow, /cron: '17,47 \\* \\* \\* \\*'/);
+  assert.match(workflow, /cron: '17,47 \* \* \* \*'/);
   assert.match(workflow, /op=run/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
 });
