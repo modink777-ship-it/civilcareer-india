@@ -748,6 +748,114 @@ async function testSend(id, body) {
   return { status: 200, result: { outcome } };
 }
 
+async function publishInstagramSecondStep(id, suggestion, row) {
+  if (row.status !== 'needs_second_step') {
+    return { status: 400, error: 'Instagram ledger row is not awaiting its second step' };
+  }
+  const createdAt = Date.parse(String(row.created_at || ''));
+  if (Number.isFinite(createdAt) && Date.now() - createdAt >= 24 * 60 * 60 * 1000) {
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'expired', last_error: 'Instagram media container expired after 24 hours' }),
+    });
+    return { status: 410, error: 'Instagram media container expired after 24 hours' };
+  }
+
+  const lastAttempt = Date.parse(String(row.last_attempt_at || ''));
+  if (Number.isFinite(lastAttempt) && Date.now() - lastAttempt < 60 * 1000) {
+    return { status: 429, error: 'Instagram container was checked recently; try again after 60 seconds.' };
+  }
+
+  const lock = await truthLock(suggestion);
+  if (!lock.ok) return { status: 409, error: lock.error };
+  const content = contentLock(suggestion);
+  if (!content.ok) return { status: 409, error: content.error };
+
+  const accountId = String(row.destination_ref || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || '');
+  const ready = await publishers.getInstagramContainerStatus({
+    token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    accountId,
+    containerId: row.external_id,
+    apiVersion: process.env.INSTAGRAM_API_VERSION,
+  });
+
+  const checkedAt = new Date().toISOString();
+  if (!ready.ok) {
+    const state = ready.ambiguous ? 'uncertain' : (ready.status === 'not_configured' ? 'needs_second_step' : 'needs_second_step');
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: state,
+        last_attempt_at: checkedAt,
+        last_error: redactSecrets(ready.error),
+        response_snapshot: ready.response ? JSON.parse(redactSecrets(JSON.stringify(ready.response))) : null,
+      }),
+    }).catch(() => {});
+    return { status: ready.ambiguous ? 409 : 502, error: ready.error || 'Instagram container status could not be checked' };
+  }
+
+  if (ready.status === 'EXPIRED' || ready.status === 'ERROR') {
+    const state = ready.status === 'EXPIRED' ? 'expired' : 'failed';
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: state,
+        last_attempt_at: checkedAt,
+        last_error: `Instagram container status: ${ready.status}`,
+        response_snapshot: ready.response || null,
+      }),
+    });
+    return { status: state === 'expired' ? 410 : 502, error: `Instagram container status: ${ready.status}` };
+  }
+
+  if (ready.status !== 'FINISHED') {
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'needs_second_step',
+        last_attempt_at: checkedAt,
+        last_error: `Instagram container status: ${ready.status}; try again after at least 60 seconds.`,
+        response_snapshot: ready.response || null,
+      }),
+    }).catch(() => {});
+    return { status: 202, result: { status: 'needs_second_step', message: `Instagram container status: ${ready.status}; try again later.` } };
+  }
+
+  const out = await publishers.publishInstagramContainer({
+    token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    accountId,
+    containerId: row.external_id,
+    apiVersion: process.env.INSTAGRAM_API_VERSION,
+  });
+  const patch = {
+    status: out.ok ? 'sent' : (out.ambiguous ? 'uncertain' : out.status === 'expired' ? 'expired' : 'failed'),
+    last_attempt_at: new Date().toISOString(),
+    last_error: out.ok ? null : redactSecrets(out.error),
+    response_snapshot: out.response ? JSON.parse(redactSecrets(JSON.stringify(out.response))) : null,
+  };
+  if (out.ok) {
+    patch.external_id = out.externalId;
+    patch.external_url = out.externalUrl;
+    patch.destination_ref = out.destinationRef || accountId;
+    patch.sent_at = new Date().toISOString();
+  }
+  const saved = await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  if (!saved.ok) return { status: 500, error: 'Instagram publish result could not be stored safely' };
+
+  const after = await loadSuggestion(id);
+  const rolled = rollupStatus(after.social_publishes || []);
+  if (after && rolled !== after.status) {
+    await supa(`social_suggestions?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: rolled }),
+    }).catch(() => {});
+  }
+  return { status: out.ok ? 200 : (out.ambiguous ? 409 : 502), result: { outcome: out, suggestion: after } };
+}
+
 /** Resolve an uncertain or failed ledger row: cancel it, or retry
  *  (reset to pending and re-run the publish flow for that platform). */
 async function resolveLedger(id, body) {
@@ -756,8 +864,8 @@ async function resolveLedger(id, body) {
   if (!PLATFORMS.includes(platform)) {
     return { status: 400, error: `platform must be one of: ${PLATFORMS.join(', ')}` };
   }
-  if (!['retry', 'cancel'].includes(action)) {
-    return { status: 400, error: "action must be 'retry' or 'cancel'" };
+  if (!['retry', 'cancel', 'publish_container'].includes(action)) {
+    return { status: 400, error: "action must be 'retry', 'cancel' or 'publish_container'" };
   }
 
   const suggestion = await loadSuggestion(id);
@@ -770,6 +878,11 @@ async function resolveLedger(id, body) {
   const rows = await r.json();
   const row = Array.isArray(rows) ? rows[0] : null;
   if (!row) return { status: 404, error: 'No ledger row for this platform' };
+
+  if (action === 'publish_container') {
+    if (platform !== 'instagram') return { status: 400, error: 'publish_container is only valid for Instagram' };
+    return publishInstagramSecondStep(id, suggestion, row);
+  }
 
   if (action === 'cancel') {
     const c = await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
