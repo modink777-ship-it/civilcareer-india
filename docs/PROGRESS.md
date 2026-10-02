@@ -449,3 +449,12 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Manual helper verification: P3 radar returned expected 7-day, 3-day, and closing-today/24-hour events for fixed dates.
 - Status word: **TESTED**.
 - Open production blocker: Vercel currently reports build-rate-limit and the connected Vercel scope is unauthorized for `modinsaheb`; no production deployment is claimed from this environment.
+
+## 2 Oct 2026 — Phase 4 graphics
+
+- Branch: `social-engine-3`
+- Added deterministic SVG-to-JPEG export using `sharp` 0.35.5.
+- Added admin-only JPEG generation plus automatic public Supabase Storage bucket creation/upload for `social-graphics`.
+- Added 1080x1080 and 1080x1350 regression coverage, SVG escaping coverage, and 8 MB output guard.
+- CI: **PASS** on commit `242d80f`; syntax and full test suite passed.
+- Status word: **TESTED**.
