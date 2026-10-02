@@ -110,7 +110,7 @@ const ADMIN_RULES = {
      dashboard sessions through the allowlist unless the caller
      already holds the real owner key. */
   '/api/social': req => !hasValidOwnerKey(req),
-  '/api/social-graphics': req => !hasValidOwnerKey(req),
+  '/api/social-graphics': req => false, /* handler authenticates; Phase 3 cron delegate */
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
   '/api/telegram-webhook':   req => {
