@@ -212,9 +212,9 @@
   }
 
   function normalizeWhatsApp(value) {
-    const digits = String(value || '').replace(/D/g, '');
-    const local = digits.replace(/^91(?=d{10}$)/, '');
-    return /^[6-9]d{9}$/.test(local) ? '+91' + local : null;
+    const digits = String(value || '').replace(/\D/g, '');
+    const local = digits.replace(/^91(?=\d{10}$)/, '');
+    return /^[6-9]\d{9}$/.test(local) ? '+91' + local : null;
   }
 
   async function submitAlert(event) {
