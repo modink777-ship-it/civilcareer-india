@@ -5001,6 +5001,7 @@ async function saveBlogPost(publish) {
         tags: $('blogTags').value,
         excerpt: $('blogExcerpt').value,
         content: $('blogContent').value,
+        previous_slug: ccBlogEditingSlug || undefined,
         is_published: Boolean(publish),
       }),
     });

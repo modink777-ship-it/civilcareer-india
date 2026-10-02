@@ -2237,3 +2237,101 @@ html[data-theme="dark"] [style*="background: white"] {
     font-size: 11px !important;
   }
 }
+
+/* Keep the animated SVG decorative instead of letting it push the hero down. */
+.hero > .cc-aceternity-paths,
+.page-hero > .cc-aceternity-paths,
+.careerhub-hero > .cc-aceternity-paths {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.cc-aceternity-paths .cc-career-path {
+  stroke: rgba(127, 197, 240, .36);
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Readable dark-theme surfaces that are otherwise hard-coded by page styles. */
+html[data-theme="dark"] .tools-row {
+  background: #101923 !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .tools-row-inner a,
+html[data-theme="dark"] .tools-label {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .tools-label {
+  color: var(--muted) !important;
+}
+
+html[data-theme="dark"] .lang-option {
+  background: #182330 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .lang-option.active {
+  background: #315d91 !important;
+  color: #fff !important;
+  border-color: #547aa7 !important;
+}
+
+html[data-theme="dark"] .stat-label {
+  color: #b8c6d6 !important;
+}
+
+html[data-theme="dark"] .trust-row {
+  background: #121d29 !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .trust-row-inner {
+  color: #c4cfdb !important;
+}
+
+html[data-theme="dark"] .trust-row b {
+  color: #8fc4ff !important;
+}
+
+html[data-theme="dark"] .section.soft,
+html[data-theme="dark"] .how-section,
+html[data-theme="dark"] .portal-highlights {
+  background: #111b26 !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .highlight-item {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .highlight-item b {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .highlight-item small {
+  color: var(--muted) !important;
+}
+
+@media (max-width: 820px) {
+  .tools-row {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .wa-float-btn {
+    right: 16px !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+}

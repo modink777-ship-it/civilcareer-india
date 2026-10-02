@@ -540,3 +540,18 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Supabase owner action (no database access is available from this workspace): in the Supabase SQL Editor, run `supabase-v25-portfolio-reviews.sql`, then `supabase-v26-blog-interview.sql`. These scripts create only the missing feature tables/columns, preserve existing rows, enable RLS, revoke browser-role table privileges, and leave access to the server-side `service_role` API. Do not run an older variant of these files.
 - After applying each script, verify `rowsecurity = true` for `engineer_profiles`, `profile_projects`, `company_reviews`, `blog_posts`, and `interview_questions`; verify `anon` and `authenticated` have no table privileges and `service_role` retains API access. Retry Reviews and Interview tabs afterward.
 - Vercel deployment remains blocked by the reported free daily deployment limit. No preview or production fix is claimed until Vercel accepts a deployment and live API/browser checks pass.
+
+## 3 Oct 2026 — Main-branch UI and API reliability follow-up
+
+- Working directly on `main` at `9162844`; no branch switch or production promotion performed.
+- Homepage: the animated SVG is now an absolutely positioned decorative layer instead of occupying normal layout flow; mobile hero content stays in the first viewport.
+- Dark theme: improved contrast for the career-tools row, language controls, stats, trust strip, and highlighted/how-it-works sections.
+- Jobs: the production site was observed returning a populated private-jobs list (751 active opportunities) and rendering job cards. This was a live observation before these changes, not a deployment verification.
+- Reviews: public list/detail and review-submit calls now use the catch-all's explicit supported aliases; list fetch surfaces non-2xx API errors.
+- Interview and Blog: both API handlers use authenticated server-side PostgREST requests against the v26 schema; added actionable missing-table errors and retained the existing public/admin response contracts.
+- Blog detail views still increment the view count; admin edits can change a slug without creating a duplicate post.
+- SQL: quoted `"current_role"` in the v25 review schema to avoid the reported Postgres parse error.
+- Regenerated `_api/admin-page-html.js` from `admin.html`; the main-branch baseline had a stale admin bundle that caused the full-suite bundle-sync test to fail.
+- Regression tests cover hero/dark contrast, company review routes, blog response mapping, interview PostgREST reads and the quoted SQL identifier.
+- Validation: `npm test` 175/175 passed; `npm run check:syntax` reported 0 errors (existing local `SITE_URL` warning); `git diff --check` passed. Local browser smoke check at 390px in dark mode showed the hero at y=65px, heading at y=176px, positioned SVG as absolute, readable stat labels, and hidden tools row; desktop hero also remained within the first viewport.
+- Not yet committed or pushed. Vercel's free daily deployment limit was previously reported; no preview/production deployment or post-change live check is claimed. Confirm deployment behavior before pushing `main`, since the production branch may deploy automatically.

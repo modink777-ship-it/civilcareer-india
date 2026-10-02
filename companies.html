@@ -121,7 +121,7 @@ function renderList(){
 
   var grid = document.getElementById('cmGrid');
   var stats = {};
-  fetch('/api/companies').then(function(r){return r.json();}).then(function(d){
+  fetch('/api/companies-review').then(function(r){if(!r.ok)throw new Error('Reviews API returned '+r.status);return r.json();}).then(function(d){
     (d.companies||[]).forEach(function(c){ stats[c.company_slug] = c; });
     draw('');
   }).catch(function(){ draw(''); });
@@ -202,7 +202,7 @@ function renderDetail(slug){
       '<span><b>'+s.review_count+'</b> approved review'+(s.review_count===1?'':'s')+'</span>';
   }
 
-  fetch('/api/companies?slug='+encodeURIComponent(slug))
+  fetch('/api/companies-review?slug='+encodeURIComponent(slug))
     .then(function(r){return r.json();})
     .then(function(d){
       drawStats(d.stats || {review_count:0});
@@ -238,7 +238,7 @@ function renderDetail(slug){
     body.would_recommend = fd.get('would_recommend') === 'yes' ? true : fd.get('would_recommend') === 'no' ? false : null;
     if (fd.get('website')) return; /* honeypot */
     var btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
-    fetch('/api/companies?action=review', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    fetch('/api/companies/review', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
       .then(function(res){
         if (!res.ok) throw new Error(res.d.error || 'Submission failed.');
