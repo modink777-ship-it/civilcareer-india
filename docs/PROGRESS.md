@@ -476,3 +476,40 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Protected admin bundle regenerated after UI changes.
 - CI: **PASS** on commit `32beeb2673ecab7650e8074f297656d47ab3b575`; 146/146 tests passing, syntax checks passing.
 - Status word: **TESTED**. Radar remains preview-only as required for this phase.
+
+## 2 Oct 2026 — Phase 8: Government pipeline hardening
+- Branch: govt-pipeline
+- Canonical government discovery now uses the shared civil classifier; hard negatives are excluded from staging and discipline_unknown remains needs_info.
+- Added cron-protected government expiry sweep.
+- CI: PASS on verified head 7ef108380ef25bf4cb5c4164da9ba33f94d10306.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 9: Government public pages
+- Branch: govt-public-pages
+- Added SSR government landing/detail handler and URL-family rewrites.
+- CI: PASS on verified head 0ff3440b60c94cef3f68668dbf5b9869ba796d18.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 10: SEO/performance
+- Branch: seo-performance
+- Added active government JobPosting JSON-LD and active government detail URLs to sitemap, plus standalone legal sitemap entries.
+- CI: PASS on verified head fb0ab1810a1457bd3159803fd3eedbbaa00623b5.
+- Status word: TESTED. No Lighthouse score claimed.
+
+## 2 Oct 2026 — Phase 11: Trust/legal
+- Branch: trust-legal
+- Added standalone Disclaimer, explicit legal links, India-only wording, and data-use notices on collecting forms.
+- CI: PASS on verified head 94464291e6bb6a37759db797d70a85b6aea4998e.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 12: Operations
+- Branch: operations
+- Added private Supabase key-table backup workflow, hourly site health checks, and operations runbook.
+- CI: PASS on verified head fef916adda938da6caf391033e8f9495cfd1bfcd.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 13: Docs/final
+- Branch: docs-final
+- Updated README, Social Engine README/runbook, government runbook, environment notes, and added FINAL-REPORT.md.
+- Production promotion remains blocked by current Vercel connector authorization for scope modinsaheb.
+- Status word: IN PROGRESS until final docs CI and production promotion are verified.
