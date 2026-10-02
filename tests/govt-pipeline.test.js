@@ -61,5 +61,5 @@ assert.ok(sql.includes('enable row level security'), 'government migration must 
 
 const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 assert.ok(!vercel.crons.some(x => x.path === '/api/govt-discovery'), 'government pipeline must not rely on a sub-daily Vercel Hobby cron');
-const workflow = fs.readFileSync(path.join(root, '.github/workflows/govt-pipeline.yml'), 'utf8');
-assert.ok(workflow.includes('scripts/crawl-govt-pipeline.js'), 'GitHub Actions must run the dedicated government crawler');
+const workflow = fs.readFileSync(path.join(root, '.github/workflows/govt-agent-reach.yml'), 'utf8');
+assert.ok(workflow.includes('/api/govt-discovery'), 'GitHub Actions must trigger the canonical Agent Reach government discovery endpoint');

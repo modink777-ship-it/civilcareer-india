@@ -37,6 +37,7 @@ const handlers = {
   '/api/govt-discovery':    () => require('../_api/govt-discovery'),
   '/api/govt-review':       () => require('../_api/govt-review'),
   '/api/govt-jobs':         () => require('../_api/govt-jobs'),
+  '/api/govt-public':       () => require('../_api/govt-public'),
   '/api/youtube-materials': () => require('../_api/youtube-materials'),
   '/api/exam-tracker':         () => require('../_api/exam-tracker'),
   '/api/exam-alert-subscribe': () => require('../_api/exam-alert-subscribe'),
@@ -57,6 +58,8 @@ const handlers = {
   /* Social Content Engine (v27): suggestions, ledger,
      connections and settings. Admin-only on every method. */
   '/api/social':               () => require('../_api/social'),
+  '/api/social-graphics':       () => require('../_api/social-graphics'),
+  '/api/social-graphics-v4':    () => require('../_api/social-graphics-v4'),
 };
 
 
@@ -64,6 +67,7 @@ const handlers = {
 const CRON_ROUTES = new Set([
   '/api/exam-alerts',
   '/api/govt-discovery',
+  '/api/govt-expiry',
 ]);
 
 const ADMIN_RULES = {
@@ -74,6 +78,7 @@ const ADMIN_RULES = {
   '/api/employers': req => req.method !== 'GET',
   '/api/exam-alerts': req => !isValidCronRequest(req),
   '/api/govt-discovery': req => !isValidCronRequest(req),
+  '/api/govt-expiry': req => !isValidCronRequest(req),
   '/api/govt-review': req => true,
   '/api/exams': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
   '/api/extract': () => true,
@@ -109,6 +114,7 @@ const ADMIN_RULES = {
      dashboard sessions through the allowlist unless the caller
      already holds the real owner key. */
   '/api/social': req => !hasValidOwnerKey(req),
+  '/api/social-graphics': req => false, /* handler authenticates; Phase 3 cron delegate */
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
   '/api/telegram-webhook':   req => {
@@ -126,19 +132,12 @@ function isValidCronRequest(req) {
   return auth === `Bearer ${secret}`;
 }
 
-/* Scheduled Social engine drain: the SOCIAL_CRON_SECRET
-   (with a CRON_SECRET fallback) authorizes ONLY op=drain
-   on /api/social — never the queue list, settings, ledger,
-   connections or any other route. The op is read from the
-   query string (Vercel Cron sends GETs) or the JSON body.
-   Deliberately separate from CRON_ROUTES: scheduler access
-   to the drain can never imply exam-alert or
-   discovery-crawler access. */
+/* Scheduled Social engine drain: only SOCIAL_CRON_SECRET authorizes
+   op=drain on /api/social. It never unlocks the queue, settings, ledger,
+   connections or unrelated cron routes. The owner key remains the manual
+   Admin Run Now credential inside the handler. */
 function isSocialDrainRequest(req) {
-  const secret = String(
-    process.env.SOCIAL_CRON_SECRET ||
-    process.env.CRON_SECRET || ''
-  ).trim();
+  const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
   if (!secret) return false;
   const auth = String(req.headers.authorization || '');
   if (auth !== `Bearer ${secret}` &&
@@ -146,12 +145,9 @@ function isSocialDrainRequest(req) {
   let op = '';
   try {
     op = String(new URL(req.url, 'http://localhost').searchParams.get('op') || '');
-  } catch (_) { /* keep empty */ }
-  if (op !== 'drain') {
-    try {
-      if (req.body && typeof req.body === 'object' &&
-          String(req.body.op || '') === 'drain') op = 'drain';
-    } catch (_) { /* body not parsed */ }
+  } catch (_) {}
+  if (op !== 'drain' && req.body && typeof req.body === 'object') {
+    op = String(req.body.op || '');
   }
   return op === 'drain';
 }

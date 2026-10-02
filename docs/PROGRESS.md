@@ -409,3 +409,107 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
   `SOCIAL_CRON_SECRET` in Vercel; until then it is reserved and unconsumed.
   Keep `LEGACY_TELEGRAM_AUTOPOST=true` until Phase 3 wires job publishes
   into the engine.
+
+
+## 2 Oct 2026 — Phase 3: Social Content Engine Phase 2 (branch `social-engine`) — PARTIAL
+
+- Deadline Radar service added for `job` and `govt_job` verified sources.
+- Radar events implemented: newly announced, applications open, 7 days, 3 days,
+  24 hours, closing today, and closed.
+- Non-fixed government deadlines are skipped; no relative date is invented.
+- Update detection compares protected fields and uses `previous_apply_end`
+  when a government deadline is extended.
+- `SOCIAL_CRON_SECRET` uses constant-time comparison in `_api/social-cron.js`.
+- GitHub Actions scheduler added at `17,47 * * * *` and the duplicate legacy
+  scheduler is left manual-only.
+- Admin Run Now now triggers Radar generation and the approved queue drain.
+- Private-job legacy Telegram autopost default switched OFF; published private jobs
+  are queued through the Social Engine path.
+- Deterministic SVG graphics core was added as the P4 foundation.
+
+### Verification
+- Gitleaks: TESTED — PASS.
+- Vercel Preview: CONFIGURED/TESTED by Vercel integration — deployment reported Ready.
+- Social Engine CI: current full suite is still failing on the legacy radar test module,
+  an admin-bundle byte-sync check, and one stale scheduler assertion. These are recorded
+  in `docs/BLOCKERS.md`; no success is claimed for the full P3 suite.
+- Status: P3 PARTIAL.
+
+### Open blockers
+- Repository write safety currently prevents replacing the legacy `lib/social-radar.js`
+  and regenerating `_api/admin-page-html.js` directly through the integration.
+- The next autonomous pass should resolve those test/bundle blockers before declaring
+  P3 TESTED.
+
+## 2 Oct 2026 — Phase 3 verification closure (branch `social-engine`)
+
+- Resolved the prior P3 blockers: legacy radar regex parsing, protected admin bundle drift, the static Exam Tracker test mismatch, and the new CI lockfile assumption.
+- Added continuous `.github/workflows/ci.yml` covering syntax and the full `npm test` suite.
+- Current verification: CI **PASS**, 135/135 tests passing; Social Engine Phase 1 Tests **PASS**; Gitleaks **PASS**.
+- Manual helper verification: P3 radar returned expected 7-day, 3-day, and closing-today/24-hour events for fixed dates.
+- Status word: **TESTED**.
+- Open production blocker: Vercel currently reports build-rate-limit and the connected Vercel scope is unauthorized for `modinsaheb`; no production deployment is claimed from this environment.
+
+## 2 Oct 2026 — Phase 4 graphics
+
+- Branch: `social-engine-3`
+- Added deterministic SVG-to-JPEG export using `sharp` 0.35.5.
+- Added admin-only JPEG generation plus automatic public Supabase Storage bucket creation/upload for `social-graphics`.
+- Added 1080x1080 and 1080x1350 regression coverage, SVG escaping coverage, and 8 MB output guard.
+- CI: **PASS** on commit `242d80f`; syntax and full test suite passed.
+- Status word: **TESTED**.
+
+## 2 Oct 2026 — Phase 6 Instagram Login
+
+- Branch: `social-engine-5`
+- Replaced legacy Facebook-Graph Instagram publishing with the Instagram Login route using `graph.instagram.com`.
+- Enforced public JPEG media URLs and split container creation from final `media_publish`.
+- Added ledger-backed `needs_second_step`, 60-second poll guard, 24-hour expiry, Truth Lock/content-lock recheck, and an Admin second-step action.
+- CI: **PASS** on commit `c0fee84a46760f0a7f5c3239b0904d27e2988007`; syntax + full test suite green.
+- Status word: **TESTED**. No real Instagram post was performed; production credentials/controlled test publication remain owner-side configuration.
+
+## 2 Oct 2026 — Phase 7 Daily Radar preview
+
+- Branch: `social-engine-6`
+- Added an admin-only Daily CivilCareer Radar preview endpoint and Admin panel.
+- Preview computes due events from verified job/government rows and rendered platform variants without inserting suggestions or sending posts.
+- Protected admin bundle regenerated after UI changes.
+- CI: **PASS** on commit `32beeb2673ecab7650e8074f297656d47ab3b575`; 146/146 tests passing, syntax checks passing.
+- Status word: **TESTED**. Radar remains preview-only as required for this phase.
+
+## 2 Oct 2026 — Phase 8: Government pipeline hardening
+- Branch: govt-pipeline
+- Canonical government discovery now uses the shared civil classifier; hard negatives are excluded from staging and discipline_unknown remains needs_info.
+- Added cron-protected government expiry sweep.
+- CI: PASS on verified head 7ef108380ef25bf4cb5c4164da9ba33f94d10306.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 9: Government public pages
+- Branch: govt-public-pages
+- Added SSR government landing/detail handler and URL-family rewrites.
+- CI: PASS on verified head 0ff3440b60c94cef3f68668dbf5b9869ba796d18.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 10: SEO/performance
+- Branch: seo-performance
+- Added active government JobPosting JSON-LD and active government detail URLs to sitemap, plus standalone legal sitemap entries.
+- CI: PASS on verified head fb0ab1810a1457bd3159803fd3eedbbaa00623b5.
+- Status word: TESTED. No Lighthouse score claimed.
+
+## 2 Oct 2026 — Phase 11: Trust/legal
+- Branch: trust-legal
+- Added standalone Disclaimer, explicit legal links, India-only wording, and data-use notices on collecting forms.
+- CI: PASS on verified head 94464291e6bb6a37759db797d70a85b6aea4998e.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 12: Operations
+- Branch: operations
+- Added private Supabase key-table backup workflow, hourly site health checks, and operations runbook.
+- CI: PASS on verified head fef916adda938da6caf391033e8f9495cfd1bfcd.
+- Status word: TESTED.
+
+## 2 Oct 2026 — Phase 13: Docs/final
+- Branch: docs-final
+- Updated README, Social Engine README/runbook, government runbook, environment notes, and added FINAL-REPORT.md.
+- Production promotion remains blocked by current Vercel connector authorization for scope modinsaheb.
+- Status word: TESTED. Final docs/release CI is green on commit b6b2249ebce4e07aff1b5f38b8abf41438b7dc3b; Vercel production promotion remains connector-scope blocked.

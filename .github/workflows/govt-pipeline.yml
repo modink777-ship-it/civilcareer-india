@@ -1,0 +1,26 @@
+name: Government Pipeline Compatibility Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate crawler
+        run: |
+          node --check scripts/crawl-govt-pipeline.js
+          node --check _api/govt-discovery.js
+      - name: Verify canonical Agent Reach workflow
+        run: |
+          grep -q "api/govt-discovery" .github/workflows/govt-agent-reach.yml
+          grep -q "0 */6 * * *" .github/workflows/govt-agent-reach.yml
+      - name: Run government pipeline tests
+        run: npm install --no-audit --no-fund && node --test tests/govt-pipeline.test.js tests/govt-crawler-hardening.test.js

@@ -6,6 +6,46 @@
   },
   "rewrites": [
     {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/disclaimer.html"
+    },
+    {
+      "source": "/role/:role",
+      "destination": "/api/govt-public?role=:role"
+    },
+    {
+      "source": "/department/:dept",
+      "destination": "/api/govt-public?department=:dept"
+    },
+    {
+      "source": "/state/:state",
+      "destination": "/api/govt-public?state=:state"
+    },
+    {
+      "source": "/government-jobs/:slug",
+      "destination": "/api/govt-public?job=:slug"
+    },
+    {
+      "source": "/government-jobs/central",
+      "destination": "/api/govt-public?scope=central"
+    },
+    {
+      "source": "/api/social-graphics",
+      "destination": "/api/social-graphics-v4"
+    },
+    {
+      "source": "/api/social-cron",
+      "destination": "/api/social-graphics?delegate=social-cron"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api"
     },
@@ -217,6 +257,10 @@
     {
       "path": "/api/exam-alerts",
       "schedule": "30 0 * * 1"
+    },
+    {
+      "path": "/api/govt-expiry",
+      "schedule": "20 0 * * *"
     }
   ],
   "redirects": [

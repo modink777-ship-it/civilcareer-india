@@ -17,6 +17,7 @@ const https = require("https");
 const http = require("http");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { classifyPost } = require("../lib/civil-classifier");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -458,58 +459,19 @@ const CIVIL_NEGATIVE = [
 ];
 
 function classifyCivil(title, excerpt) {
-  const text = `${title} ${excerpt}`;
-
-  const negative = CIVIL_NEGATIVE.filter((re) => re.test(text));
-  if (negative.length) {
-    return {
-      civil_status: "not_civil",
-      tier: "C",
-      relevance_score: 0,
-      confidence: 0.98,
-      match_reasons: {
-        positive: [],
-        negative: negative.map(String),
-      },
-    };
-  }
-
-  const positive = CIVIL_POSITIVE.filter((re) => re.test(text));
-
-  if (positive.length >= 2) {
-    return {
-      civil_status: "civil",
-      tier: "A",
-      relevance_score: Math.min(100, 70 + positive.length * 8),
-      confidence: 0.9,
-      match_reasons: {
-        positive: positive.map(String),
-        negative: [],
-      },
-    };
-  }
-
-  if (positive.length === 1) {
-    return {
-      civil_status: "discipline_unknown",
-      tier: "B",
-      relevance_score: 55,
-      confidence: 0.65,
-      match_reasons: {
-        positive: positive.map(String),
-        negative: [],
-      },
-    };
-  }
-
+  const verdict = classifyPost({
+    title,
+    description: excerpt,
+    organization: ''
+  });
   return {
-    civil_status: "discipline_unknown",
-    tier: "U",
-    relevance_score: 20,
-    confidence: 0.3,
+    civil_status: verdict.outcome,
+    tier: verdict.tier,
+    relevance_score: verdict.score,
+    confidence: verdict.outcome === 'civil' ? 0.9 : verdict.outcome === 'discipline_unknown' ? 0.45 : 0.98,
     match_reasons: {
-      positive: [],
-      negative: [],
+      positive: verdict.reasons || [],
+      negative: verdict.outcome === 'not_civil' ? ['shared-civil-classifier'] : [],
     },
   };
 }
@@ -566,12 +528,15 @@ async function upsertLead(source, candidate) {
 async function stageCandidate(source, leadId, candidate, classification) {
   const key = dedupeKey(candidate, classification);
 
+  if (classification.civil_status === "not_civil") {
+    return { ok: true, skipped: "not_civil" };
+  }
+
   const payload = {
     lead_id: leadId,
-    status:
-      classification.civil_status === "not_civil"
-        ? "needs_info"
-        : "pending",
+    status: classification.civil_status === "discipline_unknown"
+      ? "needs_info"
+      : "pending",
     relevance_tier: classification.tier,
     relevance_score: classification.relevance_score,
     confidence: classification.confidence,
@@ -666,7 +631,11 @@ async function processSource(source) {
     );
 
     if (staged.ok) {
-      result.staged += 1;
+      if (staged.skipped === 'not_civil') {
+        result.skipped = (result.skipped || 0) + 1;
+      } else {
+        result.staged += 1;
+      }
     } else {
       result.errors.push(`stage:${staged.error}`);
     }

@@ -44,9 +44,9 @@ for (const [route, file] of Object.entries(expected)) {
 // Stale public file is removed.
 assert.ok(!fs.existsSync(path.join(root, 'next-phase.js')), 'stale next-phase.js must be removed');
 assert.ok(fs.existsSync(path.join(root, 'scripts', 'scrape-govt-jobs.js')), 'scheduled govt discovery trigger must exist');
-const workflow = read('.github/workflows/govt-pipeline.yml');
-assert.ok(workflow.includes('scripts/crawl-govt-pipeline.js'), 'GitHub Actions must schedule the dedicated government pipeline');
-assert.ok(workflow.includes('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}'), 'government pipeline must use server-side Supabase secret');
+const workflow = read('.github/workflows/govt-agent-reach.yml');
+assert.ok(workflow.includes('/api/govt-discovery'), 'Government Agent Reach workflow must trigger the canonical discovery endpoint');
+assert.ok(workflow.includes('OWNER_KEY: ${{ secrets.OWNER_KEY }}'), 'Government Agent Reach workflow must use the server-side owner credential');
 
 
 const govtHandler = require(path.join(root, '_api', 'govt-jobs.js'));

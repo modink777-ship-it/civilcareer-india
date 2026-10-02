@@ -1,0 +1,29 @@
+name: CivilCareer Social Engine
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+
+concurrency:
+  group: social-engine-cron
+  cancel-in-progress: false
+
+jobs:
+  social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run Social Engine
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          SOCIAL_CRON_SECRET: ${{ secrets.SOCIAL_CRON_SECRET }}
+        run: |
+          set -e
+          test -n "$SITE_URL" || { echo "SITE_URL secret is missing"; exit 1; }
+          test -n "$SOCIAL_CRON_SECRET" || { echo "SOCIAL_CRON_SECRET secret is missing"; exit 1; }
+          curl -fsS --max-time 60 \
+            -X POST "$SITE_URL/api/social-cron?op=run" \
+            -H "Authorization: Bearer $SOCIAL_CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --data '{"limit":100,"drain_limit":5}'

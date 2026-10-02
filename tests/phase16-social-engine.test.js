@@ -289,7 +289,7 @@ test('F2 govt job template: renders for active listings only', () => {
     id: '9', title: 'Junior Engineer (Civil)', organization: 'PWD Maharashtra',
     scope: 'state', state: 'Maharashtra', status: 'active',
     civil_posts_count: 120, total_posts_in_notification: 300,
-    deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026',
+    deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026', reviewed_at: '2026-09-01T00:00:00Z',
     official_notice_url: 'https://maharashtra.gov.in',
   };
   const out = templates.buildSuggestion('govt_job', '9', gj, { siteUrl: 'https://cc.test' });
@@ -316,21 +316,49 @@ test('F2 telegram text is plain text (no Markdown tokens that need a parse mode)
 test('F3 platformConfigured: each platform reports its own env readiness', () => {
   const env = {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'c',
-    LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org',
+    LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org', LINKEDIN_AUTHOR_URN: 'urn:li:person:test', LINKEDIN_API_VERSION: '202508',
     INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178',
   };
   assert.equal(publishers.platformConfigured('telegram', env), true);
-  assert.equal(publishers.platformConfigured('linkedin', env), true);
-  assert.equal(publishers.platformConfigured('instagram', env), true);
+  assert.equal(publishers.platformConfigured('linkedin', env), true, 'LinkedIn member publisher requires member credentials');
+  assert.equal(publishers.platformConfigured('instagram', env), false, 'Instagram is Phase 5, not enabled in Phase 1');
   assert.equal(publishers.platformConfigured('telegram', {}), false);
-  /* LinkedIn needs the token AND the organization it posts as */
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li' }), false);
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ORGANIZATION_ID: 'org' }), false);
-  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig' }), false);
+  /* Later platforms remain disabled until their approved phases. */
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x', LINKEDIN_API_VERSION: '202609' }), true);
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org', LINKEDIN_API_VERSION: '202609' }), false);
+  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178', INSTAGRAM_API_VERSION: 'v26.0' }), true);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
-    TELEGRAM_BOT_TOKEN: 't', TELEGRAM_TEST_CHANNEL_ID: 'test',
+    TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'prod',
   }), true);
+});
+
+test('P5 LinkedIn member publisher: posts through the Posts API', async () => {
+  const restore = stubFetch(async (url, init) => {
+    assert.equal(url, 'https://api.linkedin.com/rest/posts');
+    const payload = JSON.parse(init.body);
+    assert.equal(payload.author, 'urn:li:person:123');
+    assert.equal(payload.lifecycleState, 'PUBLISHED');
+    assert.equal(payload.visibility, 'PUBLIC');
+    assert.equal(payload.commentary, 'Hello member');
+    assert.equal(init.headers['Linkedin-Version'], '202508');
+    return {
+      status: 201,
+      headers: { get: (k) => (String(k).toLowerCase() === 'x-restli-id' ? 'urn:li:share:123' : null) },
+      text: async () => '',
+    };
+  });
+  try {
+    const out = await publishers.sendLinkedIn({
+      token: 'li-token',
+      authorUrn: 'urn:li:person:123',
+      apiVersion: '202508',
+      text: 'Hello member',
+    });
+    assert.equal(out.ok, true);
+    assert.equal(out.externalId, 'urn:li:share:123');
+    assert.match(out.externalUrl || '', /linkedin\.com\/feed\/update/);
+  } finally { restore(); }
 });
 
 test('F3 LinkedIn: validates config before any network call', async () => {
@@ -436,8 +464,11 @@ test('F3 Instagram: container → publish → permalink', async () => {
     if (method === 'POST' && url.endsWith('/media')) {
       const params = new URLSearchParams(init.body);
       assert.equal(params.get('caption'), 'Hello Instagram');
-      assert.equal(params.get('image_url'), 'https://cc.test/og.png');
+      assert.equal(params.get('image_url'), 'https://cc.test/og.jpg');
       return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-1' }) };
+    }
+    if (method === 'GET' && url.includes('fields=status_code,status')) {
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ status_code: 'FINISHED', status: 'Finished' }) };
     }
     if (method === 'POST' && url.endsWith('/media_publish')) {
       const params = new URLSearchParams(init.body);
@@ -451,8 +482,8 @@ test('F3 Instagram: container → publish → permalink', async () => {
   });
   try {
     const out = await publishers.sendInstagram({
-      token: 'ig-token', accountId: '17841', apiVersion: 'v21.0',
-      caption: 'Hello Instagram', mediaUrl: 'https://cc.test/og.png',
+      token: 'ig-token', accountId: '17841', apiVersion: 'v26.0',
+      caption: 'Hello Instagram', mediaUrl: 'https://cc.test/og.jpg',
     });
     assert.equal(out.ok, true);
     assert.equal(out.externalId, '17895695668004550');
@@ -471,38 +502,29 @@ test('F3 Instagram: a container failure is honest, not a silent skip', async () 
     const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://x/y.png' });
     assert.equal(out.ok, false);
     assert.equal(out.retryable, false);
-    assert.match(out.error, /Invalid image URL/);
+    assert.match(out.error, /public JPEG media_url/);
   } finally { restore(); }
 });
 
-test('F3 Instagram: a video media_url posts as video_url', async () => {
-  const restore = stubFetch(async (url, init) => {
-    if (String(url).endsWith('/media')) {
-      const params = new URLSearchParams(init.body);
-      assert.equal(params.get('video_url'), 'https://cc.test/reel.mp4');
-      assert.equal(params.has('image_url'), false);
-      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-2' }) };
-    }
-    if (String(url).endsWith('/media_publish')) {
-      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'm2' }) };
-    }
-    return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({}) };
-  });
+test('P6 Instagram: non-JPEG media is rejected before any network call', async () => {
+  let calls = 0;
+  const restore = stubFetch(async () => { calls++; throw new Error('network must not be touched'); });
   try {
     const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://cc.test/reel.mp4' });
-    assert.equal(out.ok, true);
-    assert.equal(out.externalId, 'm2');
+    assert.equal(out.ok, false);
+    assert.match(out.error, /public JPEG media_url/);
+    assert.equal(calls, 0);
   } finally { restore(); }
 });
 
-test('F3 telegramTestChannel prefers the private test channel', () => {
+test('F3 Telegram test destination is optional and never falls back to production', () => {
   assert.equal(
     publishers.telegramTestChannel({ TELEGRAM_TEST_CHANNEL_ID: 'test-1', TELEGRAM_CHANNEL_ID: 'prod' }),
     'test-1'
   );
   assert.equal(
     publishers.telegramTestChannel({ TELEGRAM_CHANNEL_ID: 'prod' }),
-    'prod'
+    null
   );
   assert.equal(publishers.telegramTestChannel({}), null);
 });
@@ -677,7 +699,10 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   assert.match(dispatch, /req\.isSocialCron = true/);
   /* the CRON_SECRET routes stay exam-alerts + govt-discovery only:
      scheduler access to the drain must never imply crawler access */
-  assert.match(dispatch, /const CRON_ROUTES = new Set\(\[\s*'\/api\/exam-alerts',\s*'\/api\/govt-discovery',\s*\]\)/);
+  assert.match(dispatch, /const CRON_ROUTES = new Set\(\[/);
+  assert.ok(dispatch.includes("'/api/exam-alerts'"));
+  assert.ok(dispatch.includes("'/api/govt-discovery'"));
+  assert.ok(dispatch.includes("'/api/govt-expiry'"));
   /* Vercel Hobby crons run at most once per day — a 15-minute
      drain FAILS the whole deployment, so the scheduler lives in
      GitHub Actions instead (docs/00-gap-report.md F10). */
@@ -687,10 +712,10 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
     'the drain must not be a Vercel cron — Hobby plans allow at most daily crons'
   );
   const workflow = fs.readFileSync(
-    path.join(root, '.github', 'workflows', 'social-drain.yml'), 'utf8'
+    path.join(root, '.github', 'workflows', 'social-cron.yml'), 'utf8'
   );
-  assert.match(workflow, /'\*\/15 \* \* \* \*'/);
-  assert.match(workflow, /op=drain/);
+  assert.match(workflow, /cron: '17,47 \* \* \* \*'/);
+  assert.match(workflow, /op=run/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
 });
 
@@ -737,7 +762,8 @@ test('F5 admin.html: Social tab exists and wires every queue action', () => {
   assert.match(src, /id="panel-social"/);
   assert.match(src, /loadSocial\(\)/);
   for (const fn of [
-    'socialApprove', 'socialReject', 'socialPublish', 'socialTest',
+    'socialApprove', 'socialReject', 'socialPublish', 'socialPublishEverywhere',
+    'socialPreview', 'socialEdit', 'socialCopyWhatsApp',
     'socialArchive', 'socialResolve', 'socialRegenerate',
     'socialAddConnection', 'socialConnAction', 'socialSetFilter',
   ]) {
@@ -745,6 +771,9 @@ test('F5 admin.html: Social tab exists and wires every queue action', () => {
   }
   assert.match(src, /api\/social\?op=settings/);
   assert.match(src, /api\/social\?op=connections/);
+  assert.ok(!src.includes('function socialTest('), 'the current public Telegram flow does not need a separate test-channel button');
+  assert.match(src, /Publish Everywhere/);
+  assert.match(src, /Copy WhatsApp/);
 });
 
 /* ═══ F6 — exam-tracker re-route ═════════════════ */
@@ -771,6 +800,7 @@ const GOVT_JOB_ROW = {
   scope: 'state', state: 'Maharashtra', status: 'active',
   civil_posts_count: 120, total_posts_in_notification: 300,
   deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026',
+  reviewed_at: '2026-09-01T00:00:00Z',
   official_notice_url: 'https://maharashtra.gov.in',
 };
 
@@ -819,11 +849,10 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
 
 /* ═══ F7 — admin-jobs legacy autopost gate ══════ */
 
-test('F7 admin-jobs: legacy Telegram autopost defaults OFF — publishes queue instead', () => {
+test('F7 admin-jobs: legacy Telegram autopost defaults OFF after private-job migration', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
   assert.match(src, /LEGACY_AUTOPOST_ON/);
-  /* Phase 3: the engine owns job posts; the legacy direct
-     post must be explicitly re-enabled. */
+  /* Phase 3 migration: private-job publishes now flow through the Social Engine queue. */
   assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
   /* the gate sits on the publish hook */
   assert.match(src, /action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON/);
@@ -847,8 +876,8 @@ test('F8 .env.example documents every engine variable', () => {
     'OWNER_KEY', 'SITE_URL', 'CRON_SECRET', 'SOCIAL_CRON_SECRET',
     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHANNEL_ID', 'TELEGRAM_TEST_CHANNEL_ID',
     'LEGACY_TELEGRAM_AUTOPOST', 'ADMIN_EMAIL', 'ADMIN_USER_ID',
-    'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_ORGANIZATION_ID', 'LINKEDIN_API_VERSION',
-    'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ACCOUNT_ID',
+    'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_AUTHOR_URN', 'LINKEDIN_ORGANIZATION_ID',
+    'LINKEDIN_API_VERSION', 'META_ACCESS_TOKEN', 'META_INSTAGRAM_ACCOUNT_ID',
     'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY',
   ];
   for (const name of required) {

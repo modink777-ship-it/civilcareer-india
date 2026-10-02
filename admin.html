@@ -636,11 +636,25 @@ Social Content Engine — v27
 <h3>Social queue, connections &amp; settings</h3>
 <p>Every Telegram, LinkedIn and Instagram post starts here as a <b>suggestion</b> built from a verified exam, job or government-vacancy record. Approve it, then publish: the engine enforces the <b>Truth Lock</b> (source record changed after generation → blocked), the <b>content lock</b> (edited after approval → blocked), <b>one real send per platform</b>, and <b>per-platform daily caps</b>. A send that ends <b style="color:#fbbf24">uncertain</b> may or may not have landed — it is never auto-retried; resolve it by hand.</p>
 
-<div class="import-actions">
+<div class="import-actions" style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="btn-gold" onclick="loadSocial()">⟳ Refresh</button>
+<button class="btn-ghost" onclick="socialRunNow()">▶ Run approved queue now</button>
+<span style="font-size:.76rem;color:#6a8aaa;padding:7px 0">Phase 1: Telegram publishing + review controls</span>
 </div>
 
 <div class="import-status" id="socialStatus"></div>
+</div>
+
+<div class="import-box" style="margin-top:14px">
+<h3>Daily CivilCareer Radar — Preview only</h3>
+<p style="color:#6a8aaa;font-size:.78rem">This view computes the current radar suggestions from verified records. It does not create database rows and cannot publish anything.</p>
+<div class="import-actions">
+<button class="btn-gold" onclick="loadRadarPreview()">◈ Refresh Radar Preview</button>
+</div>
+<div class="import-status" id="radarPreviewStatus"></div>
+<div id="radarPreview" style="margin-top:12px">
+<p style="color:#6a8aaa;font-size:.85rem">No preview loaded.</p>
+</div>
 </div>
 
 <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">Engine settings</h3>
@@ -4005,6 +4019,37 @@ async function loadSocial() {
   }
 }
 
+async function loadRadarPreview() {
+  const status = $('radarPreviewStatus');
+  const root = $('radarPreview');
+  if (!status || !root) return;
+  status.textContent = 'Refreshing preview…';
+  status.className = 'import-status show';
+  try {
+    const d = await api('/api/social?op=radar-preview&limit=50', { key: adminKey });
+    const rows = Array.isArray(d.previews) ? d.previews : [];
+    root.innerHTML = rows.length
+      ? rows.map((x) => `
+        <article style="padding:12px;margin:0 0 10px;border:1px solid #23405c;border-radius:9px;background:#0b1723">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+            <span class="status-badge published">${esc(x.event)}</span>
+            <span style="color:#6a8aaa;font-size:.72rem">${esc(x.source_type)} #${esc(x.source_id)}</span>
+            <span style="color:#6a8aaa;font-size:.72rem">${x.truth_state === 'locked' ? '✓ Truth checked' : '⚠ Fact check failed'}</span>
+          </div>
+          <b style="color:#e2e8f0">${esc(x.title)}</b>
+          <p style="color:#94a3b8;font-size:.78rem;margin:7px 0">${esc(x.body_telegram || '')}</p>
+          ${x.errors && x.errors.length ? `<div style="color:#f87171;font-size:.74rem">${esc(x.errors.join('; '))}</div>` : ''}
+        </article>`).join('')
+      : '<p style="color:#6a8aaa;font-size:.85rem">No radar events are currently due.</p>';
+    status.textContent = `Preview ready — ${rows.length} event${rows.length === 1 ? '' : 's'}; database writes: 0; sends: 0.`;
+    status.className = 'import-status show success';
+  } catch (e) {
+    root.innerHTML = `<p style="color:#fca5a5">Could not load Radar preview: ${esc(e.message || 'Unknown error')}</p>`;
+    status.textContent = 'Radar preview failed.';
+    status.className = 'import-status show error';
+  }
+}
+
 /* ── settings ─────────────────────────────── */
 
 function renderSocialSettings(s) {
@@ -4175,14 +4220,21 @@ function renderSocialQueue() {
     const real = ledger.filter(r => !r.is_test);
     const open = socialExpanded === s.id;
     const actions = [];
+    const sid = esc(s.id);
     if (s.status === 'pending' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialApprove(${s.id})">✅ Approve</button>`);
-      actions.push(`<button onclick="socialReject(${s.id})">🚫 Reject</button>`);
+      actions.push(`<button class="btn-gold" onclick="socialApprove('${sid}')">✅ Approve</button>`);
+      actions.push(`<button onclick="socialReject('${sid}')">🚫 Reject</button>`);
+    }
+    actions.push(`<button onclick="socialPreview('${sid}')">👁 Preview</button>`);
+    if (s.status !== 'publishing' && s.status !== 'published' && s.status !== 'rejected' && s.status !== 'archived') {
+      actions.push(`<button onclick="socialEdit('${sid}')">✏️ Edit</button>`);
     }
     if (s.status === 'approved' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialPublish(${s.id})">📣 Publish</button>`);
-      actions.push(`<button onclick="socialTest(${s.id})">🧪 Test send</button>`);
+      actions.push(`<button class="btn-gold" onclick="socialPublish('${sid}','telegram')">📣 Publish Telegram</button>`);
+      actions.push(`<button onclick="socialPublishEverywhere('${sid}')">🌐 Publish Everywhere</button>`);
+      actions.push(`<button onclick="socialCopyWhatsApp('${sid}')">📋 Copy WhatsApp</button>`);
     }
+
     if (s.truth_state === 'stale') {
       actions.push(`<button onclick="socialRegenerate(${s.id})">↻ Regenerate</button>`);
     }
@@ -4201,10 +4253,13 @@ function renderSocialQueue() {
               ${r.last_error ? `<div style="color:#f87171;font-size:.75rem;margin-top:2px">${esc(r.last_error)}</div>` : ''}
             </div>
             <div style="display:flex;gap:6px">
-              ${['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
-                ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
-                   <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
-                : ''}
+              ${r.status === 'needs_second_step' && r.platform === 'instagram'
+                ? `<button class="btn-gold" onclick="socialResolve(${s.id},'instagram','publish_container')">▶ Publish Instagram container</button>
+                   <button onclick="socialResolve(${s.id},'instagram','cancel')">✖ Cancel</button>`
+                : ['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
+                  ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
+                     <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
+                  : ''}
             </div>
           </div>`).join('')
         : '<p style="color:#6a8aaa;font-size:.78rem;margin:0">No real sends yet.</p>'}
@@ -4269,28 +4324,150 @@ async function socialArchive(id) {
   }
 }
 
-async function socialPublish(id) {
+async function socialRunNow() {
+  if (!window.confirm('Run Deadline Radar and drain the approved Social Engine queue now?')) return;
   try {
-    const d = await socialApi('publish', { id });
+    const d = await api('/api/social-cron?op=run', {
+      method: 'POST', key: adminKey,
+      body: JSON.stringify({ op: 'run', limit: 100, drain_limit: 5 }),
+    });
+    const count = Number(d.drain && d.drain.published || 0);
+    const generated = Number(d.radar && d.radar.created || 0);
+    setSocialStatus(`Run now finished — ${generated} radar suggestion(s) created; ${count} approved publication(s) processed`, 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Run now: ' + e.message, 'error');
+  }
+}
+
+async function socialPublish(id, platform='telegram') {
+  try {
+    const d = await socialApi('publish', { id, platform });
     const results = (d.result && d.result.results) || [];
-    const summary = results
-      .map(r => `${r.platform}: ${r.ok ? (r.skipped ? 'skipped (already sent)' : 'sent ✓') : (r.error || 'failed')}`)
-      .join(' · ');
-    const failed = results.some(r => !r.ok && !r.skipped);
-    setSocialStatus(summary || 'Publish finished', failed ? 'error' : 'success');
+    const r = results[0] || {};
+    const msg = r.ok
+      ? `${platform}: ${r.skipped ? 'already published' : 'published ✓'}`
+      : `${platform}: ${r.error || 'failed'}`;
+    setSocialStatus(msg, r.ok ? 'success' : 'error');
     await loadSocial();
   } catch (e) {
     setSocialStatus('❌ Publish: ' + e.message, 'error');
   }
 }
 
-async function socialTest(id) {
+async function socialPublishEverywhere(id) {
+  const platforms = ['telegram', 'linkedin', 'instagram'];
+  const results = [];
+  for (const platform of platforms) {
+    try {
+      const d = await socialApi('publish', { id, platform });
+      const out = (d.result && d.result.results && d.result.results[0]) || {};
+      results.push({
+        platform,
+        ok: Boolean(out.ok),
+        skipped: Boolean(out.skipped),
+        error: out.error || null,
+      });
+      /* Keep each platform as a separate HTTP request so no single
+         Vercel invocation has to orchestrate network calls. */
+    } catch (e) {
+      results.push({ platform, ok: false, skipped: false, error: e.message });
+    }
+  }
+  const summary = results.map(r =>
+    `${r.platform}: ${r.ok ? (r.skipped ? 'already published' : 'published ✓') : (r.error || 'failed')}`
+  ).join(' · ');
+  const allOk = results.every(r => r.ok);
+  setSocialStatus(summary || 'No platforms attempted', allOk ? 'success' : 'error');
+  await loadSocial();
+}
+
+function socialPreview(id) {
+  const s = socialRows.find(r => r.id === id);
+  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
+  const safe = value => esc(value == null ? '' : String(value));
+  $('editorTitle').textContent = 'Social content preview';
+  $('editorBody').innerHTML = `
+    <div style="display:grid;gap:14px">
+      <div>
+        <b style="color:#fff">${safe(s.title)}</b>
+        <div style="color:#6a8aaa;font-size:.76rem;margin-top:4px">${safe(s.source_type)} · ${safe(s.template_key)}</div>
+      </div>
+      <section>
+        <h4 style="margin:0 0 6px;color:#fff">Telegram</h4>
+        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.body_telegram)}</pre>
+      </section>
+      <section>
+        <h4 style="margin:0 0 6px;color:#fff">LinkedIn</h4>
+        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.body_linkedin)}</pre>
+      </section>
+      <section>
+        <h4 style="margin:0 0 6px;color:#fff">Instagram</h4>
+        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.caption_instagram)}</pre>
+      </section>
+      <section>
+        <h4 style="margin:0 0 6px;color:#fff">WhatsApp</h4>
+        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.whatsapp_text)}</pre>
+      </section>
+      <p style="margin:0;color:#6a8aaa;font-size:.76rem">Truth status: ${safe(s.truth_state || 'unverified')} · Approval: ${safe(s.status)}</p>
+    </div>`;
+  $('editorDialog').showModal();
+}
+
+function socialEdit(id) {
+  const s = socialRows.find(r => r.id === id);
+  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
+  const safe = value => esc(value == null ? '' : String(value));
+  $('editorTitle').textContent = 'Edit social content';
+  $('editorBody').innerHTML = `
+    <form id="socialEditForm">
+      <label>Title<input name="title" maxlength="200" value="${safe(s.title)}"></label>
+      <label>Telegram<textarea name="body_telegram" rows="8" maxlength="4096">${safe(s.body_telegram)}</textarea></label>
+      <label>LinkedIn<textarea name="body_linkedin" rows="8" maxlength="3000">${safe(s.body_linkedin)}</textarea></label>
+      <label>Instagram<textarea name="caption_instagram" rows="8" maxlength="2200">${safe(s.caption_instagram)}</textarea></label>
+      <label>WhatsApp<textarea name="whatsapp_text" rows="6" maxlength="1000">${safe(s.whatsapp_text)}</textarea></label>
+      <label>CivilCareer link<input name="link_url" type="url" value="${safe(s.link_url)}"></label>
+      <div class="import-actions">
+        <button type="submit" class="btn-gold">Save &amp; Re-check Facts</button>
+        <button type="button" onclick="document.getElementById('editorDialog').close()">Cancel</button>
+      </div>
+      <div class="import-status" id="socialEditStatus"></div>
+    </form>`;
+  $('editorDialog').showModal();
+  $('socialEditForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    try {
+      await socialApi('edit', { id, ...data });
+      $('socialEditStatus').className = 'import-status show success';
+      $('socialEditStatus').textContent = 'Saved. Approval was cleared and Truth Lock will run again.';
+      await loadSocial();
+      setTimeout(() => $('editorDialog').close(), 500);
+    } catch (err) {
+      $('socialEditStatus').className = 'import-status show error';
+      $('socialEditStatus').textContent = err.message;
+    }
+  };
+}
+
+async function socialCopyWhatsApp(id) {
+  const s = socialRows.find(r => r.id === id);
+  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
+  const text = String(s.whatsapp_text || '');
+  if (!text) return setSocialStatus('No WhatsApp text available.', 'error');
   try {
-    await socialApi('test', { id, platform: 'telegram' });
-    setSocialStatus('Test send queued — check the private test channel (TELEGRAM_TEST_CHANNEL_ID)', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Test send: ' + e.message, 'error');
+    await navigator.clipboard.writeText(text);
+    setSocialStatus('WhatsApp text copied ✓', 'success');
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); setSocialStatus('WhatsApp text copied ✓', 'success'); }
+    catch (e) { setSocialStatus('Copy failed: ' + e.message, 'error'); }
+    ta.remove();
   }
 }
 

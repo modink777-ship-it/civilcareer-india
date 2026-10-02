@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "sharp": "0.35.5"
   },
   "scripts": {
     "check:syntax": "node scripts/launch-check.js --syntax",

@@ -1,0 +1,36 @@
+name: Social Engine Phase 1 Tests
+
+on:
+  push:
+    branches: [social-engine]
+  pull_request:
+    branches: [social-engine, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: JavaScript syntax checks
+        run: |
+          node --check lib/social-core.js
+          node --check lib/social-templates.js
+          node --check lib/social-publishers.js
+          node --check _api/social.js
+          node --check _api/admin-jobs.js
+          node --check _api/exam-tracker.js
+          node --check exam-tracker.js
+      - name: Regenerate protected admin bundle
+        run: node scripts/build-admin-bundle.js
+      - name: Run test suite
+        run: npm test

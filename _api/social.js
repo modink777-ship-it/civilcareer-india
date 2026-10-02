@@ -57,7 +57,7 @@ const publishers = require('../lib/social-publishers');
 
 const {
   PLATFORMS, SOURCE_TYPES, CLAIMABLE_STATUSES,
-  contentHash, truthHash, validateContent, linkUrlAllowed,
+  contentHash, truthHash, validateContent, validateFacts, linkUrlAllowed,
   redactSecrets, rollupStatus, zonedDayStartUtc, attemptsToday,
   isUncertainPublishing, isPublishable,
 } = core;
@@ -129,6 +129,36 @@ async function fetchSourceRow(sourceType, sourceId) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
+async function sourceIsVerified(sourceType, row) {
+  if (!row) return { ok: false, error: 'Source record not found' };
+
+  if (sourceType === 'exam_tracker') {
+    if (row.is_active === false) return { ok: false, error: 'Exam source is inactive' };
+    return { ok: true };
+  }
+
+  if (sourceType === 'job') {
+    if (row.published !== true) return { ok: false, error: 'Private job is not published/verified yet' };
+    return { ok: true };
+  }
+
+  if (sourceType === 'govt_job') {
+    if (String(row.status || '').toLowerCase() !== 'active') {
+      return { ok: false, error: 'Government job is not active' };
+    }
+    if (!row.reviewed_at) {
+      return { ok: false, error: 'Government job has not been reviewed by an admin' };
+    }
+    const civil = Number(row.civil_posts_count);
+    if (!Number.isFinite(civil) || civil <= 0) {
+      return { ok: false, error: 'Government job has no verified civil posts' };
+    }
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'Unsupported source type' };
+}
+
 /* ── suggestion list ────────────────────────────────── */
 
 async function listSuggestions(query) {
@@ -167,6 +197,8 @@ async function createSuggestion(body, req) {
 
   const row = await fetchSourceRow(sourceType, sourceId);
   if (!row) return { status: 404, error: 'Source record not found' };
+  const verified = await sourceIsVerified(sourceType, row);
+  if (!verified.ok) return { status: 409, error: verified.error };
 
   const settings = await getSettings();
   const built = templates.buildSuggestion(sourceType, sourceId, row, {
@@ -183,6 +215,8 @@ async function createSuggestion(body, req) {
 
   const check = validateContent(suggestion);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
+  const factCheck = validateFacts(suggestion, built.snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { status: 400, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
   if (!linkUrlAllowed(suggestion.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
@@ -244,7 +278,14 @@ async function editSuggestion(id, body, req) {
   const merged = { ...current, ...payload };
   const check = validateContent(merged);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
-  if (!linkUrlAllowed(merged.link_url, (await getSettings()).site_url || SITE_URL)) {
+  const settings = await getSettings();
+  const source = await fetchSourceRow(current.source_type, current.source_id);
+  const verified = await sourceIsVerified(current.source_type, source);
+  if (!verified.ok) return { status: 409, error: verified.error };
+  const snapshot = templates.buildSnapshot(current.source_type, source);
+  const factCheck = validateFacts(merged, snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { status: 400, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
+  if (!linkUrlAllowed(merged.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
 
@@ -274,6 +315,8 @@ async function approveSuggestion(id, req) {
   const check = validateContent(current);
   if (!check.ok) return { status: 400, error: check.errors.join('; ') };
   const settings = await getSettings();
+  const lock = await truthLock(current);
+  if (!lock.ok) return { status: 409, error: lock.error };
   if (!linkUrlAllowed(current.link_url, settings.site_url || SITE_URL)) {
     return { status: 400, error: 'link_url must be on the site host' };
   }
@@ -347,7 +390,12 @@ async function truthLock(suggestion) {
     }).catch(() => {});
     return { ok: false, error: 'TRUTH LOCK: the source record changed after this suggestion was generated. Regenerate the suggestion.' };
   }
-  return { ok: true, liveRow, snapshot };
+  const verified = await sourceIsVerified(suggestion.source_type, liveRow);
+  if (!verified.ok) return { ok: false, error: 'TRUTH LOCK: ' + verified.error };
+  const settings = await getSettings();
+  const factCheck = validateFacts(suggestion, snapshot, settings.site_url || SITE_URL);
+  if (!factCheck.ok) return { ok: false, error: 'FACT CHECK FAILED: ' + factCheck.errors.join('; ') };
+  return { ok: true, liveRow, snapshot, factCheck };
 }
 
 /**
@@ -374,7 +422,7 @@ async function claimLedgerRow(suggestionId, platform) {
     method: 'PATCH',
     body: JSON.stringify({
       status: 'publishing',
-      attempts: 1, /* patched rows already carry an attempt count */
+      attempts: 0, /* incremented after the claim */
       last_attempt_at: new Date().toISOString(),
       last_error: null,
       response_snapshot: null,
@@ -382,7 +430,22 @@ async function claimLedgerRow(suggestionId, platform) {
   });
   if (r.ok) {
     const rows = await r.json();
-    if (Array.isArray(rows) && rows[0]) return { claimed: rows[0] };
+    if (Array.isArray(rows) && rows[0]) {
+      const row = rows[0];
+      const nextAttempts = Number(row.attempts || 0) + 1;
+      const bump = await supa(
+        `social_publishes?id=eq.${encodeURIComponent(row.id)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ attempts: nextAttempts }),
+        },
+      );
+      if (bump.ok) {
+        const bumped = await bump.json();
+        if (Array.isArray(bumped) && bumped[0]) return { claimed: bumped[0] };
+      }
+      return { claimed: row };
+    }
   }
   /* No claimable row — either none exists yet (INSERT) or it is
      publishing/sent/uncertain (caller decides). */
@@ -470,12 +533,13 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
     result = await publishers.sendLinkedIn({
       token: env.LINKEDIN_ACCESS_TOKEN,
       organizationId: env.LINKEDIN_ORGANIZATION_ID,
+      authorUrn: env.LINKEDIN_AUTHOR_URN,
       apiVersion: env.LINKEDIN_API_VERSION,
       text: suggestion.body_linkedin || suggestion.title,
       mediaUrl: suggestion.media_url,
     });
   } else if (platform === 'instagram') {
-    result = await publishers.sendInstagram({
+    result = await publishers.createInstagramContainer({
       token: env.INSTAGRAM_ACCESS_TOKEN,
       accountId: env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
       apiVersion: env.INSTAGRAM_API_VERSION,
@@ -487,8 +551,9 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
       Promise.resolve({ ok: false, error: 'Unknown platform', retryable: false })))();
   }
 
+  const resultStatus = result.status || (result.ok ? 'sent' : (result.ambiguous ? 'uncertain' : 'failed'));
   const patch = {
-    status: result.ok ? 'sent' : 'failed',
+    status: resultStatus,
     last_attempt_at: new Date().toISOString(),
   };
   if (result.ok) {
@@ -498,6 +563,15 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
     patch.sent_at = new Date().toISOString();
     patch.last_error = null;
     patch.response_snapshot = null;
+  } else if (result.status === 'needs_second_step') {
+    patch.external_id = result.externalId || null;
+    patch.external_url = null;
+    patch.destination_ref = result.destinationRef || null;
+    patch.sent_at = null;
+    patch.last_error = null;
+    patch.response_snapshot = result.response
+      ? JSON.parse(redactSecrets(JSON.stringify(result.response)))
+      : null;
   } else {
     patch.last_error = redactSecrets(result.error);
     patch.response_snapshot = result.response
@@ -546,10 +620,18 @@ async function publishSuggestion(id, body, opts = {}) {
   const content = contentLock(suggestion);
   if (!content.ok) return { status: 409, error: content.error };
 
-  const template = templates.getTemplate(suggestion.template_key);
-  const requested = Array.isArray(body.platforms) && body.platforms.length
-    ? body.platforms.map((p) => String(p).toLowerCase())
-    : (template ? template.platforms : PLATFORMS);
+  const requested = body.platform
+    ? [String(body.platform).toLowerCase()]
+    : (Array.isArray(body.platforms) && body.platforms.length
+      ? body.platforms.map((p) => String(p).toLowerCase())
+      : ['telegram']);
+
+  if (requested.length !== 1) {
+    return {
+      status: 400,
+      error: 'Publish accepts exactly one platform per request. Use the admin Publish Everywhere action to orchestrate separate requests.',
+    };
+  }
 
   const results = [];
   for (const platform of requested) {
@@ -628,7 +710,10 @@ async function testSend(id, body) {
     return { status: 400, error: `platform must be one of: ${PLATFORMS.join(', ')}` };
   }
   if (!publishers.platformConfigured(platform)) {
-    return { status: 400, error: `${platform} is not configured (missing env credentials)` };
+    return { status: 400, error: `${platform} is not configured or not yet enabled in this phase` };
+  }
+  if (platform === 'telegram' && !publishers.telegramTestChannel(process.env)) {
+    return { status: 400, error: 'TELEGRAM_TEST_CHANNEL_ID is not configured; use the normal approved Telegram publish to TELEGRAM_CHANNEL_ID.' };
   }
   const lock = await truthLock(suggestion);
   if (!lock.ok) return { status: 409, error: lock.error };
@@ -663,6 +748,115 @@ async function testSend(id, body) {
   return { status: 200, result: { outcome } };
 }
 
+async function publishInstagramSecondStep(id, suggestion, row) {
+  if (row.status !== 'needs_second_step') {
+    return { status: 400, error: 'Instagram ledger row is not awaiting its second step' };
+  }
+  const createdAt = Date.parse(String(row.created_at || ''));
+  if (Number.isFinite(createdAt) && Date.now() - createdAt >= 24 * 60 * 60 * 1000) {
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'expired', last_error: 'Instagram media container expired after 24 hours' }),
+    });
+    return { status: 410, error: 'Instagram media container expired after 24 hours' };
+  }
+
+  const lastAttempt = Date.parse(String(row.last_attempt_at || ''));
+  if (Number.isFinite(lastAttempt) && Date.now() - lastAttempt < 60 * 1000) {
+    return { status: 429, error: 'Instagram container was checked recently; try again after 60 seconds.' };
+  }
+
+  const lock = await truthLock(suggestion);
+  if (!lock.ok) return { status: 409, error: lock.error };
+  const content = contentLock(suggestion);
+  if (!content.ok) return { status: 409, error: content.error };
+
+  const accountId = String(row.destination_ref || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || '');
+  const ready = await publishers.getInstagramContainerStatus({
+    token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    accountId,
+    containerId: row.external_id,
+    apiVersion: process.env.INSTAGRAM_API_VERSION,
+  });
+
+  const checkedAt = new Date().toISOString();
+  if (!ready.ok) {
+    const state = ready.ambiguous ? 'uncertain' : (ready.status === 'not_configured' ? 'needs_second_step' : 'needs_second_step');
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: state,
+        last_attempt_at: checkedAt,
+        last_error: redactSecrets(ready.error),
+        response_snapshot: ready.response ? JSON.parse(redactSecrets(JSON.stringify(ready.response))) : null,
+      }),
+    }).catch(() => {});
+    return { status: ready.ambiguous ? 409 : 502, error: ready.error || 'Instagram container status could not be checked' };
+  }
+
+  if (ready.status === 'EXPIRED' || ready.status === 'ERROR') {
+    const state = ready.status === 'EXPIRED' ? 'expired' : 'failed';
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: state,
+        last_attempt_at: checkedAt,
+        last_error: `Instagram container status: ${ready.status}`,
+        response_snapshot: ready.response || null,
+      }),
+    });
+    return { status: state === 'expired' ? 410 : 502, error: `Instagram container status: ${ready.status}` };
+  }
+
+  if (ready.status !== 'FINISHED') {
+    await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'needs_second_step',
+        last_attempt_at: checkedAt,
+        last_error: `Instagram container status: ${ready.status}; try again after at least 60 seconds.`,
+        response_snapshot: ready.response || null,
+      }),
+    }).catch(() => {});
+    return { status: 202, result: { status: 'needs_second_step', message: `Instagram container status: ${ready.status}; try again later.` } };
+  }
+
+  const out = await publishers.publishInstagramContainer({
+    token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    accountId,
+    containerId: row.external_id,
+    apiVersion: process.env.INSTAGRAM_API_VERSION,
+    skipStatusCheck: true,
+  });
+  const patch = {
+    status: out.ok ? 'sent' : (out.ambiguous ? 'uncertain' : out.status === 'expired' ? 'expired' : 'failed'),
+    last_attempt_at: new Date().toISOString(),
+    last_error: out.ok ? null : redactSecrets(out.error),
+    response_snapshot: out.response ? JSON.parse(redactSecrets(JSON.stringify(out.response))) : null,
+  };
+  if (out.ok) {
+    patch.external_id = out.externalId;
+    patch.external_url = out.externalUrl;
+    patch.destination_ref = out.destinationRef || accountId;
+    patch.sent_at = new Date().toISOString();
+  }
+  const saved = await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  if (!saved.ok) return { status: 500, error: 'Instagram publish result could not be stored safely' };
+
+  const after = await loadSuggestion(id);
+  const rolled = rollupStatus(after.social_publishes || []);
+  if (after && rolled !== after.status) {
+    await supa(`social_suggestions?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: rolled }),
+    }).catch(() => {});
+  }
+  return { status: out.ok ? 200 : (out.ambiguous ? 409 : 502), result: { outcome: out, suggestion: after } };
+}
+
 /** Resolve an uncertain or failed ledger row: cancel it, or retry
  *  (reset to pending and re-run the publish flow for that platform). */
 async function resolveLedger(id, body) {
@@ -671,8 +865,8 @@ async function resolveLedger(id, body) {
   if (!PLATFORMS.includes(platform)) {
     return { status: 400, error: `platform must be one of: ${PLATFORMS.join(', ')}` };
   }
-  if (!['retry', 'cancel'].includes(action)) {
-    return { status: 400, error: "action must be 'retry' or 'cancel'" };
+  if (!['retry', 'cancel', 'publish_container'].includes(action)) {
+    return { status: 400, error: "action must be 'retry', 'cancel' or 'publish_container'" };
   }
 
   const suggestion = await loadSuggestion(id);
@@ -685,6 +879,11 @@ async function resolveLedger(id, body) {
   const rows = await r.json();
   const row = Array.isArray(rows) ? rows[0] : null;
   if (!row) return { status: 404, error: 'No ledger row for this platform' };
+
+  if (action === 'publish_container') {
+    if (platform !== 'instagram') return { status: 400, error: 'publish_container is only valid for Instagram' };
+    return publishInstagramSecondStep(id, suggestion, row);
+  }
 
   if (action === 'cancel') {
     const c = await supa(`social_publishes?id=eq.${encodeURIComponent(row.id)}`, {
@@ -716,40 +915,15 @@ async function resolveLedger(id, body) {
 /* ── scheduled queue drain (SOCIAL_CRON_SECRET) ── */
 
 /**
- * The scheduler credential. SOCIAL_CRON_SECRET (with a
- * CRON_SECRET fallback) is accepted as a Bearer token or the
- * x-cron-secret header; the owner key keeps working for manual
- * and GitHub Actions runs. Deliberately SEPARATE from the
- * dispatcher's CRON_ROUTES: scheduler access to the drain can
- * never imply exam-alert or discovery-crawler access.
+ * Drain a bounded set of already-approved suggestions.
+ * Phase 1/2 safety: publishSuggestion accepts exactly one platform
+ * per request. The default drain therefore selects Telegram only;
+ * later schedulers may invoke individual platform drains explicitly.
  */
-function isSocialCronRequest(req) {
-  const secret = String(
-    process.env.SOCIAL_CRON_SECRET ||
-    process.env.CRON_SECRET || ''
-  ).trim();
-  if (secret) {
-    if (String(req.headers.authorization || '') === `Bearer ${secret}`) return true;
-    if (String(req.headers['x-cron-secret'] || '') === secret) return true;
-  }
-  const ownerKey = String(process.env.OWNER_KEY || '').trim();
-  if (ownerKey) {
-    if (String(req.headers['x-owner-key'] || '') === ownerKey) return true;
-    if (String(req.headers.authorization || '') === `Bearer ${ownerKey}`) return true;
-  }
-  /* No secret configured: only the Vercel Cron user agent. */
-  if (!secret && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) return true;
-  return false;
-}
-
-/** Publish every approved suggestion (oldest first). Each row
- *  runs the FULL publish pipeline — Truth Lock, content lock,
- *  per-platform claim, daily caps — and one bad row never
- *  stops the drain. */
 async function drainQueue(limit) {
   const settings = await getSettings();
   if (settings._error) {
-    return { status: 503, error: 'Social engine settings missing — run supabase-v27-social-engine.sql' }; 
+    return { status: 503, error: 'Social engine settings missing — run supabase-v27-social-engine.sql' };
   }
   if (settings.kill_switch) {
     return { status: 403, error: 'Kill switch is ON — publishing is disabled' };
@@ -763,11 +937,12 @@ async function drainQueue(limit) {
     const detail = await r.text();
     return { status: 500, error: 'Queue could not be loaded', details: detail.slice(0, 300) };
   }
-  const queued = await r.json();
 
+  const queued = await r.json();
   const results = [];
+
   for (const suggestion of Array.isArray(queued) ? queued : []) {
-    const out = await publishSuggestion(suggestion.id, {});
+    const out = await publishSuggestion(suggestion.id, { platform: 'telegram' });
     const outcomes = (out.result && out.result.results) || [];
     results.push({
       id: suggestion.id,
@@ -795,18 +970,41 @@ async function drainQueue(limit) {
   };
 }
 
-/* ── settings ───────────────────────────────────────── */
 
-const IANA_ZONE_RE = /^[A-Za-z_]+(?:\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)?$/;
 
+/**
+ * The scheduler credential. SOCIAL_CRON_SECRET (with a
+ * CRON_SECRET fallback) is accepted as a Bearer token or the
+ * x-cron-secret header; the owner key keeps working for manual
+ * and GitHub Actions runs. Deliberately SEPARATE from the
+ * dispatcher's CRON_ROUTES: scheduler access to the drain can
+ * never imply exam-alert or discovery-crawler access.
+ */
 function validTimezone(tz) {
-  if (!IANA_ZONE_RE.test(String(tz || ''))) return false;
+  const value = String(tz || '').trim();
+  if (!value || !/^[A-Za-z_]+(?:\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)?$/.test(value)) return false;
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: String(tz) }).format(new Date());
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
     return true;
   } catch (_) {
     return false;
   }
+}
+
+function isSocialCronRequest(req) {
+  const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
+  if (secret) {
+    if (String(req.headers.authorization || '') === `Bearer ${secret}`) return true;
+    if (String(req.headers['x-cron-secret'] || '') === secret) return true;
+  }
+  /* Owner key remains available for the Admin "Run now" action.
+     It is never placed in the GitHub Actions workflow. */
+  const ownerKey = String(process.env.OWNER_KEY || '').trim();
+  if (ownerKey) {
+    if (String(req.headers['x-owner-key'] || '') === ownerKey) return true;
+    if (String(req.headers.authorization || '') === `Bearer ${ownerKey}`) return true;
+  }
+  return false;
 }
 
 async function updateSettings(body) {
@@ -957,26 +1155,30 @@ async function connectionAction(id, action) {
   }
 
   if (action === 'verify') {
-    /* Telegram: the bot token lives in env — validate it with getMe.
-       LinkedIn/Instagram verification lands with their publishers. */
+    /* Read-only Telegram verification. NEVER send a public message as
+       a connectivity probe. */
     if (connection.platform !== 'telegram') {
       return { status: 400, error: `Verification is implemented for Telegram — a ${connection.platform} connection is verified by its first real publish` };
     }
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       return { status: 400, error: 'TELEGRAM_BOT_TOKEN not set' };
     }
-    const me = await publishers.sendTelegram({
-      token: process.env.TELEGRAM_BOT_TOKEN,
-      chatId: connection.external_id,
-      text: ' ',
-    }).catch(() => ({ ok: false, error: 'Verification request failed' }));
-    /* getMe is a GET; reuse the send plumbing minimally: a send
-       with a single space is a harmless, honest connectivity probe. */
+    const token = String(process.env.TELEGRAM_BOT_TOKEN);
+    let verified = false;
+    let detail = null;
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/getMe`);
+      const payload = await response.json().catch(() => null);
+      verified = Boolean(response.ok && payload && payload.ok);
+      detail = verified ? null : (payload && payload.description) || `Telegram verification failed (HTTP ${response.status})`;
+    } catch (err) {
+      detail = err && err.message ? String(err.message) : 'Telegram verification request failed';
+    }
     const c = await supa(`social_connections?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify({
         last_verified_at: new Date().toISOString(),
-        status: me.ok ? 'active' : connection.status,
+        status: verified ? 'active' : connection.status,
       }),
     });
     if (!c.ok) return { status: 500, error: 'Connection could not be updated' };
@@ -985,8 +1187,8 @@ async function connectionAction(id, action) {
       status: 200,
       result: {
         connection: Array.isArray(updated) ? updated[0] : updated,
-        verified: Boolean(me.ok),
-        error: me.ok ? null : me.error,
+        verified,
+        error: detail,
       },
     };
   }
@@ -1014,8 +1216,8 @@ module.exports = async function handler(req, res) {
      BEFORE requireOwner — the scheduler credential is never
      conflated with admin access, and a missing credential is a
      401 rather than a Supabase configuration disclosure. */
-  if (isDrain && !isSocialCronRequest(req)) {
-    return sendJson(res, 401, { error: 'SOCIAL_CRON_SECRET required' });
+  if (isDrain && !isSocialCronRequest(req) && !req.adminUser) {
+    return sendJson(res, 401, { error: 'SOCIAL_CRON_SECRET or authenticated admin required' });
   }
 
   /* Every other route is admin-only (dispatcher elevates the
@@ -1067,6 +1269,24 @@ module.exports = async function handler(req, res) {
           return sendJson(res, 500, { error: 'Connections could not be loaded', details: connections.error });
         }
         return sendJson(res, 200, { connections: connections.connections });
+      }
+      if (op === 'radar-preview') {
+        const settings = await getSettings();
+        if (settings._error) {
+          return sendJson(res, 503, { error: 'Social engine settings missing — run supabase-v27-social-engine.sql' });
+        }
+        const sourceType = query.source_type && ['job', 'govt_job'].includes(String(query.source_type))
+          ? String(query.source_type)
+          : undefined;
+        const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 100);
+        const preview = await radarService.previewRadar({
+          sourceType,
+          limit,
+          now: query.now ? Number(query.now) : undefined,
+          settings,
+          createdBy: actor(req),
+        });
+        return sendJson(res, 200, preview);
       }
       if (op === 'ledger') {
         const id = String(query.id || '');

@@ -1,49 +1,25 @@
-# CivilCareer Premium V7 — Phase 1 MVP
+# CivilCareer Production Deployment
 
-This build implements the final master specification as a focused Phase 1 MVP. It intentionally does not add user accounts, payments, advertising, social networking, premium subscriptions or fake analytics/revenue.
+## Source of truth
+Deploy the merged `main` branch after the full phase stack has green CI.
 
-## Included
+## Vercel Production variables
+Required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, OWNER_KEY, ADMIN_EMAIL and/or ADMIN_USER_ID, SITE_URL, CRON_SECRET, SOCIAL_CRON_SECRET, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, LEGACY_TELEGRAM_AUTOPOST=false.
+Optional: LINKEDIN_ACCESS_TOKEN, LINKEDIN_AUTHOR_URN, LINKEDIN_API_VERSION, INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_BUSINESS_ACCOUNT_ID, INSTAGRAM_API_VERSION.
 
-- Premium mobile-first redesign and clean routes
-- Civil-engineering-only private jobs
-- Karnataka government jobs across departments
-- Exams and free study materials
-- Universal search and focused filters
-- Source verification dates and automatic closed status after deadlines
-- Moderated employer and resource submissions
-- Private content reports
-- Protected single-owner dashboard
-- Real privacy-conscious first-party analytics (no fake numbers)
-- SEO metadata, sitemap, robots.txt and security headers
-- English/Kannada interface foundation
+## GitHub Actions secrets
+Add the server-side values required by the government pipeline and private backup workflow. Do not duplicate real production social destinations into Preview.
 
-## Deploy
+## Supabase
+The owner-supplied `supabase-v27-social-engine.sql` is frozen and already applied. Do not edit it. Run `docs/rls-audit.sql` as an owner verification step.
 
-1. In Supabase SQL Editor, run all of `supabase-v7.sql` once.
-2. Replace the GitHub repository contents with this package while preserving the existing environment variables.
-3. Verify Vercel has `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `OWNER_KEY` for Production.
-4. For resilient AI job extraction, keep `OWNER_KEY` and add any free-capable provider keys you have: `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` (free router only), and/or `HF_TOKEN`. The importer tries configured providers in order and falls back automatically. Never expose keys in GitHub or screenshots. See `AI-EXTRACTION-FALLBACKS.md`.
-5. Vercel deploys automatically after the commit.
+## Preview
+Use Preview-only Telegram credentials: TELEGRAM_TEST_CHANNEL_ID without TELEGRAM_CHANNEL_ID. Set LEGACY_TELEGRAM_AUTOPOST=false.
+Verify Admin authentication, Exam Tracker, government detail pages, Social preview, Truth Lock, kill switch, ledger, legal pages and no-secret responses before merging.
 
-## Admin
+## Production smoke test
+After Vercel promotion, verify `/`, `/government-jobs`, one active government detail URL, `/exam-tracker`, `/privacy`, `/terms`, `/disclaimer`, `/api/health`, Admin and the Social queue.
+Then run one controlled real Telegram, LinkedIn member and Instagram post as documented in `docs/FINAL-REPORT.md` and `SOCIAL-ENGINE-RUNBOOK.md`.
 
-The admin dashboard is intentionally not linked publicly. Open:
-
-`https://civilcareer-india.vercel.app/admin`
-
-Enter the existing owner key. The key is checked by server APIs and kept only in the browser tab session.
-
-For stronger multi-user administration later, migrate to Supabase Auth with MFA and role-based permissions.
-
-## Analytics
-
-After the SQL migration, page views are stored in `analytics_events` without raw IP addresses or full referrer URLs. The admin dashboard shows real totals, visitors, devices, countries, top pages and referring domains. When analytics cannot connect, the dashboard shows an error instead of invented values.
-
-## Important launch checks
-
-- Verify every government source URL and last-verified date.
-- Do not mark an item verified unless you personally checked the official source.
-- Test employer, resource and report forms.
-- Test desktop and mobile navigation.
-- Confirm expired deadlines display Application Closed.
-- Obtain legal review before monetization, ads or payments.
+## Current connector note
+The connected Vercel integration currently returns HTTP 403 for the `modinsaheb` scope, so production promotion cannot be honestly confirmed from this session until that scope is re-authenticated.

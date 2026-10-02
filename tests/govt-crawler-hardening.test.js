@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const crawler = fs.readFileSync(path.join(root, 'scripts', 'crawl-govt-pipeline.js'), 'utf8');
-const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'govt-pipeline.yml'), 'utf8');
+const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'govt-agent-reach.yml'), 'utf8');
 
 test('government crawler persists and sends conditional HTTP validators', () => {
   assert.match(crawler, /If-None-Match/);

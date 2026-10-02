@@ -81,6 +81,9 @@ module.exports = async function handler(req, res) {
       ['/career-guides.html', '0.7', 'weekly'],
       ['/career-tools.html', '0.7', 'weekly'],
       ['/job-alerts.html', '0.7', 'weekly'],
+      ['/privacy', '0.3', 'monthly'],
+      ['/terms', '0.3', 'monthly'],
+      ['/disclaimer', '0.3', 'monthly'],
       ['/legal.html', '0.3', 'monthly'],
       ['/post-a-job', '0.6', 'weekly'],
       ['/submit-resource', '0.6', 'weekly'],
@@ -107,6 +110,24 @@ module.exports = async function handler(req, res) {
     const urls = staticPages.map(([path, priority, changefreq]) =>
       addUrl(`${SITE_URL}${path}`, priority, changefreq)
     );
+
+    const govtResponse = await supa(
+      'govt_jobs?select=id,slug,apply_end,reviewed_at&status=eq.active&order=published_at.desc&limit=5000'
+    );
+    if (govtResponse.ok) {
+      const govtJobs = await govtResponse.json();
+      for (const job of govtJobs) {
+        if (!job || !job.slug) continue;
+        const expiry = job.apply_end ? new Date(`${job.apply_end}T23:59:59Z`).getTime() : null;
+        if (Number.isFinite(expiry) && expiry < Date.now()) continue;
+        urls.push(addUrl(
+          `${SITE_URL}/government-jobs/${encodeURIComponent(String(job.slug))}`,
+          '0.8',
+          'daily',
+          job.reviewed_at || job.apply_end || ''
+        ));
+      }
+    }
 
     // Paginate job URLs so the sitemap remains correct beyond 5,000 jobs.
     // A single sitemap supports up to 50,000 URLs; each batch below is only
