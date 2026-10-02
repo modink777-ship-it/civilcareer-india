@@ -66,6 +66,7 @@ const handlers = {
 const CRON_ROUTES = new Set([
   '/api/exam-alerts',
   '/api/govt-discovery',
+  '/api/govt-expiry',
 ]);
 
 const ADMIN_RULES = {
@@ -76,6 +77,7 @@ const ADMIN_RULES = {
   '/api/employers': req => req.method !== 'GET',
   '/api/exam-alerts': req => !isValidCronRequest(req),
   '/api/govt-discovery': req => !isValidCronRequest(req),
+  '/api/govt-expiry': req => !isValidCronRequest(req),
   '/api/govt-review': req => true,
   '/api/exams': req => req.method !== 'GET' || new URL(req.url, 'http://localhost').searchParams.get('auth') === '1',
   '/api/extract': () => true,
