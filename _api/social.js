@@ -797,6 +797,17 @@ async function resolveLedger(id, body) {
  * dispatcher's CRON_ROUTES: scheduler access to the drain can
  * never imply exam-alert or discovery-crawler access.
  */
+function validTimezone(tz) {
+  const value = String(tz || '').trim();
+  if (!value || !/^[A-Za-z_]+(?:\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)?$/.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function isSocialCronRequest(req) {
   const secret = String(process.env.SOCIAL_CRON_SECRET || '').trim();
   if (secret) {
