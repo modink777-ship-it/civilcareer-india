@@ -12,11 +12,14 @@
 
 const { autoPostToTelegram } = require('../lib/telegram-auto');
 
-/* F7: legacy direct Telegram auto-post gate. 'true'/'1' (or unset) = ON —
-   the pre-engine behaviour while the Social engine does not own job posts
-   yet. Anything else disables it (Phase 3 flips this off). */
+/* F7 / Phase 3: legacy direct Telegram auto-post gate.
+   'true'/'1' = ON — the pre-engine behaviour. Phase 3 flips
+   the DEFAULT OFF: job publishes now create source_type 'job'
+   suggestions in the Social Content Engine (approval queue +
+   Truth Lock + per-platform daily caps) unless the owner
+   explicitly re-enables the legacy direct post. */
 const LEGACY_AUTOPOST_ON = ['true', '1'].includes(
-  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'true').trim().toLowerCase()
+  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'false').trim().toLowerCase()
 );
 
 const OWNER_KEY = String(process.env.OWNER_KEY || '').trim();
@@ -77,6 +80,65 @@ function readBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+/* PHASE 3: job publishes flow through the Social Content
+   Engine instead of the legacy direct Telegram post. The
+   in-process call (same runtime — no network self-call,
+   identical contract to _api/exam-tracker.js) creates a
+   source_type 'job' suggestion; the engine's unique index
+   on (source_type, source_id, template_key) makes it
+   once-per-job, and with require_approval OFF the engine
+   publishes immediately, still enforcing Truth Lock, the
+   one-send-per-platform ledger and the daily caps.
+   Best-effort: an engine hiccup never fails the publish. */
+function callSocial(op, body) {
+  return new Promise((resolve) => {
+    const req = {
+      method: 'POST',
+      url: `/api/social?op=${encodeURIComponent(op)}`,
+      headers: { 'x-owner-key': String(process.env.OWNER_KEY || '') },
+      body,
+    };
+    /* The handler may answer through status()/json() (auth
+       failures) or end() (sendJson) — support both so the
+       verdict always round-trips, never a TypeError. */
+    const res = {
+      statusCode: 200,
+      setHeader() {},
+      status(code) { res.statusCode = code; return res; },
+      json(b) { res.end(JSON.stringify(b)); return res; },
+      end(data) {
+        let json = null;
+        try { json = data ? JSON.parse(data) : null; } catch (_) { json = null; }
+        resolve({ status: res.statusCode, body: json });
+      },
+    };
+    Promise.resolve(require('./social')(req, res)).catch(() =>
+      resolve({ status: 500, body: { error: 'Social engine unavailable' } }));
+  });
+}
+
+/* Queue (and, when auto-approval is ON, publish) one job
+   through the engine. Returns a verdict for the logs. */
+async function queueJobSuggestion(jobId) {
+  const created = await callSocial('create', {
+    op: 'create', source_type: 'job', source_id: String(jobId),
+  });
+  const suggestion = created.body && created.body.suggestion;
+  if (!suggestion) {
+    const err = created.body && (created.body.error || created.body.details);
+    return { queued: false, error: err || 'Social engine did not create a suggestion' };
+  }
+  if (suggestion.status !== 'approved') {
+    return { queued: true, suggestion_id: suggestion.id, status: suggestion.status };
+  }
+  /* Auto-approval is ON — publish through the engine
+     (Truth Lock + caps + one-send-per-platform). */
+  const published = await callSocial('publish', { op: 'publish', id: suggestion.id });
+  const outcomes = (published.body && published.body.result && published.body.result.results) || [];
+  const sent = outcomes.some((o) => o.ok && !o.skipped);
+  return { queued: true, suggestion_id: suggestion.id, sent };
 }
 
 function projection(row) {
@@ -260,16 +322,20 @@ async function handlePost(req, res) {
     }
   }
 
-  /* AUTO-TELEGRAM (F7): jobs that were just published go to the channel
-     automatically — but ONLY while the legacy direct-post gate is open.
-     LEGACY_TELEGRAM_AUTOPOST (default 'true'/'1') keeps the pre-engine
-     behaviour alive while the Social Content Engine does not yet own job
-     posts; Phase 3 flips it off and every job announcement flows through
-     the Social queue (approval + Truth Lock + caps) instead. Fire-and-
-     forget, sequential, never blocks or fails the response. Duplicate
-     safety lives entirely in lib/telegram-auto.js:
-     autoPostToTelegram atomically claims telegram_posted false→true before
-     sending, so only ONE caller ever posts a given job. */
+  /* Publish hook. Two mutually exclusive paths so a job can
+     never be announced twice:
+       * legacy gate OPEN (LEGACY_TELEGRAM_AUTOPOST=true/1) —
+         the pre-engine direct Telegram post (F7). Duplicate
+         safety lives entirely in lib/telegram-auto.js:
+         autoPostToTelegram atomically claims telegram_posted
+         false→true before sending, so only ONE caller ever
+         posts a given job.
+       * default (Phase 3) — every published job becomes a
+         source_type 'job' suggestion in the Social Content
+         Engine queue (approval + Truth Lock + caps). The
+         engine's ledger dedupes sends per platform.
+     Both paths are fire-and-forget and sequential: never
+     blocks or fails the response. */
   if (action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON) {
     (async () => {
       for (const id of ids) {
@@ -281,6 +347,20 @@ async function handlePost(req, res) {
             await autoPostToTelegram(rows[0]);
             await new Promise((r) => setTimeout(r, 1200)); // Telegram rate limit
           }
+        } catch (_) { /* keep going */ }
+      }
+    })();
+  } else if (action === 'publish' && updated > 0) {
+    /* PHASE 3 default: queue the published jobs in the
+       Social engine (see queueJobSuggestion above). */
+    (async () => {
+      for (const id of ids) {
+        try {
+          const verdict = await queueJobSuggestion(id);
+          if (verdict && verdict.queued === false) {
+            console.error('admin-jobs social queue error:', id, verdict.error);
+          }
+          await new Promise((r) => setTimeout(r, 250));
         } catch (_) { /* keep going */ }
       }
     })();

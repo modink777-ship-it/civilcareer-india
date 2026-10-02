@@ -91,7 +91,55 @@ async function approve(id, user, payloadOverride = null) {
     if (!pr.ok) throw new Error(`Government post rows failed: ${(await pr.text()).slice(0, 400)}`);
   }
   await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() }) });
-  return saved;
+  /* Social Content Engine: a freshly verified vacancy becomes
+     a source_type 'govt_job' suggestion (template key
+     govt_job.published.default). In-process call — same
+     runtime, no network self-call. Best-effort: an engine
+     hiccup logs loudly but never fails the approval. */
+  const social = await queueSocialSuggestion(saved.id);
+  if (!social.ok) {
+    console.error('Social suggestion create failed for govt job', saved.id, ':', social.error);
+  }
+  return Object.assign({}, saved, { social });
+}
+
+/* Create the engine suggestion for a published government
+ * job. Mirrors the exam-tracker callSocial contract: the
+ * /api/social handler is invoked in-process with a mock
+ * res that supports both status()/json() and end(). */
+async function queueSocialSuggestion(sourceId) {
+  try {
+    const social = require('./social');
+    const verdict = await new Promise((resolve) => {
+      const sreq = {
+        method: 'POST',
+        url: '/api/social?op=create',
+        headers: { 'x-owner-key': String(process.env.OWNER_KEY || '') },
+        body: { op: 'create', source_type: 'govt_job', source_id: String(sourceId) },
+      };
+      const sres = {
+        statusCode: 200,
+        setHeader() {},
+        status(code) { sres.statusCode = code; return sres; },
+        json(body) { sres.end(JSON.stringify(body)); return sres; },
+        end(data) {
+          let json = null;
+          try { json = data ? JSON.parse(data) : null; } catch (_) { json = null; }
+          resolve({ status: sres.statusCode, body: json });
+        },
+      };
+      Promise.resolve(social(sreq, sres)).catch(() =>
+        resolve({ status: 500, body: { error: 'Social engine unavailable' } }));
+    });
+    const suggestion = verdict.body && verdict.body.result && verdict.body.result.suggestion;
+    if (suggestion) {
+      return { ok: true, suggestion_id: suggestion.id, status: suggestion.status };
+    }
+    const err = verdict.body && (verdict.body.error || verdict.body.details);
+    return { ok: false, error: err || 'Social engine did not create a suggestion' };
+  } catch (socialErr) {
+    return { ok: false, error: (socialErr && socialErr.message) || 'Social engine unavailable' };
+  }
 }
 
 module.exports = async function handler(req, res) {

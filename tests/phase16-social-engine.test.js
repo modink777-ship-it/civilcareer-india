@@ -4,8 +4,8 @@
    F1 lib/social-core.js      Truth Lock hashes, content locks,
                               rollup, caps, redaction
    F2 lib/social-templates.js per-platform renderers + snapshots
-   F3 lib/social-publishers.js Telegram send + fail-closed
-                              LinkedIn/Instagram stubs
+   F3 lib/social-publishers.js Telegram send + real
+                              LinkedIn/Instagram publishers
    F4 _api/social.js          admin-only handler + dispatcher
    F5 admin.html              Social tab (source-level checks;
                               the admin bundle round-trip is
@@ -316,14 +316,16 @@ test('F2 telegram text is plain text (no Markdown tokens that need a parse mode)
 test('F3 platformConfigured: each platform reports its own env readiness', () => {
   const env = {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'c',
-    LINKEDIN_ACCESS_TOKEN: 'li',
+    LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org',
     INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178',
   };
   assert.equal(publishers.platformConfigured('telegram', env), true);
   assert.equal(publishers.platformConfigured('linkedin', env), true);
   assert.equal(publishers.platformConfigured('instagram', env), true);
   assert.equal(publishers.platformConfigured('telegram', {}), false);
-  assert.equal(publishers.platformConfigured('linkedin', { TELEGRAM_BOT_TOKEN: 't' }), false);
+  /* LinkedIn needs the token AND the organization it posts as */
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li' }), false);
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ORGANIZATION_ID: 'org' }), false);
   assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig' }), false);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
@@ -331,14 +333,166 @@ test('F3 platformConfigured: each platform reports its own env readiness', () =>
   }), true);
 });
 
-test('F3 LinkedIn and Instagram fail closed (honest error, never a silent skip)', async () => {
-  const li = await publishers.sendLinkedIn();
-  assert.equal(li.ok, false);
-  assert.match(li.error, /Phase 5/);
-  assert.equal(li.retryable, false);
-  const ig = await publishers.sendInstagram();
-  assert.equal(ig.ok, false);
-  assert.match(ig.error, /Phase 6/);
+test('F3 LinkedIn: validates config before any network call', async () => {
+  let calls = 0;
+  const restore = stubFetch(async () => { calls++; throw new Error('no network in validation tests'); });
+  try {
+    const noToken = await publishers.sendLinkedIn({ token: '', organizationId: '1', text: 'hi' });
+    assert.equal(noToken.ok, false);
+    assert.match(noToken.error, /LINKEDIN_ACCESS_TOKEN/);
+    const noOrg = await publishers.sendLinkedIn({ token: 't', organizationId: '', text: 'hi' });
+    assert.equal(noOrg.ok, false);
+    assert.match(noOrg.error, /LINKEDIN_ORGANIZATION_ID/);
+    const noText = await publishers.sendLinkedIn({ token: 't', organizationId: '1', text: '' });
+    assert.equal(noText.ok, false);
+    assert.match(noText.error, /Empty LinkedIn text/);
+    assert.equal(calls, 0, 'validation failures must not touch the network');
+  } finally { restore(); }
+});
+
+test('F3 LinkedIn: creates a REST share as the organization and reads the URN', async () => {
+  const restore = stubFetch(async (url, init) => {
+    assert.equal(url, 'https://api.linkedin.com/rest/shares');
+    const payload = JSON.parse(init.body);
+    assert.equal(payload.author, 'urn:li:organization:12345');
+    assert.equal(payload.lifecycleState, 'PUBLISHED');
+    const content = payload.specificContent['com.linkedin.ugc.ShareContent'];
+    assert.equal(content.shareCommentary.text, 'Hello LinkedIn');
+    assert.equal(content.shareMediaCategory, 'NONE');
+    assert.equal(payload.visibility['com.linkedin.ugc.MemberNetworkVisibility'], 'PUBLIC');
+    assert.equal(init.headers['LinkedIn-Version'], '202405');
+    return {
+      status: 201,
+      headers: { get: (k) => (String(k).toLowerCase() === 'x-restli-id' ? 'urn:li:share:987654321' : null) },
+      text: async () => '',
+    };
+  });
+  try {
+    const out = await publishers.sendLinkedIn({
+      token: 'li-token', organizationId: '12345', apiVersion: '202405', text: 'Hello LinkedIn',
+    });
+    assert.equal(out.ok, true);
+    assert.equal(out.externalId, '987654321');
+    assert.equal(out.externalUrl, 'https://www.linkedin.com/feed/update/urn:li:share:987654321');
+    assert.equal(out.destinationRef, '12345');
+    assert.equal(out.retryable, false);
+  } finally { restore(); }
+});
+
+test('F3 LinkedIn: 429 is retryable, 400 is not', async () => {
+  const restore = stubFetch(async () => ({
+    status: 429,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({ message: 'Rate limit exceeded' }),
+  }));
+  try {
+    const out = await publishers.sendLinkedIn({ token: 't', organizationId: '1', text: 'hi' });
+    assert.equal(out.ok, false);
+    assert.equal(out.retryable, true);
+    assert.match(out.error, /Rate limit exceeded/);
+  } finally { restore(); }
+  const restore400 = stubFetch(async () => ({
+    status: 400,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({ message: 'Invalid organization URN' }),
+  }));
+  try {
+    const out = await publishers.sendLinkedIn({ token: 't', organizationId: '1', text: 'hi' });
+    assert.equal(out.ok, false);
+    assert.equal(out.retryable, false);
+  } finally { restore400(); }
+});
+
+test('F3 LinkedIn: a network failure is honest and retryable', async () => {
+  const restore = stubFetch(async () => { throw new Error('socket hang up'); });
+  try {
+    const out = await publishers.sendLinkedIn({ token: 't', organizationId: '1', text: 'hi' });
+    assert.equal(out.ok, false);
+    assert.equal(out.retryable, true);
+    assert.match(out.error, /network error/);
+  } finally { restore(); }
+});
+
+test('F3 Instagram: validates config before any network call', async () => {
+  let calls = 0;
+  const restore = stubFetch(async () => { calls++; throw new Error('no network in validation tests'); });
+  try {
+    const noToken = await publishers.sendInstagram({ token: '', accountId: '1', caption: 'hi' });
+    assert.equal(noToken.ok, false);
+    assert.match(noToken.error, /INSTAGRAM_ACCESS_TOKEN/);
+    const noAccount = await publishers.sendInstagram({ token: 't', accountId: '', caption: 'hi' });
+    assert.equal(noAccount.ok, false);
+    assert.match(noAccount.error, /INSTAGRAM_BUSINESS_ACCOUNT_ID/);
+    const noCaption = await publishers.sendInstagram({ token: 't', accountId: '1', caption: '' });
+    assert.equal(noCaption.ok, false);
+    assert.match(noCaption.error, /Empty Instagram caption/);
+    assert.equal(calls, 0, 'validation failures must not touch the network');
+  } finally { restore(); }
+});
+
+test('F3 Instagram: container → publish → permalink', async () => {
+  const restore = stubFetch(async (url, init) => {
+    const method = (init && init.method) || 'GET';
+    if (method === 'POST' && url.endsWith('/media')) {
+      const params = new URLSearchParams(init.body);
+      assert.equal(params.get('caption'), 'Hello Instagram');
+      assert.equal(params.get('image_url'), 'https://cc.test/og.png');
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-1' }) };
+    }
+    if (method === 'POST' && url.endsWith('/media_publish')) {
+      const params = new URLSearchParams(init.body);
+      assert.equal(params.get('creation_id'), 'container-1');
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: '17895695668004550' }) };
+    }
+    if (method === 'GET' && url.includes('fields=permalink')) {
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ permalink: 'https://www.instagram.com/p/CxY1yQ/' }) };
+    }
+    throw new Error(`unexpected Instagram call: ${method} ${url}`);
+  });
+  try {
+    const out = await publishers.sendInstagram({
+      token: 'ig-token', accountId: '17841', apiVersion: 'v21.0',
+      caption: 'Hello Instagram', mediaUrl: 'https://cc.test/og.png',
+    });
+    assert.equal(out.ok, true);
+    assert.equal(out.externalId, '17895695668004550');
+    assert.equal(out.externalUrl, 'https://www.instagram.com/p/CxY1yQ/');
+    assert.equal(out.destinationRef, '17841');
+  } finally { restore(); }
+});
+
+test('F3 Instagram: a container failure is honest, not a silent skip', async () => {
+  const restore = stubFetch(async () => ({
+    status: 400,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({ error: { message: 'Invalid image URL' } }),
+  }));
+  try {
+    const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://x/y.png' });
+    assert.equal(out.ok, false);
+    assert.equal(out.retryable, false);
+    assert.match(out.error, /Invalid image URL/);
+  } finally { restore(); }
+});
+
+test('F3 Instagram: a video media_url posts as video_url', async () => {
+  const restore = stubFetch(async (url, init) => {
+    if (String(url).endsWith('/media')) {
+      const params = new URLSearchParams(init.body);
+      assert.equal(params.get('video_url'), 'https://cc.test/reel.mp4');
+      assert.equal(params.has('image_url'), false);
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'container-2' }) };
+    }
+    if (String(url).endsWith('/media_publish')) {
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ id: 'm2' }) };
+    }
+    return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({}) };
+  });
+  try {
+    const out = await publishers.sendInstagram({ token: 't', accountId: '1', caption: 'hi', mediaUrl: 'https://cc.test/reel.mp4' });
+    assert.equal(out.ok, true);
+    assert.equal(out.externalId, 'm2');
+  } finally { restore(); }
 });
 
 test('F3 telegramTestChannel prefers the private test channel', () => {
@@ -425,6 +579,112 @@ test('F4 dispatcher: /api/social is registered and every method is admin-only', 
   assert.match(dispatch, /'\/api\/social': req => !hasValidOwnerKey\(req\)/);
 });
 
+test('F4 drain: SOCIAL_CRON_SECRET (or owner key) is required — 401 otherwise', async () => {
+  await withEnv({ ...OWNER_ENV, SOCIAL_CRON_SECRET: 'social-cron-secret' }, async () => {
+    const bare = mockRes();
+    await social({ method: 'GET', url: '/api/social?op=drain', headers: {} }, bare);
+    assert.equal(bare.statusCode, 401);
+    assert.match(bare.body.error, /SOCIAL_CRON_SECRET/);
+
+    const wrong = mockRes();
+    await social({ method: 'GET', url: '/api/social?op=drain', headers: { authorization: 'Bearer wrong-secret' } }, wrong);
+    assert.equal(wrong.statusCode, 401);
+
+    /* an ordinary admin session is not a scheduler credential */
+    const session = mockRes();
+    await social({ method: 'GET', url: '/api/social?op=drain', headers: { authorization: 'Bearer admin-session-token' } }, session);
+    assert.equal(session.statusCode, 401);
+  });
+});
+
+test('F4 drain: the scheduler credential passes auth and reaches the engine', async () => {
+  const res = mockRes();
+  await withEnv({
+    ...OWNER_ENV,
+    SOCIAL_CRON_SECRET: 'social-cron-secret',
+    SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+  }, async () => {
+    await social({ method: 'GET', url: '/api/social?op=drain', headers: { authorization: 'Bearer social-cron-secret' } }, res);
+    assert.equal(res.statusCode, 500);
+    assert.match(res.body.error, /Supabase server configuration/);
+  });
+  /* the x-cron-secret header and POST bodies work too */
+  const res2 = mockRes();
+  await withEnv({
+    ...OWNER_ENV,
+    SOCIAL_CRON_SECRET: 'social-cron-secret',
+    SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+  }, async () => {
+    await social({ method: 'POST', url: '/api/social', headers: { 'x-cron-secret': 'social-cron-secret' }, body: { op: 'drain' } }, res2);
+    assert.equal(res2.statusCode, 500);
+    assert.match(res2.body.error, /Supabase server configuration/);
+  });
+  /* the owner key keeps draining (manual / GitHub Actions runs) */
+  const res3 = mockRes();
+  await withEnv({
+    ...OWNER_ENV,
+    SOCIAL_CRON_SECRET: undefined,
+    SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+  }, async () => {
+    await social({ method: 'GET', url: '/api/social?op=drain', headers: { 'x-owner-key': 'test-owner-key' } }, res3);
+    assert.equal(res3.statusCode, 500);
+    assert.match(res3.body.error, /Supabase server configuration/);
+  });
+});
+
+test('F4 drain: publishes the approved queue through the full pipeline', async () => {
+  const restore = stubFetch(async (url) => {
+    const u = String(url);
+    if (u.includes('social_settings')) {
+      return { ok: true, json: async () => [{ id: 1, kill_switch: false, require_approval: false, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: null }] };
+    }
+    if (u.includes('social_suggestions')) return { ok: true, json: async () => [] };
+    return { ok: true, json: async () => [] };
+  });
+  try {
+    const res = mockRes();
+    await withEnv({ ...OWNER_ENV, SOCIAL_CRON_SECRET: 'social-cron-secret' }, async () => {
+      await social({ method: 'GET', url: '/api/social?op=drain&limit=10', headers: { authorization: 'Bearer social-cron-secret' } }, res);
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.drained, 0);
+    assert.equal(res.body.published, 0);
+    assert.deepEqual(res.body.results, []);
+  } finally { restore(); }
+});
+
+test('F4 drain: the kill switch stops the drain before any queue read', async () => {
+  const restore = stubFetch(async (url) => {
+    if (String(url).includes('social_settings')) {
+      return { ok: true, json: async () => [{ id: 1, kill_switch: true, require_approval: true, per_platform_daily_caps: { telegram: 5 }, caps_timezone: 'Asia/Kolkata' }] };
+    }
+    throw new Error('the queue must not be read while the kill switch is ON');
+  });
+  try {
+    const res = mockRes();
+    await withEnv({ ...OWNER_ENV, SOCIAL_CRON_SECRET: 'social-cron-secret' }, async () => {
+      await social({ method: 'GET', url: '/api/social?op=drain', headers: { authorization: 'Bearer social-cron-secret' } }, res);
+    });
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.error, /Kill switch/);
+  } finally { restore(); }
+});
+
+test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () => {
+  const dispatch = fs.readFileSync(path.join(root, 'api', '[[...path]].js'), 'utf8');
+  assert.match(dispatch, /function isSocialDrainRequest/);
+  assert.match(dispatch, /SOCIAL_CRON_SECRET/);
+  assert.match(dispatch, /req\.isSocialCron = true/);
+  /* the CRON_SECRET routes stay exam-alerts + govt-discovery only:
+     scheduler access to the drain must never imply crawler access */
+  assert.match(dispatch, /const CRON_ROUTES = new Set\(\[\s*'\/api\/exam-alerts',\s*'\/api\/govt-discovery',\s*\]\)/);
+  const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  assert.ok(
+    vercel.crons.some((c) => String(c.path).includes('op=drain')),
+    'vercel.json must schedule the queue drain'
+  );
+});
+
 test('F4 in-process contract: the exam-tracker call shape gets a JSON verdict', async () => {
   /* _api/exam-tracker.js invokes the handler in-process with a
      minimal req ({method, url, headers, body}) and a res exposing
@@ -495,14 +755,74 @@ test('F6 exam-tracker: module still exports the handler', () => {
   assert.equal(typeof examTracker, 'function');
 });
 
+/* ═══ F6b — gov-review → social engine producer ═══ */
+
+const GOVT_JOB_ROW = {
+  id: '9', title: 'Junior Engineer (Civil)', organization: 'PWD Maharashtra',
+  scope: 'state', state: 'Maharashtra', status: 'active',
+  civil_posts_count: 120, total_posts_in_notification: 300,
+  deadline_text: '15 Nov 2026', slug: 'pwd-je-civil-2026',
+  official_notice_url: 'https://maharashtra.gov.in',
+};
+
+test('F6b gov-review: the approve flow queues a source_type gov_job suggestion', () => {
+  const src = fs.readFileSync(path.join(root, '_api', 'govt-review.js'), 'utf8');
+  assert.match(src, /require\('\.\/social'\)/);
+  assert.match(src, /source_type: 'govt_job'/);
+  /* fire-and-forget: the approval response never blocks on the engine */
+  assert.match(src, /async function queueSocialSuggestion/);
+  assert.match(src, /catch \(socialErr\)/);
+});
+
+test('F6b gov-review: the engine creates a govt_job.published.default suggestion', async () => {
+  const restore = stubFetch(async (url, init) => {
+    const u = String(url);
+    if (init && init.method === 'POST' && u.includes('social_suggestions')) {
+      const created = JSON.parse(init.body);
+      return { ok: true, status: 201, json: async () => [{ ...created, id: 'sug-1' }] };
+    }
+    if (u.includes('social_settings')) {
+      return { ok: true, json: async () => [{ id: 1, require_approval: true, kill_switch: false, per_platform_daily_caps: { telegram: 5, linkedin: 2, instagram: 2 }, caps_timezone: 'Asia/Kolkata', default_hashtags: [], footer: null, site_url: 'https://cc.test' }] };
+    }
+    if (u.includes('govt_jobs')) return { ok: true, json: async () => [GOVT_JOB_ROW] };
+    return { ok: true, json: async () => [] };
+  });
+  try {
+    const res = inProcessRes();
+    await withEnv(OWNER_ENV, async () => {
+      await social({
+        method: 'POST',
+        url: '/api/social?op=create',
+        headers: { 'x-owner-key': 'test-owner-key' },
+        body: { op: 'create', source_type: 'govt_job', source_id: '9' },
+      }, res);
+    });
+    assert.equal(res.statusCode, 201);
+    const suggestion = res.body.suggestion;
+    assert.equal(suggestion.source_type, 'govt_job');
+    assert.equal(suggestion.source_id, '9');
+    assert.equal(suggestion.template_key, 'govt_job.published.default');
+    assert.match(suggestion.title, /Junior Engineer \(Civil\)/);
+    assert.equal(suggestion.link_url, 'https://cc.test/government-jobs/pwd-je-civil-2026');
+    assert.ok(suggestion.truth_hash, 'truth hash must be locked at creation');
+  } finally { restore(); }
+});
+
 /* ═══ F7 — admin-jobs legacy autopost gate ══════ */
 
-test('F7 admin-jobs: legacy Telegram autopost is gated by LEGACY_TELEGRAM_AUTOPOST', () => {
+test('F7 admin-jobs: legacy Telegram autopost defaults OFF — publishes queue instead', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
   assert.match(src, /LEGACY_AUTOPOST_ON/);
-  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'true'/);
+  /* Phase 3: the engine owns job posts; the legacy direct
+     post must be explicitly re-enabled. */
+  assert.match(src, /process\.env\.LEGACY_TELEGRAM_AUTOPOST \|\| 'false'/);
   /* the gate sits on the publish hook */
   assert.match(src, /action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON/);
+  /* Phase 3 wiring: publishes create source_type 'job'
+     suggestions through the engine queue. */
+  assert.match(src, /async function queueJobSuggestion/);
+  assert.match(src, /op: 'create', source_type: 'job'/);
+  assert.match(src, /queueJobSuggestion\(id\)/);
 });
 
 /* ═══ F8 — .env.example completeness ════════════ */

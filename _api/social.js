@@ -18,11 +18,17 @@
  *   POST /api/social {op:'publish'}  Truth Lock → claim → send → rollup
  *   POST /api/social {op:'test'}     test send (is_test=true, no caps)
  *   POST /api/social {op:'resolve'}  resolve uncertain/failed rows
+ *   GET  /api/social?op=drain       scheduled queue drain
+ *                                    (SOCIAL_CRON_SECRET — see below)
  *
  * Auth: every route is admin-only. The dispatcher elevates a
  * Supabase admin session (ADMIN_RULES) or passes the real owner
  * key through; this handler enforces requireOwner itself so it is
- * equally safe when called directly.
+ * equally safe when called directly. The ONE exception is
+ * op=drain: the scheduled drain authenticates with
+ * SOCIAL_CRON_SECRET (or CRON_SECRET) and can ONLY drain the
+ * approved queue — it never unlocks settings, the ledger or
+ * any other operation.
  *
  * Tables: social_suggestions / social_publishes / social_connections
  * / social_settings (supabase-v27-social-engine.sql — service_role
@@ -460,6 +466,22 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
       text: suggestion.body_telegram || suggestion.title,
       disablePreview: true,
     });
+  } else if (platform === 'linkedin') {
+    result = await publishers.sendLinkedIn({
+      token: env.LINKEDIN_ACCESS_TOKEN,
+      organizationId: env.LINKEDIN_ORGANIZATION_ID,
+      apiVersion: env.LINKEDIN_API_VERSION,
+      text: suggestion.body_linkedin || suggestion.title,
+      mediaUrl: suggestion.media_url,
+    });
+  } else if (platform === 'instagram') {
+    result = await publishers.sendInstagram({
+      token: env.INSTAGRAM_ACCESS_TOKEN,
+      accountId: env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
+      apiVersion: env.INSTAGRAM_API_VERSION,
+      caption: suggestion.caption_instagram || suggestion.title,
+      mediaUrl: suggestion.media_url,
+    });
   } else {
     result = await (publishers.publisherFor(platform) || (() =>
       Promise.resolve({ ok: false, error: 'Unknown platform', retryable: false })))();
@@ -608,10 +630,6 @@ async function testSend(id, body) {
   if (!publishers.platformConfigured(platform)) {
     return { status: 400, error: `${platform} is not configured (missing env credentials)` };
   }
-  if (platform !== 'telegram') {
-    return { status: 400, error: `Test sends are Telegram-only until the ${platform} publisher ships (P${platform === 'linkedin' ? 5 : 6})` };
-  }
-
   const lock = await truthLock(suggestion);
   if (!lock.ok) return { status: 409, error: lock.error };
   const content = contentLock(suggestion);
@@ -627,7 +645,11 @@ async function testSend(id, body) {
       is_test: true,
       attempts: 1,
       last_attempt_at: new Date().toISOString(),
-      destination_ref: publishers.telegramTestChannel(process.env),
+      destination_ref: platform === 'telegram'
+        ? publishers.telegramTestChannel(process.env)
+        : platform === 'linkedin'
+          ? process.env.LINKEDIN_ORGANIZATION_ID || null
+          : process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || null,
     }),
   });
   if (!r.ok) {
@@ -689,6 +711,88 @@ async function resolveLedger(id, body) {
     }).catch(() => {});
   }
   return { status: 200, result: { suggestion: after } };
+}
+
+/* ── scheduled queue drain (SOCIAL_CRON_SECRET) ── */
+
+/**
+ * The scheduler credential. SOCIAL_CRON_SECRET (with a
+ * CRON_SECRET fallback) is accepted as a Bearer token or the
+ * x-cron-secret header; the owner key keeps working for manual
+ * and GitHub Actions runs. Deliberately SEPARATE from the
+ * dispatcher's CRON_ROUTES: scheduler access to the drain can
+ * never imply exam-alert or discovery-crawler access.
+ */
+function isSocialCronRequest(req) {
+  const secret = String(
+    process.env.SOCIAL_CRON_SECRET ||
+    process.env.CRON_SECRET || ''
+  ).trim();
+  if (secret) {
+    if (String(req.headers.authorization || '') === `Bearer ${secret}`) return true;
+    if (String(req.headers['x-cron-secret'] || '') === secret) return true;
+  }
+  const ownerKey = String(process.env.OWNER_KEY || '').trim();
+  if (ownerKey) {
+    if (String(req.headers['x-owner-key'] || '') === ownerKey) return true;
+    if (String(req.headers.authorization || '') === `Bearer ${ownerKey}`) return true;
+  }
+  /* No secret configured: only the Vercel Cron user agent. */
+  if (!secret && /vercel-cron\/1\.0/i.test(String(req.headers['user-agent'] || ''))) return true;
+  return false;
+}
+
+/** Publish every approved suggestion (oldest first). Each row
+ *  runs the FULL publish pipeline — Truth Lock, content lock,
+ *  per-platform claim, daily caps — and one bad row never
+ *  stops the drain. */
+async function drainQueue(limit) {
+  const settings = await getSettings();
+  if (settings._error) {
+    return { status: 503, error: 'Social engine settings missing — run supabase-v27-social-engine.sql' }; 
+  }
+  if (settings.kill_switch) {
+    return { status: 403, error: 'Kill switch is ON — publishing is disabled' };
+  }
+
+  const max = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const r = await supa(
+    `social_suggestions?status=eq.approved&order=created_at.asc&limit=${max}`,
+  );
+  if (!r.ok) {
+    const detail = await r.text();
+    return { status: 500, error: 'Queue could not be loaded', details: detail.slice(0, 300) };
+  }
+  const queued = await r.json();
+
+  const results = [];
+  for (const suggestion of Array.isArray(queued) ? queued : []) {
+    const out = await publishSuggestion(suggestion.id, {});
+    const outcomes = (out.result && out.result.results) || [];
+    results.push({
+      id: suggestion.id,
+      source_type: suggestion.source_type,
+      template_key: suggestion.template_key,
+      status: out.status === 200 ? 'ok' : 'skipped',
+      reason: out.status === 200 ? null : out.error,
+      sent: outcomes.filter((x) => x.ok && !x.skipped).length,
+      platforms: outcomes.map((x) => ({
+        platform: x.platform,
+        ok: Boolean(x.ok),
+        skipped: Boolean(x.skipped),
+        error: x.error ? redactSecrets(x.error) : null,
+      })),
+    });
+  }
+
+  return {
+    status: 200,
+    result: {
+      drained: results.length,
+      published: results.filter((x) => x.sent > 0).length,
+      results,
+    },
+  };
 }
 
 /* ── settings ───────────────────────────────────────── */
@@ -856,7 +960,7 @@ async function connectionAction(id, action) {
     /* Telegram: the bot token lives in env — validate it with getMe.
        LinkedIn/Instagram verification lands with their publishers. */
     if (connection.platform !== 'telegram') {
-      return { status: 400, error: `Verification for ${connection.platform} ships with its publisher (P5/P6)` };
+      return { status: 400, error: `Verification is implemented for Telegram — a ${connection.platform} connection is verified by its first real publish` };
     }
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       return { status: 400, error: 'TELEGRAM_BOT_TOKEN not set' };
@@ -898,24 +1002,39 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
-  /* Every route is admin-only (dispatcher elevates the session
-     or passes the owner key through; enforce here as well so the
-     handler is safe when mounted directly). Auth runs BEFORE any
-     configuration check so an unauthenticated caller never learns
-     whether Supabase is wired up. */
-  if (!requireOwner(req, res)) return;
-
-  const { url, key } = supaConfig();
-  if (!url || !key) {
-    return sendJson(res, 500, { error: 'Supabase server configuration is missing' });
-  }
-
   const query = Object.assign(
     {},
     (() => { try { return Object.fromEntries(new URL(req.url || '/', 'http://localhost').searchParams); } catch (_) { return {}; } })(),
   );
   const body = parseBody(req);
   const op = String(query.op || body.op || '');
+  const isDrain = op === 'drain' && (req.method === 'GET' || req.method === 'POST');
+
+  /* The scheduled drain authenticates with SOCIAL_CRON_SECRET
+     BEFORE requireOwner — the scheduler credential is never
+     conflated with admin access, and a missing credential is a
+     401 rather than a Supabase configuration disclosure. */
+  if (isDrain && !isSocialCronRequest(req)) {
+    return sendJson(res, 401, { error: 'SOCIAL_CRON_SECRET required' });
+  }
+
+  /* Every other route is admin-only (dispatcher elevates the
+     session or passes the owner key through; enforce here as
+     well so the handler is safe when mounted directly). Auth
+     runs BEFORE any configuration check so an unauthenticated
+     caller never learns whether Supabase is wired up. */
+  if (!isDrain && !requireOwner(req, res)) return;
+
+  const { url, key } = supaConfig();
+  if (!url || !key) {
+    return sendJson(res, 500, { error: 'Supabase server configuration is missing' });
+  }
+
+  if (isDrain) {
+    const limit = Number(query.limit || body.limit) || undefined;
+    const out = await drainQueue(limit);
+    return sendJson(res, out.status, out.result || { error: out.error, details: out.details });
+  }
 
   try {
     /* ── GET ── */
@@ -1014,5 +1133,6 @@ module.exports = async function handler(req, res) {
 module.exports._internal = {
   truthLock, contentLock, claimLedgerRow, ensureLedgerRow,
   capHeadroom, sendPlatform, updateSettings, validTimezone,
+  isSocialCronRequest, drainQueue,
   DEFAULT_SETTINGS, SOURCE_TABLES,
 };

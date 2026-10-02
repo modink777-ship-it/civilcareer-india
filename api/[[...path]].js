@@ -126,6 +126,36 @@ function isValidCronRequest(req) {
   return auth === `Bearer ${secret}`;
 }
 
+/* Scheduled Social engine drain: the SOCIAL_CRON_SECRET
+   (with a CRON_SECRET fallback) authorizes ONLY op=drain
+   on /api/social — never the queue list, settings, ledger,
+   connections or any other route. The op is read from the
+   query string (Vercel Cron sends GETs) or the JSON body.
+   Deliberately separate from CRON_ROUTES: scheduler access
+   to the drain can never imply exam-alert or
+   discovery-crawler access. */
+function isSocialDrainRequest(req) {
+  const secret = String(
+    process.env.SOCIAL_CRON_SECRET ||
+    process.env.CRON_SECRET || ''
+  ).trim();
+  if (!secret) return false;
+  const auth = String(req.headers.authorization || '');
+  if (auth !== `Bearer ${secret}` &&
+      String(req.headers['x-cron-secret'] || '') !== secret) return false;
+  let op = '';
+  try {
+    op = String(new URL(req.url, 'http://localhost').searchParams.get('op') || '');
+  } catch (_) { /* keep empty */ }
+  if (op !== 'drain') {
+    try {
+      if (req.body && typeof req.body === 'object' &&
+          String(req.body.op || '') === 'drain') op = 'drain';
+    } catch (_) { /* body not parsed */ }
+  }
+  return op === 'drain';
+}
+
 /* True when the request already carries the real owner credential
    (header, Bearer or body key). Used by ADMIN_RULES so that direct
    owner-key scripts keep working while dashboard sessions (Supabase
@@ -219,6 +249,7 @@ module.exports = async function handler(req, res) {
     }
 
     const cronAuthorized = isValidCronRequest(req);
+    const socialDrain = pathName === '/api/social' && isSocialDrainRequest(req);
     const rule = ADMIN_RULES[pathName];
     if (rule && rule(req)) {
       /* A CRON_SECRET is valid only for the explicitly scheduled routes.
@@ -226,6 +257,11 @@ module.exports = async function handler(req, res) {
          admin allowlist. */
       if (cronAuthorized && CRON_ROUTES.has(pathName)) {
         req.isCron = true;
+      } else if (socialDrain) {
+        /* SOCIAL_CRON_SECRET elevates op=drain only — the
+           /api/social handler re-verifies the credential and
+           refuses every other operation with it. */
+        req.isSocialCron = true;
       } else {
         const auth = await requireAdmin(req);
         if (!auth.ok) return sendJson(res, auth.status, { error: auth.error });
