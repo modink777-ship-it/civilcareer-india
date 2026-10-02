@@ -1,0 +1,19 @@
+name: CivilCareer Site Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '11 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check home
+        run: curl -fsS --max-time 20 https://civilcareer-india-two.vercel.app/ >/dev/null
+      - name: Check health endpoint
+        run: curl -fsS --max-time 20 https://civilcareer-india-two.vercel.app/api/health >/dev/null
