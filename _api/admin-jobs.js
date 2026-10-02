@@ -12,6 +12,13 @@
 
 const { autoPostToTelegram } = require('../lib/telegram-auto');
 
+/* F7: legacy direct Telegram auto-post gate. 'true'/'1' (or unset) = ON —
+   the pre-engine behaviour while the Social engine does not own job posts
+   yet. Anything else disables it (Phase 3 flips this off). */
+const LEGACY_AUTOPOST_ON = ['true', '1'].includes(
+  String(process.env.LEGACY_TELEGRAM_AUTOPOST || 'true').trim().toLowerCase()
+);
+
 const OWNER_KEY = String(process.env.OWNER_KEY || '').trim();
 const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
@@ -253,12 +260,17 @@ async function handlePost(req, res) {
     }
   }
 
-  /* AUTO-TELEGRAM: jobs that were just published go to the channel
-     automatically. Fire-and-forget, sequential, never blocks or fails the
-     response. Duplicate safety lives entirely in lib/telegram-auto.js:
+  /* AUTO-TELEGRAM (F7): jobs that were just published go to the channel
+     automatically — but ONLY while the legacy direct-post gate is open.
+     LEGACY_TELEGRAM_AUTOPOST (default 'true'/'1') keeps the pre-engine
+     behaviour alive while the Social Content Engine does not yet own job
+     posts; Phase 3 flips it off and every job announcement flows through
+     the Social queue (approval + Truth Lock + caps) instead. Fire-and-
+     forget, sequential, never blocks or fails the response. Duplicate
+     safety lives entirely in lib/telegram-auto.js:
      autoPostToTelegram atomically claims telegram_posted false→true before
      sending, so only ONE caller ever posts a given job. */
-  if (action === 'publish' && updated > 0) {
+  if (action === 'publish' && updated > 0 && LEGACY_AUTOPOST_ON) {
     (async () => {
       for (const id of ids) {
         try {

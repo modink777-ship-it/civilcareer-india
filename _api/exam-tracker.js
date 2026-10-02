@@ -4,7 +4,9 @@
  * GET            → public: all ACTIVE exams (newest activity first)
  * POST (admin)   → create a new exam
  * PATCH/PUT(admin) → update an exam; a status change to `application_open`
- *                    fires a Telegram channel announcement (once per change)
+ *                    routes a suggestion through the Social Content Engine
+ *                    (once per change — the engine dedupes on
+ *                    (source_type, source_id, template_key))
  *
  * Table: exam_tracker (see supabase-v20-exam-tracker.sql)
  * Auth:  admin routes require the x-owner-key header (lib/security.js)
@@ -86,66 +88,77 @@ function cleanPayload(raw) {
   return out;
 }
 
-/* ── Telegram announcement on application_open ────────────────────────
-   Plain text (no Markdown parse mode) so unusual exam names can never
-   break delivery. Best-effort: a Telegram failure never fails the save. */
-function tgApi(method, payload) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const https = require('https');
-  return new Promise(resolve => {
-    if (!token) return resolve({ ok: false, error: 'TELEGRAM_BOT_TOKEN not set' });
-    const body = JSON.stringify(payload);
-    const rq = https.request({
-      hostname: 'api.telegram.org',
-      path: `/bot${token}/${method}`,
+/* ── Social Content Engine announcement on application_open ────────
+   The pre-engine direct Telegram post bypassed the engine's Truth
+   Lock, approval queue and daily caps. Status transitions now become
+   social_suggestions through the /api/social handler, invoked
+   in-process (same runtime — no network self-call):
+     * require_approval ON (default) → the announcement waits in the
+       Social tab queue for review before anything is sent;
+     * require_approval OFF → the engine publishes immediately, still
+       enforcing Truth Lock, the one-send-per-platform ledger and the
+       per-platform daily caps.
+   The engine's unique index makes the announcement once-per-change:
+   re-running the transition returns the existing suggestion, and a
+   platform that already sent is skipped, never re-posted.
+   Best-effort, as before: an engine hiccup never fails the exam save. */
+function callSocial(op, body) {
+  return new Promise((resolve) => {
+    const req = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      timeout: 8000,
-    }, rs => {
-      let data = '';
-      rs.on('data', d => { data += d; });
-      rs.on('end', () => { try { resolve(JSON.parse(data)); } catch (_) { resolve({ ok: false }); } });
-    });
-    rq.on('error', () => resolve({ ok: false }));
-    rq.on('timeout', () => { rq.destroy(); resolve({ ok: false }); });
-    rq.write(body);
-    rq.end();
+      url: `/api/social?op=${encodeURIComponent(op)}`,
+      headers: { 'x-owner-key': String(process.env.OWNER_KEY || '') },
+      body,
+    };
+    /* The handler may answer through status()/json() (auth
+       failures) or end() (sendJson) — support both so the
+       verdict always round-trips, never a TypeError. */
+    const res = {
+      statusCode: 200,
+      setHeader() {},
+      status(code) { res.statusCode = code; return res; },
+      json(body) { res.end(JSON.stringify(body)); return res; },
+      end(data) {
+        let json = null;
+        try { json = data ? JSON.parse(data) : null; } catch (_) { json = null; }
+        resolve({ status: res.statusCode, body: json });
+      },
+    };
+    Promise.resolve(require('./social')(req, res)).catch(() =>
+      resolve({ status: 500, body: { error: 'Social engine unavailable' } }));
   });
 }
 
-function fmtDay(value) {
-  if (!value) return 'TBA';
-  const d = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function examTelegramText(exam) {
-  const lines = [
-    '🟢 APPLICATIONS OPEN',
-    `📋 ${exam.name || 'Civil Engineering Exam'}${exam.short_name ? ` (${exam.short_name})` : ''}`,
-    exam.authority ? `🏛️ ${exam.authority}` : '',
-    `📝 Apply by: ${fmtDay(exam.application_end)}`,
-    exam.vacancy_count ? `👥 Vacancies: ~${Number(exam.vacancy_count).toLocaleString('en-IN')}` : '',
-    exam.eligibility_summary ? `🎓 Eligibility: ${exam.eligibility_summary}` : '',
-    exam.official_url ? `🔗 Official site: ${exam.official_url}` : '',
-    '',
-    'Track all exams: https://civilcareer-india-two.vercel.app/exam-tracker',
-    '📢 @CivilCareerIndiaJobs',
-  ];
-  return lines.filter(Boolean).join('\n');
-}
-
-async function announceOpening(exam) {
-  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHANNEL_ID) {
-    return { sent: false, reason: 'Telegram not configured' };
+async function announceOpening(examId) {
+  const created = await callSocial('create', {
+    op: 'create', source_type: 'exam_tracker', source_id: String(examId),
+  });
+  const suggestion = created.body && created.body.suggestion;
+  if (!suggestion) {
+    const err = created.body && (created.body.error || created.body.details);
+    return { sent: false, error: err || 'Social engine did not create a suggestion' };
   }
-  const result = await tgApi('sendMessage', {
-    chat_id: process.env.TELEGRAM_CHANNEL_ID,
-    text: examTelegramText(exam),
-    disable_web_page_preview: true,
-  });
-  return { sent: Boolean(result.ok), error: result.ok ? undefined : (result.description || 'Telegram error') };
+  if (suggestion.status !== 'approved') {
+    return {
+      sent: false,
+      queued: true,
+      suggestion_id: suggestion.id,
+      reason: 'Queued for approval in the Social tab',
+    };
+  }
+  /* Auto-approval is ON — publish through the engine
+     (Truth Lock + caps + one-send-per-platform). */
+  const published = await callSocial('publish', { op: 'publish', id: suggestion.id });
+  const outcomes = (published.body && published.body.result && published.body.result.results) || [];
+  const sent = outcomes.some((o) => o.ok && !o.skipped);
+  if (sent) return { sent: true, suggestion_id: suggestion.id, via: 'social-engine' };
+  const firstError = (outcomes.find((o) => !o.ok) || {}).error;
+  const already = outcomes.length > 0 && outcomes.every((o) => o.skipped);
+  return {
+    sent: false,
+    suggestion_id: suggestion.id,
+    reason: already ? 'Already announced' : (firstError || 'Social engine could not publish'),
+  };
 }
 
 /* ══════════════════════════ HANDLER ══════════════════════════ */
@@ -232,14 +245,15 @@ module.exports = async function handler(req, res) {
       const rows = await r.json();
       const updated = Array.isArray(rows) ? rows[0] : rows;
 
-      // Status transition to application_open → announce on Telegram.
+      // Status transition to application_open → announce via the
+      // Social Content Engine (approval queue + Truth Lock + caps).
       let telegram = { sent: false };
       if (
         payload.status === 'application_open' &&
         String(previous.status || '') !== 'application_open' &&
         previous.is_active !== false
       ) {
-        telegram = await announceOpening({ ...previous, ...payload });
+        telegram = await announceOpening(updated.id);
       }
 
       return res.status(200).json({ success: true, exam: updated, telegram });

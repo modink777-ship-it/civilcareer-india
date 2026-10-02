@@ -326,7 +326,86 @@ still-pending subscriber dedupe + unique constraint).
 - Status words: A1–A8 IMPLEMENTED and TESTED by the new suite;
   A5's SQL audit is owner-run (no Supabase access from this
   environment, so it is not claimed as executed).
+- Open blockers: none.- Owner manual steps: run `docs/rls-audit.sql` in Supabase and review the §2/§6 output (expect zero rows); keep `docs/secret-rotation-list.md` for any future exposure.
+
+## 2 Oct 2026 — Phase 2: Social Content Engine F1–F8 (branch `social-engine`)
+
+Gap-report deliverables F1–F8 on top of the frozen v27 schema
+(`supabase-v27-social-engine.sql`, already applied in Supabase per the P0
+gate; rollback in `supabase-v27-social-engine-rollback.sql`).
+
+- **F1 `lib/social-core.js`** — pure rule layer shared by the API and the
+  publishers: the 7-field `approved_content_hash` (ASCII 0x1F-joined,
+  cleared on edit), `truth_hash` recomputed from the LIVE source row at
+  publish time (the stored `truth_state` alone is never trusted), per-platform
+  field limits, the 2-minute `publishing`→`uncertain` rule, the test-send
+  exemption (`is_test` never counts toward caps, rollup or the
+  already-published check), timezone-aware daily caps that count `uncertain`,
+  `last_error`/`response_snapshot` secret redaction, and ledger→suggestion
+  rollup.
+- **F2 `lib/social-templates.js`** — one template per
+  `<entity>.<event>.<discriminator>` key rendering a source record into the
+  four content surfaces (Telegram text, LinkedIn post, Instagram caption,
+  WhatsApp copy) plus the on-site link. Telegram stays plain text (no
+  parse_mode) so unusual exam/company names can never break delivery.
+- **F3 `lib/social-publishers.js`** — every platform send goes through it with
+  a uniform result shape. Telegram is fully implemented (channel posts; the
+  private test channel is preferred when `TELEGRAM_TEST_CHANNEL_ID` is set);
+  LinkedIn and Instagram sends are wired and FAIL CLOSED with an explicit
+  "not implemented" error so the ledger records the attempt honestly instead
+  of silently skipping a platform.
+- **F4 `_api/social.js` + dispatcher** — admin-only `/api/social` (single
+  segment, `op` on query/body like `/api/interview`): settings GET/PATCH,
+  connections metadata + register/verify/primary/enable/disable, ledger read,
+  and create/edit/approve/reject/publish/test/resolve. Publish runs
+  Truth Lock → claim → send → rollup. Registered in `api/[[...path]].js`
+  with every method admin-only; dashboard sessions elevate through the
+  allowlist while the real owner key keeps working for scripts.
+  `SOCIAL_CRON_SECRET` is deliberately NOT a cron credential —
+  `CRON_ROUTES` stays exam-alerts + govt-discovery only, so scheduler access
+  to social routes can never imply discovery-crawler access.
+- **F5 `admin.html` Social tab** — queue with status filters and per-row
+  badges (suggestion / truth / ledger), approve / reject / archive /
+  publish / test-send / regenerate (offered when the truth state is stale),
+  an expandable send ledger with manual retry/cancel for uncertain/failed
+  rows, the engine settings form (kill switch, require approval, per-platform
+  daily caps, caps timezone, post footer, default hashtags), and non-secret
+  connection management. Bundle regenerated via `scripts/build-admin-bundle.js`;
+  the phase1-security byte-identical round-trip assertion still holds.
+- **F6 `_api/exam-tracker.js`** — `application_open` transitions no longer
+  call `api.telegram.org` directly; they create a suggestion through the
+  engine in-process (same runtime, no network self-call). With
+  `require_approval` ON (the default) the announcement waits in the Social
+  tab; OFF publishes immediately with Truth Lock, one-send-per-platform and
+  daily caps still enforced. The engine's unique index makes it
+  once-per-change. Best-effort as before — an engine hiccup never fails the
+  exam save.
+- **F7 `_api/admin-jobs.js`** — the legacy direct Telegram auto-post is now
+  gated behind `LEGACY_TELEGRAM_AUTOPOST` (default `true`/`1` = ON, keeping
+  the pre-engine behaviour alive). Phase 3 flips it off and job
+  announcements flow through the engine queue instead.
+- **F8 `.env.example`** — documents `LINKEDIN_API_VERSION`,
+  `SOCIAL_CRON_SECRET` (reserved for the Phase 3 scheduled drain; kept
+  separate from `CRON_SECRET`) and the Turnstile pair.
+
+### Verification
+
+- `node --check` on all 8 touched/new JS files: 0 failures.
+- `tests/phase16-social-engine.test.js`: 33 tests, 33 pass — F1 hashes /
+  locks / caps / redaction, F2 template snapshots, F3 publisher fail-closed
+  behaviour + test-channel preference, F4 handler auth (401 before any
+  config is revealed, OPTIONS same-origin CORS, unknown ops rejected without
+  touching the database, dispatcher registration + admin-only rule, the
+  in-process exam-tracker call contract), F5 admin tab wiring, F6 no direct
+  telegram.org calls remain, F7 legacy gate, F8 env documentation.
+- Full `npm test`: 92 tests, 89 pass, 3 fail — the 3 are the documented
+  pre-existing baseline failures (missing `.github/workflows/govt-pipeline.yml`,
+  a P8 deliverable; `docs/00-gap-report.md` §2). No Phase-2 regressions.
+
+- Status words: F1–F8 IMPLEMENTED and TESTED by the new suite.
 - Open blockers: none.
-- Owner manual steps: run `docs/rls-audit.sql` in Supabase and
-  review the §2/§6 output (expect zero rows); keep
-  `docs/secret-rotation-list.md` for any future exposure.
+- Owner manual steps: none new for this phase (v27 SQL already applied per
+  the P0 gate). When the Phase 3 scheduled drain lands, set
+  `SOCIAL_CRON_SECRET` in Vercel; until then it is reserved and unconsumed.
+  Keep `LEGACY_TELEGRAM_AUTOPOST=true` until Phase 3 wires job publishes
+  into the engine.

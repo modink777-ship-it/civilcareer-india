@@ -265,6 +265,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="agent-reach">Agent Reach</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
+  <button data-tab="social">Social Engine</button>
   <button data-tab="salary">Salary</button>
   <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="subscribers">Subscribers</button>
@@ -609,7 +610,7 @@ Exam tracker — public page /exam-tracker
 </p>
 
 <h3>Civil engineering exam tracker</h3>
-<p>Every row below appears on the public <a href="/exam-tracker" target="_blank" rel="noopener" style="color:#c9973c">Exam Tracker page</a>. Setting a status to <b style="color:#6ee7b7">Applications Open</b> automatically announces the exam on the Telegram channel — once per change. Dates use the date picker; the exam date also accepts text such as “Feb 1-16, 2026”.</p>
+<p>Every row below appears on the public <a href="/exam-tracker" target="_blank" rel="noopener" style="color:#c9973c">Exam Tracker page</a>. Setting a status to <b style="color:#6ee7b7">Applications Open</b> routes an announcement through the <b>Social Engine</b> — once per change. With <i>Require approval</i> ON it waits in the Social tab for review; with it OFF it publishes straight to the channel (Truth Lock and daily caps still enforced). Dates use the date picker; the exam date also accepts text such as “Feb 1-16, 2026”.</p>
 
 <div class="import-actions">
 <button class="btn-gold" onclick="loadExamTracker()">⟳ Refresh</button>
@@ -621,6 +622,50 @@ Exam tracker — public page /exam-tracker
 
 <div id="adminExamTracker">
 <p style="color:#6a8aaa;font-size:.85rem">Loading exam tracker…</p>
+</div>
+
+</div>
+
+<div class="panel" id="panel-social">
+
+<div class="import-box">
+<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+Social Content Engine — v27
+</p>
+
+<h3>Social queue, connections &amp; settings</h3>
+<p>Every Telegram, LinkedIn and Instagram post starts here as a <b>suggestion</b> built from a verified exam, job or government-vacancy record. Approve it, then publish: the engine enforces the <b>Truth Lock</b> (source record changed after generation → blocked), the <b>content lock</b> (edited after approval → blocked), <b>one real send per platform</b>, and <b>per-platform daily caps</b>. A send that ends <b style="color:#fbbf24">uncertain</b> may or may not have landed — it is never auto-retried; resolve it by hand.</p>
+
+<div class="import-actions">
+<button class="btn-gold" onclick="loadSocial()">⟳ Refresh</button>
+</div>
+
+<div class="import-status" id="socialStatus"></div>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">Engine settings</h3>
+<div id="socialSettings">
+<p style="color:#6a8aaa;font-size:.85rem">Loading settings…</p>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Connections</h3>
+<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">Non-secret metadata only — platform tokens live in the deployment environment (see <code>.env.example</code>), never in the database.</p>
+<div id="socialConnections">
+<p style="color:#6a8aaa;font-size:.85rem">Loading connections…</p>
+</div>
+
+<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Content queue</h3>
+<div class="import-actions" style="margin-bottom:10px">
+<button class="btn-ghost" onclick="socialSetFilter('')">All</button>
+<button class="btn-ghost" onclick="socialSetFilter('pending')">⏳ Pending</button>
+<button class="btn-ghost" onclick="socialSetFilter('approved')">✅ Approved</button>
+<button class="btn-ghost" onclick="socialSetFilter('publishing')">📤 Publishing</button>
+<button class="btn-ghost" onclick="socialSetFilter('published')">📣 Published</button>
+<button class="btn-ghost" onclick="socialSetFilter('partial')">🧩 Partial</button>
+<button class="btn-ghost" onclick="socialSetFilter('rejected')">🚫 Rejected</button>
+</div>
+<div id="socialQueue">
+<p style="color:#6a8aaa;font-size:.85rem">Loading queue…</p>
 </div>
 
 </div>
@@ -1144,6 +1189,8 @@ async function loadAll(page=ccJobsPage){
   loadAgentReach();
 
   loadExamTracker().catch(() => {});
+
+  loadSocial().catch(() => {});
 
   loadSalaryAdmin().catch(() => {});
 
@@ -3720,12 +3767,15 @@ async function saveExamTrackerRow(id) {
       body: JSON.stringify(payload),
     });
     if (d.exam) Object.assign(row, d.exam);
+    const tg = d.telegram || {};
     setExamTrackerStatus(
-      d.telegram && d.telegram.sent
-        ? 'Saved ✓ — Applications Open announced on Telegram 📢'
-        : d.telegram && d.telegram.reason
-          ? `Saved ✓ (Telegram skipped: ${d.telegram.reason})`
-          : 'Saved ✓',
+      tg.sent
+        ? 'Saved ✓ — Applications Open announced via the Social Engine 📢'
+        : tg.queued
+          ? `Saved ✓ — announcement queued in the Social tab (suggestion #${tg.suggestion_id})`
+          : tg.reason
+            ? `Saved ✓ (announcement: ${tg.reason})`
+            : 'Saved ✓',
       'success'
     );
     toast('Exam saved.');
@@ -3880,6 +3930,391 @@ Internal notes (never public)
       st.textContent = err.message;
     }
   };
+}
+
+/* ════════════════════════════════════════════════
+   SOCIAL CONTENT ENGINE (Phase 2 — v27 tables)
+   Suggestions queue, send ledger, connections and
+   engine settings. Every platform send is approved,
+   Truth-Locked and capped by the engine first.
+   ════════════════════════════════════════════════ */
+
+let socialRows = [];
+let socialFilter = '';
+let socialExpanded = null;
+
+function setSocialStatus(msg, type='') {
+  const el = $('socialStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = `import-status show${type ? ' ' + type : ''}`;
+}
+
+const SOCIAL_BADGES = {
+  suggestion: {
+    pending:      ['⏳ Pending', '#c9973c'],
+    approved:     ['✅ Approved', '#6ee7b7'],
+    publishing:   ['📤 Publishing', '#7dd3fc'],
+    published:    ['📣 Published', '#4ade80'],
+    partial:      ['🧩 Partial', '#fbbf24'],
+    rejected:     ['🚫 Rejected', '#f87171'],
+    archived:     ['🗄️ Archived', '#94a3b8'],
+  },
+  truth: {
+    locked:     ['🔒 Truth locked', '#6ee7b7'],
+    stale:      ['⚠️ Source changed', '#f87171'],
+    unverified: ['❓ Unverified', '#c9973c'],
+  },
+  ledger: {
+    pending:           ['⏳ Pending', '#c9973c'],
+    publishing:        ['📤 Publishing', '#7dd3fc'],
+    sent:              ['✅ Sent', '#4ade80'],
+    failed:            ['❌ Failed', '#f87171'],
+    uncertain:         ['❓ Uncertain', '#fbbf24'],
+    cancelled:         ['🚫 Cancelled', '#94a3b8'],
+    needs_second_step: ['🔁 Second step', '#7dd3fc'],
+    expired:           ['⏰ Expired', '#94a3b8'],
+  },
+};
+
+function socialBadge(kind, key) {
+  const b = (SOCIAL_BADGES[kind] || {})[key] || ['•', '#94a3b8'];
+  return `<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;background:${b[1]}1f;color:${b[1]};border:1px solid ${b[1]}55;white-space:nowrap">${b[0]}</span>`;
+}
+
+const socialWhen = iso => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? (iso || '—') : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+function socialSetFilter(f) {
+  socialFilter = f;
+  renderSocialQueue();
+}
+
+async function loadSocial() {
+  try {
+    const d = await api('/api/social', { key: adminKey });
+    socialRows = d.suggestions || [];
+    renderSocialSettings(d.settings || {});
+    renderSocialConnections(d.connections || []);
+    renderSocialQueue();
+  } catch (e) {
+    const el = $('socialQueue');
+    if (el) el.innerHTML = `<p style="color:#fca5a5;padding:1rem">Could not load the Social queue: ${esc(e.message)}</p>`;
+  }
+}
+
+/* ── settings ─────────────────────────────── */
+
+function renderSocialSettings(s) {
+  const el = $('socialSettings');
+  if (!el) return;
+  const caps = s.per_platform_daily_caps || {};
+  el.innerHTML = `
+  <form id="socialSettingsForm" class="import-box" style="padding:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;align-items:start">
+      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:#e2e8f0">
+        <input type="checkbox" id="ssKill" ${s.kill_switch ? 'checked' : ''}>
+        <span>Kill switch<br><span style="color:#6a8aaa;font-size:.72rem">blocks all publishing instantly</span></span>
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:#e2e8f0">
+        <input type="checkbox" id="ssApproval" ${s.require_approval !== false ? 'checked' : ''}>
+        <span>Require approval<br><span style="color:#6a8aaa;font-size:.72rem">new suggestions wait in the queue</span></span>
+      </label>
+      <label style="font-size:.8rem;color:#cbd5e1">Telegram / day
+        <input type="number" min="0" max="1000" id="ssCapTg" value="${caps.telegram != null ? caps.telegram : 5}" style="width:90px">
+      </label>
+      <label style="font-size:.8rem;color:#cbd5e1">LinkedIn / day
+        <input type="number" min="0" max="1000" id="ssCapLi" value="${caps.linkedin != null ? caps.linkedin : 2}" style="width:90px">
+      </label>
+      <label style="font-size:.8rem;color:#cbd5e1">Instagram / day
+        <input type="number" min="0" max="1000" id="ssCapIg" value="${caps.instagram != null ? caps.instagram : 2}" style="width:90px">
+      </label>
+      <label style="font-size:.8rem;color:#cbd5e1">Caps timezone (IANA)
+        <input type="text" id="ssTz" value="${esc(s.caps_timezone || 'Asia/Kolkata')}" style="width:150px">
+      </label>
+    </div>
+    <label style="display:block;font-size:.8rem;color:#cbd5e1;margin-top:12px">Footer appended to every post (≤200 chars)
+      <input type="text" id="ssFooter" value="${esc(s.footer || '')}" style="width:100%;max-width:560px">
+    </label>
+    <label style="display:block;font-size:.8rem;color:#cbd5e1;margin-top:10px">Default Instagram hashtags (comma separated, ≤30)
+      <input type="text" id="ssTags" value="${esc((s.default_hashtags || []).join(', '))}" style="width:100%;max-width:560px">
+    </label>
+    <div class="import-actions" style="margin-top:12px">
+      <button class="btn-gold" type="submit">Save settings</button>
+    </div>
+  </form>`;
+  $('socialSettingsForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const tags = String($('ssTags').value || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 30);
+    try {
+      await api('/api/social?op=settings', {
+        method: 'PATCH', key: adminKey,
+        body: JSON.stringify({
+          kill_switch: $('ssKill').checked,
+          require_approval: $('ssApproval').checked,
+          per_platform_daily_caps: {
+            telegram: Number($('ssCapTg').value) || 0,
+            linkedin: Number($('ssCapLi').value) || 0,
+            instagram: Number($('ssCapIg').value) || 0,
+          },
+          caps_timezone: $('ssTz').value.trim() || 'Asia/Kolkata',
+          footer: $('ssFooter').value.trim() || null,
+          default_hashtags: tags,
+        }),
+      });
+      setSocialStatus('Settings saved ✓', 'success');
+      toast('Social settings saved.');
+    } catch (err) {
+      setSocialStatus('❌ ' + err.message, 'error');
+    }
+  };
+}
+
+/* ── connections ──────────────────────────── */
+
+function renderSocialConnections(conns) {
+  const el = $('socialConnections');
+  if (!el) return;
+  const list = conns.map(c => {
+    const actions = [
+      `<button onclick="socialConnAction(${c.id},'verify')">Verify</button>`,
+      c.is_primary
+        ? '<span style="color:#c9973c;font-size:.75rem">★ primary</span>'
+        : `<button onclick="socialConnAction(${c.id},'primary')">Make primary</button>`,
+      c.status === 'disabled'
+        ? `<button onclick="socialConnAction(${c.id},'enable')">Enable</button>`
+        : `<button onclick="socialConnAction(${c.id},'disable')">Disable</button>`,
+    ].join(' ');
+    return `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #23405c;border-radius:8px;margin-bottom:8px;background:#0d1b29">
+      <div>
+        <b style="color:#e2e8f0">${esc(c.platform)}</b>
+        ${c.route ? `<span style="color:#6a8aaa;font-size:.75rem"> · ${esc(c.route)}</span>` : ''}
+        ${c.display_name ? `<div style="color:#cbd5e1;font-size:.85rem">${esc(c.display_name)}</div>` : ''}
+        <div style="color:#6a8aaa;font-size:.72rem">id ${esc(c.external_id)}${c.facebook_page_id ? ` · page ${esc(c.facebook_page_id)}` : ''}${c.scope ? ` · scope ${esc(c.scope)}` : ''}${c.status ? ` · ${esc(c.status)}` : ''}${c.last_verified_at ? ` · verified ${socialWhen(c.last_verified_at)}` : ''}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = (list || '<p style="color:#6a8aaa;font-size:.85rem">No connections registered yet.</p>') + `
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+    <select id="scPlatform" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
+      <option value="telegram">Telegram</option>
+      <option value="linkedin">LinkedIn</option>
+      <option value="instagram">Instagram</option>
+    </select>
+    <select id="scRoute" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
+      <option value="">— route (optional) —</option>
+      <option value="telegram_bot">telegram_bot</option>
+      <option value="linkedin_member">linkedin_member</option>
+      <option value="linkedin_organization">linkedin_organization</option>
+      <option value="instagram_login">instagram_login</option>
+      <option value="facebook_login">facebook_login</option>
+    </select>
+    <input id="scExternal" placeholder="External ID — the account id, never a token" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px;min-width:220px">
+    <input id="scName" placeholder="Display name" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
+    <button class="btn-ghost" onclick="socialAddConnection()">+ Add connection</button>
+  </div>`;
+}
+
+async function socialConnAction(id, action) {
+  try {
+    await api('/api/social?op=connections', {
+      method: 'POST', key: adminKey,
+      body: JSON.stringify({ op: 'connections', id, action }),
+    });
+    setSocialStatus(`Connection ${action} ✓`, 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Connection: ' + e.message, 'error');
+  }
+}
+
+async function socialAddConnection() {
+  const platform = $('scPlatform').value;
+  const externalId = String($('scExternal').value || '').trim();
+  if (!externalId) {
+    setSocialStatus('❌ External ID is required (the account id — never a token)', 'error');
+    return;
+  }
+  try {
+    await api('/api/social?op=connections', {
+      method: 'POST', key: adminKey,
+      body: JSON.stringify({
+        op: 'connections',
+        platform,
+        route: $('scRoute').value || undefined,
+        external_id: externalId,
+        display_name: $('scName').value.trim() || undefined,
+      }),
+    });
+    setSocialStatus('Connection added ✓', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Add connection: ' + e.message, 'error');
+  }
+}
+
+/* ── queue ────────────────────────────────── */
+
+function renderSocialQueue() {
+  const el = $('socialQueue');
+  if (!el) return;
+  const rows = socialFilter
+    ? socialRows.filter(r => r.status === socialFilter)
+    : socialRows;
+  if (!rows.length) {
+    el.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">No suggestions' +
+      (socialFilter ? ` with status “${socialFilter}”` : ' yet') +
+      '. Suggestions appear automatically when an exam enters “Applications Open”, a job is published, or a government vacancy is verified.</p>';
+    return;
+  }
+  el.innerHTML = rows.map(s => {
+    const ledger = Array.isArray(s.social_publishes) ? s.social_publishes : [];
+    const real = ledger.filter(r => !r.is_test);
+    const open = socialExpanded === s.id;
+    const actions = [];
+    if (s.status === 'pending' || s.status === 'partial') {
+      actions.push(`<button class="btn-gold" onclick="socialApprove(${s.id})">✅ Approve</button>`);
+      actions.push(`<button onclick="socialReject(${s.id})">🚫 Reject</button>`);
+    }
+    if (s.status === 'approved' || s.status === 'partial') {
+      actions.push(`<button class="btn-gold" onclick="socialPublish(${s.id})">📣 Publish</button>`);
+      actions.push(`<button onclick="socialTest(${s.id})">🧪 Test send</button>`);
+    }
+    if (s.truth_state === 'stale') {
+      actions.push(`<button onclick="socialRegenerate(${s.id})">↻ Regenerate</button>`);
+    }
+    if (s.status !== 'rejected' && s.status !== 'archived') {
+      actions.push(`<button onclick="socialArchive(${s.id})">🗄️ Archive</button>`);
+    }
+    actions.push(`<button onclick="socialToggleLedger(${s.id})">📜 Ledger (${real.length})</button>`);
+    const ledgerHtml = open ? `
+      <div style="margin-top:10px;padding:10px 12px;border:1px solid #23405c;border-radius:8px;background:#0a1520">
+        ${real.length ? real.map(r => `
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #16283a">
+            <div style="font-size:.82rem">
+              <b style="color:#e2e8f0">${esc(r.platform)}</b> ${socialBadge('ledger', r.status)}
+              ${r.is_test ? '<span style="color:#6a8aaa;font-size:.72rem"> · test</span>' : ''}
+              <div style="color:#6a8aaa;font-size:.72rem">attempts ${r.attempts != null ? r.attempts : '—'}${r.last_attempt_at ? ` · last ${socialWhen(r.last_attempt_at)}` : ''}${r.external_url ? ` · <a href="${esc(r.external_url)}" target="_blank" rel="noopener" style="color:#7dd3fc">view post</a>` : ''}${r.destination_ref ? ` · dest ${esc(r.destination_ref)}` : ''}</div>
+              ${r.last_error ? `<div style="color:#f87171;font-size:.75rem;margin-top:2px">${esc(r.last_error)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px">
+              ${['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
+                ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
+                   <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
+                : ''}
+            </div>
+          </div>`).join('')
+        : '<p style="color:#6a8aaa;font-size:.78rem;margin:0">No real sends yet.</p>'}
+      </div>` : '';
+    return `<div style="padding:12px 14px;border:1px solid #23405c;border-radius:10px;margin-bottom:10px;background:#0d1b29">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:start">
+        <div style="min-width:0">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+            ${socialBadge('suggestion', s.status)}
+            ${socialBadge('truth', s.truth_state || 'unverified')}
+            <span style="color:#6a8aaa;font-size:.72rem">${esc(s.source_type)} #${esc(s.source_id)} · ${esc(s.template_key)}</span>
+          </div>
+          <b style="color:#e2e8f0;font-size:.95rem">${esc(s.title)}</b>
+          <div style="color:#6a8aaa;font-size:.72rem;margin-top:2px">created ${socialWhen(s.created_at)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${actions.join('')}</div>
+      </div>
+      ${ledgerHtml}
+    </div>`;
+  }).join('');
+}
+
+function socialToggleLedger(id) {
+  socialExpanded = socialExpanded === id ? null : id;
+  renderSocialQueue();
+}
+
+async function socialApi(op, body) {
+  return api(`/api/social?op=${op}`, {
+    method: 'POST', key: adminKey,
+    body: JSON.stringify({ op, ...body }),
+  });
+}
+
+async function socialApprove(id) {
+  try {
+    await socialApi('approve', { id });
+    setSocialStatus('Suggestion approved ✓ — ready to publish', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Approve: ' + e.message, 'error');
+  }
+}
+
+async function socialReject(id) {
+  try {
+    await socialApi('reject', { id });
+    setSocialStatus('Suggestion rejected', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Reject: ' + e.message, 'error');
+  }
+}
+
+async function socialArchive(id) {
+  try {
+    await socialApi('archive', { id });
+    setSocialStatus('Suggestion archived', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Archive: ' + e.message, 'error');
+  }
+}
+
+async function socialPublish(id) {
+  try {
+    const d = await socialApi('publish', { id });
+    const results = (d.result && d.result.results) || [];
+    const summary = results
+      .map(r => `${r.platform}: ${r.ok ? (r.skipped ? 'skipped (already sent)' : 'sent ✓') : (r.error || 'failed')}`)
+      .join(' · ');
+    const failed = results.some(r => !r.ok && !r.skipped);
+    setSocialStatus(summary || 'Publish finished', failed ? 'error' : 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Publish: ' + e.message, 'error');
+  }
+}
+
+async function socialTest(id) {
+  try {
+    await socialApi('test', { id, platform: 'telegram' });
+    setSocialStatus('Test send queued — check the private test channel (TELEGRAM_TEST_CHANNEL_ID)', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Test send: ' + e.message, 'error');
+  }
+}
+
+async function socialRegenerate(id) {
+  try {
+    await socialApi('reject', { id });
+    const s = socialRows.find(r => r.id === id);
+    if (!s) throw new Error('Suggestion not in the loaded queue — reload');
+    await socialApi('create', { source_type: s.source_type, source_id: s.source_id });
+    setSocialStatus('Suggestion regenerated from the current source record ✓', 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Regenerate: ' + e.message, 'error');
+  }
+}
+
+async function socialResolve(id, platform, action) {
+  try {
+    await socialApi('resolve', { id, platform, action });
+    setSocialStatus(`Ledger row ${action}ed — queue re-rolled ✓`, 'success');
+    await loadSocial();
+  } catch (e) {
+    setSocialStatus('❌ Resolve: ' + e.message, 'error');
+  }
 }
 
 /* ════════════════════════════════════════════════
