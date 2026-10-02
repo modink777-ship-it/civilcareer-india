@@ -52,4 +52,8 @@ test('Feature 2 dispatcher and rewrite are wired', () => {
   assert.ok(dispatcher.includes('/api/exam-alert-subscribe'));
   const vercel = JSON.parse(read('vercel.json'));
   assert.ok(vercel.rewrites.some((x) => x.source === '/exam-tracker' && x.destination === '/exam-tracker.html'));
+  const admin = read('admin.html');
+  assert.ok(admin.includes('data-tab="exam-tracker"'));
+  assert.ok(admin.includes('id="adminExamTracker"'));
+  assert.ok(admin.includes("api('/api/exam-tracker'"));
 });
