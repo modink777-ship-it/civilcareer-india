@@ -29,5 +29,7 @@ jobs:
           node --check _api/social.js
           node --check _api/admin-jobs.js
           node --check _api/exam-tracker.js
+      - name: Regenerate protected admin bundle
+        run: node scripts/build-admin-bundle.js
       - name: Run test suite
         run: npm test
