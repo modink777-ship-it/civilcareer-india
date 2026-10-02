@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="metaTitle">CivilCareer Blog</title>
+<meta name="description" id="metaDesc" content="">
+<link rel="canonical" id="metaCanon" href="https://civilcareer.in/blog">
+<meta property="og:title" id="ogTitle" content="">
+<meta property="og:description" id="ogDesc" content="">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/styles.css">
+<style>
+.bp-hero{background:var(--navy);padding:48px 0 32px}
+.bp-hero h1{font-size:clamp(1.4rem,3.5vw,2rem);color:#fff;margin:0 0 12px;line-height:1.3}
+.bp-meta{font-size:.8rem;color:#6a8aaa;display:flex;gap:14px;flex-wrap:wrap}
+.bp-body{max-width:720px;margin:0 auto;padding:32px 16px 64px}
+.bp-body h2{font-size:1.2rem;color:var(--navy);margin:28px 0 10px}
+.bp-body h3{font-size:1rem;color:var(--navy);margin:20px 0 8px}
+.bp-body p{line-height:1.8;color:var(--text);margin:0 0 14px;font-size:.93rem}
+.bp-body ul,.bp-body ol{padding-left:20px;margin:0 0 14px}
+.bp-body li{line-height:1.8;color:var(--text);font-size:.93rem;margin-bottom:4px}
+.bp-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.85rem;overflow-x:auto;display:block}
+.bp-body th,.bp-body td{padding:8px 12px;border:1px solid var(--line);text-align:left}
+.bp-body th{background:var(--soft);font-weight:700;color:var(--navy)}
+.bp-share{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:32px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.bp-share p{margin:0;font-size:.85rem;font-weight:600;color:var(--navy)}
+.share-btns{display:flex;gap:8px}
+.share-btn{padding:8px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;border:none;text-decoration:none;display:inline-block}
+.share-wa{background:#25D366;color:#fff}
+.share-tg{background:#2AABEE;color:#fff}
+.share-copy{background:var(--line);color:var(--navy)}
+.bp-cta{background:var(--navy);border-radius:12px;padding:24px;text-align:center;margin:32px 0}
+.bp-cta h3{color:#fff;margin:0 0 6px;font-size:1rem}
+.bp-cta p{color:#6a8aaa;font-size:.82rem;margin:0 0 14px}
+.related-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:16px}
+.related-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;text-decoration:none;color:inherit;display:block;font-size:.85rem}
+.related-card:hover{box-shadow:var(--shadow)}
+.related-card h4{margin:0 0 4px;color:var(--navy);font-size:.88rem;line-height:1.3}
+.related-card p{margin:0;color:var(--muted);font-size:.75rem}
+</style>
+</head>
+<body>
+<div id="mainHeader"></div>
+
+<div id="loadingState" style="text-align:center;padding:64px;color:var(--muted)">Loading article…</div>
+
+<div id="postContent" style="display:none">
+  <div class="bp-hero">
+    <div class="container">
+      <div style="margin-bottom:10px"><a href="/blog" style="color:#6a8aaa;font-size:.8rem;text-decoration:none">← Blog</a></div>
+      <h1 id="postTitle"></h1>
+      <div class="bp-meta">
+        <span id="postDate"></span>
+        <span id="postViews"></span>
+        <span id="postCat"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bp-body">
+    <div id="postBody"></div>
+
+    <div class="bp-share">
+      <p>📤 Share this article</p>
+      <div class="share-btns">
+        <a class="share-btn share-wa" id="shareWa" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn share-tg" id="shareTg" target="_blank" rel="noopener">Telegram</a>
+        <button class="share-btn share-copy" onclick="copyLink()">Copy Link</button>
+      </div>
+    </div>
+
+    <div class="bp-cta">
+      <h3>Get Civil Engineering Jobs on Telegram</h3>
+      <p>Daily job alerts, exam notifications and career tips. 100% free.</p>
+      <a href="https://t.me/CivilCareerIndiaJobs" class="btn-gold" target="_blank" rel="noopener">Join @CivilCareerIndiaJobs →</a>
+    </div>
+
+    <div id="relatedSection" style="display:none">
+      <h3 style="color:var(--navy);margin:32px 0 12px">Related Articles</h3>
+      <div class="related-grid" id="relatedGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="mainFooter"></div>
+
+<script>
+const slug = location.pathname.replace(/^\/blog\//,'').replace(/\/$/,'');
+
+(async function load() {
+  if (!slug) { location.href = '/blog'; return; }
+  try {
+    const r = await fetch(`/api/blog?slug=${encodeURIComponent(slug)}`);
+    const d = await r.json();
+    if (!d.post) { document.getElementById('loadingState').innerHTML = '<h2>Article not found</h2><a href="/blog">← Back to Blog</a>'; return; }
+    const p = d.post;
+
+    document.title = p.title + ' | CivilCareer';
+    document.getElementById('metaTitle').textContent = p.title + ' | CivilCareer';
+    document.getElementById('metaDesc').content = p.meta_description || '';
+    document.getElementById('metaCanon').href = 'https://civilcareer.in/blog/' + slug;
+    document.getElementById('ogTitle').content = p.title;
+    document.getElementById('ogDesc').content = p.meta_description || '';
+
+    document.getElementById('postTitle').textContent = p.title;
+    document.getElementById('postDate').textContent = '📅 ' + (p.published_at ? new Date(p.published_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '');
+    document.getElementById('postViews').textContent = p.views ? '👁 ' + p.views + ' views' : '';
+    const CATS = {'exam-prep':'Exam Prep', salary:'Salary', career:'Career', companies:'Companies', govt:'Govt Jobs'};
+    document.getElementById('postCat').textContent = CATS[p.category] || p.category || '';
+    document.getElementById('postBody').innerHTML = p.content || '';
+
+    const pageUrl = 'https://civilcareer.in/blog/' + slug;
+    const txt = encodeURIComponent(p.title + '\n' + pageUrl);
+    document.getElementById('shareWa').href = 'https://wa.me/?text=' + txt;
+    document.getElementById('shareTg').href = 'https://t.me/share/url?url=' + encodeURIComponent(pageUrl) + '&text=' + encodeURIComponent(p.title);
+
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('postContent').style.display = '';
+
+    // Load related
+    const catR = await fetch(`/api/blog?category=${p.category || ''}&limit=4`);
+    const catD = await catR.json();
+    const related = (catD.posts || []).filter(x => x.slug !== slug).slice(0,3);
+    if (related.length) {
+      document.getElementById('relatedGrid').innerHTML = related.map(rp =>
+        `<a class="related-card" href="/blog/${rp.slug}"><h4>${rp.title}</h4><p>${rp.meta_description?.slice(0,80)||''}</p></a>`
+      ).join('');
+      document.getElementById('relatedSection').style.display = '';
+    }
+  } catch(e) {
+    document.getElementById('loadingState').innerHTML = 'Could not load article.';
+  }
+})();
+
+function copyLink() {
+  navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'));
+}
+</script>
+</body>
+</html>

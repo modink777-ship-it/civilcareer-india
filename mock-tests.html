@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Civil Engineering Mock Tests — SSC JE, RRB JE, GATE | CivilCareer</title>
+<meta name="description" content="Free mock tests for SSC JE Civil, RRB JE Civil and GATE Civil Engineering. Practice with real exam-pattern questions. Instant results with explanations.">
+<link rel="canonical" href="https://civilcareer.in/mock-tests">
+<link rel="stylesheet" href="/styles.css">
+<style>
+.mt-hero{background:var(--navy);padding:48px 0 32px;text-align:center}
+.mt-hero h1{font-size:clamp(1.5rem,4vw,2.2rem);color:#fff;margin:0 0 8px}
+.mt-hero p{color:#6a8aaa;font-size:.95rem;margin:0}
+.test-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:32px 0}
+.test-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;cursor:pointer;transition:all .15s;text-decoration:none;color:inherit;display:block}
+.test-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+.test-card .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.7rem;font-weight:700;margin-bottom:12px}
+.badge-ssc{background:#e8f0fe;color:#1a56db}
+.badge-rrb{background:#fef3c7;color:#92400e}
+.badge-gate{background:#d1fae5;color:#065f46}
+.test-card h3{font-size:1rem;font-weight:700;margin:0 0 6px;color:var(--navy)}
+.test-card p{font-size:.82rem;color:var(--text);margin:0 0 14px}
+.test-meta{display:flex;gap:12px;font-size:.75rem;color:var(--muted)}
+.test-meta span{display:flex;align-items:center;gap:4px}
+/* Test interface */
+.test-wrap{max-width:780px;margin:0 auto;padding:24px 16px}
+.test-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.progress-bar{height:6px;background:#e2e8f0;border-radius:99px;margin-bottom:20px}
+.progress-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .3s}
+.timer{font-size:1.1rem;font-weight:700;color:var(--navy);padding:6px 14px;background:var(--soft);border-radius:8px}
+.timer.urgent{color:#dc2626;background:#fef2f2}
+.q-num{font-size:.82rem;color:var(--muted);font-weight:600}
+.q-text{font-size:1rem;color:var(--navy);line-height:1.65;margin:0 0 20px;font-weight:500}
+.options{display:grid;gap:10px;margin-bottom:24px}
+.option{padding:13px 18px;border:2px solid var(--line);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;background:#fff;font-size:.9rem;color:var(--navy);text-align:left}
+.option:hover{border-color:var(--blue);background:var(--soft)}
+.option.selected{border-color:var(--blue);background:#eff6ff}
+.option.correct{border-color:#10b981;background:#d1fae5}
+.option.wrong{border-color:#ef4444;background:#fee2e2}
+.option .opt-label{font-weight:700;width:24px;height:24px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.75rem}
+.nav-btns{display:flex;gap:10px;flex-wrap:wrap}
+.explanation{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin-top:16px;font-size:.85rem;color:#166534;display:none}
+/* Results */
+.result-wrap{max-width:600px;margin:0 auto;padding:32px 16px;text-align:center}
+.score-circle{width:140px;height:140px;border-radius:50%;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 24px;color:#fff}
+.score-circle .big{font-size:2.2rem;font-weight:800;line-height:1}
+.score-circle .sub{font-size:.75rem;opacity:.7}
+.result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.stat-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+.stat-box .val{font-size:1.3rem;font-weight:700;color:var(--navy)}
+.stat-box .lbl{font-size:.72rem;color:var(--muted);margin-top:2px}
+.share-txt{background:var(--soft);border-radius:10px;padding:12px 16px;font-size:.82rem;margin:20px 0;cursor:pointer;border:1px dashed var(--line)}
+</style>
+</head>
+<body>
+
+<div id="mainHeader"></div>
+
+<!-- LIST VIEW -->
+<div id="viewList">
+<div class="mt-hero">
+  <div class="container">
+    <h1>Free Civil Engineering Mock Tests</h1>
+    <p>Practise with real exam-pattern questions — SSC JE, RRB JE, GATE Civil. Instant results with explanations.</p>
+  </div>
+</div>
+<div class="container">
+  <div class="test-grid" id="testGrid">
+    <a class="test-card" onclick="startTest('SSC_JE','all',100,120);return false" href="#">
+      <span class="badge badge-ssc">SSC JE</span>
+      <h3>SSC JE Civil — Full Mock Test</h3>
+      <p>100 questions covering all subjects. Matches exact SSC JE Paper-1 pattern.</p>
+      <div class="test-meta">
+        <span>📝 100 questions</span>
+        <span>⏱ 120 min</span>
+        <span>📊 Medium</span>
+      </div>
+    </a>
+    <a class="test-card" onclick="startTest('SSC_JE','Structures',30,40);return false" href="#">
+      <span class="badge badge-ssc">SSC JE</span>
+      <h3>SSC JE — Structural Engineering</h3>
+      <p>Beams, columns, trusses, RCC design, IS 456. Most important section.</p>
+      <div class="test-meta"><span>📝 30 questions</span><span>⏱ 40 min</span></div>
+    </a>
+    <a class="test-card" onclick="startTest('SSC_JE','Geotech',25,35);return false" href="#">
+      <span class="badge badge-ssc">SSC JE</span>
+      <h3>SSC JE — Geotechnical Engineering</h3>
+      <p>Soil classification, consolidation, shear strength, foundations.</p>
+      <div class="test-meta"><span>📝 25 questions</span><span>⏱ 35 min</span></div>
+    </a>
+    <a class="test-card" onclick="startTest('SSC_JE','Fluid',25,35);return false" href="#">
+      <span class="badge badge-ssc">SSC JE</span>
+      <h3>SSC JE — Fluid Mechanics & Hydraulics</h3>
+      <p>Bernoulli, pipe flow, open channel, hydraulic machines.</p>
+      <div class="test-meta"><span>📝 25 questions</span><span>⏱ 35 min</span></div>
+    </a>
+    <a class="test-card" onclick="startTest('RRB_JE','all',100,90);return false" href="#">
+      <span class="badge badge-rrb">RRB JE</span>
+      <h3>RRB JE Civil — Full Mock Test</h3>
+      <p>100 questions. Railway recruitment pattern with civil-specific questions.</p>
+      <div class="test-meta"><span>📝 100 questions</span><span>⏱ 90 min</span></div>
+    </a>
+    <a class="test-card" onclick="startTest('GATE','all',65,180);return false" href="#">
+      <span class="badge badge-gate">GATE</span>
+      <h3>GATE Civil — PYQ Practice</h3>
+      <p>Previous year questions from 2018–2024. NAT + MCQ mixed pattern.</p>
+      <div class="test-meta"><span>📝 65 questions</span><span>⏱ 180 min</span></div>
+    </a>
+  </div>
+  <div id="statsRow" style="text-align:center;padding:8px 0 32px;color:var(--muted);font-size:.82rem"></div>
+</div>
+</div>
+
+<!-- TEST VIEW -->
+<div id="viewTest" style="display:none">
+<div class="container">
+<div class="test-wrap">
+  <div class="test-header">
+    <div>
+      <div class="q-num" id="qNum">Question 1 of 100</div>
+      <div style="font-size:.78rem;color:var(--muted)" id="testName">SSC JE Civil</div>
+    </div>
+    <div class="timer" id="timer">120:00</div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:1%"></div></div>
+  <div class="q-text" id="qText"></div>
+  <div class="options" id="optionsWrap"></div>
+  <div class="explanation" id="explanation"></div>
+  <div class="nav-btns">
+    <button class="btn-ghost" onclick="prevQ()" id="prevBtn" disabled>← Prev</button>
+    <button class="btn-ghost" onclick="skipQ()">Skip</button>
+    <button class="btn-blue" onclick="nextQ()" id="nextBtn">Next →</button>
+    <button class="btn-red" onclick="confirmSubmit()" id="submitBtn" style="display:none">Submit Test</button>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- RESULTS VIEW -->
+<div id="viewResult" style="display:none">
+<div class="container">
+<div class="result-wrap">
+  <div class="score-circle" id="scoreCircle">
+    <div class="big" id="scorePct">0%</div>
+    <div class="sub">Score</div>
+  </div>
+  <h2 id="resultTitle" style="color:var(--navy)">Test Complete!</h2>
+  <div class="result-stats">
+    <div class="stat-box"><div class="val" id="rCorrect">0</div><div class="lbl">Correct</div></div>
+    <div class="stat-box"><div class="val" id="rWrong">0</div><div class="lbl">Wrong</div></div>
+    <div class="stat-box"><div class="val" id="rSkipped">0</div><div class="lbl">Skipped</div></div>
+  </div>
+  <div class="result-stats">
+    <div class="stat-box"><div class="val" id="rTime">0:00</div><div class="lbl">Time Taken</div></div>
+    <div class="stat-box"><div class="val" id="rAccuracy">0%</div><div class="lbl">Accuracy</div></div>
+    <div class="stat-box"><div class="val" id="rRank">—</div><div class="lbl">vs Average</div></div>
+  </div>
+  <div class="share-txt" id="shareTxt" onclick="shareResult()">
+    📋 Click to copy your result and share!
+  </div>
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+    <button class="btn-blue" onclick="reviewAnswers()">Review Answers</button>
+    <button class="btn-ghost" onclick="showList()">Take Another Test</button>
+  </div>
+</div>
+
+<!-- Answer Review -->
+<div id="answerReview" style="display:none;max-width:780px;margin:0 auto;padding:0 16px 48px"></div>
+</div>
+</div>
+
+<div id="mainFooter"></div>
+
+<script>
+const SESSION_KEY = 'cc_mt_' + Math.random().toString(36).slice(2);
+let questions = [], currentQ = 0, userAnswers = {}, timerInterval, startTime, testExam, testLimit, testMinutes, reviewData = [];
+
+function showList(){ document.getElementById('viewList').style.display=''; document.getElementById('viewTest').style.display='none'; document.getElementById('viewResult').style.display='none'; }
+function showTest(){ document.getElementById('viewList').style.display='none'; document.getElementById('viewTest').style.display=''; document.getElementById('viewResult').style.display='none'; }
+function showResult(){ document.getElementById('viewList').style.display='none'; document.getElementById('viewTest').style.display='none'; document.getElementById('viewResult').style.display=''; }
+
+async function startTest(exam, subject, limit, minutes) {
+  testExam = exam; testLimit = limit; testMinutes = minutes;
+  questions = []; currentQ = 0; userAnswers = {}; reviewData = [];
+  try {
+    const r = await fetch(`/api/mock-tests?exam=${exam}&subject=${subject}&limit=${limit}`);
+    const d = await r.json();
+    questions = d.questions || [];
+    if (!questions.length) { alert('No questions available yet for this test. Check back soon!'); return; }
+    document.getElementById('testName').textContent = exam.replace('_', ' ') + ' Civil';
+    showTest();
+    renderQ(0);
+    startTimer(minutes * 60);
+    startTime = Date.now();
+    await fetch('/api/mock-tests', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ session_key: SESSION_KEY, exam }) });
+  } catch(e) { alert('Could not load test. Please try again.'); }
+}
+
+function renderQ(idx) {
+  const q = questions[idx];
+  if (!q) return;
+  const total = questions.length;
+  document.getElementById('qNum').textContent = `Question ${idx+1} of ${total}`;
+  document.getElementById('progressFill').style.width = ((idx+1)/total*100) + '%';
+  document.getElementById('qText').textContent = q.question;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').style.display = idx < total-1 ? '' : 'none';
+  document.getElementById('submitBtn').style.display = idx === total-1 ? '' : 'none';
+  document.getElementById('explanation').style.display = 'none';
+
+  const opts = ['a','b','c','d'];
+  const labels = ['A','B','C','D'];
+  document.getElementById('optionsWrap').innerHTML = opts.map((o,i) => {
+    const selected = userAnswers[q.id] === o;
+    return `<div class="option${selected?' selected':''}" onclick="selectOpt('${q.id}','${o}',this)" data-opt="${o}">
+      <span class="opt-label">${labels[i]}</span>
+      <span>${q['option_'+o]}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectOpt(qId, opt, el) {
+  userAnswers[qId] = opt;
+  document.querySelectorAll('.option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function nextQ() { if (currentQ < questions.length-1) { currentQ++; renderQ(currentQ); } }
+function prevQ() { if (currentQ > 0) { currentQ--; renderQ(currentQ); } }
+function skipQ() { nextQ(); }
+
+function confirmSubmit() {
+  const answered = Object.keys(userAnswers).length;
+  const total = questions.length;
+  if (answered < total && !confirm(`You have answered ${answered} of ${total} questions. Submit anyway?`)) return;
+  submitTest();
+}
+
+async function submitTest() {
+  clearInterval(timerInterval);
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const ids = questions.map(q => q.id).join(',');
+  try {
+    const r = await fetch(`/api/mock-tests?action=answers&ids=${ids}`);
+    const d = await r.json();
+    reviewData = d.answers || [];
+    const ansMap = {};
+    reviewData.forEach(a => ansMap[a.id] = a);
+
+    let correct = 0, wrong = 0, skipped = 0;
+    questions.forEach(q => {
+      const ua = userAnswers[q.id];
+      const ca = ansMap[q.id]?.correct_answer;
+      if (!ua) skipped++;
+      else if (ua === ca) correct++;
+      else wrong++;
+    });
+
+    const score = correct;
+    const total = questions.length;
+    const pct = Math.round(score/total*100);
+
+    // Save result
+    await fetch('/api/mock-tests', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_key: SESSION_KEY, exam: testExam, answers: userAnswers, score, total }) });
+
+    // Show results
+    document.getElementById('scorePct').textContent = pct + '%';
+    document.getElementById('scoreCircle').style.background = pct >= 60 ? '#065f46' : pct >= 40 ? '#92400e' : '#7f1d1d';
+    document.getElementById('resultTitle').textContent = pct >= 70 ? '🎉 Excellent!' : pct >= 50 ? '👍 Good Attempt' : '💪 Keep Practising';
+    document.getElementById('rCorrect').textContent = correct;
+    document.getElementById('rWrong').textContent = wrong;
+    document.getElementById('rSkipped').textContent = skipped;
+    const mins = Math.floor(elapsed/60), secs = elapsed%60;
+    document.getElementById('rTime').textContent = mins + ':' + String(secs).padStart(2,'0');
+    document.getElementById('rAccuracy').textContent = answered => {
+      const a = Object.keys(userAnswers).length;
+      return a ? Math.round(correct/a*100)+'%' : '0%';
+    };
+    document.getElementById('rAccuracy').textContent = Object.keys(userAnswers).length ? Math.round(correct/Object.keys(userAnswers).length*100)+'%' : '0%';
+    document.getElementById('shareTxt').dataset.share = `I scored ${pct}% (${score}/${total}) on CivilCareer ${testExam.replace('_',' ')} Mock Test!\nTry it free: https://civilcareer.in/mock-tests`;
+    showResult();
+  } catch(e) { alert('Error submitting. Your answers are saved locally.'); }
+}
+
+function reviewAnswers() {
+  const ansMap = {};
+  reviewData.forEach(a => ansMap[a.id] = a);
+  let html = '<h3 style="margin:24px 0 16px;color:var(--navy)">Answer Review</h3>';
+  questions.forEach((q, i) => {
+    const ua = userAnswers[q.id];
+    const ans = ansMap[q.id];
+    const ca = ans?.correct_answer;
+    const status = !ua ? 'skipped' : ua === ca ? 'correct' : 'wrong';
+    const opts = ['a','b','c','d'], labels = ['A','B','C','D'];
+    html += `<div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-size:.78rem;font-weight:700;color:${status==='correct'?'#065f46':status==='wrong'?'#991b1b':'#6b7280'};margin-bottom:8px">
+        Q${i+1} — ${status.toUpperCase()}</div>
+      <div style="font-size:.9rem;color:var(--navy);margin-bottom:12px;font-weight:500">${q.question}</div>
+      ${opts.map((o,j)=>{
+        let cls = '';
+        if (o === ca) cls = 'color:#065f46;background:#d1fae5;border-color:#6ee7b7';
+        else if (o === ua && ua !== ca) cls = 'color:#991b1b;background:#fee2e2;border-color:#fca5a5';
+        return `<div style="padding:8px 12px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:.85rem;${cls}">
+          <strong>${labels[j]}.</strong> ${q['option_'+o]}</div>`;
+      }).join('')}
+      ${ans?.explanation ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:10px 12px;font-size:.8rem;color:#166534;margin-top:8px">
+        💡 ${ans.explanation}</div>` : ''}
+    </div>`;
+  });
+  document.getElementById('answerReview').innerHTML = html;
+  document.getElementById('answerReview').style.display = '';
+  document.getElementById('answerReview').scrollIntoView({ behavior: 'smooth' });
+}
+
+function shareResult() {
+  const txt = document.getElementById('shareTxt').dataset.share || '';
+  navigator.clipboard.writeText(txt).then(() => { document.getElementById('shareTxt').textContent = '✅ Copied! Paste in WhatsApp or Telegram.'; });
+}
+
+function startTimer(totalSecs) {
+  let remaining = totalSecs;
+  timerInterval = setInterval(() => {
+    remaining--;
+    const m = Math.floor(remaining/60), s = remaining%60;
+    const el = document.getElementById('timer');
+    el.textContent = m + ':' + String(s).padStart(2,'0');
+    el.classList.toggle('urgent', remaining < 300);
+    if (remaining <= 0) { clearInterval(timerInterval); submitTest(); }
+  }, 1000);
+}
+
+// Load stats
+(async function() {
+  try {
+    const r = await fetch('/api/mock-tests?action=stats&exam=SSC_JE');
+    const d = await r.json();
+    if (d.attempts) document.getElementById('statsRow').textContent = `${d.attempts.toLocaleString('en-IN')} engineers have attempted this test. Average score: ${d.average_percent}%`;
+  } catch {}
+})();
+</script>
+</body>
+</html>

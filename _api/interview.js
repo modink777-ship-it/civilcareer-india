@@ -1,271 +1,78 @@
-/**
- * CivilCareer — Interview Questions API (Feature E)
- *
- * PUBLIC (no auth)
- *   GET ?company=X&role=Y&round=Z&difficulty=D&q=search → approved questions
- *        (+ company list with counts when no company filter)
- *   POST { company, role, question, answer?, difficulty?, round?, year? }
- *        → community submission, lands unapproved (rate-limited, honeypot)
- *   POST /upvote { id } → +1 upvote (rate-limited)
- *
- * ADMIN (x-owner-key or body.key)
- *   GET ?status=pending → unapproved submissions (all fields)
- *   GET                 → everything
- *   PATCH { id, is_approved } → approve / reject (reject = delete)
- *   DELETE { id }
- *
- * Table: interview_questions (see supabase-v26-blog-interview.sql)
- */
+'use strict';
+const { createClient } = require('@supabase/supabase-js');
+const sb = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
 
-const SUPA = process.env.SUPABASE_URL;
-const KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY;
-
-const { allowPublicCors, requireOwner } = require('../lib/security');
-const { rateLimit } = require('../lib/rate-limit');
-
-const DIFFICULTIES = ['easy', 'medium', 'hard'];
-const ROUNDS = ['Technical', 'HR', 'Manager'];
-
-function j(res, code, obj) {
-  return res.status(code).json(obj);
+function json(res, status, obj) {
+  res.setHeader('Content-Type', 'application/json');
+  res.statusCode = status;
+  res.end(JSON.stringify(obj));
 }
 
-function parseBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch (_) { return {}; }
-  }
-  return {};
+function ownerKey() { return process.env.OWNER_KEY || process.env.CIVILCAREER_OWNER_KEY; }
+function isAdmin(req, body) {
+  const k = body?.key || req.headers['x-owner-key'];
+  return ownerKey() && k === ownerKey();
 }
 
-function cleanText(value, max) {
-  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-}
+module.exports = async function interview(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') { res.statusCode = 200; res.end(); return; }
 
-function slugify(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
+  const url     = new URL(req.url, 'http://localhost');
+  const action  = url.searchParams.get('action') || '';
+  const company = url.searchParams.get('company') || '';
+  const role    = url.searchParams.get('role') || '';
+  const page    = parseInt(url.searchParams.get('page') || '1');
+  const limit   = 20;
 
-function supa(path, opts = {}) {
-  return fetch(`${SUPA}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      apikey: KEY,
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(opts.headers || {}),
-    },
-  });
-}
-
-async function readJson(res) {
-  const t = await res.text();
-  if (!res.ok) throw new Error(t || `Supabase ${res.status}`);
-  return t ? JSON.parse(t) : [];
-}
-
-function isSetupError(detail) {
-  return /PGRST205|relation .* does not exist|Could not find the table/i.test(String(detail || ''));
-}
-
-function publicQuestion(r) {
-  return {
-    id: r.id,
-    company: r.company,
-    role: r.role,
-    question: r.question,
-    answer: r.answer,
-    difficulty: r.difficulty,
-    round: r.round,
-    year: r.year,
-    upvotes: r.upvotes || 0,
-    created_at: r.created_at,
-  };
-}
-
-/* ══════════════════════════ HANDLER ══════════════════════════ */
-
-module.exports = async function handler(req, res) {
-  const url = new URL(req.url, 'http://localhost');
-  const q = url.searchParams;
-
-  /* /api/interview/upvote is routed here with ?action=upvote */
-  const isUpvote = q.get('action') === 'upvote';
-
-  if (req.method === 'OPTIONS') {
-    allowPublicCors(req, res);
-    return res.status(204).end();
-  }
-  if (!SUPA || !KEY) {
-    return j(res, 500, { error: 'Supabase server configuration is missing' });
+  // GET questions
+  if (req.method === 'GET' && action !== 'approve') {
+    let q = sb().from('interview_questions')
+      .select('id,company,role,question,answer,difficulty,round,year,upvotes', { count: 'exact' })
+      .eq('is_approved', true)
+      .order('upvotes', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (company) q = q.ilike('company', `%${company}%`);
+    if (role)    q = q.ilike('role', `%${role}%`);
+    const { data, count, error } = await q;
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { questions: data || [], total: count || 0, page, limit });
   }
 
-  const body = parseBody(req);
-  const wantsAdmin =
-    Boolean(req.headers['x-owner-key']) || (req.method !== 'GET' && Boolean(body.key));
+  let body = {};
+  try { const raw = await new Promise(r => { let d = ''; req.on('data', c => d += c); req.on('end', () => r(d)); }); body = JSON.parse(raw); } catch {}
 
-  try {
-    /* ── ADMIN GET — full list or pending queue ─────────────── */
-    if (req.method === 'GET' && wantsAdmin) {
-      if (!requireOwner(req, res)) return;
-      const pendingOnly = q.get('status') === 'pending';
-      const rows = await readJson(await supa(
-        `interview_questions?select=*&${pendingOnly ? 'is_approved=eq.false&' : ''}order=created_at.desc&limit=500`
-      ));
-      return j(res, 200, { questions: rows });
-    }
+  // POST upvote
+  if (req.method === 'POST' && action === 'upvote') {
+    const { id } = body;
+    if (!id) return json(res, 400, { error: 'id required' });
+    const { data } = await sb().from('interview_questions').select('upvotes').eq('id', id).single();
+    await sb().from('interview_questions').update({ upvotes: (data?.upvotes || 0) + 1 }).eq('id', id);
+    return json(res, 200, { ok: true });
+  }
 
-    /* ── PUBLIC POST /upvote — +1 on a question ─────────────── */
-    if (req.method === 'POST' && isUpvote) {
-      if (!rateLimit(req, { windowMs: 60 * 60 * 1000, max: 30, key: 'interview-upvote' })) {
-        return j(res, 429, { error: 'Too many upvotes from this network. Try later.' });
-      }
-      const id = cleanText(body.id, 40);
-      if (!id) return j(res, 400, { error: 'Question id is required' });
-      const rows = await readJson(await supa(
-        `interview_questions?select=id,upvotes,is_approved&id=eq.${encodeURIComponent(id)}&limit=1`
-      ));
-      if (!rows.length) return j(res, 404, { error: 'Question not found' });
-      await supa(`interview_questions?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ upvotes: (Number(rows[0].upvotes) || 0) + 1 }),
-      });
-      return j(res, 200, { ok: true, upvotes: (Number(rows[0].upvotes) || 0) + 1 });
-    }
-
-    /* ── PUBLIC POST — submit an interview experience ───────── */
-    if (req.method === 'POST') {
-      if (!rateLimit(req, { windowMs: 15 * 60 * 1000, max: 3, key: 'interview-submit' })) {
-        return j(res, 429, { error: 'Too many submissions. Please try again later.' });
-      }
-      /* Honeypot: real users never fill the hidden "website" field. */
-      if (cleanText(body.website, 200)) return j(res, 200, { ok: true });
-
-      const company = cleanText(body.company, 120);
-      const role = cleanText(body.role, 80);
-      const question = cleanText(body.question, 600);
-      if (!company || !role || !question) {
-        return j(res, 400, { error: 'Company, role and question are required' });
-      }
-      const difficulty = DIFFICULTIES.includes(String(body.difficulty || '').toLowerCase())
-        ? String(body.difficulty).toLowerCase() : 'medium';
-      const round = ROUNDS.find((r) => r.toLowerCase() === String(body.round || '').toLowerCase()) || 'Technical';
-      let year = parseInt(body.year, 10);
-      if (!Number.isFinite(year) || year < 2000 || year > new Date().getFullYear() + 1) year = null;
-
-      await supa('interview_questions', {
-        method: 'POST',
-        body: JSON.stringify({
-          company,
-          role,
-          question,
-          answer: cleanText(body.answer, 4000) || null,
-          difficulty,
-          round,
-          year,
-          upvotes: 0,
-          is_approved: false,
-        }),
-      });
-      return j(res, 200, {
-        ok: true,
-        message: 'Submitted for review. It appears publicly after moderation.',
-      });
-    }
-
-    /* ── ADMIN PATCH — approve / reject(reject = delete) ────── */
-    if (req.method === 'PATCH') {
-      if (!requireOwner(req, res)) return;
-      const id = cleanText(body.id, 40);
-      if (!id) return j(res, 400, { error: 'Question id is required' });
-      if (body.is_approved === false) {
-        await supa(`interview_questions?id=eq.${id}`, {
-          method: 'DELETE',
-          headers: { Prefer: 'return=minimal' },
-        });
-        return j(res, 200, { ok: true, deleted: true });
-      }
-      await supa(`interview_questions?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ is_approved: true }),
-      });
-      return j(res, 200, { ok: true });
-    }
-
-    /* ── ADMIN DELETE ────────────────────────────────────────── */
-    if (req.method === 'DELETE') {
-      if (!requireOwner(req, res)) return;
-      const id = cleanText(body.id || q.get('id'), 40);
-      if (!id) return j(res, 400, { error: 'Question id is required' });
-      await supa(`interview_questions?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: { Prefer: 'return=minimal' },
-      });
-      return j(res, 200, { ok: true });
-    }
-
-    /* ── PUBLIC GET — questions + company directory ─────────── */
-    if (req.method !== 'GET') {
-      return j(res, 405, { error: 'Method not allowed' });
-    }
-
-    const company = cleanText(q.get('company'), 120);
-    const companySlug = cleanText(q.get('company_slug'), 80);
-    const role = cleanText(q.get('role'), 80);
-    const round = cleanText(q.get('round'), 20);
-    const difficulty = cleanText(q.get('difficulty'), 10);
-    const search = cleanText(q.get('q'), 60);
-    const limit = Math.min(Math.max(parseInt(q.get('limit') || '200', 10) || 200, 1), 500);
-
-    let path = `interview_questions?select=*&is_approved=eq.true&order=upvotes.desc.nullslast&limit=${limit}`;
-    if (company) path += `&company=eq.${encodeURIComponent(company)}`;
-    if (role) path += `&role=ilike.*${encodeURIComponent(role)}*`;
-    if (round && ROUNDS.includes(round)) path += `&round=eq.${encodeURIComponent(round)}`;
-    if (difficulty && DIFFICULTIES.includes(difficulty)) path += `&difficulty=eq.${difficulty}`;
-
-    const rows = (await readJson(await supa(path))).filter((r) => {
-      if (!search) return true;
-      const hay = `${r.company} ${r.role} ${r.question}`.toLowerCase();
-      return hay.includes(search.toLowerCase());
+  // POST submit question
+  if (req.method === 'POST' && action !== 'approve') {
+    const { company: c, role: r, question, answer, difficulty, round, year } = body;
+    if (!c || !question) return json(res, 400, { error: 'company and question required' });
+    const { error } = await sb().from('interview_questions').insert({
+      company: c, role: r || '', question, answer: answer || '',
+      difficulty: difficulty || 'medium', round: round || 'Technical',
+      year: year || new Date().getFullYear(),
+      is_approved: false, upvotes: 0, created_at: new Date().toISOString(),
     });
-
-    /* Company directory with counts (cheap: derived from the same fetch
-       when unfiltered, separate lightweight query otherwise). */
-    let companies = null;
-    if (!company && !companySlug && !role) {
-      const all = rows.length && !search && !round && !difficulty
-        ? rows
-        : await readJson(await supa('interview_questions?select=company&is_approved=eq.true&limit=2000'));
-      const counts = {};
-      for (const r of all) {
-        const key = r.company;
-        counts[key] = (counts[key] || 0) + 1;
-      }
-      companies = Object.entries(counts)
-        .map(([name, count]) => ({ name, slug: slugify(name), count }))
-        .sort((a, b) => b.count - a.count);
-    }
-
-    return j(res, 200, {
-      questions: rows.map(publicQuestion),
-      companies,
-      total: rows.length,
-    });
-  } catch (err) {
-    const detail = String(err && err.message ? err.message : err);
-    if (isSetupError(detail)) {
-      return j(res, 503, { error: 'Interview questions table missing. Run supabase-v26-blog-interview.sql in Supabase.' });
-    }
-    return j(res, 500, { error: 'Interview request failed', details: detail.slice(0, 300) });
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { ok: true, message: 'Submitted for review. Thank you!' });
   }
+
+  // POST approve (admin)
+  if (req.method === 'POST' && action === 'approve') {
+    if (!isAdmin(req, body)) return json(res, 401, { error: 'Unauthorized' });
+    const { id, approved } = body;
+    const { error } = await sb().from('interview_questions').update({ is_approved: !!approved }).eq('id', id);
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { ok: true });
+  }
+
+  return json(res, 405, { error: 'Method not allowed' });
 };

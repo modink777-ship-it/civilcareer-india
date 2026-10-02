@@ -1,246 +1,74 @@
-/**
- * CivilCareer — Blog API (Feature C)
- *
- * PUBLIC (no auth)
- *   GET              → list of published posts
- *                      (title, slug, category, author, tags, excerpt,
- *                       date, views) — newest first
- *   GET ?slug=xxx    → single published post (full content) + views counter
- *                      is incremented (best-effort, never blocks the read)
- *
- * ADMIN (x-owner-key — dashboard sessions are elevated by the dispatcher's
- *        ADMIN_RULES bridge, direct scripts can send the key themselves)
- *   GET (with key)   → ALL posts incl. drafts
- *   POST             → create or update a post (upsert on slug)
- *                      { title, slug?, excerpt?, content?, category?,
- *                        author?, tags?, is_published }
- *   DELETE ?slug=xxx → delete a post
- *
- * Table: blog_posts (see supabase-v26-blog-interview.sql)
- */
+'use strict';
+const { createClient } = require('@supabase/supabase-js');
+const sb = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
 
-const SUPA = process.env.SUPABASE_URL;
-const KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY;
-
-const { allowPublicCors, requireOwner } = require('../lib/security');
-const { rateLimit } = require('../lib/rate-limit');
-
-const CATEGORIES = ['Career', 'Exams', 'Interviews', 'Salary', 'Technology', 'News'];
-const MAX_TAGS = 8;
-
-function j(res, code, obj) {
-  return res.status(code).json(obj);
+function json(res, status, obj) {
+  res.setHeader('Content-Type', 'application/json');
+  res.statusCode = status;
+  res.end(JSON.stringify(obj));
 }
 
-function parseBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch (_) { return {}; }
-  }
-  return {};
+function ownerKey() { return process.env.OWNER_KEY || process.env.CIVILCAREER_OWNER_KEY; }
+function isAdmin(req, body) {
+  const k = body?.key || req.headers['x-owner-key'];
+  return ownerKey() && k === ownerKey();
 }
 
-function cleanText(value, max) {
-  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-}
+module.exports = async function blog(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') { res.statusCode = 200; res.end(); return; }
 
-function slugify(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
+  const url  = new URL(req.url, 'http://localhost');
+  const slug = url.searchParams.get('slug') || '';
+  const cat  = url.searchParams.get('category') || '';
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = 12;
 
-function cleanTags(value) {
-  const arr = Array.isArray(value) ? value : String(value || '').split(',');
-  return [...new Set(arr.map((t) => cleanText(t, 40)).filter(Boolean))].slice(0, MAX_TAGS);
-}
-
-function supa(path, opts = {}) {
-  return fetch(`${SUPA}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      apikey: KEY,
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(opts.headers || {}),
-    },
-  });
-}
-
-async function readJson(res) {
-  const t = await res.text();
-  if (!res.ok) throw new Error(t || `Supabase ${res.status}`);
-  return t ? JSON.parse(t) : [];
-}
-
-function isSetupError(detail) {
-  return /PGRST205|relation .* does not exist|Could not find the table/i.test(String(detail || ''));
-}
-
-function summaryRow(r) {
-  return {
-    title: r.title,
-    slug: r.slug,
-    category: r.category,
-    author: r.author,
-    tags: r.tags || [],
-    excerpt: r.excerpt,
-    is_published: r.is_published,
-    views: r.views || 0,
-    updated_at: r.updated_at || r.created_at,
-  };
-}
-
-/* ══════════════════════════ HANDLER ══════════════════════════ */
-
-module.exports = async function handler(req, res) {
-  if (req.method === 'OPTIONS') {
-    allowPublicCors(req, res);
-    return res.status(204).end();
-  }
-  if (!SUPA || !KEY) {
-    return j(res, 500, { error: 'Supabase server configuration is missing' });
+  // GET single post
+  if (req.method === 'GET' && slug) {
+    const { data, error } = await sb().from('blog_posts')
+      .select('id,slug,title,meta_description,content,category,tags,published_at,views')
+      .eq('slug', slug).eq('published', true).single();
+    if (error || !data) return json(res, 404, { error: 'Post not found' });
+    // Increment views
+    sb().from('blog_posts').update({ views: (data.views || 0) + 1 }).eq('slug', slug).then(() => {});
+    return json(res, 200, { post: data });
   }
 
-  const url = new URL(req.url, 'http://localhost');
-  const q = url.searchParams;
-  const body = parseBody(req);
-  /* POST ?action=upvote reserves a per-article reaction counter without
-     any auth — the same pattern the interview page uses. */
-  const isUpvote = q.get('action') === 'upvote';
-  const wantsAdmin =
-    Boolean(req.headers['x-owner-key']) || (req.method !== 'GET' && Boolean(body.key));
-
-  try {
-    /* ── ADMIN GET — every post incl. drafts ─────────────────── */
-    if (req.method === 'GET' && wantsAdmin) {
-      if (!requireOwner(req, res)) return;
-      const rows = await readJson(await supa('blog_posts?select=*&order=updated_at.desc&limit=500'));
-      return j(res, 200, { posts: rows });
-    }
-
-    /* ── PUBLIC GET — list or single post ────────────────────── */
-    if (req.method === 'GET') {
-      const slug = cleanText(q.get('slug'), 90);
-      if (slug) {
-        const rows = await readJson(
-          await supa(`blog_posts?select=*&slug=eq.${encodeURIComponent(slug)}&limit=1`)
-        );
-        const post = rows[0];
-        /* RLS exposes only published posts to anon reads; a missing row for a
-           slug that an admin query CAN see means "draft" — same 404 publicly. */
-        if (!post) return j(res, 404, { error: 'Post not found' });
-
-        /* View counter — best-effort, rate-limited per IP, never blocks. */
-        if (rateLimit(req, { windowMs: 60 * 60 * 1000, max: 60, key: 'blog-view' })) {
-          supa(`blog_posts?id=eq.${post.id}`, {
-            method: 'PATCH',
-            headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ views: (Number(post.views) || 0) + 1 }),
-          }).catch(() => {});
-        }
-        return j(res, 200, { post });
-      }
-
-      const category = cleanText(q.get('category'), 40);
-      const limit = Math.min(Math.max(parseInt(q.get('limit') || '50', 10) || 50, 1), 100);
-      let path = `blog_posts?select=title,slug,category,author,tags,excerpt,is_published,views,created_at,updated_at&is_published=eq.true&order=created_at.desc&limit=${limit}`;
-      if (category) path += `&category=eq.${encodeURIComponent(category)}`;
-      const rows = await readJson(await supa(path));
-      return j(res, 200, {
-        posts: rows.map(summaryRow),
-        categories: CATEGORIES,
-      });
-    }
-
-    /* ── PUBLIC POST ?action=upvote — reaction counter ───────── */
-    if (req.method === 'POST' && isUpvote) {
-      if (!rateLimit(req, { windowMs: 60 * 60 * 1000, max: 30, key: 'blog-upvote' })) {
-        return j(res, 429, { error: 'Too many requests from this network. Try later.' });
-      }
-      const slug = cleanText(body.slug, 90);
-      if (!slug) return j(res, 400, { error: 'slug is required' });
-      const rows = await readJson(
-        await supa(`blog_posts?select=id,views&slug=eq.${encodeURIComponent(slug)}&limit=1`)
-      );
-      if (!rows.length) return j(res, 404, { error: 'Post not found' });
-      const likes = (Number(rows[0].views) || 0) + 1;
-      await supa(`blog_posts?id=eq.${rows[0].id}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ views: likes }),
-      });
-      return j(res, 200, { ok: true, upvotes: likes });
-    }
-
-    /* ── ADMIN POST — create / update (upsert on slug) ───────── */
-    if (req.method === 'POST') {
-      if (!requireOwner(req, res)) return;
-
-      const title = cleanText(body.title, 160);
-      if (!title) return j(res, 400, { error: 'Title is required' });
-
-      const slug = slugify(body.slug || title);
-      if (!slug) return j(res, 400, { error: 'Slug is required' });
-
-      const content = String(body.content ?? '').slice(0, 60000);
-      const category = CATEGORIES.includes(body.category) ? body.category : 'Career';
-
-      const payload = {
-        title,
-        slug,
-        excerpt: cleanText(body.excerpt, 400) || content.replace(/\s+/g, ' ').slice(0, 240),
-        content,
-        category,
-        author: cleanText(body.author, 80) || 'CivilCareer Team',
-        tags: cleanTags(body.tags),
-        is_published: Boolean(body.is_published),
-        updated_at: new Date().toISOString(),
-      };
-
-      /* Slug collision with a DIFFERENT post → update that one (admin intent:
-         re-publishing an edited article), otherwise insert. */
-      const existing = await readJson(
-        await supa(`blog_posts?select=id&slug=eq.${encodeURIComponent(slug)}&limit=1`)
-      );
-      let saved;
-      if (existing.length) {
-        saved = await readJson(
-          await supa(`blog_posts?id=eq.${existing[0].id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-          })
-        );
-      } else {
-        saved = await readJson(await supa('blog_posts', { method: 'POST', body: JSON.stringify(payload) }));
-      }
-      return j(res, 200, { ok: true, post: saved[0] || payload });
-    }
-
-    /* ── ADMIN DELETE ─────────────────────────────────────────── */
-    if (req.method === 'DELETE') {
-      if (!requireOwner(req, res)) return;
-      const slug = cleanText(q.get('slug'), 90);
-      if (!slug) return j(res, 400, { error: 'slug query parameter is required' });
-      await supa(`blog_posts?slug=eq.${encodeURIComponent(slug)}`, {
-        method: 'DELETE',
-        headers: { Prefer: 'return=minimal' },
-      });
-      return j(res, 200, { ok: true });
-    }
-
-    return j(res, 405, { error: 'Method not allowed' });
-  } catch (err) {
-    const detail = String(err && err.message ? err.message : err);
-    if (isSetupError(detail)) {
-      return j(res, 503, { error: 'Blog table missing. Run supabase-v26-blog-interview.sql in Supabase.' });
-    }
-    return j(res, 500, { error: 'Blog request failed', details: detail.slice(0, 300) });
+  // GET list
+  if (req.method === 'GET') {
+    let q = sb().from('blog_posts')
+      .select('id,slug,title,meta_description,category,tags,published_at,views', { count: 'exact' })
+      .eq('published', true).order('published_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (cat) q = q.eq('category', cat);
+    const { data, count, error } = await q;
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { posts: data || [], total: count || 0, page, limit });
   }
+
+  // Admin POST/PUT
+  if (req.method === 'POST' || req.method === 'PUT') {
+    let body = {};
+    try { const raw = await new Promise(r => { let d = ''; req.on('data', c => d += c); req.on('end', () => r(d)); }); body = JSON.parse(raw); } catch {}
+    if (!isAdmin(req, body)) return json(res, 401, { error: 'Unauthorized' });
+    const { id, slug: s, title, meta_description, content, category, tags, published } = body;
+    const row = {
+      slug: s, title, meta_description, content, category,
+      tags: Array.isArray(tags) ? tags : [],
+      published: !!published,
+      published_at: published ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
+    let error;
+    if (id) {
+      ({ error } = await sb().from('blog_posts').update(row).eq('id', id));
+    } else {
+      ({ error } = await sb().from('blog_posts').insert({ ...row, created_at: new Date().toISOString() }));
+    }
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { ok: true });
+  }
+
+  return json(res, 405, { error: 'Method not allowed' });
 };

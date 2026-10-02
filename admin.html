@@ -265,13 +265,10 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="agent-reach">Agent Reach</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
-  <button data-tab="social">Social Engine</button>
   <button data-tab="salary">Salary</button>
   <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="subscribers">Subscribers</button>
   <button data-tab="reviews">Reviews</button>
-  <button data-tab="blog">Blog</button>
-  <button data-tab="interview">Interview Q&A</button>
   <button data-tab="materials">Materials</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
@@ -610,7 +607,7 @@ Exam tracker — public page /exam-tracker
 </p>
 
 <h3>Civil engineering exam tracker</h3>
-<p>Every row below appears on the public <a href="/exam-tracker" target="_blank" rel="noopener" style="color:#c9973c">Exam Tracker page</a>. Setting a status to <b style="color:#6ee7b7">Applications Open</b> routes an announcement through the <b>Social Engine</b> — once per change. With <i>Require approval</i> ON it waits in the Social tab for review; with it OFF it publishes straight to the channel (Truth Lock and daily caps still enforced). Dates use the date picker; the exam date also accepts text such as “Feb 1-16, 2026”.</p>
+<p>Every row below appears on the public <a href="/exam-tracker" target="_blank" rel="noopener" style="color:#c9973c">Exam Tracker page</a>. Setting a status to <b style="color:#6ee7b7">Applications Open</b> automatically announces the exam on the Telegram channel — once per change. Dates use the date picker; the exam date also accepts text such as “Feb 1-16, 2026”.</p>
 
 <div class="import-actions">
 <button class="btn-gold" onclick="loadExamTracker()">⟳ Refresh</button>
@@ -622,64 +619,6 @@ Exam tracker — public page /exam-tracker
 
 <div id="adminExamTracker">
 <p style="color:#6a8aaa;font-size:.85rem">Loading exam tracker…</p>
-</div>
-
-</div>
-
-<div class="panel" id="panel-social">
-
-<div class="import-box">
-<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
-Social Content Engine — v27
-</p>
-
-<h3>Social queue, connections &amp; settings</h3>
-<p>Every Telegram, LinkedIn and Instagram post starts here as a <b>suggestion</b> built from a verified exam, job or government-vacancy record. Approve it, then publish: the engine enforces the <b>Truth Lock</b> (source record changed after generation → blocked), the <b>content lock</b> (edited after approval → blocked), <b>one real send per platform</b>, and <b>per-platform daily caps</b>. A send that ends <b style="color:#fbbf24">uncertain</b> may or may not have landed — it is never auto-retried; resolve it by hand.</p>
-
-<div class="import-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn-gold" onclick="loadSocial()">⟳ Refresh</button>
-<button class="btn-ghost" onclick="socialRunNow()">▶ Run approved queue now</button>
-<span style="font-size:.76rem;color:#6a8aaa;padding:7px 0">Phase 1: Telegram publishing + review controls</span>
-</div>
-
-<div class="import-status" id="socialStatus"></div>
-</div>
-
-<div class="import-box" style="margin-top:14px">
-<h3>Daily CivilCareer Radar — Preview only</h3>
-<p style="color:#6a8aaa;font-size:.78rem">This view computes the current radar suggestions from verified records. It does not create database rows and cannot publish anything.</p>
-<div class="import-actions">
-<button class="btn-gold" onclick="loadRadarPreview()">◈ Refresh Radar Preview</button>
-</div>
-<div class="import-status" id="radarPreviewStatus"></div>
-<div id="radarPreview" style="margin-top:12px">
-<p style="color:#6a8aaa;font-size:.85rem">No preview loaded.</p>
-</div>
-</div>
-
-<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:18px 0 10px">Engine settings</h3>
-<div id="socialSettings">
-<p style="color:#6a8aaa;font-size:.85rem">Loading settings…</p>
-</div>
-
-<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Connections</h3>
-<p style="color:#6a8aaa;font-size:.76rem;margin:0 0 10px">Non-secret metadata only — platform tokens live in the deployment environment (see <code>.env.example</code>), never in the database.</p>
-<div id="socialConnections">
-<p style="color:#6a8aaa;font-size:.85rem">Loading connections…</p>
-</div>
-
-<h3 style="color:#fff;font-size:1rem;font-weight:700;margin:22px 0 10px">Content queue</h3>
-<div class="import-actions" style="margin-bottom:10px">
-<button class="btn-ghost" onclick="socialSetFilter('')">All</button>
-<button class="btn-ghost" onclick="socialSetFilter('pending')">⏳ Pending</button>
-<button class="btn-ghost" onclick="socialSetFilter('approved')">✅ Approved</button>
-<button class="btn-ghost" onclick="socialSetFilter('publishing')">📤 Publishing</button>
-<button class="btn-ghost" onclick="socialSetFilter('published')">📣 Published</button>
-<button class="btn-ghost" onclick="socialSetFilter('partial')">🧩 Partial</button>
-<button class="btn-ghost" onclick="socialSetFilter('rejected')">🚫 Rejected</button>
-</div>
-<div id="socialQueue">
-<p style="color:#6a8aaa;font-size:.85rem">Loading queue…</p>
 </div>
 
 </div>
@@ -804,72 +743,6 @@ Walk-in interview board — public page /walk-in
 
 <div id="adminCompanyReviews" style="overflow-x:auto">
 <p style="color:#6a8aaa;font-size:.85rem">Loading reviews…</p>
-</div>
-
-</div>
-
-<div class="panel" id="panel-blog">
-
-<div class="import-box">
-<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
-Blog — public page /blog
-</p>
-
-<h3>Blog posts</h3>
-<p>Articles appear on the public <a href="/blog" target="_blank" rel="noopener" style="color:#c9973c">Blog page</a> only when published. Content supports plain text with **bold** and ### headings, separated by blank lines.</p>
-
-<div class="import-actions">
-<button class="btn-gold" onclick="loadBlogAdmin()">⟳ Refresh</button>
-<button class="btn-ghost" onclick="blogEditor()">+ New post</button>
-</div>
-
-<div class="import-status" id="blogAdminStatus"></div>
-</div>
-
-<div class="import-box" id="blogEditor" style="display:none;margin-top:14px">
-<h3 id="blogEditorTitle">New post</h3>
-<label>Title *<input id="blogTitle" placeholder="e.g. How to crack SSC JE in first attempt"></label>
-<label>Slug<span>Leave blank to auto-generate from the title</span><input id="blogSlug" placeholder="ssc-je-first-attempt"></label>
-<div class="field-grid">
-<label>Category<select id="blogCategory"><option>Career</option><option>Exams</option><option>Interviews</option><option>Salary</option><option>Technology</option><option>News</option></select></label>
-<label>Author<input id="blogAuthor" placeholder="CivilCareer Team"></label>
-<label>Tags (comma separated)<input id="blogTags" placeholder="ssc je, government, preparation"></label>
-</div>
-<label>Excerpt<span>Shown on cards and in search results</span><textarea id="blogExcerpt" rows="2"></textarea></label>
-<label>Content<textarea id="blogContent" rows="12" placeholder="Write the article here. Blank line = new paragraph. **bold** and ### heading work."></textarea></label>
-<div class="import-actions">
-<button class="btn-gold" onclick="saveBlogPost(true)">Publish</button>
-<button class="btn-ghost" onclick="saveBlogPost(false)">Save draft</button>
-<button class="btn-ghost" onclick="hideBlogEditor()">Cancel</button>
-</div>
-<div class="import-status" id="blogEditorStatus"></div>
-</div>
-
-<div id="adminBlog" style="overflow-x:auto">
-<p style="color:#6a8aaa;font-size:.85rem">Loading posts…</p>
-</div>
-
-</div>
-
-<div class="panel" id="panel-interview">
-
-<div class="import-box">
-<p style="color:#c9973c;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
-Interview Q&A — public page /interview
-</p>
-
-<h3>Community question approvals</h3>
-<p>Visitor-submitted interview questions land here <b>unapproved</b>. Approve after a sanity read — they appear on the public <a href="/interview" target="_blank" rel="noopener" style="color:#c9973c">Interview Questions page</a>. Reject removes the question permanently.</p>
-
-<div class="import-actions">
-<button class="btn-gold" onclick="loadInterviewAdmin()">⟳ Refresh</button>
-</div>
-
-<div class="import-status" id="interviewAdminStatus"></div>
-</div>
-
-<div id="adminInterview" style="overflow-x:auto">
-<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>
 </div>
 
 </div>
@@ -1041,7 +914,6 @@ async function refreshSession(){
     adminRefresh=x.refresh_token||adminRefresh;
     sessionStorage.setItem('cc_admin_token',adminKey);
     sessionStorage.setItem('cc_admin_refresh',adminRefresh);
-    setAdminSessionCookie(adminKey,x.expires_in||3600);
     return true;
   }catch{return false}
 }
@@ -1075,14 +947,6 @@ function formObject(form){
   );
 }
 
-/* A3 gate: /admin is served by /api/admin-page only after the
-   caller's session passes the admin allowlist. The cookie carries
-   the same short-lived ACCESS token that is already in
-   sessionStorage (never the refresh token) so the gate recognises
-   this browser on the next /admin visit. */
-function setAdminSessionCookie(token,maxAge){document.cookie='cc_admin_session='+encodeURIComponent(token)+'; path=/; same-site=lax; max-age='+(parseInt(maxAge,10)||3600);}
-function clearAdminSessionCookie(){document.cookie='cc_admin_session=; path=/; same-site=lax; max-age=0';}
-
 /* AUTH — Supabase password login. Server enforces ADMIN_EMAIL / ADMIN_USER_ID. */
 async function getAuthConfig(){
   const r=await fetch('/api/auth-config',{cache:'no-store'});
@@ -1103,7 +967,6 @@ async function doLogin(){
     adminRefresh=x.refresh_token||'';
     sessionStorage.setItem('cc_admin_token',adminKey);
     if(adminRefresh)sessionStorage.setItem('cc_admin_refresh',adminRefresh);
-    setAdminSessionCookie(adminKey,x.expires_in||3600);
     $('loginError').style.display='none';
     await showDashboard();
   }catch(e){
@@ -1111,7 +974,7 @@ async function doLogin(){
     $('loginError').textContent=e.message||'Administrator sign-in failed.';
   }
 }
-function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');clearAdminSessionCookie();$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
+function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
 async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboard').style.display='block'; await loadAll(); }
 (function restoreAdminSession(){
   adminKey=sessionStorage.getItem('cc_admin_token')||'';
@@ -1204,8 +1067,6 @@ async function loadAll(page=ccJobsPage){
 
   loadExamTracker().catch(() => {});
 
-  loadSocial().catch(() => {});
-
   loadSalaryAdmin().catch(() => {});
 
   loadWalkinAdmin().catch(() => {});
@@ -1213,10 +1074,6 @@ async function loadAll(page=ccJobsPage){
   loadWaSubs().catch(() => {});
 
   loadCompanyReviews().catch(() => {});
-
-  loadBlogAdmin().catch(() => {});
-
-  loadInterviewAdmin().catch(() => {});
 }
 
 function renderContactMessages(list){
@@ -3781,15 +3638,12 @@ async function saveExamTrackerRow(id) {
       body: JSON.stringify(payload),
     });
     if (d.exam) Object.assign(row, d.exam);
-    const tg = d.telegram || {};
     setExamTrackerStatus(
-      tg.sent
-        ? 'Saved ✓ — Applications Open announced via the Social Engine 📢'
-        : tg.queued
-          ? `Saved ✓ — announcement queued in the Social tab (suggestion #${tg.suggestion_id})`
-          : tg.reason
-            ? `Saved ✓ (announcement: ${tg.reason})`
-            : 'Saved ✓',
+      d.telegram && d.telegram.sent
+        ? 'Saved ✓ — Applications Open announced on Telegram 📢'
+        : d.telegram && d.telegram.reason
+          ? `Saved ✓ (Telegram skipped: ${d.telegram.reason})`
+          : 'Saved ✓',
       'success'
     );
     toast('Exam saved.');
@@ -3944,554 +3798,6 @@ Internal notes (never public)
       st.textContent = err.message;
     }
   };
-}
-
-/* ════════════════════════════════════════════════
-   SOCIAL CONTENT ENGINE (Phase 2 — v27 tables)
-   Suggestions queue, send ledger, connections and
-   engine settings. Every platform send is approved,
-   Truth-Locked and capped by the engine first.
-   ════════════════════════════════════════════════ */
-
-let socialRows = [];
-let socialFilter = '';
-let socialExpanded = null;
-
-function setSocialStatus(msg, type='') {
-  const el = $('socialStatus');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.className = `import-status show${type ? ' ' + type : ''}`;
-}
-
-const SOCIAL_BADGES = {
-  suggestion: {
-    pending:      ['⏳ Pending', '#c9973c'],
-    approved:     ['✅ Approved', '#6ee7b7'],
-    publishing:   ['📤 Publishing', '#7dd3fc'],
-    published:    ['📣 Published', '#4ade80'],
-    partial:      ['🧩 Partial', '#fbbf24'],
-    rejected:     ['🚫 Rejected', '#f87171'],
-    archived:     ['🗄️ Archived', '#94a3b8'],
-  },
-  truth: {
-    locked:     ['🔒 Truth locked', '#6ee7b7'],
-    stale:      ['⚠️ Source changed', '#f87171'],
-    unverified: ['❓ Unverified', '#c9973c'],
-  },
-  ledger: {
-    pending:           ['⏳ Pending', '#c9973c'],
-    publishing:        ['📤 Publishing', '#7dd3fc'],
-    sent:              ['✅ Sent', '#4ade80'],
-    failed:            ['❌ Failed', '#f87171'],
-    uncertain:         ['❓ Uncertain', '#fbbf24'],
-    cancelled:         ['🚫 Cancelled', '#94a3b8'],
-    needs_second_step: ['🔁 Second step', '#7dd3fc'],
-    expired:           ['⏰ Expired', '#94a3b8'],
-  },
-};
-
-function socialBadge(kind, key) {
-  const b = (SOCIAL_BADGES[kind] || {})[key] || ['•', '#94a3b8'];
-  return `<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;background:${b[1]}1f;color:${b[1]};border:1px solid ${b[1]}55;white-space:nowrap">${b[0]}</span>`;
-}
-
-const socialWhen = iso => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? (iso || '—') : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-};
-
-function socialSetFilter(f) {
-  socialFilter = f;
-  renderSocialQueue();
-}
-
-async function loadSocial() {
-  try {
-    const d = await api('/api/social', { key: adminKey });
-    socialRows = d.suggestions || [];
-    renderSocialSettings(d.settings || {});
-    renderSocialConnections(d.connections || []);
-    renderSocialQueue();
-  } catch (e) {
-    const el = $('socialQueue');
-    if (el) el.innerHTML = `<p style="color:#fca5a5;padding:1rem">Could not load the Social queue: ${esc(e.message)}</p>`;
-  }
-}
-
-async function loadRadarPreview() {
-  const status = $('radarPreviewStatus');
-  const root = $('radarPreview');
-  if (!status || !root) return;
-  status.textContent = 'Refreshing preview…';
-  status.className = 'import-status show';
-  try {
-    const d = await api('/api/social?op=radar-preview&limit=50', { key: adminKey });
-    const rows = Array.isArray(d.previews) ? d.previews : [];
-    root.innerHTML = rows.length
-      ? rows.map((x) => `
-        <article style="padding:12px;margin:0 0 10px;border:1px solid #23405c;border-radius:9px;background:#0b1723">
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
-            <span class="status-badge published">${esc(x.event)}</span>
-            <span style="color:#6a8aaa;font-size:.72rem">${esc(x.source_type)} #${esc(x.source_id)}</span>
-            <span style="color:#6a8aaa;font-size:.72rem">${x.truth_state === 'locked' ? '✓ Truth checked' : '⚠ Fact check failed'}</span>
-          </div>
-          <b style="color:#e2e8f0">${esc(x.title)}</b>
-          <p style="color:#94a3b8;font-size:.78rem;margin:7px 0">${esc(x.body_telegram || '')}</p>
-          ${x.errors && x.errors.length ? `<div style="color:#f87171;font-size:.74rem">${esc(x.errors.join('; '))}</div>` : ''}
-        </article>`).join('')
-      : '<p style="color:#6a8aaa;font-size:.85rem">No radar events are currently due.</p>';
-    status.textContent = `Preview ready — ${rows.length} event${rows.length === 1 ? '' : 's'}; database writes: 0; sends: 0.`;
-    status.className = 'import-status show success';
-  } catch (e) {
-    root.innerHTML = `<p style="color:#fca5a5">Could not load Radar preview: ${esc(e.message || 'Unknown error')}</p>`;
-    status.textContent = 'Radar preview failed.';
-    status.className = 'import-status show error';
-  }
-}
-
-/* ── settings ─────────────────────────────── */
-
-function renderSocialSettings(s) {
-  const el = $('socialSettings');
-  if (!el) return;
-  const caps = s.per_platform_daily_caps || {};
-  el.innerHTML = `
-  <form id="socialSettingsForm" class="import-box" style="padding:14px">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;align-items:start">
-      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:#e2e8f0">
-        <input type="checkbox" id="ssKill" ${s.kill_switch ? 'checked' : ''}>
-        <span>Kill switch<br><span style="color:#6a8aaa;font-size:.72rem">blocks all publishing instantly</span></span>
-      </label>
-      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:#e2e8f0">
-        <input type="checkbox" id="ssApproval" ${s.require_approval !== false ? 'checked' : ''}>
-        <span>Require approval<br><span style="color:#6a8aaa;font-size:.72rem">new suggestions wait in the queue</span></span>
-      </label>
-      <label style="font-size:.8rem;color:#cbd5e1">Telegram / day
-        <input type="number" min="0" max="1000" id="ssCapTg" value="${caps.telegram != null ? caps.telegram : 5}" style="width:90px">
-      </label>
-      <label style="font-size:.8rem;color:#cbd5e1">LinkedIn / day
-        <input type="number" min="0" max="1000" id="ssCapLi" value="${caps.linkedin != null ? caps.linkedin : 2}" style="width:90px">
-      </label>
-      <label style="font-size:.8rem;color:#cbd5e1">Instagram / day
-        <input type="number" min="0" max="1000" id="ssCapIg" value="${caps.instagram != null ? caps.instagram : 2}" style="width:90px">
-      </label>
-      <label style="font-size:.8rem;color:#cbd5e1">Caps timezone (IANA)
-        <input type="text" id="ssTz" value="${esc(s.caps_timezone || 'Asia/Kolkata')}" style="width:150px">
-      </label>
-    </div>
-    <label style="display:block;font-size:.8rem;color:#cbd5e1;margin-top:12px">Footer appended to every post (≤200 chars)
-      <input type="text" id="ssFooter" value="${esc(s.footer || '')}" style="width:100%;max-width:560px">
-    </label>
-    <label style="display:block;font-size:.8rem;color:#cbd5e1;margin-top:10px">Default Instagram hashtags (comma separated, ≤30)
-      <input type="text" id="ssTags" value="${esc((s.default_hashtags || []).join(', '))}" style="width:100%;max-width:560px">
-    </label>
-    <div class="import-actions" style="margin-top:12px">
-      <button class="btn-gold" type="submit">Save settings</button>
-    </div>
-  </form>`;
-  $('socialSettingsForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const tags = String($('ssTags').value || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 30);
-    try {
-      await api('/api/social?op=settings', {
-        method: 'PATCH', key: adminKey,
-        body: JSON.stringify({
-          kill_switch: $('ssKill').checked,
-          require_approval: $('ssApproval').checked,
-          per_platform_daily_caps: {
-            telegram: Number($('ssCapTg').value) || 0,
-            linkedin: Number($('ssCapLi').value) || 0,
-            instagram: Number($('ssCapIg').value) || 0,
-          },
-          caps_timezone: $('ssTz').value.trim() || 'Asia/Kolkata',
-          footer: $('ssFooter').value.trim() || null,
-          default_hashtags: tags,
-        }),
-      });
-      setSocialStatus('Settings saved ✓', 'success');
-      toast('Social settings saved.');
-    } catch (err) {
-      setSocialStatus('❌ ' + err.message, 'error');
-    }
-  };
-}
-
-/* ── connections ──────────────────────────── */
-
-function renderSocialConnections(conns) {
-  const el = $('socialConnections');
-  if (!el) return;
-  const list = conns.map(c => {
-    const actions = [
-      `<button onclick="socialConnAction(${c.id},'verify')">Verify</button>`,
-      c.is_primary
-        ? '<span style="color:#c9973c;font-size:.75rem">★ primary</span>'
-        : `<button onclick="socialConnAction(${c.id},'primary')">Make primary</button>`,
-      c.status === 'disabled'
-        ? `<button onclick="socialConnAction(${c.id},'enable')">Enable</button>`
-        : `<button onclick="socialConnAction(${c.id},'disable')">Disable</button>`,
-    ].join(' ');
-    return `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #23405c;border-radius:8px;margin-bottom:8px;background:#0d1b29">
-      <div>
-        <b style="color:#e2e8f0">${esc(c.platform)}</b>
-        ${c.route ? `<span style="color:#6a8aaa;font-size:.75rem"> · ${esc(c.route)}</span>` : ''}
-        ${c.display_name ? `<div style="color:#cbd5e1;font-size:.85rem">${esc(c.display_name)}</div>` : ''}
-        <div style="color:#6a8aaa;font-size:.72rem">id ${esc(c.external_id)}${c.facebook_page_id ? ` · page ${esc(c.facebook_page_id)}` : ''}${c.scope ? ` · scope ${esc(c.scope)}` : ''}${c.status ? ` · ${esc(c.status)}` : ''}${c.last_verified_at ? ` · verified ${socialWhen(c.last_verified_at)}` : ''}</div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div>
-    </div>`;
-  }).join('');
-  el.innerHTML = (list || '<p style="color:#6a8aaa;font-size:.85rem">No connections registered yet.</p>') + `
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
-    <select id="scPlatform" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
-      <option value="telegram">Telegram</option>
-      <option value="linkedin">LinkedIn</option>
-      <option value="instagram">Instagram</option>
-    </select>
-    <select id="scRoute" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
-      <option value="">— route (optional) —</option>
-      <option value="telegram_bot">telegram_bot</option>
-      <option value="linkedin_member">linkedin_member</option>
-      <option value="linkedin_organization">linkedin_organization</option>
-      <option value="instagram_login">instagram_login</option>
-      <option value="facebook_login">facebook_login</option>
-    </select>
-    <input id="scExternal" placeholder="External ID — the account id, never a token" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px;min-width:220px">
-    <input id="scName" placeholder="Display name" style="background:#0d1b29;color:#e2e8f0;border:1px solid #23405c;border-radius:6px;padding:6px">
-    <button class="btn-ghost" onclick="socialAddConnection()">+ Add connection</button>
-  </div>`;
-}
-
-async function socialConnAction(id, action) {
-  try {
-    await api('/api/social?op=connections', {
-      method: 'POST', key: adminKey,
-      body: JSON.stringify({ op: 'connections', id, action }),
-    });
-    setSocialStatus(`Connection ${action} ✓`, 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Connection: ' + e.message, 'error');
-  }
-}
-
-async function socialAddConnection() {
-  const platform = $('scPlatform').value;
-  const externalId = String($('scExternal').value || '').trim();
-  if (!externalId) {
-    setSocialStatus('❌ External ID is required (the account id — never a token)', 'error');
-    return;
-  }
-  try {
-    await api('/api/social?op=connections', {
-      method: 'POST', key: adminKey,
-      body: JSON.stringify({
-        op: 'connections',
-        platform,
-        route: $('scRoute').value || undefined,
-        external_id: externalId,
-        display_name: $('scName').value.trim() || undefined,
-      }),
-    });
-    setSocialStatus('Connection added ✓', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Add connection: ' + e.message, 'error');
-  }
-}
-
-/* ── queue ────────────────────────────────── */
-
-function renderSocialQueue() {
-  const el = $('socialQueue');
-  if (!el) return;
-  const rows = socialFilter
-    ? socialRows.filter(r => r.status === socialFilter)
-    : socialRows;
-  if (!rows.length) {
-    el.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">No suggestions' +
-      (socialFilter ? ` with status “${socialFilter}”` : ' yet') +
-      '. Suggestions appear automatically when an exam enters “Applications Open”, a job is published, or a government vacancy is verified.</p>';
-    return;
-  }
-  el.innerHTML = rows.map(s => {
-    const ledger = Array.isArray(s.social_publishes) ? s.social_publishes : [];
-    const real = ledger.filter(r => !r.is_test);
-    const open = socialExpanded === s.id;
-    const actions = [];
-    const sid = esc(s.id);
-    if (s.status === 'pending' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialApprove('${sid}')">✅ Approve</button>`);
-      actions.push(`<button onclick="socialReject('${sid}')">🚫 Reject</button>`);
-    }
-    actions.push(`<button onclick="socialPreview('${sid}')">👁 Preview</button>`);
-    if (s.status !== 'publishing' && s.status !== 'published' && s.status !== 'rejected' && s.status !== 'archived') {
-      actions.push(`<button onclick="socialEdit('${sid}')">✏️ Edit</button>`);
-    }
-    if (s.status === 'approved' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialPublish('${sid}','telegram')">📣 Publish Telegram</button>`);
-      actions.push(`<button onclick="socialPublishEverywhere('${sid}')">🌐 Publish Everywhere</button>`);
-      actions.push(`<button onclick="socialCopyWhatsApp('${sid}')">📋 Copy WhatsApp</button>`);
-    }
-
-    if (s.truth_state === 'stale') {
-      actions.push(`<button onclick="socialRegenerate(${s.id})">↻ Regenerate</button>`);
-    }
-    if (s.status !== 'rejected' && s.status !== 'archived') {
-      actions.push(`<button onclick="socialArchive(${s.id})">🗄️ Archive</button>`);
-    }
-    actions.push(`<button onclick="socialToggleLedger(${s.id})">📜 Ledger (${real.length})</button>`);
-    const ledgerHtml = open ? `
-      <div style="margin-top:10px;padding:10px 12px;border:1px solid #23405c;border-radius:8px;background:#0a1520">
-        ${real.length ? real.map(r => `
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #16283a">
-            <div style="font-size:.82rem">
-              <b style="color:#e2e8f0">${esc(r.platform)}</b> ${socialBadge('ledger', r.status)}
-              ${r.is_test ? '<span style="color:#6a8aaa;font-size:.72rem"> · test</span>' : ''}
-              <div style="color:#6a8aaa;font-size:.72rem">attempts ${r.attempts != null ? r.attempts : '—'}${r.last_attempt_at ? ` · last ${socialWhen(r.last_attempt_at)}` : ''}${r.external_url ? ` · <a href="${esc(r.external_url)}" target="_blank" rel="noopener" style="color:#7dd3fc">view post</a>` : ''}${r.destination_ref ? ` · dest ${esc(r.destination_ref)}` : ''}</div>
-              ${r.last_error ? `<div style="color:#f87171;font-size:.75rem;margin-top:2px">${esc(r.last_error)}</div>` : ''}
-            </div>
-            <div style="display:flex;gap:6px">
-              ${r.status === 'needs_second_step' && r.platform === 'instagram'
-                ? `<button class="btn-gold" onclick="socialResolve(${s.id},'instagram','publish_container')">▶ Publish Instagram container</button>
-                   <button onclick="socialResolve(${s.id},'instagram','cancel')">✖ Cancel</button>`
-                : ['failed', 'uncertain', 'expired', 'cancelled'].includes(r.status)
-                  ? `<button onclick="socialResolve(${s.id},'${esc(r.platform)}','retry')">↻ Retry</button>
-                     <button onclick="socialResolve(${s.id},'${esc(r.platform)}','cancel')">✖ Cancel</button>`
-                  : ''}
-            </div>
-          </div>`).join('')
-        : '<p style="color:#6a8aaa;font-size:.78rem;margin:0">No real sends yet.</p>'}
-      </div>` : '';
-    return `<div style="padding:12px 14px;border:1px solid #23405c;border-radius:10px;margin-bottom:10px;background:#0d1b29">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:start">
-        <div style="min-width:0">
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
-            ${socialBadge('suggestion', s.status)}
-            ${socialBadge('truth', s.truth_state || 'unverified')}
-            <span style="color:#6a8aaa;font-size:.72rem">${esc(s.source_type)} #${esc(s.source_id)} · ${esc(s.template_key)}</span>
-          </div>
-          <b style="color:#e2e8f0;font-size:.95rem">${esc(s.title)}</b>
-          <div style="color:#6a8aaa;font-size:.72rem;margin-top:2px">created ${socialWhen(s.created_at)}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">${actions.join('')}</div>
-      </div>
-      ${ledgerHtml}
-    </div>`;
-  }).join('');
-}
-
-function socialToggleLedger(id) {
-  socialExpanded = socialExpanded === id ? null : id;
-  renderSocialQueue();
-}
-
-async function socialApi(op, body) {
-  return api(`/api/social?op=${op}`, {
-    method: 'POST', key: adminKey,
-    body: JSON.stringify({ op, ...body }),
-  });
-}
-
-async function socialApprove(id) {
-  try {
-    await socialApi('approve', { id });
-    setSocialStatus('Suggestion approved ✓ — ready to publish', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Approve: ' + e.message, 'error');
-  }
-}
-
-async function socialReject(id) {
-  try {
-    await socialApi('reject', { id });
-    setSocialStatus('Suggestion rejected', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Reject: ' + e.message, 'error');
-  }
-}
-
-async function socialArchive(id) {
-  try {
-    await socialApi('archive', { id });
-    setSocialStatus('Suggestion archived', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Archive: ' + e.message, 'error');
-  }
-}
-
-async function socialRunNow() {
-  if (!window.confirm('Run Deadline Radar and drain the approved Social Engine queue now?')) return;
-  try {
-    const d = await api('/api/social-cron?op=run', {
-      method: 'POST', key: adminKey,
-      body: JSON.stringify({ op: 'run', limit: 100, drain_limit: 5 }),
-    });
-    const count = Number(d.drain && d.drain.published || 0);
-    const generated = Number(d.radar && d.radar.created || 0);
-    setSocialStatus(`Run now finished — ${generated} radar suggestion(s) created; ${count} approved publication(s) processed`, 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Run now: ' + e.message, 'error');
-  }
-}
-
-async function socialPublish(id, platform='telegram') {
-  try {
-    const d = await socialApi('publish', { id, platform });
-    const results = (d.result && d.result.results) || [];
-    const r = results[0] || {};
-    const msg = r.ok
-      ? `${platform}: ${r.skipped ? 'already published' : 'published ✓'}`
-      : `${platform}: ${r.error || 'failed'}`;
-    setSocialStatus(msg, r.ok ? 'success' : 'error');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Publish: ' + e.message, 'error');
-  }
-}
-
-async function socialPublishEverywhere(id) {
-  const platforms = ['telegram', 'linkedin', 'instagram'];
-  const results = [];
-  for (const platform of platforms) {
-    try {
-      const d = await socialApi('publish', { id, platform });
-      const out = (d.result && d.result.results && d.result.results[0]) || {};
-      results.push({
-        platform,
-        ok: Boolean(out.ok),
-        skipped: Boolean(out.skipped),
-        error: out.error || null,
-      });
-      /* Keep each platform as a separate HTTP request so no single
-         Vercel invocation has to orchestrate network calls. */
-    } catch (e) {
-      results.push({ platform, ok: false, skipped: false, error: e.message });
-    }
-  }
-  const summary = results.map(r =>
-    `${r.platform}: ${r.ok ? (r.skipped ? 'already published' : 'published ✓') : (r.error || 'failed')}`
-  ).join(' · ');
-  const allOk = results.every(r => r.ok);
-  setSocialStatus(summary || 'No platforms attempted', allOk ? 'success' : 'error');
-  await loadSocial();
-}
-
-function socialPreview(id) {
-  const s = socialRows.find(r => r.id === id);
-  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
-  const safe = value => esc(value == null ? '' : String(value));
-  $('editorTitle').textContent = 'Social content preview';
-  $('editorBody').innerHTML = `
-    <div style="display:grid;gap:14px">
-      <div>
-        <b style="color:#fff">${safe(s.title)}</b>
-        <div style="color:#6a8aaa;font-size:.76rem;margin-top:4px">${safe(s.source_type)} · ${safe(s.template_key)}</div>
-      </div>
-      <section>
-        <h4 style="margin:0 0 6px;color:#fff">Telegram</h4>
-        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.body_telegram)}</pre>
-      </section>
-      <section>
-        <h4 style="margin:0 0 6px;color:#fff">LinkedIn</h4>
-        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.body_linkedin)}</pre>
-      </section>
-      <section>
-        <h4 style="margin:0 0 6px;color:#fff">Instagram</h4>
-        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.caption_instagram)}</pre>
-      </section>
-      <section>
-        <h4 style="margin:0 0 6px;color:#fff">WhatsApp</h4>
-        <pre style="white-space:pre-wrap;margin:0;padding:12px;background:#0a1520;border:1px solid #23405c;border-radius:8px;color:#dbeafe">${safe(s.whatsapp_text)}</pre>
-      </section>
-      <p style="margin:0;color:#6a8aaa;font-size:.76rem">Truth status: ${safe(s.truth_state || 'unverified')} · Approval: ${safe(s.status)}</p>
-    </div>`;
-  $('editorDialog').showModal();
-}
-
-function socialEdit(id) {
-  const s = socialRows.find(r => r.id === id);
-  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
-  const safe = value => esc(value == null ? '' : String(value));
-  $('editorTitle').textContent = 'Edit social content';
-  $('editorBody').innerHTML = `
-    <form id="socialEditForm">
-      <label>Title<input name="title" maxlength="200" value="${safe(s.title)}"></label>
-      <label>Telegram<textarea name="body_telegram" rows="8" maxlength="4096">${safe(s.body_telegram)}</textarea></label>
-      <label>LinkedIn<textarea name="body_linkedin" rows="8" maxlength="3000">${safe(s.body_linkedin)}</textarea></label>
-      <label>Instagram<textarea name="caption_instagram" rows="8" maxlength="2200">${safe(s.caption_instagram)}</textarea></label>
-      <label>WhatsApp<textarea name="whatsapp_text" rows="6" maxlength="1000">${safe(s.whatsapp_text)}</textarea></label>
-      <label>CivilCareer link<input name="link_url" type="url" value="${safe(s.link_url)}"></label>
-      <div class="import-actions">
-        <button type="submit" class="btn-gold">Save &amp; Re-check Facts</button>
-        <button type="button" onclick="document.getElementById('editorDialog').close()">Cancel</button>
-      </div>
-      <div class="import-status" id="socialEditStatus"></div>
-    </form>`;
-  $('editorDialog').showModal();
-  $('socialEditForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target).entries());
-    try {
-      await socialApi('edit', { id, ...data });
-      $('socialEditStatus').className = 'import-status show success';
-      $('socialEditStatus').textContent = 'Saved. Approval was cleared and Truth Lock will run again.';
-      await loadSocial();
-      setTimeout(() => $('editorDialog').close(), 500);
-    } catch (err) {
-      $('socialEditStatus').className = 'import-status show error';
-      $('socialEditStatus').textContent = err.message;
-    }
-  };
-}
-
-async function socialCopyWhatsApp(id) {
-  const s = socialRows.find(r => r.id === id);
-  if (!s) return setSocialStatus('Suggestion not found — refresh the queue.', 'error');
-  const text = String(s.whatsapp_text || '');
-  if (!text) return setSocialStatus('No WhatsApp text available.', 'error');
-  try {
-    await navigator.clipboard.writeText(text);
-    setSocialStatus('WhatsApp text copied ✓', 'success');
-  } catch (_) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); setSocialStatus('WhatsApp text copied ✓', 'success'); }
-    catch (e) { setSocialStatus('Copy failed: ' + e.message, 'error'); }
-    ta.remove();
-  }
-}
-
-async function socialRegenerate(id) {
-  try {
-    await socialApi('reject', { id });
-    const s = socialRows.find(r => r.id === id);
-    if (!s) throw new Error('Suggestion not in the loaded queue — reload');
-    await socialApi('create', { source_type: s.source_type, source_id: s.source_id });
-    setSocialStatus('Suggestion regenerated from the current source record ✓', 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Regenerate: ' + e.message, 'error');
-  }
-}
-
-async function socialResolve(id, platform, action) {
-  try {
-    await socialApi('resolve', { id, platform, action });
-    setSocialStatus(`Ledger row ${action}ed — queue re-rolled ✓`, 'success');
-    await loadSocial();
-  } catch (e) {
-    setSocialStatus('❌ Resolve: ' + e.message, 'error');
-  }
 }
 
 /* ════════════════════════════════════════════════
@@ -4907,193 +4213,6 @@ async function approveReview(id, approve) {
     ccReviews = ccReviews.filter(x => x.id !== id);
     renderCompanyReviews();
     toast(approve ? 'Review approved ✓' : 'Review rejected.');
-  } catch (e) {
-    toast(e.message || 'Action failed.');
-  }
-}
-
-/* ══════════ BLOG (Feature C) ══════════ */
-
-let ccBlog = [];
-let ccBlogEditingSlug = null;
-
-async function loadBlogAdmin() {
-  const root = $('adminBlog');
-  if (!root) return;
-  root.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">Loading posts…</p>';
-  try {
-    const d = await authedApi('/api/blog', {});
-    ccBlog = d.posts || [];
-    renderBlogAdmin();
-  } catch (e) {
-    root.innerHTML = `<p style="color:#fca5a5;padding:1rem">Failed to load posts: ${esc(e.message||'Unknown error')} — <button class="btn-ghost" onclick="loadBlogAdmin()">Retry</button></p>`;
-  }
-}
-
-function renderBlogAdmin() {
-  const root = $('adminBlog');
-  if (!root) return;
-  if (!ccBlog.length) {
-    root.innerHTML = '<p style="color:#6a8aaa;padding:1rem">No posts yet. Click “+ New post” to write the first article.</p>';
-    return;
-  }
-  root.innerHTML = ccBlog.map(p => `
-    <div class="list-item" data-blog-slug="${esc(p.slug)}">
-      <div class="list-item-info">
-        <h4>${esc(p.title)}
-          <span class="status-badge ${p.is_published ? 'published' : 'unpublished'}">${p.is_published ? 'Published' : 'Draft'}</span>
-        </h4>
-        <p>${esc(p.category || 'Career')} · ${esc(p.author || 'CivilCareer Team')} · ${(p.views || 0)} views · /blog/${esc(p.slug)}</p>
-      </div>
-      <div class="mini-actions">
-        <a href="/blog/${esc(p.slug)}" target="_blank" rel="noopener">View</a>
-        <button onclick="blogEditor('${esc(p.slug)}')">Edit</button>
-        <button class="btn-publish" onclick="toggleBlogPublish('${esc(p.slug)}')">${p.is_published ? 'Unpublish' : 'Publish'}</button>
-        <button class="btn-delete" onclick="deleteBlogPost('${esc(p.slug)}')">Delete</button>
-      </div>
-    </div>`).join('');
-}
-
-function blogEditor(slug) {
-  ccBlogEditingSlug = slug || null;
-  const box = $('blogEditor');
-  if (!box) return;
-  box.style.display = 'block';
-  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (slug) {
-    const p = ccBlog.filter(x => x.slug === slug)[0];
-    if (!p) { toast('Post not found.'); return; }
-    $('blogEditorTitle').textContent = 'Edit post';
-    $('blogTitle').value = p.title || '';
-    $('blogSlug').value = p.slug || '';
-    $('blogCategory').value = p.category || 'Career';
-    $('blogAuthor').value = p.author || 'CivilCareer Team';
-    $('blogTags').value = (p.tags || []).join(', ');
-    $('blogExcerpt').value = p.excerpt || '';
-    $('blogContent').value = p.content || '';
-  } else {
-    $('blogEditorTitle').textContent = 'New post';
-    ['blogTitle','blogSlug','blogTags','blogExcerpt','blogContent'].forEach(id => { $(id).value = ''; });
-    $('blogAuthor').value = 'CivilCareer Team';
-  }
-}
-
-function hideBlogEditor() {
-  ccBlogEditingSlug = null;
-  const box = $('blogEditor');
-  if (box) box.style.display = 'none';
-}
-
-async function saveBlogPost(publish) {
-  const title = ($('blogTitle').value || '').trim();
-  if (!title) { toast('Title is required.'); return; }
-  const st = $('blogEditorStatus');
-  st.className = 'import-status show';
-  st.textContent = 'Saving…';
-  try {
-    await authedApi('/api/blog', {
-      method: 'POST',
-      body: JSON.stringify({
-        title,
-        slug: ($('blogSlug').value || '').trim() || undefined,
-        category: $('blogCategory').value,
-        author: $('blogAuthor').value,
-        tags: $('blogTags').value,
-        excerpt: $('blogExcerpt').value,
-        content: $('blogContent').value,
-        is_published: Boolean(publish),
-      }),
-    });
-    st.className = 'import-status show success';
-    st.textContent = publish ? 'Published ✓' : 'Draft saved ✓';
-    toast(publish ? 'Post published.' : 'Draft saved.');
-    hideBlogEditor();
-    await loadBlogAdmin();
-  } catch (e) {
-    st.className = 'import-status show error';
-    st.textContent = e.message || 'Save failed.';
-  }
-}
-
-async function toggleBlogPublish(slug) {
-  const p = ccBlog.filter(x => x.slug === slug)[0];
-  if (!p) return;
-  try {
-    await authedApi('/api/blog', {
-      method: 'POST',
-      body: JSON.stringify({
-        title: p.title, slug: p.slug, category: p.category, author: p.author,
-        tags: (p.tags || []).join(','), excerpt: p.excerpt, content: p.content,
-        is_published: !p.is_published,
-      }),
-    });
-    toast(p.is_published ? 'Post unpublished.' : 'Post published.');
-    await loadBlogAdmin();
-  } catch (e) {
-    toast(e.message || 'Action failed.');
-  }
-}
-
-async function deleteBlogPost(slug) {
-  if (!confirm('Permanently delete this post?')) return;
-  try {
-    await authedApi(`/api/blog?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
-    ccBlog = ccBlog.filter(x => x.slug !== slug);
-    renderBlogAdmin();
-    toast('Post deleted.');
-  } catch (e) {
-    toast(e.message || 'Delete failed.');
-  }
-}
-
-/* ══════════ INTERVIEW Q&A (Feature E) ══════════ */
-
-let ccInterview = [];
-
-async function loadInterviewAdmin() {
-  const root = $('adminInterview');
-  if (!root) return;
-  root.innerHTML = '<p style="color:#6a8aaa;font-size:.85rem">Loading submissions…</p>';
-  try {
-    const d = await authedApi('/api/interview?status=pending', {});
-    ccInterview = d.questions || [];
-    renderInterviewAdmin();
-  } catch (e) {
-    root.innerHTML = `<p style="color:#fca5a5;padding:1rem">Failed to load submissions: ${esc(e.message||'Unknown error')} — <button class="btn-ghost" onclick="loadInterviewAdmin()">Retry</button></p>`;
-  }
-}
-
-function renderInterviewAdmin() {
-  const root = $('adminInterview');
-  if (!root) return;
-  if (!ccInterview.length) {
-    root.innerHTML = '<p style="color:#6a8aaa;padding:1rem">No questions awaiting moderation. Visitor submissions appear here automatically on refresh.</p>';
-    return;
-  }
-  root.innerHTML = ccInterview.map(q => `
-    <div class="list-item" data-question-id="${esc(q.id)}">
-      <div class="list-item-info">
-        <h4>${esc(q.company)}
-          <span class="status-badge unpublished">${esc(q.round || 'Technical')} · ${esc(q.difficulty || 'medium')}</span>
-        </h4>
-        <p>${esc(q.role)}${q.year ? ' · ' + esc(q.year) : ''} · ${esc(String(q.created_at || '').slice(0, 10))}</p>
-        <p style="white-space:pre-wrap;color:#cbd5e1">${esc(q.question)}</p>
-        ${q.answer ? `<p><b>Answer:</b> ${esc(q.answer)}</p>` : ''}
-      </div>
-      <div class="mini-actions">
-        <button class="btn-publish" onclick="approveQuestion('${esc(q.id)}',true)">Approve</button>
-        <button class="btn-delete" onclick="approveQuestion('${esc(q.id)}',false)">Reject</button>
-      </div>
-    </div>`).join('');
-}
-
-async function approveQuestion(id, approve) {
-  if (!approve && !confirm('Reject and permanently delete this question?')) return;
-  try {
-    await authedApi('/api/interview', { method: 'PATCH', body: JSON.stringify({ id, is_approved: approve }) });
-    ccInterview = ccInterview.filter(x => x.id !== id);
-    renderInterviewAdmin();
-    toast(approve ? 'Question approved ✓' : 'Question rejected.');
   } catch (e) {
     toast(e.message || 'Action failed.');
   }
