@@ -826,6 +826,7 @@ async function publishInstagramSecondStep(id, suggestion, row) {
     accountId,
     containerId: row.external_id,
     apiVersion: process.env.INSTAGRAM_API_VERSION,
+    skipStatusCheck: true,
   });
   const patch = {
     status: out.ok ? 'sent' : (out.ambiguous ? 'uncertain' : out.status === 'expired' ? 'expired' : 'failed'),
