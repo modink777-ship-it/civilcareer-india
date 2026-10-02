@@ -1,6 +1,11 @@
+const sharp = require('sharp');
+const crypto = require('crypto');
 const { ownerKeyMatches } = require('../lib/security');
 const radarService = require('../lib/social-radar-service');
 const graphics = require('../lib/social-graphics-core');
+
+const BUCKET = 'social-graphics';
+const JPEG_MAX_BYTES = 8 * 1024 * 1024;
 
 function send(res,status,body){
   res.statusCode=status;
