@@ -824,7 +824,7 @@ test('F6b gov-review: the engine creates a govt_job.published.default suggestion
 
 /* ═══ F7 — admin-jobs legacy autopost gate ══════ */
 
-test('F7 admin-jobs: legacy Telegram autopost defaults ON until private jobs migrate', () => {
+test('F7 admin-jobs: legacy Telegram autopost defaults OFF after private-job migration', () => {
   const src = fs.readFileSync(path.join(root, '_api', 'admin-jobs.js'), 'utf8');
   assert.match(src, /LEGACY_AUTOPOST_ON/);
   /* Approved transition plan: legacy private-job autopost remains enabled
