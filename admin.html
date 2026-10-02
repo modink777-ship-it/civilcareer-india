@@ -268,6 +268,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   <button data-tab="jobs">Jobs</button>
   <button data-tab="discovery">Discovery</button>
   <button data-tab="agent-reach">Agent Reach</button>
+  <button data-tab="government-jobs">Government Jobs</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
   <button data-tab="social">Social Engine</button>
@@ -502,6 +503,37 @@ Show expired
       <a class="btn-open-src" id="arOpenSrc" href="#" target="_blank" rel="noopener noreferrer">Open Original ↗</a>
     </div>
   </div>
+</div>
+
+<div class="panel" id="panel-government-jobs">
+  <div class="dash-card" style="margin-bottom:14px">
+    <h3 style="color:#c9973c;margin-bottom:6px">🏛 Government Civil Jobs — AI Inbox</h3>
+    <p style="color:#6a8aaa;font-size:.78rem;line-height:1.55;margin:0">
+      Government Civil Engineering discoveries are collected from official sources and discovery portals.
+      Discovery portals are leads only. Every item stays unpublished until you verify the official notification
+      and approve it here.
+    </p>
+  </div>
+  <div id="govtReviewHealth" class="metrics" style="margin-bottom:14px">
+    <div class="metric"><span>Loading sources</span><b>…</b></div>
+    <div class="metric"><span>Pending review</span><b>…</b></div>
+    <div class="metric"><span>Needs info</span><b>…</b></div>
+  </div>
+  <div class="dash-card" style="margin-bottom:14px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn-gold" onclick="govtReviewLoad()">⟳ Refresh Inbox</button>
+      <button class="btn-ghost" onclick="govtReviewLoad('needs_info')">Show Needs Info</button>
+      <span id="govtReviewStatus" style="color:#6a8aaa;font-size:.78rem"></span>
+    </div>
+  </div>
+  <div class="rj-tabs" style="margin-bottom:12px">
+    <button class="active" data-govt-status="pending" onclick="govtReviewLoad('pending')">📋 Pending</button>
+    <button data-govt-status="needs_info" onclick="govtReviewLoad('needs_info')">⚠ Needs Info</button>
+    <button data-govt-status="approved" onclick="govtReviewLoad('approved')">✅ Approved</button>
+    <button data-govt-status="rejected" onclick="govtReviewLoad('rejected')">✕ Rejected</button>
+    <button data-govt-status="duplicate" onclick="govtReviewLoad('duplicate')">♻ Duplicates</button>
+  </div>
+  <div id="govtReviewList"><p style="color:#6a8aaa;padding:1rem 0">Loading Government Jobs inbox…</p></div>
 </div>
 
 <div class="panel" id="panel-agent-reach">
@@ -5322,6 +5354,83 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
+<script>
+/* ── Government Civil Jobs review inbox ───────────────────────────── */
+let govtReviewStatus='pending';
+
+async function govtReviewLoad(status){
+  if(status) govtReviewStatus=status;
+  document.querySelectorAll('[data-govt-status]').forEach(b=>b.classList.toggle('active',b.dataset.govtStatus===govtReviewStatus));
+  const list=$('govtReviewList'), statusEl=$('govtReviewStatus');
+  if(!list)return;
+  list.innerHTML='<p style="color:#6a8aaa;padding:1rem 0">Loading…</p>';
+  try{
+    const [queue,health]=await Promise.all([
+      authedApi('/api/govt-review?status='+encodeURIComponent(govtReviewStatus)+'&limit=100',{}),
+      authedApi('/api/govt-review?action=health',{})
+    ]);
+    const sources=Array.isArray(health.sources)?health.sources:[];
+    $('govtReviewHealth').innerHTML=
+      '<div class="metric"><span>Enabled sources</span><b>'+sources.filter(x=>x.enabled).length+'</b></div>'+
+      '<div class="metric"><span>Pending review</span><b>'+Number(health.pending||0)+'</b></div>'+
+      '<div class="metric"><span>Needs info</span><b>'+Number(health.needs_info||0)+'</b></div>';
+    const items=Array.isArray(queue.items)?queue.items:[];
+    if(!items.length){
+      list.innerHTML='<p style="color:#6a8aaa;padding:1rem 0">No Government Civil jobs in this queue.</p>';
+      statusEl.textContent='Updated '+new Date().toLocaleTimeString();
+      return;
+    }
+    list.innerHTML=items.map(govtReviewCard).join('');
+    statusEl.textContent=items.length+' item'+(items.length===1?'':'s')+' loaded';
+  }catch(e){
+    list.innerHTML='<p style="color:#fca5a5;padding:1rem 0">Could not load Government Jobs inbox: '+esc(e.message||'Unknown error')+'</p>';
+  }
+}
+
+function govtReviewCard(x){
+  const p=x.full_payload||x.payload||{};
+  const title=esc(p.title||x.title||'Government Civil Recruitment');
+  const org=esc(p.organization||p.org_hint||x.organization||'Government organization');
+  const discovery=String(p.discovery_url||p.source_url||'');
+  const official=String(p.official_notice_url||'');
+  const ai=p.ai_normalized||null;
+  const civil=esc(x.civil_status||'');
+  const confidence=x.confidence==null?'':Math.round(Number(x.confidence)*100)+'%';
+  const verified=Boolean(p.official_verified&&official);
+  return '<div class="rj-item">'+
+    '<div class="rj-item-body">'+
+      '<h4>'+title+'</h4>'+
+      '<p>'+org+' · '+civil+(confidence?' · confidence '+confidence:'')+
+      (verified?' · <span style="color:#6ee7b7">Official source detected</span>':' · <span style="color:#fbbf24">Official verification required</span>')+'</p>'+
+      (ai?'<p>AI normalization: '+esc(ai.organization||'')+(ai.notification_no?' · '+esc(ai.notification_no):'')+(ai.application_end?' · deadline '+esc(ai.application_end):'')+'</p>':'')+
+      (discovery?'<a href="'+esc(discovery)+'" target="_blank" rel="noopener noreferrer">Discovery source ↗</a> ':'')+
+      (official?'<a href="'+esc(official)+'" target="_blank" rel="noopener noreferrer" style="margin-left:10px">Official notification ↗</a>':'')+
+    '</div>'+
+    '<div class="rj-item-actions">'+
+      (govtReviewStatus==='pending'||govtReviewStatus==='needs_info'?'<button class="btn-gold" onclick="govtApprove(\''+esc(x.id)+'\')">Approve & Publish</button><button class="btn-reject" onclick="govtReject(\''+esc(x.id)+'\',\'needs_info\')">Needs Info</button><button class="btn-reject" onclick="govtReject(\''+esc(x.id)+'\',\'reject\')">Reject</button>':'')+
+    '</div>'+
+  '</div>';
+}
+
+async function govtApprove(id){
+  if(!confirm('Approve this Government Civil recruitment for publication after your official-source review?'))return;
+  try{
+    await authedApi('/api/govt-review?action=approve',{method:'POST',body:JSON.stringify({id})});
+    toast('Government Civil job approved and published.');
+    await govtReviewLoad(govtReviewStatus);
+  }catch(e){toast(e.message||'Government job approval failed.');}
+}
+
+async function govtReject(id,action){
+  const notes=prompt(action==='needs_info'?'What information is missing?':'Reason for rejection?','');
+  if(notes===null)return;
+  try{
+    await authedApi('/api/govt-review?action='+action,{method:'POST',body:JSON.stringify({id,notes,reason:notes})});
+    toast(action==='needs_info'?'Moved to Needs Info.':'Government job rejected.');
+    await govtReviewLoad(govtReviewStatus);
+  }catch(e){toast(e.message||'Government job review failed.');}
+}
+</script>
 <script>
 /* ═══════════════════════════════════════
    REVIEW JOBS SYSTEM
