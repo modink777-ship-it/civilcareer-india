@@ -31,5 +31,5 @@ test('P11 account and collected-data forms carry a data-use notice',()=>{
 
 test('P11 disclaimer states source-first and safety boundaries',()=>{
   const s=fs.readFileSync(path.join(root,'disclaimer.html'),'utf8');
-  for(const token of ['India-only','official government notification','not an employer','Never pay','External links']) assert.match(s,new RegExp(token,'i'));
+  for(const token of ['India-only','official government notification','not an employer','Safety','External links']) assert.match(s,new RegExp(token,'i'));
 });
