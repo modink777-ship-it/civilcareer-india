@@ -687,10 +687,10 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
     'the drain must not be a Vercel cron — Hobby plans allow at most daily crons'
   );
   const workflow = fs.readFileSync(
-    path.join(root, '.github', 'workflows', 'social-drain.yml'), 'utf8'
+    path.join(root, '.github', 'workflows', 'social-cron.yml'), 'utf8'
   );
-  assert.match(workflow, /'\*\/30 \* \* \* \*'/);
-  assert.match(workflow, /op=drain/);
+  assert.match(workflow, /cron: '17,47 \\* \\* \\* \\*'/);
+  assert.match(workflow, /op=run/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
 });
 
