@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const radar = require('../lib/social-radar');
+const radarEvents = require('../lib/radar-events');
 const content = require('../lib/social-radar-content');
 const cron = require('../_api/social-cron');
 
