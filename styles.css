@@ -2092,3 +2092,33 @@ footer{
   .footer-grid a:not(.logo){margin:5px 0!important}
   .footer-bottom{font-size:10.5px!important}
 }
+
+/* ── Exam Tracker standalone page ───────────────────────── */
+.exam-status{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--line);border-radius:999px;font-size:10px;font-weight:820;letter-spacing:.04em;text-transform:uppercase}
+.exam-status i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.exam-status.upcoming{background:var(--soft);color:var(--muted)}
+.exam-status.notification-out{background:var(--soft);color:var(--blue)}
+.exam-status.application-open{background:var(--soft);color:var(--teal)}
+.exam-status.application-open i{animation:ccExamPulse 1.4s infinite}
+.exam-status.application-closed{background:var(--soft);color:var(--amber)}
+.exam-status.result-out{background:var(--soft);color:var(--teal)}
+.exam-status.admit-card,.exam-status.exam-scheduled{background:var(--soft);color:var(--blue)}
+@keyframes ccExamPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+.exam-card{position:relative}
+.exam-save{position:absolute;top:18px;right:18px;z-index:1}
+.exam-card>h3{padding-right:48px}
+.exam-date-list{display:grid;gap:7px;margin:14px 0}
+.exam-date-list div{display:flex;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px dashed var(--line);font-size:12px}
+.exam-date-list div:last-child{border-bottom:0;padding-bottom:0}
+.exam-date-list span{color:var(--muted);font-weight:700}
+.exam-date-list b{text-align:right;color:var(--navy);font-weight:700}
+.panel-form-label{display:block;margin:14px 0;color:var(--text);font-size:12px;font-weight:750}
+.panel-form-label input{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--white);padding:10px 12px;color:var(--ink)}
+.panel-form-label input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,94,168,.08);outline:0}
+@media(max-width:760px){.exam-save{top:14px;right:14px}.exam-date-list div{align-items:flex-start}}
+html[data-theme="dark"] .exam-status.upcoming{background:#17263a;color:#a7b7cb}
+html[data-theme="dark"] .exam-status.notification-out,html[data-theme="dark"] .exam-status.admit-card,html[data-theme="dark"] .exam-status.exam-scheduled{background:#18314b;color:#a9c6e8}
+html[data-theme="dark"] .exam-status.application-open,html[data-theme="dark"] .exam-status.result-out{background:#18372f;color:#9fd2c2}
+html[data-theme="dark"] .exam-status.application-closed{background:#3a2d1c;color:#e3bc79}
+html[data-theme="dark"] .exam-date-list b{color:#e6edf5}
+html[data-theme="dark"] .panel-form-label{color:#c7d3e2}
