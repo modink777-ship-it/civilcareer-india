@@ -46,6 +46,7 @@ test('public Government Jobs page only lists official-source rows and shows doma
     return {
       ok: true,
       status: 200,
+      headers: { get: () => '0-1/2' },
       json: async () => [
         notification,
         { ...notification, id: 'bad-source', slug: 'aggregator-listing', official_notice_url: 'https://jobs.example.com/notice' },
@@ -68,6 +69,7 @@ test('dispatcher sends the original clean Government Jobs path to the SSR module
   global.fetch = async () => ({
     ok: true,
     status: 200,
+    headers: { get: () => '0-0/1' },
     json: async () => [notification],
   });
   const dispatcher = require('../api/[[...path]].js');
@@ -82,13 +84,13 @@ test('dispatcher keeps government detail and central routes inside the governmen
   const dispatcher = require('../api/[[...path]].js');
   global.fetch = async (url) => {
     if (String(url).includes('govt_job_posts?')) {
-      return { ok: true, status: 200, json: async () => [] };
+      return { ok: true, status: 200, headers: { get: () => '*/0' }, json: async () => [] };
     }
     if (String(url).includes('slug=eq.je-civil-recruitment')) {
       return { ok: true, status: 200, json: async () => [notification] };
     }
     assert.equal(new URL(String(url)).searchParams.get('scope'), 'eq.central');
-    return { ok: true, status: 200, json: async () => [] };
+    return { ok: true, status: 200, headers: { get: () => '*/0' }, json: async () => [] };
   };
 
   const detail = response();
@@ -100,6 +102,42 @@ test('dispatcher keeps government detail and central routes inside the governmen
   await dispatcher({ method: 'GET', url: '/government-jobs/central', headers: {} }, central);
   assert.equal(central.statusCode, 200);
   assert.match(central.body, /Central Government Jobs/);
+});
+
+test('government listing filters and page bounds are applied at the database', async () => {
+  global.fetch = async (url, options) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams;
+    assert.equal(options.headers.Prefer, 'count=exact');
+    assert.equal(query.get('limit'), '2');
+    assert.equal(query.get('offset'), '2');
+    assert.equal(query.get('state'), 'ilike.*Karnataka*');
+    assert.equal(query.get('scope'), 'eq.state');
+    assert.equal(query.get('department_category'), 'ilike.*PWD*');
+    const and = query.get('and');
+    assert.match(and, /official_notice_url\.ilike\.https:\/\/%\.gov\.in\/%/);
+    assert.match(and, /title\.ilike\.\*Junior\*/);
+    assert.match(and, /organization\.ilike\.\*Junior\*/);
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => '2-3/4' },
+      json: async () => [{ ...notification, id: 'page2' }, { ...notification, id: 'page2b' }],
+    };
+  };
+
+  const res = response();
+  await handler({
+    method: 'GET',
+    url: '/api/govt-public?q=Junior&state=Karnataka&scope=state&department=PWD&page=2&per_page=2',
+    headers: {},
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /Page 2 of 2/);
+  assert.match(res.body, /name="q" value="Junior"/);
+  assert.match(res.body, /name="state" value="Karnataka"/);
+  assert.match(res.body, /href="\/government-jobs\?[^"]*page=1/);
+  assert.match(res.body, /noindex,follow/);
 });
 
 test('public Government Jobs page surfaces backend failures instead of an empty success page', async () => {

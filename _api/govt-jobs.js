@@ -5,7 +5,7 @@ const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
 const OFFICIAL_GOVT_HOSTS = new Set(['ntpc.co.in','bhel.com','rites.com','ircon.org','aai.aero','nhpcindia.com','nbccindia.com','wapcos.gov.in']);
 function isOfficialGovtUrl(value) {
-  try { const u = new URL(String(value || '')); if (u.protocol !== 'https:') return false; const h = u.hostname.toLowerCase().replace(/^www\./,''); return h.endsWith('.gov.in') || h.endsWith('.nic.in') || OFFICIAL_GOVT_HOSTS.has(h) || [...OFFICIAL_GOVT_HOSTS].some(x => h.endsWith('.' + x)); } catch (_) { return false; }
+  try { const u = new URL(String(value || '')); if (u.protocol !== 'https:' || u.port) return false; const h = u.hostname.toLowerCase().replace(/^www\./,''); return h.endsWith('.gov.in') || h.endsWith('.nic.in') || OFFICIAL_GOVT_HOSTS.has(h) || [...OFFICIAL_GOVT_HOSTS].some(x => h.endsWith('.' + x)); } catch (_) { return false; }
 }
 function db(path, opts={}) { return fetch(`${SUPA_URL}/rest/v1/${path}`, { ...opts, headers: { apikey: SUPA_KEY, Authorization:`Bearer ${SUPA_KEY}`, 'Content-Type':'application/json', ...(opts.headers||{}) } }); }
 function daysLeft(date) { if (!date) return null; const d = new Date(`${date}T00:00:00Z`); const t = new Date(); const today = new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())); return Math.round((d-today)/86400000); }
@@ -37,3 +37,4 @@ module.exports = async function handler(req,res) {
   } catch(e) { console.error('govt-jobs',e.message); return res.status(500).json({ok:false,error:'Could not load government jobs.'}); }
 };
 module.exports.isOfficialGovtUrl=isOfficialGovtUrl;
+module.exports.OFFICIAL_GOVT_HOSTS=OFFICIAL_GOVT_HOSTS;

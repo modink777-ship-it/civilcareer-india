@@ -578,3 +578,5 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - No SQL/schema or dependency change. No unrelated public pages were changed.
 - Validation: Government routing/source tests passed; full `npm test` — 192 passed, 0 failed; `npm run check:syntax` — 0 errors (existing local `SITE_URL` unset warning); `git diff --check` passed.
 - Status: tested locally, not deployed/live-verified after the change. Continue implementation within the Government Jobs boundary.
+- Follow-up: added Government Jobs-only server-side search (title, organization, department), state/department/central-vs-state filters and 25-item pagination (hard cap 50), using exact PostgREST counts and preserving filters across page links. Search and page>1 result URLs are noindex. The public count is never reported when Supabase omits the total range.
+- Search/pagination validation: full `npm test` — 193 passed, 0 failed; syntax check — 0 errors with the existing local `SITE_URL` warning; `git diff --check` passed. Still local/unpushed and not live-verified.
