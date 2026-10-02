@@ -374,7 +374,7 @@ async function claimLedgerRow(suggestionId, platform) {
     method: 'PATCH',
     body: JSON.stringify({
       status: 'publishing',
-      attempts: 1, /* patched rows already carry an attempt count */
+      attempts: 0, /* incremented after the claim */
       last_attempt_at: new Date().toISOString(),
       last_error: null,
       response_snapshot: null,
@@ -382,7 +382,22 @@ async function claimLedgerRow(suggestionId, platform) {
   });
   if (r.ok) {
     const rows = await r.json();
-    if (Array.isArray(rows) && rows[0]) return { claimed: rows[0] };
+    if (Array.isArray(rows) && rows[0]) {
+      const row = rows[0];
+      const nextAttempts = Number(row.attempts || 0) + 1;
+      const bump = await supa(
+        `social_publishes?id=eq.\${encodeURIComponent(row.id)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ attempts: nextAttempts }),
+        },
+      );
+      if (bump.ok) {
+        const bumped = await bump.json();
+        if (Array.isArray(bumped) && bumped[0]) return { claimed: bumped[0] };
+      }
+      return { claimed: row };
+    }
   }
   /* No claimable row — either none exists yet (INSERT) or it is
      publishing/sent/uncertain (caller decides). */
@@ -488,7 +503,7 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
   }
 
   const patch = {
-    status: result.ok ? 'sent' : 'failed',
+    status: result.ok ? 'sent' : (result.ambiguous ? 'uncertain' : 'failed'),
     last_attempt_at: new Date().toISOString(),
   };
   if (result.ok) {
@@ -546,10 +561,18 @@ async function publishSuggestion(id, body, opts = {}) {
   const content = contentLock(suggestion);
   if (!content.ok) return { status: 409, error: content.error };
 
-  const template = templates.getTemplate(suggestion.template_key);
-  const requested = Array.isArray(body.platforms) && body.platforms.length
-    ? body.platforms.map((p) => String(p).toLowerCase())
-    : (template ? template.platforms : PLATFORMS);
+  const requested = body.platform
+    ? [String(body.platform).toLowerCase()]
+    : (Array.isArray(body.platforms) && body.platforms.length
+      ? body.platforms.map((p) => String(p).toLowerCase())
+      : ['telegram']);
+
+  if (requested.length !== 1) {
+    return {
+      status: 400,
+      error: 'Publish accepts exactly one platform per request. Use the admin Publish Everywhere action to orchestrate separate requests.',
+    };
+  }
 
   const results = [];
   for (const platform of requested) {
@@ -628,7 +651,10 @@ async function testSend(id, body) {
     return { status: 400, error: `platform must be one of: ${PLATFORMS.join(', ')}` };
   }
   if (!publishers.platformConfigured(platform)) {
-    return { status: 400, error: `${platform} is not configured (missing env credentials)` };
+    return { status: 400, error: `${platform} is not configured or not yet enabled in this phase` };
+  }
+  if (platform === 'telegram' && !publishers.telegramTestChannel(process.env)) {
+    return { status: 400, error: 'TELEGRAM_TEST_CHANNEL_ID is not configured; use the normal approved Telegram publish to TELEGRAM_CHANNEL_ID.' };
   }
   const lock = await truthLock(suggestion);
   if (!lock.ok) return { status: 409, error: lock.error };
