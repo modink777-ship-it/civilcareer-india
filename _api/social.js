@@ -386,7 +386,7 @@ async function claimLedgerRow(suggestionId, platform) {
       const row = rows[0];
       const nextAttempts = Number(row.attempts || 0) + 1;
       const bump = await supa(
-        `social_publishes?id=eq.\${encodeURIComponent(row.id)}`,
+        `social_publishes?id=eq.${encodeURIComponent(row.id)}`,
         {
           method: 'PATCH',
           body: JSON.stringify({ attempts: nextAttempts }),
