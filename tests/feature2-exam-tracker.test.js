@@ -26,8 +26,8 @@ test('Feature 2 controller uses localStorage and alert endpoint', () => {
   assert.match(js, /cc_exam_tracker_alerted_v1/);
   assert.match(js, /exam-alert-subscribe/);
   assert.match(js, /exam_id: alertExamId/);
-  assert.match(js, /replace\(\/\\D\/g, ''\)/);
-  assert.match(js, \/\^\[6-9\]\\\\d\{9\}\$\/.test);
+  assert.ok(js.includes("replace(/\\D/g, '')"));
+  assert.ok(js.includes("return /^[6-9]\\d{9}$/.test(local)"));
   for (const status of ['application_open', 'application_closed', 'result_out']) assert.ok(js.includes(status));
 });
 
