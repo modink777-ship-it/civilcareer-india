@@ -4177,18 +4177,22 @@ function renderSocialQueue() {
     const real = ledger.filter(r => !r.is_test);
     const open = socialExpanded === s.id;
     const actions = [];
+    const sid = esc(s.id);
     if (s.status === 'pending' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialApprove(${s.id})">✅ Approve</button>`);
-      actions.push(`<button onclick="socialReject(${s.id})">🚫 Reject</button>`);
+      actions.push(`<button class="btn-gold" onclick="socialApprove('${sid}')">✅ Approve</button>`);
+      actions.push(`<button onclick="socialReject('${sid}')">🚫 Reject</button>`);
     }
-    actions.push(`<button onclick="socialPreview(${s.id})">👁 Preview</button>`);
+    actions.push(`<button onclick="socialPreview('${sid}')">👁 Preview</button>`);
     if (s.status !== 'publishing' && s.status !== 'published' && s.status !== 'rejected' && s.status !== 'archived') {
-      actions.push(`<button onclick="socialEdit(${s.id})">✏️ Edit</button>`);
+      actions.push(`<button onclick="socialEdit('${sid}')">✏️ Edit</button>`);
     }
     if (s.status === 'approved' || s.status === 'partial') {
-      actions.push(`<button class="btn-gold" onclick="socialPublish(${s.id},'telegram')">📣 Publish Telegram</button>`);
-      actions.push(`<button onclick="socialPublishEverywhere(${s.id})">🌐 Publish Everywhere</button>`);
-      actions.push(`<button onclick="socialCopyWhatsApp(${s.id})">📋 Copy WhatsApp</button>`);
+      actions.push(`<button class="btn-gold" onclick="socialPublish('${sid}','telegram')">📣 Publish Telegram</button>`);
+      actions.push(`<button onclick="socialPublishEverywhere('${sid}')">🌐 Publish Everywhere</button>`);
+      actions.push(`<button onclick="socialCopyWhatsApp('${sid}')">📋 Copy WhatsApp</button>`);
+    }
+    if (s.source_type === 'job' || s.source_type === 'govt_job') {
+      actions.push(`<button onclick="socialGenerateUpdate('${sid}','${esc(s.source_type)}')">↻ Generate update</button>`);
     }
     if (s.truth_state === 'stale') {
       actions.push(`<button onclick="socialRegenerate(${s.id})">↻ Regenerate</button>`);
