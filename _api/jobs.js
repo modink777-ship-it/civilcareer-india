@@ -1852,8 +1852,10 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const slug = typeof req.query?.slug === 'string' ? req.query.slug.trim() : '';
-    const id   = typeof req.query?.id   === 'string' ? req.query.id.trim()   : '';
+    const hasListParams = ['page', 'limit', 'q', 'roles', 'cities', 'location', 'state', 'sector', 'lifecycle']
+      .some(key => Object.prototype.hasOwnProperty.call(req.query || {}, key));
+    const slug = !hasListParams && typeof req.query?.slug === 'string' ? req.query.slug.trim() : '';
+    const id   = !hasListParams && typeof req.query?.id === 'string' ? req.query.id.trim() : '';
 
     // Admin identification: the presence of the header selects the admin code
     // path; requireOwner validates it (constant-time + failure limiting).

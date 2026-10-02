@@ -2201,3 +2201,39 @@ html[data-theme="dark"] [style*="background: white"] {
   background: #151f2b !important;
   color: var(--text) !important;
 }
+
+@media (max-width: 760px) {
+  .tools-row {
+    display: none !important;
+  }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 34px 0 38px !important;
+  }
+
+  .page[data-page="home"] .hero-panel {
+    display: none !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.35rem, 9vw, 3.25rem) !important;
+    letter-spacing: -1.5px !important;
+  }
+
+  .hero .lead {
+    margin: 16px 0 !important;
+    font-size: 16px !important;
+  }
+
+  .hero .hero-actions {
+    gap: 8px !important;
+    margin-top: 18px !important;
+  }
+
+  .hero .scope {
+    margin-top: 16px !important;
+    font-size: 11px !important;
+  }
+}

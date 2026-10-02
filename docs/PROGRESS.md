@@ -528,3 +528,15 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Tests: focused SEO/routing tests 3/3 passed; syntax check passed; full suite 162 passed, 1 failed on the existing A8 generated-admin-bundle byte-sync assertion.
 - Status: route fix IMPLEMENTED and TESTED locally; production NOT YET VERIFIED.
 - Owner step: review the preview deployment, then merge the PR. Recheck `/exams` title and canonical after production deployment.
+
+## Production issue follow-up — site and admin reliability
+- Branch: `fix/site-and-admin-errors`, stacked on `fix/exams-route`; do not merge directly to `main`.
+- Jobs: paginated list requests now take precedence over a catch-all router's synthetic `slug=jobs`, preventing a detail response such as `{job:null}` from replacing `{jobs,meta}`.
+- Homepage: removed rotating background photos from the home hero and shortened the small-screen first viewport; other route backgrounds remain available. Also removed a bootstrap exception when an optional form is absent.
+- Interview moderation: pending questions require the owner key; database/table errors are returned explicitly, with a v26 setup instruction when its table is missing.
+- Public theme: the existing public-site toggle was verified to switch themes; no theme implementation change was needed. The admin dashboard remains a fixed dark interface.
+- Regression coverage added for the job list/router collision, optional forms, home hero rules, interview access/error behavior, and database grants.
+- Validation: focused regressions 7/7 passed; full suite 169/170 passed. The remaining A8 generated-admin-bundle byte-sync assertion is pre-existing and unrelated; syntax checks pass with the existing local `SITE_URL` warning.
+- Supabase owner action (no database access is available from this workspace): in the Supabase SQL Editor, run `supabase-v25-portfolio-reviews.sql`, then `supabase-v26-blog-interview.sql`. These scripts create only the missing feature tables/columns, preserve existing rows, enable RLS, revoke browser-role table privileges, and leave access to the server-side `service_role` API. Do not run an older variant of these files.
+- After applying each script, verify `rowsecurity = true` for `engineer_profiles`, `profile_projects`, `company_reviews`, `blog_posts`, and `interview_questions`; verify `anon` and `authenticated` have no table privileges and `service_role` retains API access. Retry Reviews and Interview tabs afterward.
+- Vercel deployment remains blocked by the reported free daily deployment limit. No preview or production fix is claimed until Vercel accepts a deployment and live API/browser checks pass.

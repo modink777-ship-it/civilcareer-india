@@ -156,6 +156,11 @@
   function build(route){
     clearLayers();
     idx=0;
+    if(route==='home'){
+      if(timer)clearInterval(timer);
+      timer=null;
+      return;
+    }
     targets().forEach((parent)=>{
       const a=makeLayer(parent,'a'), b=makeLayer(parent,'b');
       layers.set(parent,{a,b});
@@ -170,7 +175,7 @@
   }
   function refresh(){
     const r=routeNow();
-    if(r===activeRoute && layers.size)return;
+    if(r===activeRoute && (layers.size || r==='home'))return;
     activeRoute=r;
     build(r);
   }

@@ -87,3 +87,40 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS walk_in boolean DEFAULT false;
 --  jobs.is_featured + featured_until let the admin mark a paid
 --     listing as Featured after verifying the UTR
 -- ═══════════════════════════════════════════════════════════════
+
+-- Keep all profile and review data server-only. Public pages use API handlers.
+DO $$
+DECLARE
+  table_name text;
+  policy_name text;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY[
+    'engineer_profiles',
+    'profile_projects',
+    'company_reviews'
+  ] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', table_name);
+    EXECUTE format(
+      'REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, anon, authenticated',
+      table_name
+    );
+    EXECUTE format(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO service_role',
+      table_name
+    );
+
+    FOR policy_name IN
+      SELECT p.policyname
+      FROM pg_policies AS p
+      WHERE p.schemaname = 'public' AND p.tablename = table_name
+    LOOP
+      EXECUTE format('DROP POLICY %I ON public.%I', policy_name, table_name);
+    END LOOP;
+
+    EXECUTE format(
+      'CREATE POLICY service_role_only ON public.%I FOR ALL TO service_role USING (true) WITH CHECK (true)',
+      table_name
+    );
+  END LOOP;
+END
+$$;
