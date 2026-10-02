@@ -539,7 +539,7 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
       mediaUrl: suggestion.media_url,
     });
   } else if (platform === 'instagram') {
-    result = await publishers.sendInstagram({
+    result = await publishers.createInstagramContainer({
       token: env.INSTAGRAM_ACCESS_TOKEN,
       accountId: env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
       apiVersion: env.INSTAGRAM_API_VERSION,
@@ -551,8 +551,9 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
       Promise.resolve({ ok: false, error: 'Unknown platform', retryable: false })))();
   }
 
+  const resultStatus = result.status || (result.ok ? 'sent' : (result.ambiguous ? 'uncertain' : 'failed'));
   const patch = {
-    status: result.ok ? 'sent' : (result.ambiguous ? 'uncertain' : 'failed'),
+    status: resultStatus,
     last_attempt_at: new Date().toISOString(),
   };
   if (result.ok) {
@@ -562,6 +563,15 @@ async function sendPlatform(suggestion, platform, ledgerRow, settings, opts = {}
     patch.sent_at = new Date().toISOString();
     patch.last_error = null;
     patch.response_snapshot = null;
+  } else if (result.status === 'needs_second_step') {
+    patch.external_id = result.externalId || null;
+    patch.external_url = null;
+    patch.destination_ref = result.destinationRef || null;
+    patch.sent_at = null;
+    patch.last_error = null;
+    patch.response_snapshot = result.response
+      ? JSON.parse(redactSecrets(JSON.stringify(result.response)))
+      : null;
   } else {
     patch.last_error = redactSecrets(result.error);
     patch.response_snapshot = result.response
