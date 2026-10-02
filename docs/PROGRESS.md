@@ -512,4 +512,4 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
 - Branch: docs-final
 - Updated README, Social Engine README/runbook, government runbook, environment notes, and added FINAL-REPORT.md.
 - Production promotion remains blocked by current Vercel connector authorization for scope modinsaheb.
-- Status word: IN PROGRESS until final docs CI and production promotion are verified.
+- Status word: TESTED. Final docs/release CI is green on commit b6b2249ebce4e07aff1b5f38b8abf41438b7dc3b; Vercel production promotion remains connector-scope blocked.
