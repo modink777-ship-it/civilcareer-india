@@ -5,6 +5,11 @@
  * This endpoint exists now so the dispatcher/API contract is stable.
  */
 module.exports = async function socialGraphics(req, res) {
+  let delegate = '';
+  try { delegate = String(new URL(req.url || '/', 'http://localhost').searchParams.get('delegate') || ''); } catch (_) {}
+  if (delegate === 'social-cron') {
+    return require('./social-cron')(req, res);
+  }
   res.statusCode = 501;
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
