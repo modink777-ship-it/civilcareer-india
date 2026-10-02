@@ -1847,3 +1847,357 @@ nav a.route.active{color:var(--navy);background:var(--cc-gold-soft);box-shadow:i
 .rj-scraper-bar span{font-size:.78rem;color:#6a8aaa;flex:1}
 .rj-tg-badge{font-size:.65rem;padding:2px 7px;border-radius:999px;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);font-weight:600;margin-left:6px}
 .rj-tg-badge.no{background:rgba(100,100,100,.1);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
+/* =========================================================
+   CIVILCAREER INDIA — FULL SITE DARK MODE
+   Works with theme.js: html[data-theme="dark"]
+   ========================================================= */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --navy: #e8eef7;
+  --blue: #69aaf0;
+  --teal: #63c7b2;
+  --ink: #edf3fa;
+  --text: #c4cfdb;
+  --muted: #91a0b2;
+  --line: #334355;
+  --soft: #1a2736;
+  --white: #101923;
+  --amber: #e2b45f;
+  --red: #e77970;
+
+  --cc-ink: #edf3fa;
+  --cc-surface: #151f2b;
+  --cc-border: #334355;
+  --cc-ivory: #182330;
+  --cc-slate: #9aa9ba;
+  --cc-gold-soft: #302a1d;
+}
+
+/* Page */
+html[data-theme="dark"] body {
+  color: var(--text) !important;
+  background: #0b121b !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] main,
+html[data-theme="dark"] .page {
+  background: transparent;
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6 {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] p,
+html[data-theme="dark"] li,
+html[data-theme="dark"] label {
+  color: var(--text);
+}
+
+/* Header / navigation */
+html[data-theme="dark"] .site-header {
+  background: rgba(15, 23, 33, .94) !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .logo,
+html[data-theme="dark"] nav a,
+html[data-theme="dark"] .about-link {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] nav a:hover,
+html[data-theme="dark"] nav a.active,
+html[data-theme="dark"] .about-link:hover {
+  color: #fff !important;
+  background: #223143 !important;
+}
+
+html[data-theme="dark"] .icon-btn,
+html[data-theme="dark"] .lang-btn,
+html[data-theme="dark"] .menu-btn {
+  background: #182330 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Hero */
+html[data-theme="dark"] .hero {
+  background: #101b27 !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .hero-lines {
+  opacity: .35;
+}
+
+html[data-theme="dark"] .lead,
+html[data-theme="dark"] .scope {
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .hero-panel {
+  background: #182330 !important;
+  color: var(--text) !important;
+  border-color: var(--teal) !important;
+}
+
+html[data-theme="dark"] .hero-panel blockquote {
+  color: var(--ink) !important;
+}
+
+/* Sections */
+html[data-theme="dark"] .section,
+html[data-theme="dark"] .page-hero,
+html[data-theme="dark"] .form-page,
+html[data-theme="dark"] .article-page,
+html[data-theme="dark"] .admin-page {
+  background: #0b121b !important;
+}
+
+html[data-theme="dark"] .section.soft,
+html[data-theme="dark"] .employer-cta {
+  background: #121d29 !important;
+}
+
+/* Cards / panels */
+html[data-theme="dark"] .quick-card,
+html[data-theme="dark"] .job-card,
+html[data-theme="dark"] .exam-card,
+html[data-theme="dark"] .material-card,
+html[data-theme="dark"] .panel-form,
+html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .filters,
+html[data-theme="dark"] .dash-card,
+html[data-theme="dark"] .detail,
+html[data-theme="dark"] .job-detail-panel,
+html[data-theme="dark"] .explorer-toolbar,
+html[data-theme="dark"] .cc-filterbar,
+html[data-theme="dark"] .results-head,
+html[data-theme="dark"] .highlight-item,
+html[data-theme="dark"] .how-step,
+html[data-theme="dark"] .foryou-home,
+html[data-theme="dark"] .foryou-profile-summary {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .quick-card:hover,
+html[data-theme="dark"] .job-card:hover,
+html[data-theme="dark"] .exam-card:hover,
+html[data-theme="dark"] .material-card:hover {
+  border-color: #50647a !important;
+}
+
+/* Card text */
+html[data-theme="dark"] .organization,
+html[data-theme="dark"] .card-copy,
+html[data-theme="dark"] .cc-compact-company,
+html[data-theme="dark"] .cc-posted-ago,
+html[data-theme="dark"] .verified-date,
+html[data-theme="dark"] .field-note,
+html[data-theme="dark"] .filter-note {
+  color: var(--muted) !important;
+}
+
+/* Card metadata */
+html[data-theme="dark"] .card-meta span,
+html[data-theme="dark"] .cc-compact-meta span,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .suggestions button {
+  background: #202d3c !important;
+  border-color: #3a4a5c !important;
+  color: #cbd7e4 !important;
+}
+
+html[data-theme="dark"] .suggestions {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+}
+
+/* Forms */
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: #111b26 !important;
+  color: var(--ink) !important;
+  border-color: #3a4a5c !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #718197 !important;
+}
+
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
+  border-color: var(--blue) !important;
+  background: #14202c !important;
+}
+
+/* Buttons */
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .btn.light,
+html[data-theme="dark"] .card-actions button,
+html[data-theme="dark"] .card-actions a,
+html[data-theme="dark"] .chips button,
+html[data-theme="dark"] .material-tabs button,
+html[data-theme="dark"] .admin-tabs button,
+html[data-theme="dark"] .mini-actions button {
+  background: #182330 !important;
+  color: var(--ink) !important;
+  border-color: #3a4a5c !important;
+}
+
+html[data-theme="dark"] .btn.primary {
+  background: #2878c8 !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .chips button.active,
+html[data-theme="dark"] .material-tabs button.active,
+html[data-theme="dark"] .admin-tabs button.active {
+  background: #315d91 !important;
+  color: #fff !important;
+}
+
+/* Search */
+html[data-theme="dark"] .smart-search,
+html[data-theme="dark"] .cc-search-panel {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .smart-search label {
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .smart-search input,
+html[data-theme="dark"] .cc-search-head input {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+
+/* Split / trust areas */
+html[data-theme="dark"] .split-section,
+html[data-theme="dark"] .trust,
+html[data-theme="dark"] .stats-bar,
+html[data-theme="dark"] .stats-strip {
+  background: #101c29 !important;
+}
+
+/* Tables / admin */
+html[data-theme="dark"] table,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td {
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .admin-list-item {
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .admin-list-item h4,
+html[data-theme="dark"] .metric b {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .metric {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+}
+
+/* Dialogs / modals */
+html[data-theme="dark"] dialog {
+  background: #151f2b !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .dialog-head {
+  background: #151f2b !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .dialog-head h2 {
+  color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .dialog-head button,
+html[data-theme="dark"] .cc-panel-close {
+  background: #202d3c !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Footer */
+html[data-theme="dark"] footer {
+  background: #070e16 !important;
+  color: #aebdcb !important;
+}
+
+html[data-theme="dark"] .footer-grid b,
+html[data-theme="dark"] .footer-grid .logo {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .footer-grid a:not(.logo) {
+  color: #aebdcb !important;
+}
+
+/* Search overlay */
+html[data-theme="dark"] .cc-search-overlay {
+  background: rgba(0, 0, 0, .72) !important;
+}
+
+html[data-theme="dark"] .cc-search-hints {
+  background: #111b26 !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .cc-search-hints button,
+html[data-theme="dark"] .cc-search-fields-row .cc-search-close {
+  background: #1b2938 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Misc light surfaces */
+html[data-theme="dark"] .callout,
+html[data-theme="dark"] .form-status,
+html[data-theme="dark"] .empty-state,
+html[data-theme="dark"] .subject-grid > div {
+  background: #182330 !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+
+/* Skeleton loading */
+html[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    #182330 25%,
+    #243243 45%,
+    #182330 65%
+  ) !important;
+  background-size: 300% 100%;
+}
+
+/* Prevent remaining common white surfaces from escaping dark mode */
+html[data-theme="dark"] .white,
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background: white"] {
+  background: #151f2b !important;
+  color: var(--text) !important;
+}
