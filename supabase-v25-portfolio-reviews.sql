@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS engineer_profiles (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   slug text UNIQUE NOT NULL,
   name text NOT NULL,
-  current_role text,
+  "current_role" text,
   years_experience integer,
   city text,
   state text,

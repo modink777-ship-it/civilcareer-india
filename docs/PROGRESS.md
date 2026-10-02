@@ -591,3 +591,13 @@ gate; rollback in `supabase-v27-social-engine-rollback.sql`).
   The Vercel preview check is still blocked by the daily deployment cap; the
   PR remains open, and the successful deployment notice shown by GitHub is an
   older preview, not evidence that this fix deployed.
+
+## 3 Oct 2026 — v25 Supabase SQL keyword fix
+
+- Owner reported that `supabase-v25-portfolio-reviews.sql` stopped at
+  `current_role text` with PostgreSQL syntax error 42601. `current_role` is a
+  reserved keyword; the column is now declared as `"current_role"` so its
+  existing API/schema name remains unchanged.
+- Added a regression assertion for the quoted identifier. The v25 script is
+  idempotent; after this correction, rerun the complete v25 script in the
+  Supabase SQL Editor, then run v26 as previously instructed.

@@ -182,6 +182,9 @@ test('interview pending queue is admin-only and missing table response points to
 });
 
 test('feature SQL keeps profile, review, blog and interview tables service-role-only', () => {
+  const profilesSql = fs.readFileSync(path.join(root, 'supabase-v25-portfolio-reviews.sql'), 'utf8');
+  assert.match(profilesSql, /"current_role"\s+text/, 'current_role must be quoted because it is a PostgreSQL keyword');
+
   for (const filename of ['supabase-v25-portfolio-reviews.sql', 'supabase-v26-blog-interview.sql']) {
     const source = fs.readFileSync(path.join(root, filename), 'utf8');
     assert.match(source, /ENABLE ROW LEVEL SECURITY/);
