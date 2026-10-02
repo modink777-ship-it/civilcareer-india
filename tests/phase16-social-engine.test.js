@@ -320,13 +320,13 @@ test('F3 platformConfigured: each platform reports its own env readiness', () =>
     INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178',
   };
   assert.equal(publishers.platformConfigured('telegram', env), true);
-  assert.equal(publishers.platformConfigured('linkedin', env), true, 'LinkedIn member publisher is enabled in Phase 5');
+  assert.equal(publishers.platformConfigured('linkedin', env), true, 'LinkedIn member publisher requires member credentials');
   assert.equal(publishers.platformConfigured('instagram', env), false, 'Instagram is Phase 5, not enabled in Phase 1');
   assert.equal(publishers.platformConfigured('telegram', {}), false);
   /* Later platforms remain disabled until their approved phases. */
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x', LINKEDIN_API_VERSION: '202508' }), true);
-  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ORGANIZATION_ID: 'org' }), false);
-  assert.equal(publishers.platformConfigured('instagram', { META_ACCESS_TOKEN: 'ig', META_INSTAGRAM_ACCOUNT_ID: '178' }), false);
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_AUTHOR_URN: 'urn:li:person:x', LINKEDIN_API_VERSION: '202609' }), true);
+  assert.equal(publishers.platformConfigured('linkedin', { LINKEDIN_ACCESS_TOKEN: 'li', LINKEDIN_ORGANIZATION_ID: 'org', LINKEDIN_API_VERSION: '202609' }), false);
+  assert.equal(publishers.platformConfigured('instagram', { INSTAGRAM_ACCESS_TOKEN: 'ig', INSTAGRAM_BUSINESS_ACCOUNT_ID: '178', INSTAGRAM_API_VERSION: 'v26.0' }), false);
   /* the test channel is an acceptable Telegram destination */
   assert.equal(publishers.platformConfigured('telegram', {
     TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHANNEL_ID: 'prod',
