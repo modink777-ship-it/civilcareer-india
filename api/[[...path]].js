@@ -260,6 +260,15 @@ module.exports = async function handler(req, res) {
       pathName = '/api/admin-page';
     }
 
+    /* Owner deep links into the collector / inbox: vercel.json rewrites the
+       named routes here, and the platform keeps the original path (same quirk
+       as /admin). The tab itself is selected client-side from the pathname. */
+    const adminDeepLink = pathName.match(/^\/admin\/jobs\/(collector|inbox)$/);
+    if (adminDeepLink) {
+      req.query = Object.assign({}, req.query, { view: adminDeepLink[1] });
+      pathName = '/api/admin-page';
+    }
+
     /* Feature E: POST /api/interview/upvote is the same handler, flagged.
        req.url is rewritten too because the handler parses the URL itself. */
     if (pathName === '/api/interview/upvote') {
