@@ -5205,8 +5205,9 @@ function jcInitialView(){
   const q=new URLSearchParams(location.search).get('view')||'';
   const h=(location.hash||'').replace(/^#/,'');
   const raw=(q||h).toLowerCase();
-  if(raw==='collector'||raw==='jobs/collector'||raw==='submit')return 'collector';
-  if(raw==='inbox'||raw==='jobs/inbox')return 'inbox';
+  const path=(location.pathname||'').toLowerCase();
+  if(raw==='collector'||raw==='jobs/collector'||raw==='submit'||path.endsWith('/admin/jobs/collector'))return 'collector';
+  if(raw==='inbox'||raw==='jobs/inbox'||path.endsWith('/admin/jobs/inbox'))return 'inbox';
   return '';
 }
 
