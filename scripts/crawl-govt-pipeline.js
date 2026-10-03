@@ -5,14 +5,14 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const { classifyPost, classifyNotification } = require('../lib/civil-classifier');
+const { classifyPost, classifyNotification, classifyNotificationDetailed } = require('../lib/civil-classifier');
 const execFileAsync = promisify(execFile);
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const SITE = String(process.env.SITE_URL || 'https://civilcareer-india-two.vercel.app').replace(/\/+$/, '');
 const UA = `CivilCareer-GovtBot/1.0 (+${SITE}/about)`;
-const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 12000);
+const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 30000);
 const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 12);
 const MAX_CANDIDATES = Number(process.env.GOVT_MAX_CANDIDATES_PER_SOURCE || 30);
 const HOST_GAP_MS = 5000;
