@@ -18,6 +18,30 @@
       "destination": "/index.html"
     },
     {
+      "source": "/government-jobs/job/:slug",
+      "destination": "/government-jobs.html"
+    },
+    {
+      "source": "/government-jobs/state/:state",
+      "destination": "/government-jobs.html"
+    },
+    {
+      "source": "/government-jobs/organization/:org",
+      "destination": "/government-jobs.html"
+    },
+    {
+      "source": "/government-jobs/qualification/:qualification",
+      "destination": "/government-jobs.html"
+    },
+    {
+      "source": "/government-jobs/role/:role",
+      "destination": "/government-jobs.html"
+    },
+    {
+      "source": "/government-jobs/:path*",
+      "destination": "/government-jobs.html"
+    },
+    {
       "source": "/job-alerts",
       "destination": "/job-alerts.html"
     },

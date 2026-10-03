@@ -192,38 +192,151 @@ async function createLead(sourceId, candidate, orgHint) {
   if (!r.ok) return null;
   const rows = await r.json(); return rows[0] || null;
 }
+/* Classify the update type for the AI Inbox (spec §4). Title/URL signals
+   decide: results, admit cards, date extensions and corrections are updates
+   about EXISTING notifications, everything else is a new lead. */
+function detectInboxKind(title, url) {
+  const t = `${title} ${url}`;
+  if (/\b(result|results|final result|selected candidates|recommendation)\b/i.test(t)) return 'result';
+  if (/\b(admit card|hall ticket|call letter|e[- ]?admit)\b/i.test(t)) return 'admit_card';
+  if (/\b(extend\w*|re-?open\w*|last date extended)\b/i.test(t)) return 'closing_date_changed';
+  if (/\b(corrigendum|addendum|amendment|revised|correction)\b/i.test(t)) return 'updated';
+  if (/\b(apply online|online application|notification(?: out)?|advertisement(?: out)?|recruitment|vacancy|vacanc\w+)\b/i.test(t)) return 'new';
+  return 'other_update';
+}
+
+/* Vacancies (and a few other contested fields) often differ between the
+   portal text and the official notification. Per spec §11 conflicting
+   values are STORED as open conflicts for human review — never silently
+   resolved. Official-source values are marked as the reference. */
+async function recordConflictIfAny(stagingId, fieldName, newValue, existingPublished, officialVal) {
+  try {
+    if (officialVal != null && existingPublished != null && String(officialVal) !== String(existingPublished)) {
+      await supa('govt_conflicts', { method: 'POST', body: JSON.stringify({
+        recruitment_id: existingPublished.id || null,
+        staging_id: stagingId || null,
+        field_name: fieldName,
+        values: [
+          { value: String(officialVal), source_type: 'official', confidence: 1 },
+          { value: String(existingPublished), source_type: 'published_record', confidence: 0.9 },
+        ],
+        status: 'open',
+      }) });
+      return true;
+    }
+  } catch (e) { console.error('conflict record failed:', e.message); }
+  return false;
+}
+
+/* Field-level provenance (spec §10): where each extracted fact came from. */
+async function recordProvenance(stagingId, source, candidate, fields) {
+  const rows = Object.entries(fields)
+    .filter(([, v]) => v !== null && v !== undefined && String(v).length)
+    .map(([field_name, field_value]) => ({
+      recruitment_id: stagingId,
+      field_name,
+      field_value: String(field_value).slice(0, 400),
+      source_id: (source && source.id) || null,
+      source_url: candidate.url,
+      source_document_url: /\.pdf(?:$|[?#])/i.test(candidate.url) ? candidate.url : null,
+      extracted_by: 'rules',
+      confidence: 0.7,
+      verified: source.type === 'official',
+      verified_at: source.type === 'official' ? new Date().toISOString() : null,
+    }));
+  if (rows.length) {
+    const r = await supa('govt_field_provenance', { method: 'POST', body: JSON.stringify(rows) });
+    if (!r.ok) console.error('provenance insert failed:', (await r.text()).slice(0, 200));
+  }
+}
+
 async function stageLead(source, sourceId, lead, candidate, pageText) {
   const text = clean(`${candidate.title}\n${pageText}`).slice(0, 12000);
   const deadline = extractDeadline(text);
   if (deadline.date && deadline.date < new Date().toISOString().slice(0, 10)) return { skipped: 'expired' };
   const post = { post_name: candidate.title, discipline: /civil/i.test(text) ? 'Civil' : null, qualification: extractQualification(text) };
-  const classified = classifyNotification([post], { title: candidate.title, description: text, organization: source.org, org_hint: source.org });
-  if (classified.civil_status === 'not_civil') return { skipped: 'not_civil' };
+  const classified = classifyNotificationDetailed([post], { title: candidate.title, description: text, organization: source.org, org_hint: source.org });
+  if (classified.civil_status === 'not_civil' && classified.civil_discipline === 'not_civil') return { skipped: 'not_civil' };
   const top = classified.posts[0];
+  const officialNotice = officialUrl(candidate.url) ? candidate.url : (officialUrl(source.url) ? source.url : null);
+  /* Spec §8: a discovery portal URL is a lead, never the official link. */
+  if (source.type === 'official' && !officialUrl(candidate.url)) return { skipped: 'not_official' };
   const payload = {
     title: clean(candidate.title).slice(0, 500),
     organization: parseOrg(text, source.org),
     organization_hint: source.org,
     source_type: source.type,
     source_url: candidate.url,
-    official_notice_url: candidate.url,
+    official_notice_url: officialNotice || '',
     official_site_url: new URL(candidate.url).origin,
     notification_no: parseNotificationNo(text),
     deadline,
-    post_candidates: classified.posts.map(x => ({ ...x.post, outcome: x.outcome, tier: x.tier, score: x.score })),
+    post_candidates: classified.posts.map(x => ({ ...x.post, outcome: x.outcome, tier: x.tier, score: x.score, level: x.level, specialization: x.specialization })),
+    civil_discipline: classified.civil_discipline,
+    civil_specialization: classified.specialization,
     excerpt: text.slice(0, 3500),
     discovered_at: new Date().toISOString()
   };
   const dedupeKey = sha([norm(payload.organization), norm(payload.notification_no || payload.title), norm(payload.deadline.date || payload.deadline.text)].join('|'));
-  const check = await supa(`govt_job_staging?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id&limit=1`);
-  if (check.ok && (await check.json()).length) return { skipped: 'duplicate' };
+  const check = await supa(`govt_job_staging?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id,linked_govt_job_id&limit=1`);
+  const dupes = check.ok ? await check.json() : [];
+  if (dupes.length) {
+    /* Same notification seen again → if its fields changed (e.g. extended
+       date), record an UPDATED inbox item instead of dropping it silently. */
+    const kind = detectInboxKind(candidate.title, candidate.url);
+    if (kind !== 'new' && kind !== 'other_update') {
+      const upd = await supa('govt_job_staging', { method: 'POST', body: JSON.stringify({
+        lead_id: lead.id, status: 'pending', inbox_kind: kind,
+        civil_status: classified.civil_status, tier: top.tier, relevance_score: top.score,
+        confidence: top.outcome === 'civil' ? 0.9 : 0.55, extraction_method: 'rules',
+        duplicate_hash: dedupeKey, linked_govt_job_id: dupes[0].linked_govt_job_id || null,
+        match_reasons: top.reasons, payload,
+        updated_fields: deadline.date ? { apply_end: deadline.date } : {},
+      }) });
+      const updRow = upd.ok ? (await upd.json())[0] : null;
+      /* Spec §11: when an update claims a different value for a field on the
+         PUBLISHED record, store an open conflict instead of silently picking.
+         Only an official-source claim acts as the authoritative reference; a
+         discovery portal's claim goes to the human with no official weight. */
+      const linkedId = dupes[0].linked_govt_job_id || null;
+      if (linkedId && deadline.date) {
+        try {
+          const pr = await supa(`govt_jobs?id=eq.${encodeURIComponent(linkedId)}&select=id,apply_end&limit=1`);
+          const pub = pr.ok ? (await pr.json())[0] : null;
+          if (pub) {
+            await recordConflictIfAny(
+              (updRow && updRow.id) || null,
+              'apply_end',
+              deadline.date,
+              pub.apply_end || null,
+              source.type === 'official' ? deadline.date : null
+            );
+          }
+        } catch (_) { /* conflict recording must never fail the staging run */ }
+      }
+      await supa(`govt_job_leads?id=eq.${encodeURIComponent(lead.id)}`, { method: 'PATCH', body: JSON.stringify({ status: 'processed' }) });
+      return { staged: true, status: 'pending', update: true };
+    }
+    return { skipped: 'duplicate' };
+  }
+  const inboxKind = detectInboxKind(candidate.title, candidate.url);
   const status = classified.civil_status === 'discipline_unknown' ? 'needs_info' : 'pending';
   const r = await supa('govt_job_staging', { method: 'POST', body: JSON.stringify({
-    lead_id: lead.id, status, civil_status: classified.civil_status, tier: top.tier, relevance_score: top.score,
+    lead_id: lead.id, status, inbox_kind: inboxKind, civil_status: classified.civil_status,
+    tier: top.tier, relevance_score: top.score,
     confidence: top.outcome === 'civil' ? 0.9 : 0.55, extraction_method: 'rules', dedupe_key: dedupeKey,
-    match_reasons: top.reasons, payload
+    duplicate_hash: dedupeKey,
+    match_reasons: top.reasons,
+    payload,
+    source_evidence: [{ url: candidate.url, source_type: source.type, org: source.org, at: new Date().toISOString(), official: source.type === 'official' }],
   }) });
   if (!r.ok) return { skipped: 'db_error', error: await r.text() };
+  const stagedRow = (await r.json())[0];
+  await recordProvenance(stagedRow && stagedRow.id, source, candidate, {
+    title: payload.title, notification_no: payload.notification_no,
+    deadline: deadline.date || deadline.text || null,
+    qualification: post.qualification,
+  });
   await supa(`govt_job_leads?id=eq.${encodeURIComponent(lead.id)}`, { method: 'PATCH', body: JSON.stringify({ status: 'processed' }) });
   return { staged: true, status };
 }

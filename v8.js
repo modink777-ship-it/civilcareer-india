@@ -451,6 +451,134 @@ openMaterialDedicated=function(m,push=true){
   return result;
 };
 
+/* ═══════════════════════════════════════════════════════════════════
+   GOVERNMENT JOBS → CIVIL ENGINEERING — dedicated public section (v28).
+   Data comes exclusively from /api/govt-jobs, which serves only rows that
+   passed the mandatory human-review publication gate. Nothing here touches
+   the private-jobs explorer. Missing facts are shown as "not stated" —
+   never fabricated.
+   ═══════════════════════════════════════════════════════════════════ */
+function govtEsc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function govtDetailPath(j){return `/government-jobs/job/${encodeURIComponent(j.slug||j.id||'')}`}
+function govtDaysLeftText(j){
+  if(j.expired)return'';
+  const d=Number(j.daysLeft);
+  if(!Number.isFinite(d))return'';
+  if(d===0)return'closes today';
+  if(d>0)return`closes in ${d} day${d===1?'':'s'}`;
+  return'';
+}
+function govtCard(j){
+  const meta=[j.state&&j.state!=='All India'?j.state:'All India',String(j.govLevel||'').toUpperCase(),(j.vacancies!=null?`${j.vacancies} civil vacancies`:null),(j.totalVacancies!=null&&j.vacancies==null?`${j.totalVacancies} total vacancies`:null)].filter(Boolean);
+  const left=govtDaysLeftText(j);
+  return `<article class="job-card"><div class="card-top">${j.expired?'<span class="pill closed">Closed</span>':'<span class="pill verified">Human-reviewed</span>'}<span class="verified-date">${govtEsc2(left)}</span></div>`
+    +`<h3><a class="detail-link" href="${govtEsc2(govtDetailPath(j))}" data-dynamic-route="true">${govtEsc2(j.title||'Government recruitment')}</a></h3>`
+    +`<div class="organization">${govtEsc2(j.organization||'Government organization')}${j.department?` · ${govtEsc2(j.department)}`:''}</div>`
+    +`<div class="card-meta">${meta.map(x=>`<span>${govtEsc2(x)}</span>`).join('')}</div>`
+    +(j.post?`<p class="card-copy">Post: ${govtEsc2(j.post)}${j.qualification?` · Qualification: ${govtEsc2(j.qualification)}`:''}</p>`:'')
+    +`<div class="card-actions"><a class="detail-link" href="${govtEsc2(govtDetailPath(j))}" data-dynamic-route="true">View notification details</a>${j.officialNotificationUrl?`<a href="${govtEsc2(j.officialNotificationUrl)}" target="_blank" rel="noopener noreferrer">Official notification ↗</a>`:''}</div></article>`;
+}
+function govtField(label,value){return `<div class="detail"><b>${govtEsc2(label)}</b>${value?govtEsc2(value):'<span style="color:var(--muted)">Not stated in the notification on file</span>'}</div>`}
+async function openGovtJobDetail(slug,path){
+  const root=$('govtDetailPage');if(!root)return;
+  root.innerHTML='<article class="dedicated-card"><div class="empty-state"><p>Loading government recruitment details…</p></div></article>';
+  activateDynamic('govtDetail',path,false);
+  let j=null;
+  try{j=(await api('/api/govt-jobs?slug='+encodeURIComponent(slug))).job||null}catch(e){}
+  if(!j){
+    root.innerHTML='<article class="dedicated-card"><h1>Government job not found</h1><p>This recruitment does not exist, was not yet human-reviewed, or the link is incorrect. Nothing unpublished is ever shown.</p><div class="card-actions"><a class="route" data-route="government" href="/government-jobs">Browse government civil jobs</a></div></article>';
+    document.title='Government job not found | CivilCareer';
+    return;
+  }
+  const closed=!!j.expired;
+  const dl=j.deadline?String(j.deadline).slice(0,10):null;
+  const links=[
+    j.officialNotificationUrl?`<a href="${govtEsc2(j.officialNotificationUrl)}" target="_blank" rel="noopener noreferrer">Official notification ↗</a>`:'',
+    j.officialApplyUrl&&j.officialApplyUrl!==j.officialNotificationUrl?`<a href="${govtEsc2(j.officialApplyUrl)}" target="_blank" rel="noopener noreferrer">Apply at official source ↗</a>`:'',
+    j.officialSiteUrl?`<a href="${govtEsc2(j.officialSiteUrl)}" target="_blank" rel="noopener noreferrer">Official website ↗</a>`:''
+  ].filter(Boolean).join('');
+  const timeline=Array.isArray(j.timeline)?j.timeline.filter(t=>t&&t.label&&t.date):[];
+  root.innerHTML=`<article class="dedicated-card"><div class="detail-kicker">Government recruitment · ${govtEsc2(String(j.govLevel||'').toUpperCase()||'India')}${j.notificationNo?` · Notification ${govtEsc2(j.notificationNo)}`:''}</div>`
+    +`<h1>${govtEsc2(j.title||'Government recruitment')}</h1>`
+    +`<p class="detail-lead">${govtEsc2(j.organization||'Government organization')}${j.department?` · ${govtEsc2(j.department)}`:''}${j.state?` · ${govtEsc2(j.state)}`:''}</p>`
+    +`${closed?'<div class="expired-banner">Applications for this recruitment have closed. Retained for reference only.</div>':''}`
+    +`<div class="card-actions job-apply-top">${links||'<span style="color:var(--muted)">Official links are added only from verified official sources.</span>'}</div>`
+    +`<div class="detail-grid">`
+    +govtField('Post',j.post)
+    +govtField('Civil vacancies',j.vacancies!=null?String(j.vacancies):null)
+    +govtField('Total vacancies',j.totalVacancies!=null?String(j.totalVacancies):null)
+    +govtField('Government level',String(j.govLevel||'').toUpperCase()||null)
+    +govtField('Civil discipline',j.civilDiscipline)
+    +govtField('Specialization',j.specialization)
+    +govtField('Qualification',j.qualification)
+    +govtField('Branch',j.branch)
+    +govtField('Experience',j.experience)
+    +govtField('Location / zone',j.state)
+    +govtField('Application start',j.applicationStart?String(j.applicationStart).slice(0,10):null)
+    +govtField('Application closing date',dl)
+    +govtField('Application mode',j.applicationMode)
+    +govtField('Application fee',j.applicationFee)
+    +govtField('Age limit',j.ageLimit)
+    +govtField('Age relaxation',j.ageRelaxation)
+    +govtField('Pay / salary level',j.payLevel)
+    +govtField('Correction window',j.correctionWindow)
+    +govtField('Exam date',j.examDate?String(j.examDate).slice(0,10):null)
+    +govtField('Exam mode',j.examMode)
+    +govtField('Selection stages',Array.isArray(j.selectionStages)&&j.selectionStages.length?j.selectionStages.join(' → '):null)
+    +`</div>`
+    +(j.summary?`<div class="detail full" style="margin-top:10px"><b>Summary</b>${govtEsc2(j.summary)}</div>`:'')
+    +(timeline.length?`<section style="margin-top:22px"><h3>Recruitment timeline</h3><div class="detail-grid">${timeline.map(t=>govtField(t.label,String(t.date).slice(0,10))).join('')}</div></section>`:'')
+    +(Array.isArray(j.posts)&&j.posts.length?`<section style="margin-top:22px"><h3>Civil posts in this notification</h3><div class="detail-grid">${j.posts.map(p=>`<div class="detail"><b>${govtEsc2(p.name||'Post')}</b>${[p.vacancies!=null?`${p.vacancies} vacancies`:null,p.qualification,p.pay].filter(Boolean).map(govtEsc2).join(' · ')||'—'}</div>`).join('')}</div></section>`:'')
+    +`<div class="callout"><b>Verification:</b> ${govtEsc2(j.verificationStatus==='official'?'Official source on record':'Source not yet verified as official')}${j.lastVerifiedAt?` · last verified ${govtEsc2(String(j.lastVerifiedAt).slice(0,10))}`:''} · human-reviewed${j.humanReviewed?' ✓':' (pending)'}. Always confirm dates, eligibility and fees in the official notification before applying. Never pay anyone for a government job.</div>`
+    +`<div class="card-actions"><a class="route" data-route="government" href="/government-jobs">All government civil jobs</a>${links?links:''}</div></article>`;
+  document.title=`${j.title||'Government recruitment'} — ${j.organization||'CivilCareer'} | CivilCareer`;
+}
+window.__ccGovtFilter=null;
+function govtTitleCase(v){return String(v||'').replace(/[-+]/g,' ').replace(/\b[a-z]/g,c=>c.toUpperCase())}
+function openGovtFiltered(kind,value,path){
+  window.__ccGovtFilter={kind,value};
+  const t=$('govtListingTitle'),l=$('govtListingLead');
+  const v=govtTitleCase(value);
+  const heads={state:[`${v} Government Civil Jobs`,`Human-reviewed government civil engineering recruitment in ${v}, with official notification links.`],organization:[`${v} — Government Recruitment`,`Notifications from ${v} relevant to civil engineers, human-reviewed before publication.`],qualification:[`Government jobs for ${v}`,`Government civil recruitment that accepts ${v} candidates.`],role:[`${v} — Government Recruitment`,`Government notifications recruiting for ${v} posts.`]};
+  const h=heads[kind]||['Government Civil Jobs','Human-reviewed government recruitment for civil engineers across India.'];
+  if(t)t.textContent=h[0]; if(l)l.textContent=h[1];
+  activateDynamic('govtListing',path,false);
+  document.title=`${h[0]} | CivilCareer`;
+  govtListingPage(1);
+}
+async function govtListingPage(page=1){
+  const root=$('govtListingJobs');if(!root)return;
+  root.innerHTML='<div class="empty-state"><p>Loading government civil recruitment…</p></div>';
+  const f=window.__ccGovtFilter||{};
+  const params=new URLSearchParams({page:String(page),limit:'40'});
+  if(f.kind&&f.value)params.set(f.kind,f.value);
+  try{
+    const data=await api('/api/govt-jobs?'+params.toString());
+    if(data.emptyReason==='not_initialised'){
+      root.innerHTML='<div class="empty-state"><h3>Government jobs section is being set up</h3><p>The government recruitment database has not been initialised yet. Human-reviewed notifications will appear here once the pipeline publishes them.</p></div>';
+      $('govtListingCount').textContent='Government jobs';
+      return;
+    }
+    const list=data.jobs||[];
+    const meta=data.meta||{total:list.length,page:1,pages:1,has_next:false};
+    const total=Number(meta.total||list.length);
+    const cnt=$('govtListingCount');
+    if(cnt)cnt.textContent=`${total.toLocaleString('en-IN')} human-reviewed government notification${total===1?'':'s'}`;
+    root.innerHTML=list.length?list.map(govtCard).join(''):`<div class="empty-state"><h3>No matching government notifications${f.value?` for “${govtEsc2(govtTitleCase(f.value))}”`:''}</h3><p>${total?'Notifications exist but none match this filter.':'No human-reviewed government civil notifications are published yet. CivilCareer publishes only verified, human-approved recruitment — nothing is auto-generated.'}</p><a class="btn secondary route" data-route="government" href="/government-jobs">Browse all government civil jobs</a></div>`;
+    const pager=$('govtListingPager');
+    if(pager){
+      if(meta.pages>1){
+        pager.innerHTML=`<div class="cc-pagination"><button class="btn secondary" id="govtPgPrev" ${meta.page<=1?'disabled':''}>Previous</button><span>Page ${meta.page} of ${meta.pages}</span><button class="btn secondary" id="govtPgNext" ${!meta.has_next?'disabled':''}>Next</button></div>`;
+        pager.querySelector('#govtPgPrev').onclick=()=>govtListingPage(meta.page-1);
+        pager.querySelector('#govtPgNext').onclick=()=>govtListingPage(meta.page+1);
+      } else pager.innerHTML='';
+    }
+  }catch(err){
+    root.innerHTML=`<div class="empty-state"><h3>Unable to load government jobs</h3><p>${govtEsc2(err.message||'The government jobs service could not be reached.')}</p><button class="btn secondary" id="govtListingRetry">Retry</button></div>`;
+    const r=$('govtListingRetry');if(r)r.onclick=()=>govtListingPage(page);
+  }
+}
+
 async function routeV8() {
   if(await routeNationalLanding()) return;
   const p=location.pathname;
@@ -477,6 +605,17 @@ async function routeV8() {
     if(x)return openExam(x,false);
     $('examDetailPage').innerHTML='<article class="dedicated-card"><h1>Exam not found</h1><p>This recruitment page may have been removed or the link is incorrect.</p><div class="card-actions"><a href="/exams" class="route" data-route="exams">Browse exams</a></div></article>';
     return activateDynamic('examDetail',p,false);
+  }
+  if(p.startsWith('/government-jobs/')){
+    if(p==='/government-jobs/')return navigate('government',false);
+    const mJob=p.match(/^\/government-jobs\/job\/([^/]+)$/);
+    if(mJob){await openGovtJobDetail(decodeURIComponent(mJob[1]),p);return}
+    const mFilter=p.match(/^\/government-jobs\/(state|organization|qualification|role)\/([^/]+)$/);
+    if(mFilter){openGovtFiltered(mFilter[1],decodeURIComponent(mFilter[2]),p);return}
+    /* Unknown government-jobs sub-path: show the master human-reviewed
+       listing instead of a dead end. */
+    openGovtFiltered('','','/government-jobs');
+    return;
   }
   if(p.startsWith('/study-materials/')){
     const slug=decodeURIComponent(p.slice('/study-materials/'.length));

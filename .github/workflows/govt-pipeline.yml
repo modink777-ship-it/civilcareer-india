@@ -1,0 +1,39 @@
+name: Government Civil Pipeline
+
+# Dedicated government crawler: fetches OFFICIAL recruitment sources
+# (config/govt-sources.json), classifies civil posts and stages every
+# candidate into govt_job_staging. NOTHING is auto-published — every
+# item waits for explicit human approval in the admin Government Jobs
+# section. Runs alongside the /api/govt-discovery agent-reach scans.
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: govt-pipeline
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Crawl official sources into the review queue
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/crawl-govt-pipeline.js
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Government Civil Pipeline" >> "$GITHUB_STEP_SUMMARY"
+          echo "Staged items await human review in /admin → Government Jobs." >> "$GITHUB_STEP_SUMMARY"

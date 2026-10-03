@@ -277,6 +277,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="reports">Reports</button>
   <button data-tab="contact">Contact</button>
   <button data-tab="review-jobs">⚡ Review Jobs</button>
+  <button data-tab="govt">🏛 Government Jobs</button>
 </div>
 
 <div class="panel active" id="panel-analytics">
@@ -944,6 +945,124 @@ Interview Q&A — public page /interview
 
 <div id="rjList"><p style="color:#6a8aaa;font-size:.85rem;padding:1rem 0">Click a tab above to load jobs.</p></div>
 <div class="rj-pager" id="rjPager"></div>
+</div>
+
+<div class="panel" id="panel-govt">
+<style>
+.govt-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;background:#071828;padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+.govt-tabs button{padding:7px 12px;border-radius:7px;border:none;background:transparent;color:#6a8aaa;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.govt-tabs button.active{background:#c9973c;color:#0b1f3a}
+.govt-tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
+.govt-tabs .govt-count{opacity:.75;font-weight:600}
+.govt-list{display:flex;flex-direction:column;gap:8px}
+.govt-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px}
+.govt-item h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 4px;line-height:1.35;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.govt-item p{font-size:.75rem;color:#6a8aaa;margin:0 0 8px}
+.govt-item .govt-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.govt-badge{font-size:.65rem;padding:2px 8px;border-radius:999px;font-weight:700;border:1px solid rgba(255,255,255,.12);color:#8ea8c4;background:rgba(255,255,255,.05)}
+.govt-badge.kind-new{background:rgba(16,185,129,.12);color:#6ee7b7;border-color:rgba(16,185,129,.25)}
+.govt-badge.kind-updated,.govt-badge.kind-closing_date_changed{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.25)}
+.govt-badge.kind-result,.govt-badge.kind-admit_card{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.govt-badge.st-official{background:rgba(5,150,105,.15);color:#6ee7b7;border-color:rgba(5,150,105,.35)}
+.govt-badge.st-unverified{background:rgba(220,38,38,.1);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.govt-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.govt-toolbar input[type=search]{flex:1;min-width:220px;padding:9px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box}
+.govt-toolbar input[type=search]:focus{border-color:#c9973c}
+.govt-sub{display:none}
+.govt-sub.active{display:block}
+.govt-empty{color:#6a8aaa;font-size:.85rem;padding:1rem 0}
+.govt-detail{background:#0a1c35;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;margin-top:10px}
+.govt-detail dl{display:grid;grid-template-columns:170px 1fr;gap:4px 12px;font-size:.8rem;margin:0}
+.govt-detail dt{color:#8ea8c4;font-weight:600}
+.govt-detail dd{margin:0;color:#dbe7f5;word-break:break-word}
+.govt-prov{margin-top:10px;font-size:.72rem;color:#8ea8c4}
+.govt-prov li{margin-bottom:2px}
+</style>
+
+<div class="govt-toolbar">
+  <input type="search" id="govtSearch" placeholder="Search inbox, drafts and published…" oninput="govtFilter()">
+  <button class="btn-gold" onclick="govtRefreshAll()" id="govtRefreshBtn">⟳ Refresh</button>
+  <button class="btn-ghost" onclick="govtShowCreate()">+ New Draft</button>
+</div>
+
+<div class="govt-tabs" id="govtTabs">
+  <button class="active" data-gtab="inbox" onclick="govtLoad('inbox')">🤖 AI Inbox <span class="govt-count" id="govtCountInbox"></span></button>
+  <button data-gtab="drafts" onclick="govtLoad('drafts')">📝 Drafts <span class="govt-count" id="govtCountDrafts"></span></button>
+  <button data-gtab="published" onclick="govtLoad('published')">✅ Published <span class="govt-count" id="govtCountPublished"></span></button>
+  <button data-gtab="archived" onclick="govtLoad('archived')">🗄 Archived <span class="govt-count" id="govtCountArchived"></span></button>
+  <button data-gtab="organizations" onclick="govtLoad('organizations')">🏢 Organizations</button>
+  <button data-gtab="categories" onclick="govtLoad('categories')">🏷 Categories</button>
+  <button data-gtab="sources" onclick="govtLoad('sources')">📡 Sources</button>
+  <button data-gtab="review" onclick="govtLoad('review')">🔍 Review Queue <span class="govt-count" id="govtCountReview"></span></button>
+  <button data-gtab="conflicts" onclick="govtLoad('conflicts')">⚔ Conflicts <span class="govt-count" id="govtCountConflicts"></span></button>
+  <button data-gtab="providers" onclick="govtLoad('providers')">🧠 AI Providers</button>
+</div>
+
+<div class="govt-sub active" data-gsub="inbox">
+  <div class="govt-toolbar">
+    <select id="govtInboxKind" onchange="govtLoad('inbox')" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#0f2847;color:#fff;font-family:inherit">
+      <option value="">All updates</option>
+      <option value="new">New Jobs</option>
+      <option value="updated">Updated Jobs</option>
+      <option value="closing_date_changed">Closing-Date Changes</option>
+      <option value="result">Results</option>
+      <option value="admit_card">Admit Cards</option>
+      <option value="other_update">Other Updates</option>
+    </select>
+    <span style="font-size:.72rem;color:#6a8aaa">AI-found updates. Nothing publishes without your approval.</span>
+  </div>
+  <div class="govt-list" id="govtListInbox"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="drafts">
+  <div class="govt-list" id="govtListDrafts"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="published">
+  <div class="govt-list" id="govtListPublished"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="archived">
+  <div class="govt-list" id="govtListArchived"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="organizations">
+  <div class="govt-toolbar">
+    <input type="search" id="govtOrgSearch" placeholder="Filter organizations…" oninput="govtRenderOrgs(govtCacheOrgs)" style="max-width:280px">
+    <button class="btn-ghost" onclick="govtShowOrgForm()">+ Add Organization</button>
+  </div>
+  <div class="govt-list" id="govtListOrgs"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="categories">
+  <div class="govt-list" id="govtListCats"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="sources">
+  <div class="govt-list" id="govtListSources"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="review">
+  <div class="govt-toolbar">
+    <select id="govtReviewStatus" onchange="govtLoad('review')" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#0f2847;color:#fff;font-family:inherit">
+      <option value="pending">Pending</option>
+      <option value="needs_info">Needs Info</option>
+      <option value="duplicate">Duplicates</option>
+      <option value="rejected">Rejected</option>
+      <option value="approved">Approved</option>
+    </select>
+    <span style="font-size:.72rem;color:#6a8aaa">Discovery items awaiting classification review.</span>
+  </div>
+  <div class="govt-list" id="govtListReview"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="conflicts">
+  <div class="govt-list" id="govtListConflicts"><p class="govt-empty">Loading…</p></div>
+</div>
+
+<div class="govt-sub" data-gsub="providers">
+  <div class="govt-list" id="govtListProviders"><p class="govt-empty">Loading…</p></div>
+</div>
 </div>
 
 </div>
@@ -5240,6 +5359,323 @@ async function rjRunScraper(){
   }catch(e){toast('Scraper error: '+e.message);}
   finally{btn.disabled=false;btn.textContent='🔍 Run Scraper Now';}
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   GOVERNMENT JOBS → CIVIL ENGINEERING (admin section)
+   Every mutation goes through /api/govt-review, which enforces the
+   mandatory human-review publication gate server-side. The UI can only
+   request actions — it can never mark anything reviewed by itself.
+   ════════════════════════════════════════════════════════════════════ */
+
+let govtActiveTab='inbox';
+let govtCache={inbox:[],drafts:[],published:[],archived:[],review:[],orgs:[],cats:[],sources:[],conflicts:[],providers:[]};
+let govtLoadedOnce=false;
+
+function govtEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function govtAdminApi(url,opt={}){
+  const headers={'Content-Type':'application/json',...(adminKey?{Authorization:'Bearer '+adminKey}:{}) ,...(opt.headers||{})};
+  return fetch(url,{...opt,headers}).then(async r=>{
+    const t=await r.text(); let d={}; try{d=t?JSON.parse(t):{}}catch{}
+    if(!r.ok){const e=Error(d.error||('Request failed ('+r.status+')'));e.status=r.status;throw e;}
+    return d;
+  });
+}
+async function govtPost(action,body){
+  return govtAdminApi('/api/govt-review?action='+action,{method:'POST',body:JSON.stringify(body||{})});
+}
+
+function govtSwitchTab(tab){
+  govtActiveTab=tab;
+  document.querySelectorAll('#govtTabs button').forEach(b=>b.classList.toggle('active',b.dataset.gtab===tab));
+  document.querySelectorAll('#panel-govt .govt-sub').forEach(s=>s.classList.toggle('active',s.dataset.gsub===tab));
+}
+
+async function govtLoad(tab){
+  govtSwitchTab(tab);
+  try{
+    if(tab==='inbox'){
+      const kind=$('govtInboxKind').value;
+      const status='pending,needs_info';
+      const d=await govtAdminApi('/api/govt-review?status='+encodeURIComponent(status)+(kind?'&kind='+encodeURIComponent(kind):''));
+      govtCache.inbox=d.items||[];
+      $('govtCountInbox').textContent='('+govtCache.inbox.length+')';
+      govtRenderInbox();
+    } else if(tab==='drafts'||tab==='published'||tab==='archived'){
+      const statusMap={drafts:'draft',published:'active',archived:'archived'};
+      const d=await govtAdminApi('/api/govt-review?action=saved_jobs&status='+statusMap[tab]+'&limit=200');
+      govtCache[tab]=d.jobs||[];
+      $('govtCount'+tab.charAt(0).toUpperCase()+tab.slice(1)).textContent='('+govtCache[tab].length+')';
+      govtRenderSaved(tab);
+    } else if(tab==='review'){
+      const st=$('govtReviewStatus').value;
+      const d=await govtAdminApi('/api/govt-review?status='+encodeURIComponent(st));
+      govtCache.review=d.items||[];
+      govtRenderReview();
+    } else if(tab==='organizations'){
+      const d=await govtAdminApi('/api/govt-review?action=organizations');
+      govtCache.orgs=d.organizations||[];
+      govtRenderOrgs();
+    } else if(tab==='categories'){
+      const d=await govtAdminApi('/api/govt-review?action=categories');
+      govtCache.cats=d.categories||[];
+      govtRenderCats();
+    } else if(tab==='sources'){
+      const d=await govtAdminApi('/api/govt-review?action=health');
+      govtCache.sources=d.sources||[];
+      govtRenderSources();
+    } else if(tab==='conflicts'){
+      const d=await govtAdminApi('/api/govt-review?action=conflicts');
+      govtCache.conflicts=d.conflicts||[];
+      $('govtCountConflicts').textContent='('+govtCache.conflicts.length+')';
+      govtRenderConflicts();
+    } else if(tab==='providers'){
+      const d=await govtAdminApi('/api/govt-review?action=ai-providers');
+      govtCache.providers=d.providers||[];
+      govtRenderProviders();
+    }
+    govtLoadedOnce=true;
+    govtFilter();
+  }catch(e){
+    const map={inbox:'govtListInbox',drafts:'govtListDrafts',published:'govtListPublished',archived:'govtListArchived',review:'govtListReview',organizations:'govtListOrgs',categories:'govtListCats',sources:'govtListSources',conflicts:'govtListConflicts',providers:'govtListProviders'};
+    const el=$(map[tab]); if(el)el.innerHTML='<p style="color:#fca5a5;font-size:.85rem">'+govtEsc(e.message)+'</p>';
+  }
+}
+
+function govtRefreshAll(){govtLoad(govtActiveTab);}
+
+/* Saved govt_jobs rows (drafts / published / archived) come from the
+   same govt-review API so every read is admin-gated. */
+async function govtFetchSaved(status){
+  const d=await govtAdminApi('/api/govt-review?action=saved_jobs&status='+encodeURIComponent(status)+'&limit=200');
+  return d.jobs||[];
+}
+
+function govtKindBadge(kind){
+  const labels={new:'NEW',updated:'UPDATED',closing_date_changed:'DATE CHANGED',result:'RESULT',admit_card:'ADMIT CARD',other_update:'UPDATE'};
+  return '<span class="govt-badge kind-'+govtEsc(kind||'other_update')+'">'+govtEsc(labels[kind]||'UPDATE')+'</span>';
+}
+function govtVerifBadge(st){
+  const official=st==='official';
+  return '<span class="govt-badge st-'+govtEsc(official?'official':'unverified')+'">'+(official?'🛡 Official source':'⚠ Unofficial source')+'</span>';
+}
+
+function govtRenderInbox(){
+  const el=$('govtListInbox');
+  if(!govtCache.inbox.length){el.innerHTML='<p class="govt-empty">Inbox zero — no AI-found updates waiting. New discoveries appear here after each crawl.</p>';return;}
+  el.innerHTML=govtCache.inbox.map(it=>{
+    const p=it.payload||{};
+    const official=(p.source_type||'')==='official';
+    const aiCount=(it.ai_extractions||[]).length;
+    return '<div class="govt-item" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
+      +'<h4>'+govtKindBadge(it.inbox_kind)+' '+govtEsc(p.title||'(untitled)')+'</h4>'
+      +'<p>'+govtEsc(p.organization||'')+(p.state?' · '+govtEsc(p.state):'')+(p.deadline&&p.deadline.date?' · closes '+govtEsc(p.deadline.date):'')+' · '+(official?'official source':'discovery lead')+(aiCount?' · '+aiCount+' AI extraction(s)':'')+'</p>'
+      +'<div class="govt-actions">'
+      +'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Review &amp; Publish</button>'
+      +'<button class="btn-ghost" onclick="govtAiStructure(\''+it.id+'\',this)">🧠 AI Structure</button>'
+      +'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>'
+      +'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>'
+      +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function govtRenderSaved(tab){
+  const map={drafts:'govtListDrafts',published:'govtListPublished',archived:'govtListArchived'};
+  const el=$(map[tab]); const list=govtCache[tab]||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">No '+tab+' government jobs.</p>';return;}
+  el.innerHTML=list.map(j=>{
+    const actions=[];
+    if(tab==='drafts'){
+      actions.push('<button class="btn-publish" onclick="govtPublishDraft(\''+j.id+'\')">✅ Publish</button>');
+    }
+    if(tab==='published'){
+      actions.push('<button class="btn-ghost" onclick="govtAction(\''+j.id+'\',\'unpublish\')">Unpublish</button>');
+      actions.push('<button class="btn-ghost" onclick="govtAction(\''+j.id+'\',\'mark_verified\')">🛡 Mark Verified</button>');
+      actions.push('<button class="btn-ghost" onclick="govtAction(\''+j.id+'\',\'mark_expired\')">⏰ Mark Expired</button>');
+    }
+    if(tab!=='archived'){
+      actions.push('<button class="btn-ghost" onclick="govtAction(\''+j.id+'\',\'archive\')">🗄 Archive</button>');
+    } else {
+      actions.push('<button class="btn-ghost" onclick="govtAction(\''+j.id+'\',\'restore\')">↩ Restore</button>');
+      actions.push('<button class="btn-reject" onclick="govtAction(\''+j.id+'\',\'delete_permanent\')">🗑 Delete Forever</button>');
+    }
+    actions.push('<button class="btn-ghost" onclick="govtDuplicate(\''+j.id+'\')">⧉ Duplicate</button>');
+    if(j.official_notification_url)actions.push('<a class="btn-open-src" href="'+govtEsc(j.official_notification_url)+'" target="_blank" rel="noopener noreferrer">Notification ↗</a>');
+    const verif=govtVerifBadge(j.verification_status)+(j.human_reviewed?'':' <span class="govt-badge">⏳ NOT human-reviewed</span>');
+    return '<div class="govt-item" data-search="'+govtEsc((j.title||'')+' '+(j.organization||'')).toLowerCase()+'">'
+      +'<h4>'+govtEsc(j.title||'(untitled)')+' '+verif+'</h4>'
+      +'<p>'+govtEsc(j.organization||'')+(j.state?' · '+govtEsc(j.state):'')+(j.gov_level?' · '+govtEsc(j.gov_level):'')+(j.apply_end?' · closes '+govtEsc(j.apply_end):'')+'</p>'
+      +'<div class="govt-actions">'+actions.join('')+'</div></div>';
+  }).join('');
+}
+
+function govtRenderReview(){
+  const el=$('govtListReview'); const list=govtCache.review||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">Nothing here for this status.</p>';return;}
+  el.innerHTML=list.map(it=>{
+    const p=it.payload||{};
+    return '<div class="govt-item" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
+      +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span></h4>'
+      +'<p>'+govtEsc((it.reject_reason||it.review_notes||p.excerpt||'').slice(0,180))+'</p>'
+      +'<div class="govt-actions">'
+      +(it.status==='pending'||it.status==='needs_info'?'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Approve &amp; Publish</button>':'')
+      +(it.status!=='approved'?'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>':'')
+      +(it.status!=='rejected'&&it.status!=='approved'?'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function govtRenderOrgs(){
+  const el=$('govtListOrgs'); const q=($('govtOrgSearch').value||'').toLowerCase();
+  const list=(govtCache.orgs||[]).filter(o=>!q||String(o.name||'').toLowerCase().includes(q));
+  if(!list.length){el.innerHTML='<p class="govt-empty">No organizations yet. Add the departments and PSUs you track.</p>';return;}
+  el.innerHTML=list.map(o=>'<div class="govt-item"><h4>'+govtEsc(o.name)+' <span class="govt-badge">'+govtEsc(o.kind||'other')+'</span></h4>'
+    +'<p>'+(o.website?'<a href="'+govtEsc(o.website)+'" target="_blank" rel="noopener noreferrer">'+govtEsc(o.website)+'</a> · ':'')+' organizations are freeform registry entries used to keep master data clean.</p>'
+    +'<div class="govt-actions"><button class="btn-reject" onclick="govtDeleteOrg(\''+o.id+'\')">🗑 Remove</button></div></div>').join('');
+}
+
+function govtRenderCats(){
+  const el=$('govtListCats'); const list=govtCache.cats||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">No categories registered (run the v28 migration seed).</p>';return;}
+  const groups={};
+  list.forEach(c=>{(groups[c.kind||'specialization']=groups[c.kind||'specialization']||[]).push(c)});
+  el.innerHTML=Object.entries(groups).map(([kind,items])=>
+    '<div class="govt-item"><h4><span class="govt-badge">'+govtEsc(kind)+'</span></h4><p>'
+    +items.map(c=>govtEsc(c.label)).join(' · ')
+    +'</p></div>').join('');
+}
+
+function govtRenderSources(){
+  const el=$('govtListSources'); const list=govtCache.sources||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">No discovery sources configured (config/govt-sources.json).</p>';return;}
+  el.innerHTML=list.map(s=>{
+    const ok=s.last_status==='ok';
+    return '<div class="govt-item"><h4>'+govtEsc(s.name)+' '
+      +'<span class="govt-badge '+(s.type==='official'?'st-official':'st-unverified')+'">'+govtEsc(s.type)+'</span> '
+      +'<span class="govt-badge">'+(ok?'✓ healthy':govtEsc(s.last_status||'not run yet'))+'</span></h4>'
+      +'<p>'+(s.last_run_at?'last run '+govtEsc(String(s.last_run_at).slice(0,16).replace('T',' '))+' UTC · ':'')+govtEsc(String(s.items_found||0))+' found · '+govtEsc(String(s.items_staged||0))+' staged'
+      +(s.last_error?' · <span style="color:#fca5a5">'+govtEsc(String(s.last_error).slice(0,120))+'</span>':'')+'</p>'
+      +'<div class="govt-actions">'
+      +'<button class="btn-ghost" onclick="govtToggleSource(\''+s.id+'\','+(!s.enabled)+')">'+(s.enabled?'⏸ Disable':'▶ Enable')+'</button>'
+      +'<a class="btn-open-src" href="'+govtEsc(s.url)+'" target="_blank" rel="noopener noreferrer">Open ↗</a>'
+      +'</div></div>';
+  }).join('');
+}
+
+function govtRenderConflicts(){
+  const el=$('govtListConflicts'); const list=govtCache.conflicts||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">No open conflicts. Diverging source values will be stored here instead of being silently resolved.</p>';return;}
+  el.innerHTML=list.map(c=>{
+    const vals=(c.values||[]).map(v=>'• <b>'+govtEsc(v.value)+'</b> ('+govtEsc(v.source_type||'source')+(v.official?' · official':'')+')').join('<br>');
+    return '<div class="govt-item"><h4>⚔ '+govtEsc(c.field_name)+' '+(c.recruitment_id?'<span class="govt-badge">published record</span>':'')+'</h4>'
+      +'<p>'+vals+'</p>'
+      +'<div class="govt-actions">'
+      +'<button class="btn-publish" onclick="govtResolveConflict(\''+c.id+'\',\'official\')">🛡 Use Official</button>'
+      +'<button class="btn-ghost" onclick="govtResolveConflict(\''+c.id+'\',\'highest\')">Use Highest Confidence</button>'
+      +'<button class="btn-ghost" onclick="govtResolveManual(\''+c.id+'\')">Enter Manually</button>'
+      +'<button class="btn-reject" onclick="govtDismissConflict(\''+c.id+'\')">Dismiss</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function govtRenderProviders(){
+  const el=$('govtListProviders'); const list=govtCache.providers||[];
+  if(!list.length){el.innerHTML='<p class="govt-empty">No AI providers configured. The pipeline still works with rule-based extraction; AI structuring is optional.</p>';return;}
+  el.innerHTML=list.map(p=>'<div class="govt-item"><h4>'+govtEsc(p.label||p.id)+' '
+    +'<span class="govt-badge '+(p.configured?'st-official':'st-unverified')+'">'+(p.configured?(p.keys+' key'+(p.keys!==1?'s':'')):'not configured')+'</span> '
+    +(p.onCooldown?'<span class="govt-badge st-unverified">cooling down</span>':'<span class="govt-badge kind-new">available</span>')+'</h4>'
+    +'<p>Model: '+govtEsc(p.model||'default')+'</p></div>').join('');
+}
+
+function govtFilter(){
+  const q=($('govtSearch').value||'').trim().toLowerCase();
+  document.querySelectorAll('#panel-govt .govt-sub.active .govt-item').forEach(el=>{
+    el.style.display=(!q||(el.dataset.search||'').includes(q))?'':'none';
+  });
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────── */
+
+async function govtApprove(id){
+  if(!confirm('Publish this government job? It becomes publicly visible immediately.'))return;
+  try{ await govtPost('approve',{id}); toast('Published ✓ (human-reviewed gate satisfied)'); govtLoad('inbox'); }
+  catch(e){toast('Publish failed: '+e.message);}
+}
+async function govtReject(id){
+  const reason=prompt('Rejection reason (optional):')||'';
+  try{ await govtPost('reject',{id,reason}); toast('Rejected'); govtLoad('inbox'); }
+  catch(e){toast('Reject failed: '+e.message);}
+}
+async function govtNeedsInfo(id){
+  try{ await govtPost('needs_info',{id,notes:'Marked needs-info from admin inbox'}); toast('Marked Needs Info'); govtLoad('inbox'); }
+  catch(e){toast('Failed: '+e.message);}
+}
+async function govtAiStructure(id,btn){
+  const old=btn?btn.textContent:null;
+  if(btn){btn.disabled=true;btn.textContent='⏳ Thinking…';}
+  try{
+    const r=await govtPost('ai_structure',{id});
+    toast(r.ok?'AI structured the record — review the fields before publishing ✓':('AI structuring unavailable: '+(r.error||'no provider configured')));
+    govtLoad('inbox');
+  }catch(e){toast('AI structuring failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent=old;}}
+}
+async function govtPublishDraft(id){
+  if(!confirm('Publish this draft? It becomes publicly visible immediately.'))return;
+  try{ await govtPost('publish_draft',{id}); toast('Draft published ✓'); govtLoad('drafts'); }
+  catch(e){toast('Publish failed: '+e.message);}
+}
+async function govtAction(id,action){
+  const labels={unpublish:'Unpublish',archive:'Archive',restore:'Restore',mark_verified:'Mark verified',mark_expired:'Mark expired',delete_permanent:'PERMANENTLY delete'};
+  if(!confirm(labels[action]+' this government job?'))return;
+  try{ await govtPost(action,{id}); toast('Done ✓'); govtLoad(govtActiveTab); }
+  catch(e){toast('Failed: '+e.message);}
+}
+async function govtDuplicate(id){
+  try{ const r=await govtPost('duplicate',{id}); toast('Duplicated as draft ✓'); govtLoad('drafts'); }
+  catch(e){toast('Duplicate failed: '+e.message);}
+}
+async function govtResolveConflict(id,resolution){
+  try{ await govtPost('resolve_conflict',{id,resolution}); toast('Conflict resolved ✓'); govtLoad('conflicts'); }
+  catch(e){toast('Resolve failed: '+e.message);}
+}
+async function govtResolveManual(id){
+  const value=prompt('Authoritative value for this field:');
+  if(value===null)return;
+  try{ await govtPost('resolve_conflict',{id,resolution:'manual',value}); toast('Conflict resolved manually ✓'); govtLoad('conflicts'); }
+  catch(e){toast('Resolve failed: '+e.message);}
+}
+async function govtDismissConflict(id){
+  try{ await govtPost('dismiss_conflict',{id}); toast('Conflict dismissed'); govtLoad('conflicts'); }
+  catch(e){toast('Failed: '+e.message);}
+}
+async function govtToggleSource(id,enabled){
+  try{ await govtPost('source_toggle',{source_id:id,enabled}); toast(enabled?'Source enabled':'Source disabled'); govtLoad('sources'); }
+  catch(e){toast('Failed: '+e.message);}
+}
+async function govtDeleteOrg(id){
+  if(!confirm('Remove this organization?'))return;
+  try{ await govtPost('org_delete',{org_id:id}); toast('Removed'); govtLoad('organizations'); }
+  catch(e){toast('Failed: '+e.message);}
+}
+function govtShowOrgForm(){
+  const name=prompt('Organization name:'); if(!name)return;
+  const kind=prompt('Kind (central/state/psu/railways/authority/other):','other')||'other';
+  const website=prompt('Official website (optional):')||null;
+  govtPost('org_save',{name,kind,website}).then(()=>{toast('Organization added ✓');govtLoad('organizations');}).catch(e=>toast('Failed: '+e.message));
+}
+function govtShowCreate(){
+  const title=prompt('Recruitment title:'); if(!title)return;
+  const organization=prompt('Organization:'); if(!organization)return;
+  govtPost('create_draft',{payload:{title,organization}}).then(()=>{toast('Draft created ✓');govtLoad('drafts');}).catch(e=>toast('Failed: '+e.message));
+}
+
+/* Load the Government Jobs section when its tab is opened. */
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('#tabs button[data-tab="govt"]').forEach(b=>{
+    b.addEventListener('click',function(){ if(!govtLoadedOnce)govtLoad('inbox'); });
+  });
+});
 </script>
 </body>
 </html>

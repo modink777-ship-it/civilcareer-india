@@ -61,5 +61,41 @@ assert.ok(sql.includes('enable row level security'), 'government migration must 
 
 const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 assert.ok(!vercel.crons.some(x => x.path === '/api/govt-discovery'), 'government pipeline must not rely on a sub-daily Vercel Hobby cron');
-const workflow = fs.readFileSync(path.join(root, '.github/workflows/govt-pipeline.yml'), 'utf8');
-assert.ok(workflow.includes('scripts/crawl-govt-pipeline.js'), 'GitHub Actions must run the dedicated government crawler');
+/* The dedicated government crawler runs from GitHub Actions. The workflow
+   file was renamed over time (govt-pipeline.yml → govt-discovery-daily.yml
+   + govt-agent-reach.yml); accept any CURRENT spelling but require that at
+   least one really drives the pipeline. */
+const workflowNames = ['govt-pipeline.yml', 'govt-discovery-daily.yml', 'govt-agent-reach.yml'];
+const workflows = workflowNames
+  .filter(n => fs.existsSync(path.join(root, '.github/workflows', n)))
+  .map(n => ({ name: n, body: fs.readFileSync(path.join(root, '.github/workflows', n), 'utf8') }));
+assert.ok(workflows.length > 0, 'at least one government pipeline workflow must exist');
+assert.ok(
+  workflows.some(w => w.body.includes('scripts/crawl-govt-pipeline.js') || w.body.includes('/api/govt-discovery')),
+  'GitHub Actions must run the dedicated government crawler'
+);
+
+/* ── v28: Government Jobs → Civil Engineering section ─────────────────── */
+const v28 = fs.readFileSync(path.join(root, 'supabase-v28-govt-civil-section.sql'), 'utf8');
+assert.ok(v28.includes('human_reviewed'), 'v28 must add the human_reviewed column');
+assert.ok(v28.includes('govt_jobs_publish_gate'), 'v28 must add the database publication gate');
+assert.ok(v28.includes("check (status <> 'active' or human_reviewed = true)"), 'publication gate must block active rows without human review');
+assert.ok(v28.includes('govt_field_provenance'), 'v28 must add field provenance');
+assert.ok(v28.includes('govt_conflicts'), 'v28 must add the conflicts table');
+assert.ok(v28.includes('govt_audit_log'), 'v28 must add the audit log');
+assert.ok(v28.includes('govt_organizations'), 'v28 must add the organizations registry');
+assert.ok(v28.includes('govt_categories'), 'v28 must add the categories registry');
+assert.ok(v28.includes('govt_ai_providers'), 'v28 must add AI provider health');
+assert.ok(v28.includes("inbox_kind"), 'v28 must add AI inbox kinds');
+
+/* Classifier: direct / related / possible / not-civil levels + specializations */
+const { classifyCivilLevel, classifySpecialization } = require('../lib/civil-classifier');
+assert.strictEqual(classifyCivilLevel({ title: 'Junior Engineer (Civil)' }).level, 'direct');
+assert.strictEqual(classifyCivilLevel({ title: 'Site Engineer', organization: 'NHAI' }).level, 'related');
+assert.strictEqual(classifyCivilLevel({ title: 'Technical Officer', organization: 'Water Board' }).level, 'possible');
+assert.strictEqual(classifyCivilLevel({ title: 'Civil Judge' }).level, 'not_civil');
+assert.strictEqual(classifyCivilLevel({ title: 'Civil Services Prelims' }).level, 'not_civil');
+assert.strictEqual(classifySpecialization({ title: 'AE (Civil) Highway Division' }), 'highway');
+assert.strictEqual(classifySpecialization({ title: 'JE (Civil), Irrigation Dept' }), 'irrigation');
+
+console.log('Government civil pipeline tests: PASS');

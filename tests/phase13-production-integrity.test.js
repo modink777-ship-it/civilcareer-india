@@ -18,8 +18,9 @@ assert.ok(!govt.includes('user-agent'), 'govt discovery must not authenticate cr
 // Public govt feed must require an official source URL and only exposes approved active govt rows.
 const jobs = read('_api/govt-jobs.js');
 assert.ok(jobs.includes('function isOfficialGovtUrl'), 'government feed must have explicit official-domain validation');
-assert.ok(jobs.includes("verificationStatus:isOfficialGovtUrl(source)?'official-source':'unverified-source'"), 'government feed should expose source verification status');
-assert.ok(jobs.includes('govt_jobs?status=eq.active'), 'government feed must read only active approved government rows');
+assert.ok(jobs.includes("isOfficialGovtUrl(source)"), 'government feed should expose source verification status');
+assert.ok(jobs.includes("'unverified'"), 'government feed must mark non-official sources as unverified');
+assert.ok(jobs.includes("status=eq.active&human_reviewed=eq.true"), 'government feed must read only active, human-reviewed approved rows');
 assert.ok(jobs.includes('govt_job_posts'), 'government feed must use civil child-post rows');
 
 // Key landing routes must ship route-specific server HTML metadata.
