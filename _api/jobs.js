@@ -1809,15 +1809,16 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-owner-key,Authorization');
   }
 
-  /* The catch-all dispatcher already authenticates auth=1 admin GET requests.
-     Keep the legacy owner check as a guard, but do not short-circuit here: the
-     admin page needs the actual paginated jobs payload, not {authenticated:true}. */
+  /* auth=1 admin GETs. The dashboard signs in with a Supabase session against
+     the ADMIN_EMAIL / ADMIN_USER_ID allowlist (the dispatcher sets req.adminUser
+     after verifying it) and never holds the raw owner key, so the session is the
+     primary gate here; the owner key stays valid for scripts and cron curls.
+     Do not short-circuit: the admin page needs the real paginated payload. */
+  const sessionAdmin = Boolean(req.adminUser);
   if (req.method === 'GET' && String(req.query?.auth || '') === '1') {
-    if (!process.env.OWNER_KEY) {
-      return res.status(503).json({ ok: false, error: 'Admin authentication is not configured on this deployment' });
-    }
-    if (!isAdmin(req)) {
-      return res.status(401).json({ ok: false, error: 'Invalid owner key' });
+    const ownerOk = process.env.OWNER_KEY ? isAdmin(req) : false;
+    if (!ownerOk && !sessionAdmin) {
+      return res.status(401).json({ ok: false, error: 'Admin authentication required.' });
     }
   }
 
@@ -1859,7 +1860,9 @@ module.exports = async function handler(req, res) {
     // path; requireOwner validates it (constant-time + failure limiting).
     const hasOwnerHeader = Boolean(req.headers['x-owner-key']);
     if (hasOwnerHeader && !requireOwner(req, res)) return;
-    const admin = hasOwnerHeader && isAdmin(req);
+    /* A dispatcher-verified admin session is as authoritative as the owner key:
+       it must see drafts, pending-review rows and the admin projection. */
+    const admin = (hasOwnerHeader && isAdmin(req)) || sessionAdmin;
     if (admin) setPrivateNoStore(res);
 
     try {

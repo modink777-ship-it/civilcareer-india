@@ -740,34 +740,62 @@ module.exports = async function govtDiscovery(req, res) {
   const sources = await getSources();
   const results = [];
 
-  for (const source of sources) {
-    try {
-      results.push(await processSource(source));
-    } catch (error) {
-      const message = String(
-        error?.message || "unknown error"
-      ).slice(0, 240);
+  /* A full sweep walks every configured source (28+ today) and one slow host
+     used to consume the whole serverless budget on its own: the function was
+     killed at maxDuration and callers saw 504 (GitHub Actions exit 22).
+     Run with bounded concurrency and an explicit deadline, stalest sources
+     first, so a run always answers 200 and the next run continues where this
+     one stopped. */
+  const TIME_BUDGET_MS = 50000;
+  const CONCURRENCY = 4;
+  const startedAt = Date.now();
 
-      results.push({
-        source: source.name,
-        source_id: source.id,
-        robots: null,
-        fetched: false,
-        candidates: 0,
-        staged: 0,
-        errors: [message],
-      });
+  const ordered = [...sources].sort((a, b) => {
+    const ta = a.last_run_at ? Date.parse(a.last_run_at) : 0;
+    const tb = b.last_run_at ? Date.parse(b.last_run_at) : 0;
+    return (Number.isNaN(ta) ? 0 : ta) - (Number.isNaN(tb) ? 0 : tb);
+  });
 
-      await updateSource(source.id, {
-        last_run_at: new Date().toISOString(),
-        last_status: `run-error:${message}`,
-      });
+  let cursor = 0;
+  async function worker() {
+    while (cursor < ordered.length && Date.now() - startedAt <= TIME_BUDGET_MS) {
+      const source = ordered[cursor];
+      cursor += 1;
+      try {
+        results.push(await processSource(source));
+      } catch (error) {
+        const message = String(
+          error?.message || "unknown error"
+        ).slice(0, 240);
+
+        results.push({
+          source: source.name,
+          source_id: source.id,
+          robots: null,
+          fetched: false,
+          candidates: 0,
+          staged: 0,
+          errors: [message],
+        });
+
+        await updateSource(source.id, {
+          last_run_at: new Date().toISOString(),
+          last_status: `run-error:${message}`,
+        });
+      }
     }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, ordered.length) }, () => worker())
+  );
+
+  const deferred = ordered.slice(cursor).map((s) => s.name);
 
   const summary = {
     sources: sources.length,
     sources_processed: results.length,
+    sources_deferred: deferred.length,
     candidates: results.reduce(
       (n, r) => n + Number(r.candidates || 0),
       0
@@ -786,7 +814,9 @@ module.exports = async function govtDiscovery(req, res) {
     ok: true,
     summary,
     results,
-    note:
-      "Agent Reach writes only to govt_job_leads and govt_job_staging. Nothing is published and the private jobs table is untouched.",
+    deferred,
+    note: deferred.length
+      ? `Processed ${results.length} of ${sources.length} sources inside the serverless time budget; the rest run first next time and are listed in "deferred". Agent Reach writes only to govt_job_leads and govt_job_staging. Nothing is published and the private jobs table is untouched.`
+      : "Agent Reach writes only to govt_job_leads and govt_job_staging. Nothing is published and the private jobs table is untouched.",
   });
 };

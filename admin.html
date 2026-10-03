@@ -484,6 +484,17 @@ Show expired
   </div>
 </div>
 
+<!-- Government Jobs review / edit modal -->
+<div class="review-modal-overlay" id="govtModalOverlay">
+  <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="govtModalTitle">
+    <button class="rm-close" id="govtModalClose" aria-label="Close">&times;</button>
+    <h3 id="govtModalTitle">—</h3>
+    <p class="rm-company" id="govtModalSub">—</p>
+    <div id="govtModalFields"></div>
+    <div class="rm-actions" id="govtModalActions"></div>
+  </div>
+</div>
+
 <!-- Agent Reach Review Detail Modal -->
 <div class="review-modal-overlay" id="agentReachModalOverlay">
   <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="arTitle">
@@ -5470,6 +5481,7 @@ function govtRenderInbox(){
       +'<h4>'+govtKindBadge(it.inbox_kind)+' '+govtEsc(p.title||'(untitled)')+'</h4>'
       +'<p>'+govtEsc(p.organization||'')+(p.state?' · '+govtEsc(p.state):'')+(p.deadline&&p.deadline.date?' · closes '+govtEsc(p.deadline.date):'')+' · '+(official?'official source':'discovery lead')+(aiCount?' · '+aiCount+' AI extraction(s)':'')+'</p>'
       +'<div class="govt-actions">'
+      +'<button class="btn-review" onclick="govtOpenInbox(\''+it.id+'\')">🔍 Review</button>'
       +'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Review &amp; Publish</button>'
       +'<button class="btn-ghost" onclick="govtAiStructure(\''+it.id+'\',this)">🧠 AI Structure</button>'
       +'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>'
@@ -5485,6 +5497,7 @@ function govtRenderSaved(tab){
   if(!list.length){el.innerHTML='<p class="govt-empty">No '+tab+' government jobs.</p>';return;}
   el.innerHTML=list.map(j=>{
     const actions=[];
+    actions.push('<button class="btn-review" onclick="govtOpenSaved(\''+j.id+'\')">🔍 Details &amp; Edit</button>');
     if(tab==='drafts'){
       actions.push('<button class="btn-publish" onclick="govtPublishDraft(\''+j.id+'\')">✅ Publish</button>');
     }
@@ -5595,6 +5608,120 @@ function govtFilter(){
 }
 
 /* ── Actions ─────────────────────────────────────────────────────────── */
+
+/* ── Review / edit modal ───────────────────────────────────────────────
+   The inbox button opens the staged payload read-only so a human can really
+   review before publishing; saved rows open an editor for the fields the
+   server accepts (?action=update). */
+const GOVT_EDIT_FIELDS = [
+  ['title','Title'],
+  ['organization','Organization'],
+  ['gov_level','Level','select',['central','state','psu','railways','authority','other']],
+  ['state','State'],
+  ['department','Department'],
+  ['post_name','Post name'],
+  ['notification_no','Notification no.'],
+  ['qualification','Qualification'],
+  ['total_vacancies','Total vacancies','number'],
+  ['civil_vacancies','Civil vacancies','number'],
+  ['age_limit','Age limit'],
+  ['pay_level','Pay level'],
+  ['application_start','Applications open','date'],
+  ['apply_end','Last date','date'],
+  ['deadline_text','Deadline as published'],
+  ['official_notice_url','Official notice URL','url'],
+  ['official_apply_url','Official apply URL','url'],
+  ['summary','Summary','textarea'],
+];
+
+function govtModalClose(){
+  const o=$('govtModalOverlay');
+  if(o)o.classList.remove('show');
+  document.body.style.overflow='';
+}
+function govtModalOpen(title,sub){
+  $('govtModalTitle').textContent=title||'Government job';
+  $('govtModalSub').innerHTML=sub||'';
+  $('govtModalFields').innerHTML='<p class="rm-value">Loading…</p>';
+  $('govtModalActions').innerHTML='';
+  $('govtModalOverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function govtModalReadonly(rows){
+  $('govtModalFields').innerHTML=rows.map(r=>'<div class="rm-field"><span class="rm-label">'+govtEsc(r[0])
+    +'</span><span class="rm-value" style="white-space:pre-wrap">'+(r[1]==null||r[1]===''?'—':govtEsc(String(r[1])))+
+    '</span></div>').join('');
+}
+function govtOpenInbox(id){
+  const it=(govtCache.inbox||[]).find(x=>x.id===id);
+  if(!it){toast('Item not in the loaded inbox — refresh it first.');return;}
+  const p=it.payload||{};
+  const notice=p.official_notice_url||p.official_notification_url||'';
+  govtModalOpen(p.title||'(untitled)', govtEsc(p.organization||'')+' · '+govtEsc(p.source_type||'source'));
+  govtModalReadonly([
+    ['Deadline',(p.deadline&&(p.deadline.date||p.deadline.text))||'—'],
+    ['Notification no.',p.notification_no],
+    ['Qualification',p.qualification],
+    ['Posts found',(Array.isArray(p.post_candidates)&&p.post_candidates.length)?p.post_candidates.length+' candidate(s)':'—'],
+    ['Official notice',notice||'⚠ none — publishing will be refused'],
+    ['Source URL',p.source_url],
+    ['Inbox kind',it.inbox_kind],
+    ['Civil status',it.civil_status],
+    ['Summary',(p.summary||p.excerpt||'').slice(0,700)],
+  ]);
+  $('govtModalActions').innerHTML=
+    '<button class="btn-gold" onclick="govtModalClose();govtApprove(\''+it.id+'\')">✅ Publish this</button>'
+    +'<button class="btn-review" onclick="govtModalClose();govtAiStructure(\''+it.id+'\',null)">🧠 AI Structure</button>'
+    +'<button class="btn-ghost" onclick="govtModalClose();govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>'
+    +'<button class="btn-reject" onclick="govtModalClose();govtReject(\''+it.id+'\')">✕ Reject</button>'
+    +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'');
+}
+async function govtOpenSaved(id){
+  govtModalOpen('Government job','Loading the saved record…');
+  try{
+    const d=await govtAdminApi('/api/govt-review?action=job&id='+encodeURIComponent(id));
+    const j=d.job||{};
+    govtModalOpen(j.title||'(untitled)', govtEsc(j.organization||'')+(j.status?' · '+govtEsc(j.status):''));
+    $('govtModalFields').innerHTML='<div class="field-grid">'+GOVT_EDIT_FIELDS.map(f=>{
+      const key=f[0],label=f[1],type=f[2]||'text',opts=f[3];
+      const val=j[key]==null?'':String(j[key]);
+      const input=type==='select'
+        ? '<select data-gk="'+key+'">'+opts.map(o=>'<option value="'+o+'"'+(String(j[key]||'')===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'
+        : type==='textarea'
+          ? '<textarea data-gk="'+key+'" rows="3">'+govtEsc(val)+'</textarea>'
+          : '<input data-gk="'+key+'" type="'+type+'" value="'+govtEsc(val)+'">';
+      return '<label'+(type==='textarea'?' class="wide"':'')+'>'+govtEsc(label)+input+'</label>';
+    }).join('')+'</div>'
+      +'<p class="rm-value" style="margin-top:10px;color:#6a8aaa">Fields left as they are stay unchanged. Every save is audited.</p>';
+    $('govtModalActions').innerHTML=
+      '<button class="btn-gold" id="govtModalSave">💾 Save changes</button>'
+      +(j.slug?'<a class="btn-open-src" href="/government-jobs?job='+encodeURIComponent(j.slug)+'" target="_blank" rel="noopener noreferrer">View public page ↗</a>':'')
+      +(j.official_notice_url?'<a class="btn-open-src" href="'+govtEsc(j.official_notice_url)+'" target="_blank" rel="noopener noreferrer">Notification ↗</a>':'');
+    $('govtModalSave').onclick=async()=>{
+      const payload={};
+      $('govtModalFields').querySelectorAll('[data-gk]').forEach(el=>{
+        const k=el.dataset.gk;
+        const v=String(el.value||'').trim();
+        const before=j[k]==null?'':String(j[k]);
+        if(v!==before)payload[k]=v===''?null:v;
+      });
+      if(!Object.keys(payload).length){toast('Nothing changed.');return;}
+      try{
+        await govtPost('update',{id,payload});
+        toast('Saved ✓');
+        govtModalClose();
+        govtLoad(govtActiveTab);
+      }catch(e){toast('Save failed: '+e.message);}
+    };
+  }catch(e){
+    $('govtModalFields').innerHTML='<p class="rm-value" style="color:#fca5a5">'+govtEsc(e.message||'Could not load this job.')+'</p>';
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  const c=$('govtModalClose'); if(c)c.onclick=govtModalClose;
+  const o=$('govtModalOverlay');
+  if(o)o.addEventListener('click',e=>{if(e.target===o)govtModalClose();});
+});
 
 async function govtApprove(id){
   if(!confirm('Publish this government job? It becomes publicly visible immediately.'))return;
