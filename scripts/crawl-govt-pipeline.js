@@ -15,7 +15,7 @@ const UA = `CivilCareer-GovtBot/1.0 (+${SITE}/about)`;
 const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 12000);
 const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 12);
 const MAX_CANDIDATES = Number(process.env.GOVT_MAX_CANDIDATES_PER_SOURCE || 30);
-const HOST_GAP_MS = 2000;
+const HOST_GAP_MS = 5000;
 const config = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'config', 'govt-sources.json'), 'utf8'));
 
 if (!SUPA || !KEY) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
@@ -148,6 +148,9 @@ async function robotsAllowed(url) {
   if (robotsCache.has(host)) return robotsCache.get(host);
   try {
     const r = await fetchText(`${host}/robots.txt`, { Accept: 'text/plain,*/*;q=0.1' });
+    // robots.txt missing (404) or fetch error => allow access (conservative default).
+    // Many government sites don't publish robots.txt at all.
+    if (r.status === 404) { robotsCache.set(host, true); return true; }
     const lines = r.text.split(/\r?\n/); let applies = false; let allowed = true;
     for (const line of lines) {
       const [k, ...rest] = line.split(':'); if (!k) continue;
@@ -157,7 +160,8 @@ async function robotsAllowed(url) {
     }
     robotsCache.set(host, allowed); return allowed;
   } catch (_) {
-    robotsCache.set(host, false); return false;
+    // Network error / DNS failure / timeout => assume allowed (don't block a source).
+    robotsCache.set(host, true); return true;
   }
 }
 async function supa(path, opts = {}) {
