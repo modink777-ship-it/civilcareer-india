@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS mock_sessions (
 );
 
 -- 2. BLOG POSTS
+-- Ensure blog_posts has meta_description (added by v28 if missing)
+ALTER TABLE IF EXISTS public.blog_posts ADD COLUMN IF NOT EXISTS meta_description text;
 CREATE TABLE IF NOT EXISTS blog_posts (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   slug text UNIQUE NOT NULL,
