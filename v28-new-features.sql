@@ -31,8 +31,25 @@ CREATE TABLE IF NOT EXISTS mock_sessions (
 );
 
 -- 2. BLOG POSTS
--- Ensure blog_posts has meta_description (added by v28 if missing)
+-- Ensure blog_posts has all v28 columns (added by v28 if missing)
 ALTER TABLE IF EXISTS public.blog_posts ADD COLUMN IF NOT EXISTS meta_description text;
+ALTER TABLE IF EXISTS public.blog_posts ADD COLUMN IF NOT EXISTS published boolean DEFAULT false;
+ALTER TABLE IF EXISTS public.blog_posts ADD COLUMN IF NOT EXISTS published_at timestamptz;
+ALTER TABLE IF EXISTS public.blog_posts ADD COLUMN IF NOT EXISTS views integer DEFAULT 0;
+
+-- The v26 blog_posts table has 'excerpt' and 'is_published' instead of
+-- 'published'. Map them so the v28 seed INSERT works on either schema.
+DO $$
+BEGIN
+  IF to_regclass('public.blog_posts') IS NOT NULL THEN
+    -- v26 schema (excerpt/is_published) -> v28 schema (published)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='blog_posts' AND column_name='published') THEN
+      ALTER TABLE public.blog_posts ADD COLUMN published boolean DEFAULT false;
+      UPDATE public.blog_posts SET published = COALESCE(is_published, false) WHERE published IS NULL;
+    END IF;
+  END IF;
+END$$;
+
 CREATE TABLE IF NOT EXISTS blog_posts (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   slug text UNIQUE NOT NULL,
