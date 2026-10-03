@@ -1128,8 +1128,10 @@ Interview Q&A — public page /interview
     <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn-gold" id="jcSubmitBtn" onclick="jcSubmit()">🚀 Add to batch &amp; extract</button>
       <button class="btn-ghost" onclick="jcLoadBatches()">⟳ Refresh batches</button>
+      <button class="btn-ghost" onclick="jcCheckSetup()">🔎 Check setup</button>
     </div>
     <div class="jc-status" id="jcStatus"></div>
+    <div id="jcSetup" style="margin-top:6px"></div>
     <div class="metrics" id="jcMetrics" style="margin-top:12px"></div>
   </div>
 </div>
@@ -5235,6 +5237,27 @@ function jcMetricCells(m){
     +cell('approved','Approved')+cell('rejected','Rejected')+cell('failed','Failed sources');
 }
 
+let jcSetupDone=false;
+
+async function jcCheckSetup(){
+  const box=$('jcSetup');
+  if(!box)return;
+  box.innerHTML='<p style="font-size:.76rem;color:#8a9bb0">Checking the v30 tables and the job-sources bucket…</p>';
+  try{
+    const data=await api('/api/job-collector?action=diagnostics',{key:adminKey});
+    box.innerHTML=(data.checks||[]).map(function(c){
+      const optional=(c.critical===false);
+      const icon=c.ok?'✅':(optional?'ℹ️':'❌');
+      const colour=c.ok?'#8a9bb0':(optional?'#8a9bb0':'#fca5a5');
+      return '<div class="jc-itemline">'+icon+' '+esc(c.name)+(c.ok?'':' · <span style="color:'+colour+'">'+esc(c.error||('HTTP '+c.status))+'</span>')+'</div>';
+    }).join('')
+      +(data.ok?'<p style="font-size:.76rem;color:#6ee7b7;margin:6px 0 0">All set — every table and the storage bucket are reachable.</p>'
+        :'<p style="font-size:.76rem;color:#fca5a5;margin:6px 0 0">Run v30-job-collector.sql in Supabase → SQL editor, then press 🔎 Check setup again.</p>');
+  }catch(err){
+    box.innerHTML='<p style="color:#fca5a5;font-size:.76rem">'+esc(err.message||'Setup check failed')+'</p>';
+  }
+}
+
 async function jcLoadBatches(){
   const root=$('jcBatches');
   const jcMetrics=$('jcMetrics');
@@ -5601,7 +5624,10 @@ document
       $('panel-'+b.dataset.tab)
         .classList.add('active');
 
-      if(b.dataset.tab==='collector')jcLoadBatches();
+      if(b.dataset.tab==='collector'){
+        jcLoadBatches();
+        if(!jcSetupDone){jcSetupDone=true;jcCheckSetup();}
+      }
 
       if(b.dataset.tab==='inbox')jiLoad(jiActive);
     };

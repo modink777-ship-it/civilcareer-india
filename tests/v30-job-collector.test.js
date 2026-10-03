@@ -280,3 +280,44 @@ test('inbox tab filters: status and duplicates-only produce different queries', 
     assert.ok(queries.some((q) => q.includes('duplicate_of=not.is.null')), 'duplicates filter expected');
   } finally { stub.restore(); }
 });
+
+test('diagnostics confirms every required table and the storage bucket', async () => {
+  const stub = mockSupabase([
+    { match: '/rest/v1/job_import_batches?select=id&limit=1', reply: [] },
+    { match: '/rest/v1/job_import_items?select=id&limit=1', reply: [] },
+    { match: '/rest/v1/job_inbox?select=id&limit=1', reply: [] },
+    { match: '/rest/v1/job_inbox_events?select=id&limit=1', reply: [] },
+    { match: '/storage/v1/bucket/job-sources', reply: { status: 200, body: { id: 'job-sources', public: false } } },
+  ]);
+  try {
+    const res = await run({ url: '/api/job-collector?action=diagnostics', adminUser: ADMIN });
+    const body = JSON.parse(res.bodyText);
+    assert.strictEqual(res.statusCode, 200, res.bodyText.slice(0, 200));
+    assert.strictEqual(body.ok, true, 'all critical checks should pass');
+    const names = body.checks.map((c) => c.name);
+    for (const t of ['job_import_batches', 'job_import_items', 'job_inbox', 'job_inbox_events']) {
+      assert.ok(names.some((n) => n.includes(t)), 'missing check for ' + t);
+    }
+    assert.ok(names.some((n) => n.includes('job-sources')), 'bucket check expected');
+  } finally { stub.restore(); }
+});
+
+test('diagnostics names a missing table and marks the run as not ready', async () => {
+  const stub = mockSupabase([
+    {
+      match: '/rest/v1/job_inbox?select=id&limit=1',
+      reply: { status: 404, body: { code: 'PGRST205', message: "Could not find the table 'public.job_inbox' in the schema cache" } },
+    },
+    { match: '/storage/v1/bucket/job-sources', reply: { status: 200, body: { id: 'job-sources' } } },
+  ]);
+  try {
+    const res = await run({ url: '/api/job-collector?action=diagnostics', adminUser: ADMIN });
+    const body = JSON.parse(res.bodyText);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(body.ok, false, 'a missing table must fail the check');
+    const failed = body.checks.filter((c) => !c.ok && c.critical !== false).map((c) => c.name);
+    assert.ok(failed.some((n) => n.includes('job_inbox')), 'failed check must name the table: ' + failed.join(', '));
+    const row = body.checks.find((c) => c.name.includes('job_inbox'));
+    assert.match(String(row.error), /PGRST205|job_inbox/);
+  } finally { stub.restore(); }
+});

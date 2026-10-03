@@ -459,6 +459,43 @@ module.exports = async function handler(req, res) {
         return send(res, 200, { ok: true, item: row, source: item, original_url, events: ev.ok ? await ev.json() : [] });
       }
 
+      if (action === 'diagnostics') {
+        /* One-click verification of the v30 migration: every table the
+           collector touches plus the private bucket that stores originals.
+           Read-only — no writes, safe to run any time. */
+        const tables = ['job_import_batches', 'job_import_items', 'job_inbox', 'job_inbox_events'];
+        const checks = [];
+        for (const table of tables) {
+          try {
+            const r = await db(`${table}?select=id&limit=1`, { headers: { Prefer: 'count=exact' } });
+            checks.push(r.ok
+              ? { name: `table ${table}`, ok: true, status: r.status }
+              : { name: `table ${table}`, ok: false, status: r.status, error: (await r.text()).slice(0, 200) });
+          } catch (err) {
+            checks.push({ name: `table ${table}`, ok: false, status: 0, error: String((err && err.message) || '').slice(0, 200) });
+          }
+        }
+        try {
+          const r = await fetch(`${SUPA}/storage/v1/bucket/${BUCKET}`, {
+            headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
+          });
+          checks.push(r.ok
+            ? { name: `bucket ${BUCKET}`, ok: true, status: r.status }
+            : { name: `bucket ${BUCKET}`, ok: false, status: r.status, error: (await r.text()).slice(0, 200) });
+        } catch (err) {
+          checks.push({ name: `bucket ${BUCKET}`, ok: false, status: 0, error: String((err && err.message) || '').slice(0, 200) });
+        }
+        const hasVision = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+        checks.push({
+          name: 'OCR key (GEMINI_API_KEY)',
+          ok: hasVision,
+          critical: false,
+          status: hasVision ? 200 : 0,
+          error: hasVision ? null : 'not set — posters wait for pasted text',
+        });
+        return send(res, 200, { ok: checks.filter(c => c.critical !== false).every(c => c.ok), checks });
+      }
+
       if (action === 'batch') {
         const id = String(url.searchParams.get('id') || '');
         if (!id) return send(res, 400, { ok: false, error: 'id is required.' });

@@ -16,12 +16,24 @@
 const https = require("https");
 const http = require("http");
 const crypto = require("crypto");
-const { createClient } = require("@supabase/supabase-js");
+/* Plain REST instead of @supabase/supabase-js: the SDK ships the legacy
+   @supabase/node-fetch fork, whose url.parse() use makes Node 22+ print a
+   DeprecationWarning (DEP0169) in every Vercel cold-start log. Same
+   service-key contract as _api/job-collector.js. */
+const SUPA_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPA_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+function rest(path, opts = {}) {
+  return fetch(`${SUPA_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+}
 
 const ROBOTS_UA =
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
@@ -186,10 +198,12 @@ function robotsAllows(text, targetUrl) {
 async function updateSource(sourceId, patch) {
   if (!sourceId) return;
 
-  await supabase
-    .from("govt_sources")
-    .update(patch)
-    .eq("id", sourceId);
+  try {
+    await rest(`govt_sources?id=eq.${encodeURIComponent(sourceId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+  } catch (_) { /* source bookkeeping must never fail a scan */ }
 }
 
 async function checkRobots(source) {
@@ -550,17 +564,18 @@ async function upsertLead(source, candidate) {
     url_hash: urlHash,
   };
 
-  const { data, error } = await supabase
-    .from("govt_job_leads")
-    .upsert(payload, { onConflict: "url_hash" })
-    .select("id")
-    .single();
+  const r = await rest('govt_job_leads?on_conflict=url_hash&select=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(payload),
+  });
 
-  if (error) {
-    return { ok: false, error: error.message };
+  if (!r.ok) {
+    return { ok: false, error: (await r.text()).slice(0, 200) };
   }
 
-  return { ok: true, id: data.id };
+  const rows = await r.json();
+  return { ok: true, id: rows[0] && rows[0].id };
 }
 
 async function stageCandidate(source, leadId, candidate, classification) {
@@ -592,13 +607,15 @@ async function stageCandidate(source, leadId, candidate, classification) {
     },
   };
 
-  const { error } = await supabase
-    .from("govt_job_staging")
-    .upsert(payload, { onConflict: "dedupe_key" });
+  const r = await rest('govt_job_staging?on_conflict=dedupe_key', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify(payload),
+  });
 
   return {
-    ok: !error,
-    error: error?.message || null,
+    ok: r.ok,
+    error: r.ok ? null : (await r.text()).slice(0, 200),
   };
 }
 
@@ -684,17 +701,12 @@ async function processSource(source) {
 }
 
 async function getSources() {
-  const { data, error } = await supabase
-    .from("govt_sources")
-    .select(
-      "id,name,type,url,kind,org,category,state,enabled,robots_ok,last_run_at,last_status"
-    )
-    .eq("enabled", true)
-    .order("name");
+  const select = 'id,name,type,url,kind,org,category,state,enabled,robots_ok,last_run_at,last_status';
+  const r = await rest(`govt_sources?select=${select}&enabled=eq.true&order=name`);
 
-  if (error) throw new Error(`govt_sources read failed: ${error.message}`);
+  if (!r.ok) throw new Error(`govt_sources read failed: HTTP ${r.status}`);
 
-  return data || [];
+  return (await r.json()) || [];
 }
 
 module.exports = async function govtDiscovery(req, res) {
