@@ -195,7 +195,7 @@
     },
     {
       "source": "/:seoSlug",
-      "destination": "/api/seo-page?slug=:seoSlug"
+      "destination": "/api/seo-page"
     }
   ],
   "headers": [

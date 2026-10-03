@@ -194,6 +194,37 @@ module.exports = async function handler(req, res) {
       pathName = new URL(req.url, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
     } catch (_) { /* keep default */ }
 
+    /* Platform query hygiene — the catch-all SEO rewrite in vercel.json
+       (/:seoSlug → /api/seo-page?slug=:seoSlug) also prefix-matches every
+       /api/* path and leaks slug=<first path segment> ("api") into the
+       query string. Left in place, list endpoints take their detail branch
+       and answer {"job":null} instead of the list. Strip exactly that
+       leaked value; a slug the caller really sent is preserved. */
+    if (pathName.startsWith('/api/')) {
+      const injected = pathName.split('/')[1];
+      let realSlug = null;
+      try {
+        const u = new URL(req.url, 'http://localhost');
+        const seen = u.searchParams.getAll('slug');
+        const kept = seen.filter(v => v !== injected);
+        if (kept.length !== seen.length) {
+          u.searchParams.delete('slug');
+          for (const v of kept) u.searchParams.append('slug', v);
+          req.url = u.pathname + u.search;
+        }
+        if (kept.length === 1) realSlug = kept[0];
+      } catch (_) { /* keep req.url as-is */ }
+      if (req.query && req.query.slug !== undefined) {
+        let kept = Array.isArray(req.query.slug)
+          ? req.query.slug.filter(v => String(v) !== injected)
+          : (String(req.query.slug) === injected ? [] : [req.query.slug]);
+        if (!kept.length && realSlug) kept = [realSlug];
+        if (kept.length === 1) req.query.slug = kept[0];
+        else if (kept.length) req.query.slug = kept;
+        else delete req.query.slug;
+      }
+    }
+
     /* Server-rendered job detail pages: /jobs/<slug> maps to the jobs handler
        regardless of whether the vercel.json rewrite reached us intact — the
        catch-all receives the original path here, so resolve it ourselves. */

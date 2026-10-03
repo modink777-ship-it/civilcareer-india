@@ -44,6 +44,57 @@ function db(path, opts = {}) {
 function slugify(v) {
   return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'government-job';
 }
+
+/* DATE columns accept only ISO dates, but deadlines reach us from AI
+   structuring and discovery portals as free text ("31 Oct 2026").
+   Normalise to YYYY-MM-DD, or null when unparseable — an invalid literal
+   must never reach a Postgres date column and fail a human-approved publish. */
+function isoDate(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  /* Bare non-ISO dates are parsed as UTC so the calendar day does not shift
+     for reviewers east of Greenwich. */
+  const d = new Date(/T\d/.test(s) ? s : `${s} UTC`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+/* Timestamptz counterpart: the same free-text value is used for closes_at,
+   where `new Date(text).toISOString()` used to throw RangeError and abort
+   the publish. */
+function endOfDayIso(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T23:59:59.000Z`;
+  if (/T\d/.test(s)) {
+    const t = new Date(s);
+    return Number.isNaN(t.getTime()) ? null : t.toISOString();
+  }
+  const d = new Date(`${s} UTC`);
+  return Number.isNaN(d.getTime()) ? null : `${d.toISOString().slice(0, 10)}T23:59:59.000Z`;
+}
+
+/* PostgREST reports a column missing from the live schema as PGRST204.
+   When the database lags the code (a migration not yet applied), drop the
+   unknown column and retry instead of failing the admin's publish. The SQL
+   migrations keep the schema in sync; this only prevents a hard stop. */
+function unknownColumn(text) {
+  const m = String(text || '').match(/Could not find the '([a-z_][a-z0-9_]*)' column|column "?([a-z_][a-z0-9_]*)"? (?:of relation|does not exist)/i);
+  return m ? (m[1] || m[2]) : null;
+}
+async function insertRow(table, row, context) {
+  const payload = Object.assign({}, row);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const r = await db(table, { method: 'POST', body: JSON.stringify(payload) });
+    if (r.ok) return r;
+    const body = await r.text();
+    const col = unknownColumn(body);
+    if (!col || !Object.prototype.hasOwnProperty.call(payload, col)) throw new Error(`${context}: ${body.slice(0, 400)}`);
+    console.error(`${context}: "${col}" is not a column of ${table} — run the latest migration; retrying without it.`);
+    delete payload[col];
+  }
+  throw new Error(`${context}: could not insert after dropping unknown columns`);
+}
 function bodyOf(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   try { return JSON.parse(req.body || '{}'); } catch { return {}; }
@@ -209,16 +260,16 @@ async function approve(id, user, payloadOverride = null) {
     age_limit: p.age_limit || (p.age_limit_by_category ? JSON.stringify(p.age_limit_by_category).slice(0, 500) : null),
     age_relaxation: p.age_relaxation || null,
     pay_level: p.pay_level || null,
-    application_start: p.application_start || null,
+    application_start: isoDate(p.application_start),
     dates: p.dates || {},
     deadline_kind: deadline.kind || 'fixed',
     deadline_text: deadline.text || null,
-    apply_end: deadline.date || p.apply_end || null,
-    previous_apply_end: p.previous_apply_end || null,
+    apply_end: isoDate(deadline.date || p.apply_end),
+    previous_apply_end: isoDate(p.previous_apply_end),
     application_mode: p.application_mode || null,
     application_fee: p.application_fee || (p.fee_by_category ? JSON.stringify(p.fee_by_category).slice(0, 500) : null),
     correction_window: p.correction_window || null,
-    exam_date: p.exam_date || null,
+    exam_date: isoDate(p.exam_date),
     exam_mode: p.exam_mode || null,
     selection_stages: Array.isArray(p.selection_stages) ? p.selection_stages.slice(0, 20) : [],
     timeline: Array.isArray(p.timeline) ? p.timeline.slice(0, 30) : [],
@@ -247,11 +298,10 @@ async function approve(id, user, payloadOverride = null) {
     reviewed_at: now(),
     reviewed_by: user.id,
     published_at: now(),
-    closes_at: (deadline.date || p.apply_end) ? new Date(`${deadline.date || p.apply_end}T23:59:59Z`).toISOString() : null,
+    closes_at: endOfDayIso(deadline.date || p.apply_end),
     change_log: [{ at: now(), action: 'approved_and_published', reviewer: user.id, reviewer_email: actorEmail(user), ai_assisted: Boolean(payloadOverride) }],
   };
-  const jr = await db('govt_jobs', { method: 'POST', body: JSON.stringify(job) });
-  if (!jr.ok) throw new Error(`Could not publish government job: ${(await jr.text()).slice(0, 400)}`);
+  const jr = await insertRow('govt_jobs', job, 'Could not publish government job');
   const saved = (await jr.json())[0];
 
   const posts = Array.isArray(p.post_candidates) ? p.post_candidates.filter(x => x.outcome === 'civil' || x.outcome === 'discipline_unknown') : [];
@@ -515,16 +565,16 @@ module.exports = async function handler(req, res) {
           age_limit: p.age_limit || null,
           age_relaxation: p.age_relaxation || null,
           pay_level: p.pay_level || null,
-          application_start: p.application_start || null,
+          application_start: isoDate(p.application_start),
           application_mode: p.application_mode || null,
           application_fee: p.application_fee || null,
           correction_window: p.correction_window || null,
-          exam_date: p.exam_date || null,
+          exam_date: isoDate(p.exam_date),
           exam_mode: p.exam_mode || null,
           selection_stages: Array.isArray(p.selection_stages) ? p.selection_stages.slice(0, 20) : [],
           timeline: Array.isArray(p.timeline) ? p.timeline.slice(0, 30) : [],
           deadline_text: p.deadline_text || null,
-          apply_end: p.apply_end || null,
+          apply_end: isoDate(p.apply_end),
           official_notice_url: String(p.official_notice_url || '').trim() || null,
           official_notification_url: p.official_notification_url || p.official_notice_url || null,
           official_apply_url: p.official_apply_url || null,
@@ -536,8 +586,7 @@ module.exports = async function handler(req, res) {
           change_log: [{ at: now(), action: 'draft_created', reviewer: req.adminUser.id }],
         };
         if (draft.official_notice_url === null) delete draft.official_notice_url;
-        const dr = await db('govt_jobs', { method: 'POST', body: JSON.stringify(draft) });
-        if (!dr.ok) throw new Error(`Could not create draft: ${(await dr.text()).slice(0, 400)}`);
+        const dr = await insertRow('govt_jobs', draft, 'Could not create draft');
         const saved = (await dr.json())[0];
         await audit('govt_jobs', saved.id, 'create_draft', req.adminUser, { title });
         return res.status(201).json({ ok: true, job: saved });
@@ -744,8 +793,7 @@ async function savedJobAction(action, id, req, res, b) {
     clone.deleted_at = null;
     clone.scheduled_for = null;
     clone.change_log = [{ at: now(), action: 'duplicated_from', reviewer: user.id, source_id: job.id }];
-    const dr = await db('govt_jobs', { method: 'POST', body: JSON.stringify(clone) });
-    if (!dr.ok) throw new Error(`Could not duplicate: ${(await dr.text()).slice(0, 400)}`);
+    const dr = await insertRow('govt_jobs', clone, 'Could not duplicate');
     const saved = (await dr.json())[0];
     await audit('govt_jobs', job.id, 'duplicate', user, { new_id: saved.id });
     return res.status(201).json({ ok: true, job: saved });
