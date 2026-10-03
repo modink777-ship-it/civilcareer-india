@@ -2,9 +2,9 @@ name: Social Engine Drain
 
 on:
   schedule:
-    # Every 15 minutes — Vercel Hobby crons are limited to once per day,
+    # Every 2 hours,
     # so the queue drain runs here instead (see docs/00-gap-report.md F10).
-    - cron: '*/15 * * * *'
+    - cron: '*/2 * * * *'
   workflow_dispatch:
 
 jobs:

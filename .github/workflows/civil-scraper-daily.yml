@@ -1,9 +1,9 @@
-name: Daily Civil Scraper
+name: Civil Scraper Every 2 Hours
 
 on:
   schedule:
-    # 20:00 UTC = 01:30 IST — daily
-    - cron: '0 20 * * *'
+    # every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:

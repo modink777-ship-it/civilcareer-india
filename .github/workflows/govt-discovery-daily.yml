@@ -1,9 +1,9 @@
-name: Daily Govt Discovery
+name: Govt Discovery Every 2 Hours
 
 on:
   schedule:
-    # 21:00 UTC = 02:30 IST — daily
-    - cron: '0 21 * * *'
+    # every 2 hours (21:00 UTC = 02:30 IST)
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:

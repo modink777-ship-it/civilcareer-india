@@ -1,4 +1,4 @@
-name: Civil job discovery (every 4 hours)
+name: Civil job discovery (every 2 hours)
 
 # CivilCareer's discovery model: pull civil-engineering vacancies for India
 # from job platforms (LinkedIn/Naukri/Indeed-class searches, Google Jobs,
@@ -16,7 +16,7 @@ name: Civil job discovery (every 4 hours)
 
 on:
   schedule:
-    - cron: '0 */4 * * *'   # 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC
+    - cron: '0 */2 * * *'   # 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 UTC
   workflow_dispatch:         # manual trigger from the Actions tab
 
 concurrency:
@@ -46,7 +46,7 @@ jobs:
           OWNER_KEY: ${{ secrets.OWNER_KEY }}
           # Optional 4-hourly summary (sent only when drafts were found)
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID || 'unused' }}
 
       - name: Summary
         if: always()
