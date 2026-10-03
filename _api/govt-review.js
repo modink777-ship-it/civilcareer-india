@@ -160,7 +160,12 @@ async function approve(id, user, payloadOverride = null) {
   const sourceType = (item.payload && item.payload.source_type) || '';
   if (!officialNotice) throw new Error('Official notice URL is required before publishing.');
   if (sourceType === 'aggregator_lead' && (!officialNotice || !isOfficialHost(officialNotice))) {
-    throw new Error('Official notice URL must be an official government/PSU domain — verify it before publishing.');
+    const knownPsuHosts = ['ircon.org', 'ntpc.co.in', 'bhel.com', 'rites.com', 'aai.aero', 'nhai.gov.in', 'cpwd.gov.in', 'up.gov.in', 'rrbcdg.gov.in'];
+    const host = new URL(officialNotice || '').hostname.toLowerCase();
+    const isKnownPsu = knownPsuHosts.some(h => host.endsWith(h) || host === h);
+    if (!isKnownPsu) {
+      throw new Error('Official notice URL must be an official government/PSU domain — verify it before publishing.');
+    }
   }
 
   const title = String(p.title || 'Government Civil Recruitment').trim();
