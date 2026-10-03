@@ -1992,13 +1992,23 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { id } = body;
-      if (!id) return res.status(400).json({ error: 'Missing id' });
+      /* Single `id` (editor) and bulk `ids` (Jobs-tab "Delete selected") are both
+         supported: the bulk button sends { ids: [...] }, which used to fall through
+         to "Missing id" and looked like a failed delete. */
+      const { id, ids } = body;
+      const list = (Array.isArray(ids) ? ids : (id ? [id] : []))
+        .map((x) => String(x || '').trim())
+        .filter(Boolean)
+        .slice(0, 200);
+      if (!list.length) return res.status(400).json({ error: 'Missing id' });
+      const idFilter = list.length === 1
+        ? `id=eq.${encodeURIComponent(list[0])}`
+        : `id=in.(${list.map((x) => `"${x.replace(/"/g, '')}"`).join(',')})`;
       /* Keep deleted jobs in the admin list so the Jobs tab can filter
          Draft / Published / Deleted / Needs to be edited. Public reads are
          already limited to published=true, so soft-deleted rows never appear
          to candidates. */
-      const r = await supa(`jobs?id=eq.${encodeURIComponent(id)}`, {
+      const r = await supa(`jobs?${idFilter}`, {
         method: 'PATCH',
         body: JSON.stringify({
           published: false,
@@ -2011,7 +2021,7 @@ module.exports = async function handler(req, res) {
         const detail = await r.text();
         return res.status(500).json({ error: 'Job could not be deleted', details: detail });
       }
-      return res.status(200).json({ success: true, deleted: true });
+      return res.status(200).json({ success: true, deleted: list.length, id: list.length === 1 ? list[0] : null });
     } catch (err) {
       return res.status(500).json({ error: 'Job could not be deleted', details: err.message });
     }

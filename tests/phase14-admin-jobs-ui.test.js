@@ -21,13 +21,22 @@ assert(!admin.includes('No employer profiles yet'));
 assert(!app.includes('Employer verified'));
 assert(!app.includes('employerVerified'));
 
-// Jobs tab exposes the requested lifecycle filters.
+// Jobs tab exposes the requested lifecycle filters. Drafts belong to the
+// Discovery → Review Jobs queue: the Jobs tab lists the live list only, so it
+// has no Draft option and filters unpublished rows out before rendering.
 assert(admin.includes('id="adminJobStatusFilter"'));
-assert(admin.includes('value="draft"'));
+assert(!admin.includes('value="draft"'));
+assert(admin.includes('isDraftRow'));
 assert(admin.includes('value="published"'));
 assert(admin.includes('value="deleted"'));
 assert(admin.includes('value="needs_edit"'));
 assert(jobs.includes("status: 'Deleted'"));
 assert(jobs.includes("review_state: 'Deleted'"));
+
+// Bulk delete from the Jobs tab posts { ids: [...] } and the API must accept
+// the array form (single-id requests keep working).
+assert(admin.includes('method:\'DELETE\',key:adminKey,body:JSON.stringify({ids})'));
+assert(jobs.includes('Array.isArray(ids)'));
+assert(jobs.includes('id=in.('));
 
 console.log('Phase 14 admin jobs/employer UI tests passed');

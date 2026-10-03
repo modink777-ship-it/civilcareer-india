@@ -278,6 +278,8 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="contact">Contact</button>
   <button data-tab="review-jobs">⚡ Review Jobs</button>
   <button data-tab="govt">🏛 Government Jobs</button>
+  <button data-tab="collector">📥 Job Collector</button>
+  <button data-tab="inbox">📬 Job Inbox</button>
 </div>
 
 <div class="panel active" id="panel-analytics">
@@ -348,7 +350,6 @@ AI never publishes automatically. Verify every field before saving.
 Status
 <select id="adminJobStatusFilter" onchange="loadAll(1)">
 <option value="all">All jobs</option>
-<option value="draft">Draft</option>
 <option value="published">Published</option>
 <option value="deleted">Deleted</option>
 <option value="needs_edit">Needs to be edited</option>
@@ -1076,6 +1077,118 @@ Interview Q&A — public page /interview
 </div>
 </div>
 
+<div class="panel" id="panel-collector">
+<style>
+.jc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:960px){.jc-grid{grid-template-columns:1fr}}
+.jc-card{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.jc-card h3{font-size:.95rem;color:#fff;margin:0 0 8px;font-weight:800}
+.jc-card label{display:block;font-size:.72rem;font-weight:700;color:#8ea8c4;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px}
+.jc-card input[type=text],.jc-card input[type=url],.jc-card textarea{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box}
+.jc-card textarea{min-height:104px;resize:vertical}
+.jc-card input:focus,.jc-card textarea:focus{border-color:#c9973c}
+.jc-help{margin:0;padding-left:18px;font-size:.78rem;color:#94a3b8;line-height:1.6}
+.jc-help li{margin-bottom:7px}
+.jc-note{margin-top:10px;padding:10px 12px;border-radius:9px;background:rgba(201,151,60,.08);border:1px solid rgba(201,151,60,.25);font-size:.72rem;color:#e2c07a;line-height:1.55}
+.jc-status{font-size:.78rem;color:#8ea8c4;margin-top:8px;min-height:18px}
+.jc-batch{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+.jc-batch h4{font-size:.85rem;color:#fff;margin:0 0 3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.jc-batch p{font-size:.72rem;color:#6a8aaa;margin:0 0 7px}
+.jc-badge{font-size:.63rem;padding:2px 8px;border-radius:999px;font-weight:700;border:1px solid rgba(255,255,255,.14);color:#8ea8c4;background:rgba(255,255,255,.05);text-transform:uppercase;letter-spacing:.04em}
+.jc-badge.jc-st-done{background:rgba(16,185,129,.12);color:#6ee7b7;border-color:rgba(16,185,129,.3)}
+.jc-badge.jc-st-processing{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.jc-badge.jc-st-partial{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.3)}
+.jc-badge.jc-st-open{background:rgba(148,163,184,.12);color:#cbd5e1}
+.jc-itemline{font-size:.74rem;color:#a9bdd4;margin:3px 0;line-height:1.6}
+.jc-itemline .st{color:#6a8aaa}
+</style>
+<div class="jc-grid">
+  <div class="jc-card">
+    <h3>📥 How to collect jobs</h3>
+    <ol class="jc-help">
+      <li><b>Paste the ad text</b> you already have — a WhatsApp message, an email forward, a printed notice.</li>
+      <li><b>Upload a screenshot or PDF</b> (job posters, recruitment notices). OCR reads it when a vision key is configured; otherwise the item waits for you to paste its text.</li>
+      <li><b>Add the link</b> of a public job page you want to keep. The server fetches the public page once, reads it, and stores nothing behind a login.</li>
+      <li>One batch can contain many posters — each role is split into its own job card automatically.</li>
+      <li>Every card is scored for <b>civil relevance</b> and <b>confidence</b>, checked against jobs already on the site, then parked in the <b>Job Inbox</b>.</li>
+      <li>You edit anything the machine got wrong and press <b>Approve &amp; publish</b>. Only that button writes to the live jobs list.</li>
+    </ol>
+    <div class="jc-note"><b>Compliance:</b> submit only material you received or own — posters and forwards you were given, public pages, your own scans. This tool does not log into WhatsApp, LinkedIn or any portal, and does not scrape other people's accounts or private groups. AI output is a draft; you verify every field before publishing.</div>
+  </div>
+  <div class="jc-card">
+    <h3>➕ Submit job material</h3>
+    <label for="jcLabel">Batch label (optional)</label>
+    <input type="text" id="jcLabel" placeholder="e.g. WhatsApp posters — 4 Oct">
+    <label for="jcText">Paste text (one or many jobs)</label>
+    <textarea id="jcText" placeholder="Site Engineer - 4-6 LPA&#10;Experience: 3-5 years&#10;Location: Pune&#10;Contact: hr@example.com"></textarea>
+    <label for="jcUrls">Job links (one per line)</label>
+    <textarea id="jcUrls" style="min-height:64px" placeholder="https://example.com/careers/site-engineer"></textarea>
+    <label for="jcFiles">Screenshots / posters / PDFs</label>
+    <input type="file" id="jcFiles" multiple accept="image/*,application/pdf" style="font-size:.78rem;color:#94a3b8">
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-gold" id="jcSubmitBtn" onclick="jcSubmit()">🚀 Add to batch &amp; extract</button>
+      <button class="btn-ghost" onclick="jcLoadBatches()">⟳ Refresh batches</button>
+    </div>
+    <div class="jc-status" id="jcStatus"></div>
+    <div class="metrics" id="jcMetrics" style="margin-top:12px"></div>
+  </div>
+</div>
+<div class="jc-card">
+  <h3>🗂 Recent batches</h3>
+  <div id="jcBatches"><p style="color:#6a8aaa;font-size:.8rem">No batches yet — submit your first text, screenshot, PDF or link above.</p></div>
+</div>
+</div>
+
+<div class="panel" id="panel-inbox">
+<style>
+.ji-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;margin-bottom:8px}
+.ji-item-body h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 4px;line-height:1.35;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ji-item-body p{font-size:.75rem;color:#6a8aaa;margin:0 0 7px;line-height:1.5}
+.ji-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ji-badge{font-size:.65rem;padding:2px 8px;border-radius:999px;font-weight:700;border:1px solid rgba(255,255,255,.12);color:#8ea8c4;background:rgba(255,255,255,.05)}
+.ji-badge.ji-dup{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.3)}
+.ji-badge.ji-st-pending{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.ji-badge.ji-st-needs_attention{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.3)}
+.ji-badge.ji-st-approved{background:rgba(16,185,129,.12);color:#6ee7b7;border-color:rgba(16,185,129,.25)}
+.ji-badge.ji-st-rejected{background:rgba(220,38,38,.1);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.ji-badge.ji-rel-non_relevant{background:rgba(220,38,38,.1);color:#fca5a5;border-color:rgba(220,38,38,.25)}
+.ji-badge.ji-rel-uncertain{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.3)}
+.ji-detail{background:#0a1c35;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.ji-detail h3{font-size:1rem;color:#fff;margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ji-form{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px;margin-top:12px}
+@media(max-width:900px){.ji-form{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.ji-form{grid-template-columns:1fr}}
+.ji-field{display:flex;flex-direction:column;gap:3px}
+.ji-field.wide{grid-column:span 2}
+.ji-field label{font-size:.68rem;font-weight:700;color:#8ea8c4;text-transform:uppercase;letter-spacing:.05em}
+.ji-field input,.ji-field select,.ji-field textarea{width:100%;padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.8rem;font-family:inherit;outline:none;box-sizing:border-box}
+.ji-field input:focus,.ji-field select:focus,.ji-field textarea:focus{border-color:#c9973c}
+.ji-source{margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
+.ji-original{max-width:280px;max-height:220px;border-radius:9px;border:1px solid rgba(255,255,255,.12);margin-top:8px;display:block}
+.ji-raw{background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;font-size:.72rem;color:#a9bdd4;max-height:220px;overflow:auto;white-space:pre-wrap}
+.ji-events{font-size:.72rem;color:#8ea8c4;margin:8px 0 0;padding-left:18px}
+.ji-events li{margin-bottom:3px}
+</style>
+<div class="metrics" id="jiMetrics"></div>
+<div class="govt-tabs" id="jiTabs">
+  <button class="active" data-jitab="all" onclick="jiLoad('all')">All</button>
+  <button data-jitab="pending" onclick="jiLoad('pending')">⏳ Pending</button>
+  <button data-jitab="needs_attention" onclick="jiLoad('needs_attention')">⚠ Needs attention</button>
+  <button data-jitab="duplicates" onclick="jiLoad('duplicates')">👥 Possible duplicates</button>
+  <button data-jitab="approved" onclick="jiLoad('approved')">✅ Approved</button>
+  <button data-jitab="rejected" onclick="jiLoad('rejected')">✕ Rejected</button>
+  <button data-jitab="processing" onclick="jiLoad('processing')">⚙ Processing / failed</button>
+</div>
+<div class="govt-toolbar">
+  <input type="search" id="jiSearch" placeholder="Filter by title, company, city or contact…" oninput="jiFilter()">
+  <button class="btn-gold" onclick="jiLoad(jiActive)">⟳ Refresh</button>
+  <button class="btn-ghost" onclick="jiGoCollector()">📥 Submit more</button>
+</div>
+<div id="jiDetail" style="display:none"></div>
+<div id="jiList"><p style="color:#6a8aaa;font-size:.85rem">Open the Job Inbox tab to load candidates.</p></div>
+</div>
+
+
 </div>
 </div>
 
@@ -1228,7 +1341,7 @@ async function doLogin(){
   }
 }
 function signOut(){adminKey='';adminRefresh='';sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');clearAdminSessionCookie();$('loginWrap').style.display='flex';$('dashboard').style.display='none';}
-async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboard').style.display='block'; await loadAll(); }
+async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboard').style.display='block'; await loadAll(); jcLoadInitial(); }
 (function restoreAdminSession(){
   adminKey=sessionStorage.getItem('cc_admin_token')||'';
   adminRefresh=sessionStorage.getItem('cc_admin_refresh')||'';
@@ -1461,9 +1574,13 @@ function loadAdminJobs(){
       j=>j.status!=='Expired'
     );
 
-  if(statusFilter==='draft'){
-    list=list.filter(j=>j.published===false && j.status!=='Deleted');
-  }else if(statusFilter==='published'){
+  /* Drafts belong to the Discovery → Review Jobs queue; the Jobs tab manages the
+     live list (published / deleted / needs-edit). Unpublished rows that the
+     pipeline staged are therefore never listed here. */
+  const isDraftRow=j=>j.published===false && j.status!=='Deleted' && j.review_state!=='Deleted';
+  list=list.filter(j=>!isDraftRow(j));
+
+  if(statusFilter==='published'){
     list=list.filter(j=>j.published===true && j.status!=='Deleted');
   }else if(statusFilter==='deleted'){
     list=list.filter(j=>j.status==='Deleted' || j.review_state==='Deleted');
@@ -5052,6 +5169,412 @@ async function approveQuestion(id, approve) {
   }
 }
 
+/* ── AI Job Collector + Admin Job Inbox ────────────────────────────────
+   The owner submits material they already have (pasted text, screenshots,
+   PDFs, public links). The server extracts every role, scores civil
+   relevance + confidence, flags duplicates and parks the candidates in an
+   admin-only inbox. Only "Approve & publish" writes to the public jobs table.
+   No automatic scraping of WhatsApp, LinkedIn or login-protected portals. */
+
+let jcBatchesCache=[];
+let jiActive='all',jiItemsCache=[],jiCurrent=null;
+const JC_MAX_FILE_BYTES=4*1024*1024;
+
+const JC_REJECT_REASONS=[
+  'Not a civil engineering job',
+  'Duplicate of an existing job',
+  'Too old or already expired',
+  'Incomplete information',
+  'Non-Indian location',
+  'Unverifiable or spam',
+  'Other'
+];
+
+const JI_RELEVANCE=['civil_engineering','construction','quantity_surveying','billing','planning','bim','qa_qc','surveying','geotechnical','structural','transportation','water_resources','infrastructure','government_engineering','architecture_related','project_management','uncertain','non_relevant'];
+
+const JI_EDIT_FIELDS=[
+  ['title','Job title'],['company','Company'],['city','City'],['state','State'],['location','Location (display)'],
+  ['job_type','Job type'],['work_mode','Work mode'],['experience_min','Experience min (years)'],['experience_max','Experience max (years)'],
+  ['qualification','Qualification'],['skills','Skills (comma separated)'],['salary','Salary (display)'],['salary_min','Salary min'],
+  ['salary_max','Salary max'],['salary_currency','Currency'],['salary_period','Salary period'],
+  ['application_email','Application email'],['application_phone','Application phone'],['application_url','Application URL'],
+  ['expiry','Apply before (YYYY-MM-DD)']
+];
+
+function jcInitialView(){
+  const q=new URLSearchParams(location.search).get('view')||'';
+  const h=(location.hash||'').replace(/^#/,'');
+  const raw=(q||h).toLowerCase();
+  if(raw==='collector'||raw==='jobs/collector'||raw==='submit')return 'collector';
+  if(raw==='inbox'||raw==='jobs/inbox')return 'inbox';
+  return '';
+}
+
+function jcLoadInitial(){
+  const view=jcInitialView();
+  if(!view)return;
+  const btn=document.querySelector('#tabs button[data-tab="'+view+'"]');
+  if(btn)btn.click();
+}
+
+function jiGoCollector(){
+  const b=document.querySelector('#tabs button[data-tab="collector"]');
+  if(b)b.click();
+}
+function jiGoInbox(){
+  const b=document.querySelector('#tabs button[data-tab="inbox"]');
+  if(b)b.click();
+}
+
+function jcMetricCells(m){
+  const cell=function(key,label){
+    return '<div class="metric"><span>'+label+'</span><b>'+Number((m&&m[key])||0)+'</b></div>';
+  };
+  return cell('pending','Inbox pending')+cell('needs_attention','Needs attention')+cell('possible_duplicates','Possible duplicates')
+    +cell('approved','Approved')+cell('rejected','Rejected')+cell('failed','Failed sources');
+}
+
+async function jcLoadBatches(){
+  const root=$('jcBatches');
+  const jcMetrics=$('jcMetrics');
+  const jiMetrics=$('jiMetrics');
+  if(!root&&!jcMetrics&&!jiMetrics)return;
+  if(root&&!jcBatchesCache.length)root.innerHTML='<p style="color:#6a8aaa;font-size:.8rem">Loading batches…</p>';
+  try{
+    const data=await api('/api/job-collector?action=metrics',{key:adminKey});
+    jcBatchesCache=data.batches||[];
+    const cells=jcMetricCells(data.metrics);
+    if(jcMetrics)jcMetrics.innerHTML=cells;
+    if(jiMetrics)jiMetrics.innerHTML=cells;
+    if(root)root.innerHTML=jcBatchesHtml();
+    if(jiActive==='processing')renderJiProcessing();
+  }catch(err){
+    if(root)root.innerHTML='<p style="color:#fca5a5;font-size:.8rem">'+esc(err.message||'Could not load batches')+'</p>';
+  }
+}
+
+function jcBatchHtml(b){
+  const st=String(b.status||'open');
+  return '<div class="jc-batch">'
+    +'<h4>'+esc(b.label||'Untitled batch')+' <span class="jc-badge jc-st-'+esc(st)+'">'+esc(st)+'</span></h4>'
+    +'<p>'+new Date(b.created_at||Date.now()).toLocaleString()+' · '+Number(b.source_count||0)+' source(s) · '+Number(b.processed_count||0)+' processed · '+Number(b.jobs_detected||0)+' candidate(s)'
+      +(b.duplicates?' · '+Number(b.duplicates)+' possible duplicate(s)':'')
+      +(b.failed_count?' · '+Number(b.failed_count)+' failed source(s)':'')+'</p>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<button class="btn-gold" style="font-size:.74rem;padding:5px 12px" data-id="'+esc(b.id)+'" onclick="jcProcessNow(this.dataset.id)">▶ Process / resume</button>'
+      +'<button class="btn-ghost" style="font-size:.74rem" data-id="'+esc(b.id)+'" onclick="jcOpenBatch(this.dataset.id)">👁 Sources</button>'
+      +'<button class="btn-ghost" style="font-size:.74rem" onclick="jiGoInbox()">📬 Open inbox</button>'
+    +'</div>'
+    +'<div id="jcBatchItems-'+esc(b.id)+'"></div>'
+  +'</div>';
+}
+
+function jcBatchesHtml(){
+  if(!jcBatchesCache.length)return '<p style="color:#6a8aaa;font-size:.8rem">No batches yet — submit your first text, screenshot, PDF or link.</p>';
+  return jcBatchesCache.map(jcBatchHtml).join('');
+}
+
+function jcFileToBase64(file){
+  return new Promise(function(resolve,reject){
+    const fr=new FileReader();
+    fr.onload=function(){resolve(String(fr.result||'').split(',')[1]||'');};
+    fr.onerror=function(){reject(Error('Could not read '+file.name));};
+    fr.readAsDataURL(file);
+  });
+}
+
+async function jcSubmit(){
+  const btn=$('jcSubmitBtn');
+  const statusEl=$('jcStatus');
+  const label=String($('jcLabel').value||'').trim();
+  const text=String($('jcText').value||'').trim();
+  const urls=String($('jcUrls').value||'').split(/\s*\n\s*/).map(function(s){return s.trim();}).filter(Boolean).slice(0,30);
+  const files=Array.prototype.slice.call($('jcFiles').files||[]).slice(0,20);
+  const items=[];
+  if(text)items.push({kind:'text',text:text});
+  urls.forEach(function(u){items.push({kind:'url',url:u});});
+  for(const f of files){
+    if(f.size>JC_MAX_FILE_BYTES){toast(f.name+' is larger than 4 MB — skipped.');continue;}
+    let b64='';
+    try{b64=await jcFileToBase64(f);}catch(err){toast(err.message);continue;}
+    items.push({kind:/pdf/i.test(f.type||f.name)?'pdf':'image',filename:f.name,mime:f.type||null,data_base64:b64});
+  }
+  if(!items.length)return toast('Paste text, add a link or choose a screenshot/PDF first.');
+  btn.disabled=true;btn.textContent='Uploading…';
+  if(statusEl)statusEl.textContent='Storing '+items.length+' source(s)…';
+  try{
+    const created=await api('/api/job-collector?action=create_batch',{method:'POST',key:adminKey,body:JSON.stringify({label:label||null,items:items})});
+    $('jcText').value='';$('jcUrls').value='';$('jcFiles').value='';$('jcLabel').value='';
+    if(statusEl)statusEl.textContent='Extracting jobs…';
+    const summary=await jcProcessBatch(created.batch.id);
+    if(statusEl)statusEl.textContent=summary;
+    toast('Batch processed — review the candidates in the Job Inbox.');
+    await jcLoadBatches();
+  }catch(err){
+    if(statusEl)statusEl.textContent='❌ '+(err.message||'Failed');
+    toast(err.message||'Could not submit the batch.');
+  }finally{
+    btn.disabled=false;btn.textContent='🚀 Add to batch & extract';
+  }
+}
+
+async function jcProcessBatch(batchId){
+  let last=null;
+  for(let round=0;round<25;round+=1){
+    last=await api('/api/job-collector?action=process',{method:'POST',key:adminKey,body:JSON.stringify({batch_id:batchId})});
+    const statusEl=$('jcStatus');
+    if(last.remaining&&statusEl)statusEl.textContent='Processing… '+last.remaining+' source(s) still queued';
+    if(!last.remaining)break;
+  }
+  if(!last)return 'Nothing to process.';
+  let msg='Processed '+Number(last.processed||0)+' source(s) → '+Number(last.jobs_detected||0)+' candidate(s)';
+  if(last.duplicates)msg+=', '+Number(last.duplicates)+' flagged as possible duplicate(s)';
+  if(last.failed)msg+=', '+Number(last.failed)+' source(s) failed — paste the text in the batch view to retry';
+  if(last.remaining)msg+='. '+last.remaining+' still queued — press “Process / resume”.';
+  return msg;
+}
+
+async function jcProcessNow(batchId){
+  if(!batchId)return;
+  try{
+    const msg=await jcProcessBatch(batchId);
+    toast(msg);
+    const statusEl=$('jcStatus');
+    if(statusEl)statusEl.textContent=msg;
+    await jcLoadBatches();
+  }catch(err){toast(err.message||'Processing failed.');}
+}
+
+async function jcOpenBatch(batchId){
+  const box=$('jcBatchItems-'+batchId);
+  if(!box)return;
+  if(box.dataset.open==='1'){box.dataset.open='0';box.innerHTML='';return;}
+  box.dataset.open='1';
+  box.innerHTML='<p style="font-size:.75rem;color:#6a8aaa">Loading sources…</p>';
+  try{
+    const data=await api('/api/job-collector?action=batch&id='+encodeURIComponent(batchId),{key:adminKey});
+    const items=data.items||[];
+    box.innerHTML=items.length?items.map(function(it){
+      const retriable=(it.status==='failed'||it.status==='needs_text');
+      return '<div class="jc-itemline">• '+esc(it.kind)+(it.filename?' <b>'+esc(it.filename)+'</b>':'')+' — <span class="st">'+esc(it.status)+'</span>'
+        +(it.jobs_found?' · '+Number(it.jobs_found)+' candidate(s)':'')
+        +(it.error?' · <span style="color:#fca5a5">'+esc(it.error)+'</span>':'')
+        +(retriable?' <button class="btn-ghost" style="font-size:.7rem;padding:3px 9px" data-item="'+esc(it.id)+'" data-batch="'+esc(batchId)+'" onclick="jcRetryItem(this.dataset.item,this.dataset.batch)">↻ Retry with text</button>':'')
+        +'</div>';
+    }).join(''):'<p style="font-size:.75rem;color:#6a8aaa">No sources in this batch.</p>';
+  }catch(err){box.innerHTML='<p style="color:#fca5a5;font-size:.75rem">'+esc(err.message||'Could not load sources')+'</p>';}
+}
+
+async function jcRetryItem(itemId,batchId){
+  const text=prompt('Paste the job text for this source (needed when OCR is unavailable). Leave empty to simply retry.');
+  if(text===null)return;
+  const body={item_id:itemId};
+  if(text.trim())body.text=text.trim();
+  try{
+    await api('/api/job-collector?action=retry',{method:'POST',key:adminKey,body:JSON.stringify(body)});
+    toast('Source re-queued.');
+    await jcProcessNow(batchId);
+  }catch(err){toast(err.message||'Retry failed.');}
+}
+
+async function jiLoad(tab){
+  jiActive=tab||jiActive;
+  document.querySelectorAll('#jiTabs button').forEach(function(b){b.classList.toggle('active',b.dataset.jitab===jiActive);});
+  const root=$('jiList');
+  if(!root)return;
+  if(jiActive==='processing'){
+    root.innerHTML='<p style="color:#6a8aaa;font-size:.85rem">Loading batches…</p>';
+    await jcLoadBatches();
+    renderJiProcessing();
+    return;
+  }
+  root.innerHTML='<p style="color:#6a8aaa;font-size:.85rem">Loading…</p>';
+  try{
+    let url='/api/job-collector?action=inbox&limit=50';
+    if(jiActive==='duplicates')url+='&duplicates=1';
+    else if(jiActive!=='all')url+='&status='+encodeURIComponent(jiActive);
+    const data=await api(url,{key:adminKey});
+    jiItemsCache=data.items||[];
+    jiRenderList();
+    jcLoadBatches();
+  }catch(err){root.innerHTML='<p style="color:#fca5a5;font-size:.8rem">'+esc(err.message||'Could not load the inbox')+'</p>';}
+}
+
+function renderJiProcessing(){
+  const root=$('jiList');
+  if(!root)return;
+  root.innerHTML='<p style="font-size:.78rem;color:#8ea8c4;margin:0 0 10px">A source stays here until it finishes processing. Failed or OCR-less sources can be retried with pasted text — nothing is lost.</p>'+jcBatchesHtml();
+}
+
+function jiFilter(){jiRenderList();}
+
+function jiRenderList(){
+  const root=$('jiList');
+  if(!root)return;
+  const q=String(($('jiSearch')||{}).value||'').toLowerCase().trim();
+  let list=jiItemsCache;
+  if(q)list=list.filter(function(r){
+    return [r.title,r.company,r.city,r.state,r.location,r.application_email].filter(Boolean).join(' ').toLowerCase().indexOf(q)!==-1;
+  });
+  if(!list.length){root.innerHTML='<p style="color:#6a8aaa;font-size:.85rem">Nothing in this tab right now.</p>';return;}
+  root.innerHTML=list.map(jiRowHtml).join('');
+}
+
+function jiRowHtml(r){
+  const st=String(r.status||'pending');
+  const rel=String(r.relevance_category||'uncertain');
+  const conf=Math.round(Number(r.confidence_score||0)*100);
+  const dup=r.duplicate_of?'<span class="ji-badge ji-dup">⚠ possible duplicate '+Math.round(Number(r.duplicate_score||0)*100)+'%</span>':'';
+  const actions=['<button class="btn-gold" style="font-size:.74rem;padding:5px 12px" data-id="'+esc(r.id)+'" onclick="jiOpen(this.dataset.id)">🔎 Review &amp; edit</button>'];
+  if(st!=='approved')actions.push('<button class="btn-pub-bulk" style="font-size:.74rem;padding:5px 12px" data-id="'+esc(r.id)+'" onclick="jiApprove(this.dataset.id)">✅ Approve &amp; publish</button>');
+  if(st!=='rejected')actions.push('<button class="btn-rej-bulk" style="font-size:.74rem;padding:5px 12px" data-id="'+esc(r.id)+'" onclick="jiReject(this.dataset.id)">✕ Reject</button>');
+  return '<div class="ji-item"><div class="ji-item-body">'
+    +'<h4>'+esc(r.title||'Untitled role')+' '+dup+'</h4>'
+    +'<p>'+esc(r.company||'Company not stated')+' · '+esc(r.location||[r.city,r.state].filter(Boolean).join(', ')||'Location not stated')+' · '+esc(r.salary||'Salary not stated')+(r.expiry?' · apply by '+esc(String(r.expiry).slice(0,10)):'')+'</p>'
+    +'<p><span class="ji-badge ji-rel-'+esc(rel)+'">'+esc(rel.replace(/_/g,' '))+'</span> <span class="ji-badge">confidence '+conf+'%</span> <span class="ji-badge ji-st-'+esc(st)+'">'+esc(st.replace(/_/g,' '))+'</span>'
+      +(r.admin_edited?' <span class="ji-badge">edited by you</span>':'')
+      +' <span style="color:#6a8aaa">· '+esc(r.source_type||'manual')+(r.source_file?' · '+esc(r.source_file):'')+'</span></p>'
+    +'<div class="ji-actions">'+actions.join('')+'</div>'
+  +'</div></div>';
+}
+
+async function jiOpen(id){
+  const box=$('jiDetail');
+  if(!box||!id)return;
+  box.style.display='block';
+  box.innerHTML='<p style="color:#6a8aaa;font-size:.85rem">Loading…</p>';
+  try{
+    const data=await api('/api/job-collector?action=item&id='+encodeURIComponent(id),{key:adminKey});
+    jiCurrent=data.item||{};
+    box.innerHTML=jiDetailHtml(jiCurrent,data);
+    box.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(err){box.innerHTML='<p style="color:#fca5a5;font-size:.8rem">'+esc(err.message||'Could not load the item')+'</p>';}
+}
+
+function jiCloseDetail(){
+  const box=$('jiDetail');
+  if(box){box.style.display='none';box.innerHTML='';}
+  jiCurrent=null;
+}
+
+function jiDetailHtml(row,data){
+  const fields=JI_EDIT_FIELDS.map(function(pair){
+    const key=pair[0],label=pair[1];
+    const raw=row[key];
+    const v=raw===null||raw===undefined?'':String(raw);
+    const wide=(key==='location'||key==='qualification');
+    if(key==='skills'){
+      const sv=Array.isArray(raw)?raw.join(', '):v;
+      return '<div class="ji-field wide"><label>'+label+'</label><input id="jiF-skills" value="'+esc(sv)+'"></div>';
+    }
+    return '<div class="ji-field'+(wide?' wide':'')+'"><label>'+label+'</label><input id="jiF-'+esc(key)+'" value="'+esc(v)+'"></div>';
+  }).join('');
+  const rel=String(row.relevance_category||'uncertain');
+  const relOpts=JI_RELEVANCE.map(function(c){return '<option value="'+c+'"'+(c===rel?' selected':'')+'>'+c.replace(/_/g,' ')+'</option>';}).join('');
+  const st=String(row.status||'pending');
+  const src=(data&&data.source)||{};
+  let preview='<p style="font-size:.76rem;color:#8ea8c4">Source: '+esc(src.kind||row.source_type||'manual')+(src.filename?' · '+esc(src.filename):'')+(src.source_url?' · '+esc(src.source_url):'')+'</p>';
+  if(data&&data.original_url){
+    preview+=(String(src.mime||'').indexOf('image/')===0)
+      ?'<a href="'+esc(data.original_url)+'" target="_blank" rel="noopener"><img class="ji-original" src="'+esc(data.original_url)+'" alt="Original submitted source"></a>'
+      :'<p style="font-size:.8rem"><a href="'+esc(data.original_url)+'" target="_blank" rel="noopener" style="color:#c9973c">Open the original file (signed link, 10 minutes)</a></p>';
+  } else {
+    preview+='<p style="font-size:.76rem;color:#6a8aaa">No stored file for this source — the extracted text is kept below.</p>';
+  }
+  if(src.raw_text)preview+='<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.76rem;color:#8ea8c4">Raw extracted text</summary><pre class="ji-raw">'+esc(String(src.raw_text).slice(0,4000))+'</pre></details>';
+  const events=((data&&data.events)||[]).slice(0,12).map(function(e){
+    return '<li>'+esc(e.event||'event')+' — '+esc(e.actor||'system')+' · '+esc(String(e.at||e.created_at||'').slice(0,19).replace('T',' '))+(e.notes?' · '+esc(e.notes):'')+'</li>';
+  }).join('');
+  const dup=row.duplicate_of?'<div class="jc-note">⚠ Possible duplicate ('+Math.round(Number(row.duplicate_score||0)*100)+'%): '+esc((row.duplicate_reasons||[]).join(', ')||'a similar job may already be published')+'. Approving again needs an explicit confirmation.</div>':'';
+  return '<div class="ji-detail">'
+    +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">'
+      +'<h3>'+esc(row.title||'Untitled role')+' <span class="ji-badge ji-st-'+esc(st)+'">'+esc(st.replace(/_/g,' '))+'</span></h3>'
+      +'<div class="ji-actions">'
+        +'<button class="btn-gold" onclick="jiSave()">💾 Save changes</button>'
+        +(st!=='approved'?'<button class="btn-pub-bulk" data-id="'+esc(row.id)+'" onclick="jiApprove(this.dataset.id)">✅ Approve &amp; publish</button>':'')
+        +(st!=='rejected'&&st!=='approved'?'<button class="btn-rej-bulk" data-id="'+esc(row.id)+'" onclick="jiReject(this.dataset.id)">✕ Reject</button>':'')
+        +'<button class="btn-ghost" onclick="jiCloseDetail()">✕ Close</button>'
+      +'</div>'
+    +'</div>'
+    +dup
+    +'<div class="ji-form">'+fields
+      +'<div class="ji-field"><label>Relevance</label><select id="jiF-relevance_category">'+relOpts+'</select></div>'
+      +'<div class="ji-field wide"><label>Review notes</label><input id="jiF-review_notes" value="'+esc(row.review_notes||'')+'"></div>'
+    +'</div>'
+    +'<div class="ji-field wide" style="margin-top:10px"><label>Description</label><textarea id="jiF-description" rows="6">'+esc(row.description||'')+'</textarea></div>'
+    +'<div class="ji-source">'+preview+(events?'<ul class="ji-events">'+events+'</ul>':'')+'</div>'
+  +'</div>';
+}
+
+async function jiSave(){
+  if(!jiCurrent||!jiCurrent.id)return;
+  const payload={};
+  JI_EDIT_FIELDS.forEach(function(pair){
+    const key=pair[0];
+    const el=$('jiF-'+key);
+    if(!el)return;
+    const v=String(el.value||'').trim();
+    if(key==='skills'){payload.skills=v?v.split(',').map(function(s){return s.trim();}).filter(Boolean):[];return;}
+    if(['experience_min','experience_max','salary_min','salary_max'].indexOf(key)!==-1){payload[key]=v===''?null:Number(v);return;}
+    payload[key]=v===''?null:v;
+  });
+  const rel=$('jiF-relevance_category');
+  if(rel)payload.relevance_category=rel.value;
+  const notes=$('jiF-review_notes');
+  if(notes)payload.review_notes=notes.value.trim()||null;
+  const desc=$('jiF-description');
+  if(desc)payload.description=desc.value.trim()||null;
+  try{
+    const out=await api('/api/job-collector?action=update',{method:'POST',key:adminKey,body:JSON.stringify({id:jiCurrent.id,payload:payload})});
+    jiCurrent=out.item||jiCurrent;
+    toast('Changes saved.');
+    jiLoad(jiActive);
+  }catch(err){toast(err.message||'Could not save changes.');}
+}
+
+async function jiApprove(id){
+  const target=id||(jiCurrent&&jiCurrent.id);
+  if(!target)return;
+  if(!confirm('Publish this job to the live CivilCareer jobs list?'))return;
+  try{
+    await api('/api/job-collector?action=approve',{method:'POST',key:adminKey,body:JSON.stringify({id:target})});
+    toast('Published to the live jobs list ✓');
+    jiCloseDetail();
+    await jiLoad(jiActive);
+    await jcLoadBatches();
+  }catch(err){
+    if(err.status===409&&/duplicate/i.test(err.message||'')){
+      if(confirm(err.message+'\n\nPublish anyway?')){
+        try{
+          await api('/api/job-collector?action=approve',{method:'POST',key:adminKey,body:JSON.stringify({id:target,confirm_duplicate:true})});
+          toast('Published with the duplicate confirmed.');
+          jiCloseDetail();
+          await jiLoad(jiActive);
+          await jcLoadBatches();
+        }catch(e2){toast(e2.message||'Could not publish.');}
+      }
+      return;
+    }
+    toast(err.message||'Could not publish.');
+  }
+}
+
+async function jiReject(id){
+  const target=id||(jiCurrent&&jiCurrent.id);
+  if(!target)return;
+  const answer=prompt('Why is this job rejected?\n\n'+JC_REJECT_REASONS.map(function(r,i){return (i+1)+') '+r;}).join('\n'),'1');
+  if(answer===null)return;
+  const idx=Number(answer)-1;
+  const reason=(idx>=0&&idx<JC_REJECT_REASONS.length)?JC_REJECT_REASONS[idx]:(answer.trim()||'Other');
+  try{
+    await api('/api/job-collector?action=reject',{method:'POST',key:adminKey,body:JSON.stringify({id:target,reason:reason})});
+    toast('Rejected — kept for the audit log.');
+    jiCloseDetail();
+    await jiLoad(jiActive);
+    await jcLoadBatches();
+  }catch(err){toast(err.message||'Could not reject.');}
+}
+
 /* TABS */
 
 document
@@ -5076,6 +5599,10 @@ document
 
       $('panel-'+b.dataset.tab)
         .classList.add('active');
+
+      if(b.dataset.tab==='collector')jcLoadBatches();
+
+      if(b.dataset.tab==='inbox')jiLoad(jiActive);
     };
   });
 
