@@ -50,7 +50,7 @@ console.log('Government civil classifier tests: PASS');
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
-const sql = fs.readFileSync(path.join(root, 'supabase-v19-govt-pipeline.sql'), 'utf8');
+const sql = fs.readFileSync(path.join(root, 'phase19-govt-pipeline.sql'), 'utf8');
 assert.ok(sql.includes('govt_sources'), 'govt_sources migration must exist');
 assert.ok(sql.includes('govt_job_leads'), 'govt_job_leads migration must exist');
 assert.ok(sql.includes('govt_job_staging'), 'govt_job_staging migration must exist');
@@ -76,7 +76,7 @@ assert.ok(
 );
 
 /* ── v28: Government Jobs → Civil Engineering section ─────────────────── */
-const v28 = fs.readFileSync(path.join(root, 'supabase-v28-govt-civil-section.sql'), 'utf8');
+const v28 = fs.readFileSync(path.join(root, 'govts-civil-section.sql'), 'utf8');
 assert.ok(v28.includes('human_reviewed'), 'v28 must add the human_reviewed column');
 assert.ok(v28.includes('govt_jobs_publish_gate'), 'v28 must add the database publication gate');
 assert.ok(v28.includes("check (status <> 'active' or human_reviewed = true)"), 'publication gate must block active rows without human review');

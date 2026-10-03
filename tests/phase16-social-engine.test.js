@@ -678,9 +678,9 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   /* the CRON_SECRET routes stay exam-alerts + govt-discovery only:
      scheduler access to the drain must never imply crawler access */
   assert.match(dispatch, /const CRON_ROUTES = new Set\(\[\s*'\/api\/exam-alerts',\s*'\/api\/govt-discovery',\s*\]\)/);
-  /* Vercel Hobby crons run at most once per day — a 15-minute
-     drain FAILS the whole deployment, so the scheduler lives in
-     GitHub Actions instead (docs/00-gap-report.md F10). */
+  /* Vercel Hobby crons run at most once per day — the drain needs
+     sub-daily runs, so the scheduler lives in GitHub Actions instead
+     (docs/00-gap-report.md F10). */
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
   assert.ok(
     !vercel.crons.some((c) => String(c.path).includes('op=drain')),
@@ -689,7 +689,9 @@ test('F4 dispatcher: the drain route authenticates with SOCIAL_CRON_SECRET', () 
   const workflow = fs.readFileSync(
     path.join(root, '.github', 'workflows', 'social-drain.yml'), 'utf8'
   );
-  assert.match(workflow, /'\*\/15 \* \* \* \*'/);
+  /* Every two hours matches the workflow header: an every-two-minutes typo
+     in that cron line would drain the queue 720 times a day. */
+  assert.match(workflow, /'0 \*\/2 \* \* \*'/);
   assert.match(workflow, /op=drain/);
   assert.match(workflow, /SOCIAL_CRON_SECRET/);
 });

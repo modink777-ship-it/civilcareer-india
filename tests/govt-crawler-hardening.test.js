@@ -20,6 +20,6 @@ test('government crawler stops on 403/429 and uses bounded exponential backoff',
   assert.match(crawler, /2000 \* \(2 \*\* \(attempt - 1\)\)/);
 });
 
-test('government workflow is scheduled every six hours', () => {
-  assert.match(workflow, /cron:\s*'0 \*\/6 \* \* \*'/);
+test('government workflow is scheduled every two hours', () => {
+  assert.match(workflow, /cron:\s*'0 \*\/2 \* \* \*'/);
 });

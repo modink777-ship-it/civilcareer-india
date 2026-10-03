@@ -4,7 +4,7 @@ const path=require('path');
 const root=path.join(__dirname,'..');
 const api=fs.readFileSync(path.join(root,'_api','employers.js'),'utf8');
 const jobs=fs.readFileSync(path.join(root,'_api','jobs.js'),'utf8');
-const sql=fs.readFileSync(path.join(root,'supabase-v13-employer-trust.sql'),'utf8');
+const sql=fs.readFileSync(path.join(root,'phase13-employer-trust.sql'),'utf8');
 assert(api.includes("status=eq.Verified"));
 assert(api.includes("x-owner-key"));
 assert(api.includes("official_url"));
