@@ -504,8 +504,7 @@ footer{background:var(--fresh-dark)!important}
 }
 nav a[data-count]{
   position:relative!important;
-}
-nav a[data-count]::after{
+}nav a[data-count]::after{
   position:static!important;
   display:inline-block!important;
   margin-left:4px!important;
@@ -517,6 +516,11 @@ nav a[data-count]::after{
   color:#fff!important;
   font-weight:800!important;
 }
+
+.nav-tools-ct{display:flex;gap:.5rem;margin-left:.5rem}
+.nav-tools-ct a{padding:6px 10px;border-radius:7px;background:var(--soft);color:var(--navy);font-weight:700;text-decoration:none;white-space:nowrap}
+.nav-tools-ct a:hover{background:var(--blue);color:#fff}
+
 .container.nav{
   display:flex!important;
   align-items:center!important;

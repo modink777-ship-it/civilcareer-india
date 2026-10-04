@@ -198,6 +198,10 @@
       "destination": "/interview.html"
     },
     {
+      "source": "/mock-tests",
+      "destination": "/mock-tests.html"
+    },
+    {
       "source": "/interview/:slug",
       "destination": "/interview.html"
     },

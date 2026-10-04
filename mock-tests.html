@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Mock Tests — Civil Engineering Practice | CivilCareer</title>
+<meta name="description" content="Free civil engineering mock tests — SSC JE, ESE, GATE, RRB JE, AE and state exams. Practice with authentic questions and answers.">
+<meta property="og:title" content="Civil Engineering Mock Tests | CivilCareer">
+<meta property="og:description" content="Practice with free civil engineering mock tests covering SSC JE, ESE, GATE, RRB JE, AE and state exams.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/mock-tests">
+<style>
+.mt-main{max-width:980px;margin:0 auto;padding:32px 20px 90px}
+.mt-hero h1{margin:0 0 8px;font-size:1.9rem;letter-spacing:-.02em}
+.mt-hero p{color:var(--text);margin:0 0 22px;max-width:72ch;line-height:1.65}
+.mt-filter-bar{display:grid;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.mt-filter-bar label{font-size:12.5px;font-weight:800;color:var(--ink);display:flex;flex-direction:column;gap:5px}
+.mt-filter-bar select,.mt-filter-bar input{border:1px solid var(--line);border-radius:10px;padding:11px 14px;font:inherit;font-size:14px;background:var(--white);color:var(--ink)}
+.mt-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.mt-controls > *{grid-column:1/-1}
+.mt-start{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.mt-empty{color:var(--muted);padding:24px 0;font-size:14.5px;text-align:center}
+.mt-count{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.mt-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+.mt-sort-bar label{font-size:12.5px;font-weight:800;color:var(--ink)}
+.mt-sort-bar select{border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:13.5px;background:var(--white)}
+.mt-question{background:var(--white);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:12px;padding:18px 20px;margin-bottom:14px;display:none}
+.mt-question.visible{display:block}
+.mt-q-title{font-size:16px;font-weight:800;color:var(--navy);margin:0 0 8px;line-height:1.5}
+.mt-q-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.mt-chip{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--blue)}
+.mt-q-body{line-height:1.75;color:var(--ink);font-size:14.5px;padding-right:8px}
+.mt-q-body p{margin:0 0 8px}
+.mt-options{font-size:13.5px;color:var(--text);line-height:1.7;display:grid;gap:6px;padding-left:1.1rem}
+.mt-options li{margin-left:0}
+.mt-feedback{display:grid;gap:8px;margin-top:14px}
+.mt-feedback .tag{display:inline-block;font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px}
+.mt-feedback .correct{background:#e6f4ec;color:#1a7f4b}
+.mt-feedback .wrong{background:#fbeae9;color:#a93f38}
+.mt-feedback .note{background:#eef1f5;color:#5a6a7d;font-size:12.5px}
+.mt-review-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;padding:11px 20px;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.mt-review-btn:hover{filter:brightness(1.08)}
+.mt-loading{width:100%;text-align:center;color:var(--muted);padding:40px 0;font-size:14.5px}
+@media(max-width:680px){.mt-controls{grid-template-columns:1fr}.mt-question{padding:16px}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav>
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/mock-tests" aria-current="page">Mock Tests</a>
+      <a href="/study-materials">Study Materials</a>
+    </nav>
+  </div>
+</header>
+
+<main class="mt-main" id="mtMain">
+  <div class="mt-hero">
+    <h1>Mock Tests for Civil Engineering Exams</h1>
+    <p>Practise with question sets built for the exams civil engineers take — SSC JE, ESE, GATE, RRB JE, AE and state recruitment tests. Filter by exam and subject, check your answers against the official explanation, and track your progress.</p>
+  </div>
+
+  <div class="mt-controls">
+    <div class="mt-filter-bar">
+      <label for="examSelect">Exam</label>
+      <select id="examSelect">
+        <option value="all">All exams</option>
+        <option value="SSC_JE">SSC JE</option>
+        <option value="ESE">ESE (UPSC)</option>
+        <option value="GATE">GATE CE</option>
+        <option value="RRB_JE">RRB JE</option>
+        <option value="AE">AE (State PSC)</option>
+        <option value="JE">JE (State PSC)</option>
+      </select>
+    </div>
+    <div class="mt-filter-bar">
+      <label for="subjectSelect">Subject / Section</label>
+      <select id="subjectSelect">
+        <option value="all">All subjects</option>
+        <option value="engineering-mechanics">Engineering Mechanics</option>
+        <option value="structural-engineering">Structural Engineering</option>
+        <option value="environmental-engineering">Environmental Engineering</option>
+        <option value="surveying">Surveying</option>
+        <option value="transportation-engineering">Transportation Engineering</option>
+        <option value="estimation-estimation-costing">Estimation & Costing</option>
+        <option value="irrigation">Irrigation</option>
+        <option value="construction-materials">Construction Materials</option>
+        <option value="general-aptitude">General Aptitude</option>
+        <option value="technical">Technical (Mixed)</option>
+      </select>
+    </div>
+    <div class="mt-filter-bar">
+      <label for="numberInput">Questions</label>
+      <input id="numberInput" type="number" min="5" max="200" value="20">
+    </div>
+  </div>
+
+  <div class="mt-start">
+    <button class="btn primary" id="startBtn" type="button">Start Test</button>
+    <button class="btn secondary" id="resetBtn" type="button">Reset Answer Sheet</button>
+  </div>
+
+  <div class="mt-sort-bar">
+    <label for="sortSelect">Sort by</label>
+    <select id="sortSelect">
+      <option value="difficulty">Difficulty</option>
+      <option value="year">Year</option>
+      <option value="subject">Subject</option>
+      <option value="correct-answer">Correct Answer</option>
+    </select>
+  </div>
+
+  <div id="questionList"></div>
+  <div class="mt-empty" id="mtEmpty">No mock questions loaded yet — check your filters or try again.</div>
+  <p class="mt-count" id="mtCount"></p>
+</main>
+
+<script>
+var SITE = location.origin;
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}
+
+var state = {
+  exam: 'all',
+  subject: 'all',
+  number: 20,
+  sort: 'difficulty',
+  questions: [],
+  answers: {},
+  reviewed: new Set(),
+};
+
+function chip(cls, label){
+  return '<span class="mt-chip">'+esc(label)+'</span>';
+}
+
+function fmtDate(v){
+  if(!v) return '';
+  var d = new Date(v);
+  if(Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function subjectLabel(subject){
+  var map = {
+    'engineering-mechanics': 'Engineering Mechanics',
+    'structural-engineering': 'Structural Engineering',
+    'environmental-engineering': 'Environmental Engineering',
+    'surveying': 'Surveying',
+    'transportation-engineering': 'Transportation Engineering',
+    'estimation-estimation-costing': 'Estimation & Costing',
+    'irrigation': 'Irrigation',
+    'construction-materials': 'Construction Materials',
+    'general-aptitude': 'General Aptitude',
+    'technical': 'Technical (Mixed)',
+  };
+  return map[subject] || subject || 'Technical';
+}
+
+function buildQuestionHtml(q){
+  var difficulty = q.difficulty || 'medium';
+  var year = q.year ? ' · '+esc(q.year) : '';
+  var subject = subjectLabel(q.subject) || 'Technical';
+  var options = [];
+  if(q.option_a!=null) options.push('<strong>A.</strong> '+esc(q.option_a));
+  if(q.option_b!=null) options.push('<strong>B.</strong> '+esc(q.option_b));
+  if(q.option_c!=null) options.push('<strong>C.</strong> '+esc(q.option_c));
+  if(q.option_d!=null) options.push('<strong>D.</strong> '+esc(q.option_d));
+  var optHtml = options.length
+    ? '<ol class="mt-options">'+options.map(function(o){return '<li>'+o+'</li>';}).join('')+'</ol>'
+    : '<p class="mt-feedback note">No options recorded.</p>';
+
+  var correct = '';
+  if(q.correct_answer!=null){
+    correct = '<div class="mt-feedback correct">Correct answer: <b>'+esc(q.correct_answer)+'</b></div>';
+  }
+
+  return '<div class="mt-question" data-id="'+String(q.id)+'">'
+    + '<p class="mt-q-title">'+esc(q.question)+'</p>'
+    + '<div class="mt-q-meta">'
+    +   chip(difficulty, difficulty)
+    +   chip(subject, subject)
+    +   (q.year?'<span class="mt-chip">'+esc(q.year)+'</span>':'')
+    + '</div>'
+    + '<div class="mt-q-body">'
+    +   optHtml
+    +   correct
+    + '</div>'
+    + '<div class="mt-feedback" id="f_'+String(q.id)+'"></div>'
+    + '<button class="mt-review-btn" type="button" onclick="submitOne('+String(q.id)+')">Submit answer</button>'
+    + '</div>';
+}
+
+function render(){
+  var host = document.getElementById('questionList');
+  var empty = document.getElementById('mtEmpty');
+  var count = document.getElementById('mtCount');
+  if(!state.questions.length){
+    host.innerHTML='';
+    empty.style.display='block';
+    if(count)count.style.display='none';
+    return;
+  }
+  empty.style.display='none';
+  if(count)count.style.display='block';
+  var q = state.questions.slice().sort(function(a,b){
+    if(state.sort==='difficulty'){
+      var order={'easy':1,'medium':2,'hard':3};
+      return (order[a.difficulty]||2)-(order[b.difficulty]||2);
+    }
+    if(state.sort==='year'){
+      var ya=a.year||0, yb=b.year||0;
+      return ya-yb;
+    }
+    if(state.sort==='subject'){
+      return String(a.subject||'').localeCompare(String(b.subject||''));
+    }
+    return 0;
+  });
+  var total = state.number>q.length?q.length:state.number;
+  host.innerHTML=q.slice(0,total).map(buildQuestionHtml).join('');
+  document.querySelectorAll('.mt-question').forEach(function(el){
+    var id=el.dataset.id;
+    el.classList.toggle('visible', !state.reviewed.has(id) && !state.answers.hasOwnProperty(id));
+  });
+  host.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function fetchQuestions(){
+  var params=new URLSearchParams();
+  params.set('exam',state.exam);
+  params.set('subject',state.subject);
+  params.set('limit',String(state.number));
+  return fetch('/api/mock-tests?'+params.toString()).then(function(r){
+    if(!r.ok) throw new Error('request failed');
+    return r.json();
+  });
+}
+
+window.submitOne = function(id){
+  if(state.reviewed.has(id)) return;
+  state.reviewed.add(id);
+  var el=document.querySelector('.mt-question[data-id="'+id+'"]');
+  var feedback=document.getElementById('f_'+id);
+  if(!feedback){render();return;}
+  feedback.innerHTML='<span class="tag correct">Submitted — check the explanation below</span>';
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  render();
+};
+
+document.getElementById('startBtn').addEventListener('click',function(){
+  fetchQuestions().then(function(d){
+    state.questions=d.questions||[];
+    state.answers={};
+    state.reviewed=new Set();
+    render();
+  }).catch(function(){
+    document.getElementById('questionList').innerHTML='';
+    document.getElementById('mtEmpty').style.display='block';
+  });
+});
+
+document.getElementById('resetBtn').addEventListener('click',function(){
+  state.answers={};
+  state.reviewed=new Set();
+  render();
+});
+
+var examSelect=document.getElementById('examSelect');
+var subjectSelect=document.getElementById('subjectSelect');
+var numberInput=document.getElementById('numberInput');
+var sortSelect=document.getElementById('sortSelect');
+examSelect.addEventListener('change',function(){state.exam=examSelect.value;state.questions=[];state.reviewed=new Set();render();});
+subjectSelect.addEventListener('change',function(){state.subject=subjectSelect.value;state.questions=[];state.reviewed=new Set();render();});
+numberInput.addEventListener('input',function(){state.number=Math.max(5,Math.min(200,parseInt(numberInput.value)||20));state.questions=[];state.reviewed=new Set();render();});
+sortSelect.addEventListener('change',function(){state.sort=sortSelect.value;state.questions=[];state.reviewed=new Set();render();});
+
+(function(){
+  fetchQuestions().then(function(d){
+    state.questions=d.questions||[];
+    render();
+  }).catch(function(){
+    document.getElementById('questionList').innerHTML='';
+    document.getElementById('mtEmpty').style.display='block';
+  });
+})();
+</script>
+</body>
+</html>

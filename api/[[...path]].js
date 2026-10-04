@@ -50,14 +50,17 @@ const handlers = {
   '/api/profiles':             () => require('../_api/profiles'),
   '/api/companies':            () => require('../_api/companies'),
   '/api/companies/review':     () => require('../_api/companies'),
-  '/api/seo-page':             () => require('../_api/seo-page'),
-  '/api/blog':                 () => require('../_api/blog'),
+  '/api/seo-page':             () => require('../_api/seo-page'),  '/api/blog':                 () => require('../_api/blog'),
   '/api/interview':            () => require('../_api/interview'),
+  '/api/mock-tests':           () => require('../_api/mock-tests'),
   '/api/companies-review':     () => require('../_api/companies'),
   '/api/telegram-webhook':     () => require('../_api/telegram-webhook'),
   /* Social Content Engine (v27): suggestions, ledger,
      connections and settings. Admin-only on every method. */
   '/api/social':               () => require('../_api/social'),
+  /* Sieve scrape API (v31): start/poll/resume runs, follow-up turns and
+     file download. Admin-only; inert when SIEVE_API_KEY is unset. */
+  '/api/sieve':                () => require('../_api/sieve'),
 };
 
 
@@ -111,6 +114,9 @@ const ADMIN_RULES = {
      dashboard sessions through the allowlist unless the caller
      already holds the real owner key. */
   '/api/social': req => !hasValidOwnerKey(req),
+  /* Sieve is server-to-server only and spends credits: every method is
+     admin-only, and the handler itself refuses when the key is unset. */
+  '/api/sieve': req => !hasValidOwnerKey(req),
   /* GET = admin webhook info; POST with {action:'set-webhook'} = admin setup.
      Real Telegram updates are POSTs without those markers → public. */
   '/api/telegram-webhook':   req => {
