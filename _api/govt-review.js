@@ -344,6 +344,78 @@ function isOfficialHost(url) {
   } catch { return false; }
 }
 
+/* ── Publish the queue entries that are already complete ────────────────
+   A sweep stages dozens of leads at once and most never need a human judgement: the
+   posting's own words name civil engineering AND a real official notice link is on
+   record AND the deadline has not passed. Clearing those one confirm() at a time is the
+   slowest part of running the queue, so the whole ready set can be published in one
+   authorised action.
+
+   It is still a HUMAN action: an administrator triggers it, so approve() setting
+   human_reviewed is legitimate (spec §3). Everything it refuses, it names — a lead whose
+   evidence is only the aggregator's section heading, or that has no official notice, goes
+   to the reviewer instead of out to the public. */
+const READY_DEFAULT_LIMIT = 20;
+const READY_MAX_LIMIT = 40;
+
+/** The posting's OWN words name civil engineering — not merely the feed's section. */
+function isDirectCivil(payload, item) {
+  if (item && item.civil_status === 'not_civil') return false;
+  if (String((payload && payload.civil_evidence) || '') === 'qualification') return true;
+  const posts = Array.isArray(payload && payload.post_candidates) ? payload.post_candidates : [];
+  return posts.some(p => p && p.level === 'civil');
+}
+
+function deadlinePassed(payload) {
+  const deadline = (payload && payload.deadline) || {};
+  const end = deadline.date || (payload && payload.apply_end);
+  if (!end) return false;
+  return String(end).slice(0, 10) < new Date().toISOString().slice(0, 10);
+}
+
+async function publishReady(user, limit = READY_DEFAULT_LIMIT) {
+  const r = await db('govt_job_staging?status=in.(pending,needs_info)'
+    + '&select=id,status,civil_status,payload&order=created_at.asc&limit=200');
+  if (!r.ok) throw new Error((await r.text()).slice(0, 300));
+  const rows = (await r.json()) || [];
+
+  const out = { published: 0, skipped: [], failed: [], jobs: [], remaining: 0 };
+
+  for (const row of rows) {
+    if (out.published >= limit) {
+      out.remaining = rows.length - out.published - out.skipped.length - out.failed.length;
+      break;
+    }
+    const p = row.payload || {};
+    const title = String(p.title || '(untitled)').slice(0, 200);
+
+    if (!isOfficialHost(p.official_notice_url)) {
+      out.skipped.push({ id: row.id, title, because: 'no official notice link on record' });
+      continue;
+    }
+    if (!isDirectCivil(p, row)) {
+      out.skipped.push({ id: row.id, title, because: 'civil evidence is the feed\'s section only' });
+      continue;
+    }
+    if (deadlinePassed(p)) {
+      out.skipped.push({ id: row.id, title, because: 'deadline has passed' });
+      continue;
+    }
+
+    try {
+      const job = await approve(row.id, user);
+      out.published += 1;
+      const saved = { id: row.id, slug: (job && job.slug) || null, title: (job && job.title) || title };
+      out.jobs.push(saved);
+      await audit('govt_job_staging', row.id, 'publish_ready', user, { title: saved.title, govt_job_id: (job && job.id) || null });
+    } catch (e) {
+      out.failed.push({ id: row.id, title, error: String((e && e.message) || e).slice(0, 160) });
+    }
+  }
+
+  return out;
+}
+
 /* ── Pipeline liveness ──────────────────────────────────────────────────
    A health roll-up that can actually go red. Every per-source row can read "ok"
    while the pipeline has silently stopped producing — that is exactly what happened
@@ -614,6 +686,14 @@ module.exports = async function handler(req, res) {
         if (!r.ok) throw new Error((await r.text()).slice(0, 400));
         await audit('govt_job_staging', id, 'attach_notice', req.adminUser, { official_notice_url: notice });
         return res.status(200).json({ ok: true, official_notice_url: notice });
+      }
+
+      /* Publish every queued lead that is already complete. Same gate as approve():
+         called by an authenticated administrator, and every row still has to carry a real
+         official notice link. */
+      if (action === 'publish_ready') {
+        const limit = Math.min(READY_MAX_LIMIT, Math.max(1, Number(b.limit) || READY_DEFAULT_LIMIT));
+        return res.status(200).json(Object.assign({ ok: true }, await publishReady(req.adminUser, limit)));
       }
 
       /* AI structuring on a staging item: evidence-only, never publishes. */

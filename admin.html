@@ -6175,6 +6175,7 @@ function govtRenderReview(){
     +'<label><input type="checkbox" id="govtBulkAll" onchange="govtBulkSelectAll(this.checked)"> Select all</label>'
     +'<span class="admin-jobs-selected-count" id="govtBulkCount">0 selected</span>'
     +'<button class="btn-publish" onclick="govtBulk(\'approve\')">✅ Publish selected</button>'
+    +'<button class="btn-gold" onclick="govtPublishReady()">⚡ Publish all ready</button>'
     +'<button class="btn-ghost" onclick="govtBulk(\'needs_info\')">❓ Needs Info</button>'
     +'<button class="btn-reject" onclick="govtBulk(\'reject\')">✕ Reject</button>'
     +'</div>'
@@ -6216,6 +6217,21 @@ function govtBulkUpdate(){
 function govtBulkSelectAll(on){
   document.querySelectorAll('.govt-bulk-select').forEach(c=>{c.checked=!!on;});
   govtBulkUpdate();
+}
+/* One authorised action for the rows that need no judgement: the posting's OWN words name
+   civil engineering and a real official notice link is on record. The backend re-checks
+   both, so this can never push out a lead that only matched a feed's section heading. */
+async function govtPublishReady(){
+  if(!confirm('Publish every queued lead whose own wording names civil engineering and which already has an official notice link? They become publicly visible immediately.'))return;
+  try{
+    const d=await govtPost('publish_ready',{limit:20});
+    const bits=[(d.published||0)+' published'];
+    if((d.skipped||[]).length)bits.push(d.skipped.length+' left for review');
+    if((d.failed||[]).length)bits.push(d.failed.length+' failed: '+String(((d.failed[0]||{}).error||'')).slice(0,80));
+    if(d.remaining)bits.push(d.remaining+' over this batch');
+    toast(bits.join(' · '));
+    govtLoad(govtActiveTab);
+  }catch(e){toast('Publish-all failed: '+e.message);}
 }
 async function govtBulk(action){
   const ids=govtBulkSelected();

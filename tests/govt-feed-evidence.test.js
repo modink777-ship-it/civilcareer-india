@@ -253,6 +253,57 @@ test('a notice pasted in the queue survives the next sweep, and a rejected lead 
   existingRows = [];
 });
 
+test('a sweep does not re-read pages it already checked — it moves on to the rest', async () => {
+  listingStatus = 200;
+  detailStatus = 200;
+  existingRows = [];
+
+  /* First sweep: nothing is known, so pages are read. */
+  const first = (await runScan()).payload;
+  const perFeed = first.results.find(r => r.source === GOVTJOBGURU.name);
+  assert.ok(perFeed.detail_fetches > 0, 'a first sweep must read posting pages');
+  assert.equal(perFeed.notice_pending, perFeed.candidates - perFeed.notice_settled,
+    'every candidate should be reported as either settled or pending a look');
+
+  /* Only the pages this sweep actually read carry a stamp (GOVT_MAX_DETAIL_FETCHES=1 here),
+     so the rest stay unlooked-at and cannot be skipped for ever. */
+  const posted = restCalls
+    .filter(c => c.method === 'POST' && c.target.includes('/govt_job_staging'))
+    .map(c => c.body)
+    .filter(b => b && b.dedupe_key);
+  const stamps = {};
+  for (const b of posted) stamps[b.dedupe_key] = (b.payload && b.payload.notice_checked_at) || null;
+  const read = Object.values(stamps).filter(Boolean).length;
+  assert.ok(read >= 1, 'a page that was read must be recorded');
+  assert.ok(read < Object.keys(stamps).length, 'pages nobody read must NOT look checked');
+
+  /* Every row checked recently → the next sweep has nothing to re-read. */
+  const fresh = new Date().toISOString();
+  existingRows = Object.keys(stamps).map((dedupe_key) => ({
+    dedupe_key, status: 'pending', created_at: fresh,
+    payload: { official_notice_url: '', notice_checked_at: fresh },
+  }));
+
+  const second = (await runScan()).payload;
+  const again = second.results.find(r => r.source === GOVTJOBGURU.name);
+  assert.equal(again.detail_fetches, 0,
+    `nothing was left to read, yet the sweep fetched ${again.detail_fetches} page(s)`);
+  assert.equal(again.notice_settled, again.candidates, 'all candidates must count as settled');
+
+  /* A stamp older than the recheck window is worth another look — a page that misread
+     once must not leave a lead unpublishable for ever. */
+  const old = new Date(Date.now() - 30 * 86400000).toISOString();
+  existingRows = Object.keys(stamps).map((dedupe_key) => ({
+    dedupe_key, status: 'pending', created_at: old,
+    payload: { official_notice_url: '', notice_checked_at: old },
+  }));
+  const third = (await runScan()).payload;
+  const recheck = third.results.find(r => r.source === GOVTJOBGURU.name);
+  assert.ok(recheck.detail_fetches > 0, 'a stale check must be retried');
+
+  existingRows = [];
+});
+
 test('a 403 that survives the retry is reported as a throttled feed, not a dead one', async () => {
   listingStatus = 403;
   detailStatus = 403;

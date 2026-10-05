@@ -47,6 +47,8 @@ const {
   keepReviewedFields,
   reviewedAlready,
   isOfficialHost,
+  dedupeKey,
+  hash,
   extractDeadline,
 } = require("../lib/govt-lead-payload");
 const { sendCivilDigest, sendPipelineWarning } = require("../lib/govt-alert");
@@ -531,16 +533,58 @@ function adapterCandidates(html, source, adapter) {
    linkingsky) publish no qualification or last date at all; the posting's own page
    is where those live. Bounded per source and by the run deadline, so one slow host
    cannot eat the serverless budget. */
-const MAX_DETAIL_FETCHES = Number(process.env.GOVT_MAX_DETAIL_FETCHES || 4);
+const MAX_DETAIL_FETCHES = Number(process.env.GOVT_MAX_DETAIL_FETCHES || 8);
 
-async function attachOfficialNotices(candidates, stopAt) {
+/* How long a "we looked, there was no official link" answer is trusted before the row is
+   worth another look. Without an expiry, one misread page would keep a lead unpublishable
+   for ever. */
+const NOTICE_RECHECK_DAYS = Number(process.env.GOVT_NOTICE_RECHECK_DAYS || 14);
+
+function noticeCheckedRecently(prev) {
+  const at = prev && prev.payload && prev.payload.notice_checked_at;
+  if (!at) return false;
+  const t = Date.parse(at);
+  return Number.isFinite(t) && (Date.now() - t) < NOTICE_RECHECK_DAYS * 86400000;
+}
+
+/* Enrich the rows that still need a notice — not the same first few on every run.
+
+   The old version always started at candidates[0], so with a per-run cap only the first
+   few rows of each feed were ever looked at and the rest were unroutable for ever unless
+   a human pasted a URL. Now a row that already carries a notice (or was checked inside
+   NOTICE_RECHECK_DAYS) is left alone, and the rest are worked oldest-first, so successive
+   sweeps walk the whole queue. */
+async function attachOfficialNotices(candidates, stopAt, existing) {
   let fetches = 0;
   let errors = 0;
+  let skipped = 0;
 
+  const pending = [];
   for (const candidate of candidates) {
+    const prev = existing && existing.get
+      ? existing.get(dedupeKey(candidate, candidate.classification || {})) || null
+      : null;
+    candidate.previous = prev;
+    if ((prev && isOfficialHost(prev.payload && prev.payload.official_notice_url)) || noticeCheckedRecently(prev)) {
+      skipped += 1;
+      continue;
+    }
+    pending.push(candidate);
+  }
+
+  /* Longest-waiting first: rows we have never looked at sort before rows we looked at days
+     ago, so nothing can starve behind a feed that keeps publishing. */
+  pending.sort((a, b) => {
+    const ta = a.previous && a.previous.created_at ? Date.parse(a.previous.created_at) : 0;
+    const tb = b.previous && b.previous.created_at ? Date.parse(b.previous.created_at) : 0;
+    return (Number.isNaN(ta) ? 0 : ta) - (Number.isNaN(tb) ? 0 : tb);
+  });
+
+  for (const candidate of pending) {
     if (fetches >= MAX_DETAIL_FETCHES) break;
     if (Date.now() > stopAt) break;
     fetches += 1;
+    candidate.noticeCheckedAt = new Date().toISOString();
 
     const own = candidate.source_url;
 
@@ -565,7 +609,7 @@ async function attachOfficialNotices(candidates, stopAt) {
     }
   }
 
-  return { fetches, errors };
+  return { fetches, errors, skipped, pending: pending.length };
 }
 
 /* One posting page. Same robots policy and pacing as every other request in this
@@ -702,28 +746,9 @@ function classifyCivil(title, excerpt) {
   };
 }
 
-function normalize(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/https?:\/\//g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-function hash(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function dedupeKey(candidate, classification) {
-  return hash(
-    [
-      normalize(candidate.org_hint),
-      normalize(candidate.title),
-      normalize(candidate.source_url),
-      classification.civil_status,
-    ].join("|")
-  );
-}
+/* dedupeKey() / hash() now live in lib/govt-lead-payload.js, next to the payload they
+   key on, so scripts/govt-queue-preview.js can predict the queue without duplicating the
+   formula. */
 
 async function upsertLead(source, candidate) {
   const urlHash = hash(candidate.source_url);
@@ -772,6 +797,8 @@ function stagingPayload(source, candidate, classification) {
     verdict: candidate.verdict || classification,
     officialNotice,
     detailText: candidate.detailText || "",
+    /* Recorded so the next sweep knows this page was already read. */
+    noticeCheckedAt: candidate.noticeCheckedAt || null,
   });
 }
 
@@ -791,7 +818,7 @@ async function existingStaging(keys) {
     const inList = list.map((k) => `"${String(k).replace(/"/g, "")}"`).join(",");
     const r = await rest(
       `govt_job_staging?dedupe_key=in.(${encodeURIComponent(inList)})`
-        + "&select=dedupe_key,status,payload"
+        + "&select=dedupe_key,status,payload,created_at"
     );
     if (!r.ok) return map;
     for (const row of (await r.json()) || []) {
@@ -908,16 +935,27 @@ async function processSource(source, stopAt) {
 
   const adapter = adapterFor(source.url);
   let candidates;
+  /* The rows this sweep is about to overwrite, read once. The key each candidate will get
+     is computed the same way here and in the loop below. */
+  let existing = new Map();
 
   if (adapter) {
     candidates = adapterCandidates(fetched.body, source, adapter);
     result.candidates = candidates.length;
+    existing = await existingStaging(
+      candidates.map((candidate) => dedupeKey(
+        candidate,
+        candidate.classification || classifyCivil(candidate.title, candidate.excerpt)
+      ))
+    );
     /* Only the rows that already survived cost a fetch, and only to attach the real
        official notice link (plus the qualification/last date the card listings never
        publish). Bounded per source and by the run deadline. */
-    const detail = await attachOfficialNotices(candidates, stopAt);
+    const detail = await attachOfficialNotices(candidates, stopAt, existing);
     result.detail_fetches = detail.fetches;
     result.official_links = candidates.filter((c) => c.officialNotice).length;
+    result.notice_pending = detail.pending;
+    result.notice_settled = detail.skipped;
     if (detail.errors) result.errors.push(`detail:${detail.errors} page(s) failed`);
   } else {
     candidates = extractCandidates(fetched.body, {
@@ -925,16 +963,14 @@ async function processSource(source, stopAt) {
       url: fetched.url,
     });
     result.candidates = candidates.length;
+    /* The same pre-read, so an official source's rejected row is not resurrected either. */
+    existing = await existingStaging(
+      candidates.map((candidate) => dedupeKey(
+        candidate,
+        candidate.classification || classifyCivil(candidate.title, candidate.excerpt)
+      ))
+    );
   }
-
-  /* The rows this sweep is about to overwrite, read once. The key each candidate will
-     get is computed the same way here and in the loop below. */
-  const existing = await existingStaging(
-    candidates.map((candidate) => dedupeKey(
-      candidate,
-      candidate.classification || classifyCivil(candidate.title, candidate.excerpt)
-    ))
-  );
 
   for (const candidate of candidates) {
     const classification = candidate.classification || classifyCivil(

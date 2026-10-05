@@ -476,7 +476,15 @@ async function collectFromAdapter(source, sourceId, adapter, listingText, result
   }
   result.found = kept.length;
 
-  for (const { r, select } of kept) {
+  /* The detail budget is smaller than a feed's output, so starting at index 0 every run
+     left everything past MAX_DETAIL_FETCHES without an official notice for ever. The
+     window rotates with the hour: over a day's crawls every row gets read. */
+  const rotate = kept.length > MAX_DETAIL_FETCHES
+    ? Math.floor(Date.now() / 3600000) % kept.length
+    : 0;
+  const ordered = rotate ? kept.slice(rotate).concat(kept.slice(0, rotate)) : kept;
+
+  for (const { r, select } of ordered) {
     const lead = await createLead(sourceId, { title: r.title, url: r.url }, r.org || source.org);
     if (!lead) { result.skipped.duplicate = (result.skipped.duplicate || 0) + 1; continue; }
     let detail = '';

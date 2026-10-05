@@ -160,14 +160,15 @@ function wireExplorer2(){
 }
 /* P5.3: Government Cards | Table toggle. Preference persists per device. */
 function govTableView(){try{return localStorage.getItem('cc_gov_view')==='table'}catch(e){return false}}
+/* Table view over the reviewed pipeline rows (Post | Authority | Location | Deadline |
+   Vacancies | Status). Same six columns as the cards, and the same link to the dedicated
+   notification page — nothing here is rendered from the private jobs table. */
 function govTableRows(list){
   return list.map(j=>{
-    const url=(typeof jobPath==='function'?jobPath(j):'#');
-    const dl=j.deadline?esc(date(j.deadline)):'—';
-    const closed=typeof jobExpired==='function'&&jobExpired(j);
-    const vac=j.vacancy_count||j.vacancies||'—';
-    const auth=esc(j.recruitment_authority||j.company||'—');
-    return `<tr><td><a href="${esc(url)}" data-dynamic-route="true">${esc(j.role||'Untitled role')}</a></td><td>${auth}</td><td>${esc(jobLocs(j).join(', ')||j.location||'—')}</td><td>${dl}</td><td>${esc(String(vac))}</td><td>${closed?'<span class="gov-deadline closed">Closed</span>':'<span class="pill verified">Active</span>'}</td></tr>`;
+    const dl=(j.applyEnd||j.deadline)?esc(date(j.applyEnd||j.deadline)):'—';
+    const vac=j.vacancies!=null?j.vacancies:(j.totalVacancies!=null?j.totalVacancies:'—');
+    const closed=!!j.expired;
+    return `<tr><td><a class="detail-link" href="${govtEsc2(govtDetailPath(j))}" data-dynamic-route="true">${govtEsc2(j.post||j.title||'Government recruitment')}</a></td><td>${govtEsc2(j.organization||'—')}</td><td>${govtEsc2(j.state||'—')}</td><td>${dl}</td><td>${govtEsc2(String(vac))}</td><td>${closed?'<span class="gov-deadline closed">Closed</span>':'<span class="pill verified">Human-reviewed</span>'}</td></tr>`;
   }).join('');
 }
 /* Create the gov table skeleton BEFORE rows are filled in — renderGovernment
@@ -310,28 +311,51 @@ function ensurePager(id,afterId){
     if($('emptyRetry'))$('emptyRetry').onclick=()=>renderPrivate(1);
   }
 }
+/* The government section reads /api/govt-jobs — the human-reviewed pipeline — and never
+   the generic job explorer. The explorer's sector=Government filter drew this page from
+   the private jobs table, so unrelated private-sector listings appeared under "Government
+   Civil Jobs" and none of the reviewed queue reached it. Every row below passed the
+   publish gate: human_reviewed = true and an official-source notification link on record. */
+function govtListingParams(page){
+  const st=ccFacetState.gov||{};
+  const p=new URLSearchParams({page:String(page),limit:'40'});
+  const scope=document.querySelector('#govScopeChips .active')?.dataset.scope||'all';
+  if(scope==='central'||scope==='state')p.set('scope',scope);
+  if(st.role)p.set('role',st.role);
+  if(st.state)p.set('state',st.state);
+  if(st.qualification)p.set('qualification',st.qualification);
+  if(st.location)p.set('q',st.location);
+  return p;
+}
+function sortGovtJobs(list){
+  const sort=($('govSort')||{}).value||'new';
+  if(sort==='deadline'){
+    list.sort((a,b)=>(a.applyEnd?Date.parse(a.applyEnd):Infinity)-(b.applyEnd?Date.parse(b.applyEnd):Infinity));
+  }else{
+    list.sort((a,b)=>Date.parse(b.publishedAt||0)-Date.parse(a.publishedAt||0));
+  }
+  return list;
+}
 async function renderGovernment(page=1){
-  wireExplorer();wireExplorer2();renderGovFilterBar();
+  wireExplorer2();renderGovFilterBar();
   const root=$('governmentJobs'); if(!root)return;
-  if(page===1)root.innerHTML='<div class="empty-state"><p>Loading government civil recruitment…</p></div>';
+  if(page===1)root.innerHTML='<div class="empty-state"><p>Loading reviewed government recruitment…</p></div>';
   try{
-    const data=await fetchExplorerJobs('government',page); ccGovernmentPage=page;
-    const list=data.jobs||[]; window.__ccGovernmentJobs=list;
+    const data=await api('/api/govt-jobs?'+govtListingParams(page).toString()); ccGovernmentPage=page;
+    const list=sortGovtJobs(data.jobs||[]); window.__ccGovernmentJobs=list;
     renderGovFilterBar();
-    list.forEach(j=>{if(!j.id)j.id=String(j.source_url||j.role||'job')});
     const meta=data.meta||{page,total:list.length,pages:1,has_next:false};
     const total=Number(meta.total||list.length);
-    $('governmentCount').textContent=`${total.toLocaleString('en-IN')} government civil opportunit${total===1?'y':'ies'}`;
-    root.innerHTML=list.length?list.map(x=>jobCard(x,true)).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment.');
+    $('governmentCount').textContent=`${total.toLocaleString('en-IN')} human-reviewed government notification${total===1?'':'s'}`;
+    root.innerHTML=list.length?list.map(govtCard).join(''):empty('No matching government civil recruitment','Remove one filter or switch between Central and State recruitment. Only human-reviewed notifications with an official notification link are listed.');
     ensureGovTableSkeleton();
     const tbody=$('governmentJobsTable').querySelector('tbody');
     if(tbody)tbody.innerHTML=govTableRows(list);
     renderGovJobsView();wireGovViewToggle();
     ensurePager('governmentJobsPager','governmentJobs');renderExplorerPager('governmentJobsPager',meta,renderGovernment);
-    bindCards();
   }catch(err){
-    $('governmentCount').textContent='Unable to load opportunities';
-    root.innerHTML=`<div class="empty-state"><h3>Unable to load government jobs</h3><p>${esc(err.message||'The jobs service could not be reached.')}</p><button class="btn secondary" id="govRetry">Retry</button></div>`;
+    $('governmentCount').textContent='Unable to load government jobs';
+    root.innerHTML=`<div class="empty-state"><h3>Unable to load government jobs</h3><p>${esc(err.message||'The government jobs service could not be reached.')}</p><button class="btn secondary" id="govRetry">Retry</button></div>`;
     if($('govRetry'))$('govRetry').onclick=()=>renderGovernment(1);
   }
 }
