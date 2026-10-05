@@ -581,21 +581,29 @@ async function upsertLead(source, candidate) {
 async function stageCandidate(source, leadId, candidate, classification) {
   const key = dedupeKey(candidate, classification);
 
+  /* Column contract: write ONLY columns that exist in the canonical
+     migrations (phase19-govt-pipeline.sql). An unknown column makes
+     PostgREST reject the whole row with PGRST204 and stages nothing.
+     `payload` (not `full_payload`) is what the human publish gate in
+     _api/govt-review.js reads, so staging into a private column would
+     leave the row unpublishable. */
   const payload = {
     lead_id: leadId,
     status:
       classification.civil_status === "not_civil"
         ? "needs_info"
         : "pending",
-    relevance_tier: classification.tier,
+    civil_status: classification.civil_status,
+    tier: classification.tier,
     relevance_score: classification.relevance_score,
     confidence: classification.confidence,
     extraction_method: "rules",
     dedupe_key: key,
     match_reasons: classification.match_reasons,
-    full_payload: {
+    payload: {
       title: candidate.title,
       organization: candidate.org_hint || source.org || source.name,
+      source_url: candidate.source_url,
       official_notice_url: candidate.source_url,
       official_site_url: source.url,
       excerpt: candidate.excerpt,

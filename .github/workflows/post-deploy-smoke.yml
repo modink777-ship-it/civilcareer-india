@@ -1,0 +1,115 @@
+name: Post-deploy smoke check
+
+# Vercel registers a GitHub Deployment and posts a deployment_status for every
+# production deploy, so this runs when the deploy FINISHES. A push trigger
+# would be misleading: Vercel is still building at push time, so the probes
+# would answer against the previous SHA and turn green while the new build is
+# the broken one.
+#
+# Two probes, both side-effect free, and each asserts BOTH directions so a
+# drifted secret and an open gate each turn the run red on their own:
+#
+#   * OPTIONS /api/govt-discovery — the dispatcher honours the CRON_SECRET
+#     bearer BEFORE the handler runs, so a valid token answers 200 without
+#     scanning a single source, and anything else is refused with 401.
+#   * GET /api/whatsapp-subscribe — gated by hasValidOwnerKey on the
+#     x-owner-key header, read-only: 200 with the real key, 401 without it.
+#     (/api/civil-scraper cannot be probed cheaply: it answers 405 to every
+#     non-POST before the key is even read, and a POST runs the real scraper.)
+#
+# Only the public origin is probed. Vercel's own deployment URLs
+# (…-<hash>-modinsaheb.vercel.app) answer 302 to a Vercel SSO login, so they
+# cannot be checked unauthenticated. That makes SITE_URL authoritative — and
+# if it is pinned to an old deployment it must be re-pointed (or added as a
+# Production Domain) or this check would be validating yesterday's build.
+
+on:
+  deployment_status:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 */6 * * *'   # drift net, in case the deploy trigger ever stops firing
+
+concurrency:
+  group: post-deploy-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    # deployment_status also fires for previews and for pending/failed states.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Probe the cron and owner-key routes
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          OWNER_KEY: ${{ secrets.OWNER_KEY }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET is not set (Settings -> Secrets and variables -> Actions)."
+            echo "::error::/api/govt-discovery accepts only the CRON_SECRET bearer token."
+            exit 1
+          fi
+          if [ -z "${OWNER_KEY}" ]; then
+            echo "::error::OWNER_KEY is not set (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+          fail=0
+
+          cron_good=$(curl -sS --max-time 60 -X OPTIONS "${SITE_URL}/api/govt-discovery" \
+            -H "Authorization: Bearer ${CRON_SECRET}" -w '\n%{http_code}' || printf '\n000')
+          cron_bad=$(curl -sS --max-time 60 -X OPTIONS "${SITE_URL}/api/govt-discovery" \
+            -H "Authorization: Bearer definitely-not-the-cron-secret" -w '\n%{http_code}' || printf '\n000')
+
+          cron_good_code=$(printf '%s\n' "${cron_good}" | tail -n1)
+          cron_bad_code=$(printf '%s\n' "${cron_bad}" | tail -n1)
+          echo "cron route: real secret -> HTTP ${cron_good_code}, bogus secret -> HTTP ${cron_bad_code}"
+
+          if [ "${cron_good_code}" != "200" ]; then
+            echo "::error::${SITE_URL} rejected the stored CRON_SECRET on /api/govt-discovery (HTTP ${cron_good_code})."
+            echo "::error::Vercel bakes env vars at build time — make CRON_SECRET match on both sides, then redeploy."
+            printf '%s\n' "${cron_good}" | sed '$d'
+            fail=1
+          fi
+          if [ "${cron_bad_code}" != "401" ]; then
+            echo "::error::${SITE_URL} accepted a wrong credential on /api/govt-discovery (HTTP ${cron_bad_code}) — the cron gate is open."
+            fail=1
+          fi
+
+          own_good=$(curl -sS --max-time 60 "${SITE_URL}/api/whatsapp-subscribe" \
+            -H "x-owner-key: ${OWNER_KEY}" -w '\n%{http_code}' || printf '\n000')
+          own_bad=$(curl -sS --max-time 60 "${SITE_URL}/api/whatsapp-subscribe" \
+            -H "x-owner-key: definitely-not-the-owner-key" -w '\n%{http_code}' || printf '\n000')
+
+          own_good_code=$(printf '%s\n' "${own_good}" | tail -n1)
+          own_bad_code=$(printf '%s\n' "${own_bad}" | tail -n1)
+          echo "owner route: real key -> HTTP ${own_good_code}, bogus key -> HTTP ${own_bad_code}"
+
+          if [ "${own_good_code}" != "200" ]; then
+            echo "::error::${SITE_URL} rejected the stored OWNER_KEY on /api/whatsapp-subscribe (HTTP ${own_good_code})."
+            printf '%s\n' "${own_good}" | sed '$d'
+            fail=1
+          fi
+          if [ "${own_bad_code}" != "401" ]; then
+            echo "::error::${SITE_URL} accepted a wrong owner key (HTTP ${own_bad_code}) — the owner gate is open."
+            fail=1
+          fi
+
+          if [ "${fail}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Both credentials are accepted and both gates still refuse everyone else."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Post-deploy smoke check" >> "$GITHUB_STEP_SUMMARY"
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Trigger: ${GITHUB_EVENT_NAME}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Origin: ${SITE_URL:-'(from secret)'}" >> "$GITHUB_STEP_SUMMARY"
