@@ -88,7 +88,7 @@ global.fetch = async (url, opts = {}) => {
   if (target.includes('/rest/v1/govt_sources') && method === 'GET') return jsonResponse(200, [GOVTJOBGURU]);
   if (target.includes('/rest/v1/govt_job_leads')) return jsonResponse(200, [{ id: 'lead-1' }]);
   if (target.includes('/rest/v1/govt_job_staging') && method === 'POST') return jsonResponse(201, []);
-  if (target.includes('/rest/v1/govt_job_staging') && target.includes('payload->>source_name')) {
+  if (target.includes('/rest/v1/govt_job_staging') && target.includes('dedupe_key=in.')) {
     return jsonResponse(200, existingRows);
   }
   if (target.includes('/rest/v1/govt_job_staging')) return jsonResponse(200, []);

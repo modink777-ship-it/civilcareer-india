@@ -775,19 +775,23 @@ function stagingPayload(source, candidate, classification) {
   });
 }
 
-/* One read of this source's queued rows, keyed by dedupe_key. The staging write is an
-   upsert on dedupe_key, which REPLACES the payload — so without this a notice a reviewer
-   pasted would be wiped by the next sweep two hours later, and a row a reviewer had
-   already rejected or published would come back as pending. govt_job_staging has no
-   source_id column, so the rows are scoped by the source_name the payload carries. */
-async function existingStaging(source) {
+/* One read of the rows this sweep is about to overwrite, keyed by dedupe_key. The staging
+   write is an upsert on dedupe_key, which REPLACES the payload — so without this a notice a
+   reviewer pasted would be wiped by the next sweep two hours later, and a row a reviewer
+   had already rejected or published would come back as pending.
+
+   Scoped by the keys themselves (≤30 per source, 64 chars each) using the same
+   `?col=in.(...)` shape the rest of this codebase already sends in production — a jsonb
+   path filter would be new, unproven syntax against the live gateway. */
+async function existingStaging(keys) {
   const map = new Map();
-  const name = String((source && source.name) || "").trim();
-  if (!name) return map;
+  const list = (keys || []).filter(Boolean).slice(0, 30);
+  if (!list.length) return map;
   try {
+    const inList = list.map((k) => `"${String(k).replace(/"/g, "")}"`).join(",");
     const r = await rest(
-      `govt_job_staging?payload->>source_name=eq.${encodeURIComponent(name)}`
-        + "&select=dedupe_key,status,payload&limit=500"
+      `govt_job_staging?dedupe_key=in.(${encodeURIComponent(inList)})`
+        + "&select=dedupe_key,status,payload"
     );
     if (!r.ok) return map;
     for (const row of (await r.json()) || []) {
@@ -902,7 +906,6 @@ async function processSource(source, stopAt) {
     return result;
   }
 
-  const existing = await existingStaging(source);
   const adapter = adapterFor(source.url);
   let candidates;
 
@@ -923,6 +926,15 @@ async function processSource(source, stopAt) {
     });
     result.candidates = candidates.length;
   }
+
+  /* The rows this sweep is about to overwrite, read once. The key each candidate will
+     get is computed the same way here and in the loop below. */
+  const existing = await existingStaging(
+    candidates.map((candidate) => dedupeKey(
+      candidate,
+      candidate.classification || classifyCivil(candidate.title, candidate.excerpt)
+    ))
+  );
 
   for (const candidate of candidates) {
     const classification = candidate.classification || classifyCivil(
