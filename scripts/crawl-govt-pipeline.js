@@ -114,6 +114,28 @@ function extractRss(xml, base) {
   }
   return out;
 }
+/* Aggregator listing pages label every result with the same boilerplate
+   ("Apply Now", "View / Apply", "Read More") and put the real title in the URL
+   slug: /ssc-recruitment-2026-apply-online-for-1748-junior-engineer-posts/.
+   stageLead classifies on the TITLE, so boilerplate meant no discipline signal
+   and every civil post on those pages was dropped as not_civil before a human
+   could see it — the crawler reported success while staging nothing. When the
+   anchor text is one of those labels, fall back to the slug. */
+const GENERIC_ANCHOR = /^(apply\s*(now|online|here)?|read\s*more|view(\s*\/\s*apply)?|view\s*details|more\s*details|details|click\s*here|download|notification|know\s*more|check\s*details)$/i;
+function titleFromSlug(url) {
+  try {
+    const segs = new URL(url).pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    /* many aggregators end the path with a row id: /.../junior-engineer-posts/44605 */
+    let seg = segs[segs.length - 1] || '';
+    if (/^\d+$/.test(seg)) seg = segs[segs.length - 2] || seg;
+    const words = clean(seg.replace(/\.(html?|php|aspx)$/i, '').replace(/[-_]+/g, ' ')).replace(/\s+/g, ' ').trim();
+    return words.length >= 12 ? words : '';
+  } catch { return ''; }
+}
+function candidateTitle(title, url) {
+  const t = clean(title);
+  return GENERIC_ANCHOR.test(t) ? (titleFromSlug(url) || t) : t;
+}
 function looksLikeCandidate(title, url) {
   const t = `${title} ${url}`;
   return /\b(civil|engineer|engineering|je|ae|aee|ee|recruit|vacanc|appointment|works|structural|highway|road|bridge|survey|quantity|draught|draftsman|notification|advertisement|cen)\b/i.test(t);
@@ -378,7 +400,9 @@ async function runSource(source, sourceId) {
     if (page.notModified) { await updateSource(sourceId, { robots_ok: true, last_status: 'not_modified', last_run_at: new Date().toISOString() }); return result; }
     let candidates = source.kind === 'rss' ? extractRss(page.text, source.url) : extractLinks(page.text, source.url);
     if (!candidates.length) candidates = [{ title: source.name, url: source.url }];
-    candidates = candidates.filter(x => looksLikeCandidate(x.title, x.url)).slice(0, MAX_CANDIDATES);
+    candidates = candidates
+      .map(x => ({ ...x, title: candidateTitle(x.title, x.url) }))
+      .filter(x => looksLikeCandidate(x.title, x.url)).slice(0, MAX_CANDIDATES);
     result.found = candidates.length;
     for (const c of candidates) {
       if (source.type === 'official' && !officialUrl(c.url)) continue;
