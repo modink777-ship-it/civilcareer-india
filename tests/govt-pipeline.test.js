@@ -98,24 +98,27 @@ assert.strictEqual(classifyCivilLevel({ title: 'Civil Services Prelims' }).level
 assert.strictEqual(classifySpecialization({ title: 'AE (Civil) Highway Division' }), 'highway');
 assert.strictEqual(classifySpecialization({ title: 'JE (Civil), Irrigation Dept' }), 'irrigation');
 
-/* ── phase 28: dead government sources stay repaired ──────────────────────
-   Two enabled sources can never produce a lead: Employment News 404s on a
-   retired path (the crawler upserts by url, so repointing the config left a
-   stale orphan behind), and UPSC 403s the crawler's declared bot user agent.
-   The repair is easy to undo by accident — the crawler re-writes `enabled`
-   from config/govt-sources.json on every run — so pin both halves. */
+/* ── phase 28: the dead-source repair record ──────────────────────────────
+   Phase 28 disabled two sources that could never produce a lead: Employment
+   News 404s on a retired path (the crawler upserts by url, so repointing the
+   config left a stale orphan behind) and UPSC 403s the crawler's declared bot
+   user agent. Phase 29 then retired the whole non-aggregator source set, so the
+   repair file is now the record of WHY those hosts must never be re-added. */
 const repairPath = path.join(root, 'phase28-govt-source-repair.sql');
 assert.ok(fs.existsSync(repairPath), 'phase 28 source repair migration must exist');
 const repair = fs.readFileSync(repairPath, 'utf8');
-assert.ok(/name = 'Employment News'/.test(repair), 'repair must disable the retired Employment News row');
+assert.ok(/name = 'Employment News'/.test(repair), 'repair must record the retired Employment News row');
 assert.ok(/NewEmp\/AllJobs\.aspx\?k=All/.test(repair), 'repair must protect the working Employment News row');
-assert.ok(/name = 'UPSC Recruitment Advertisements'/.test(repair), 'repair must disable the WAF-blocked UPSC row');
+assert.ok(/name = 'UPSC Recruitment Advertisements'/.test(repair), 'repair must record the WAF-blocked UPSC row');
 
 const sourcesCfg = JSON.parse(fs.readFileSync(path.join(root, 'config', 'govt-sources.json'), 'utf8'));
-const upsc = sourcesCfg.sources.find(s => s.name === 'UPSC Recruitment Advertisements');
-assert.ok(upsc, 'UPSC source must stay in the config');
-assert.strictEqual(upsc.enabled, false,
-  'UPSC must also be disabled in the config: the crawler writes enabled back from it on every run');
+/* The retirement is only real if BOTH halves hold: the rows are deleted in SQL
+   and gone from the config. A source left in the config is re-inserted by the
+   seeder on the next crawl, which would silently undo the delete. */
+for (const host of ['upsc.gov.in', 'employmentnews.gov.in', 'cpwd.gov.in', 'nhai.gov.in', 'ntpc.co.in', 'bhel.com', 'aai.aero']) {
+  assert.ok(!sourcesCfg.sources.some(s => s.url.includes(host)),
+    `${host} was retired in phase 29 and must not come back through config/govt-sources.json`);
+}
 
 /* scripts/crawl-govt-pipeline.js sends `{ ...source, enabled }` straight to
    PostgREST, so a descriptive key added to the config is an unknown column and
@@ -154,7 +157,7 @@ assert.ok(enabledCount <= cap,
 assert.ok(/enabledSources\.length > sources\.length/.test(crawlerSrc),
   'the crawler must warn when it drops sources past the cap instead of skipping silently');
 
-const AGGREGATOR = /(govtjobguru|karnatakacareers|linkingsky|allgovernmentjobs|freejobalert|mysarkarinaukri|indgovtjobs|karnatakagovtjobs)/i;
+const AGGREGATOR = /(govtjobguru|karnatakacareers|linkingsky|allgovernmentjobs|freejobalert|indgovtjobs|mysarkarinaukri|karnatakagovtjobs)/i;
 for (const s of sourcesCfg.sources) {
   if (AGGREGATOR.test(s.url) || AGGREGATOR.test(s.org || '')) {
     assert.strictEqual(s.type, 'aggregator_lead',

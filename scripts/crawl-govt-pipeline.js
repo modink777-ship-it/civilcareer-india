@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { classifyPost, classifyNotification, classifyNotificationDetailed } = require('../lib/civil-classifier');
+const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require('../lib/govt-aggregators');
 const execFileAsync = promisify(execFile);
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
@@ -19,6 +20,12 @@ const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 30000);
    Raise this only alongside timeout-minutes. */
 const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 18);
 const MAX_CANDIDATES = Number(process.env.GOVT_MAX_CANDIDATES_PER_SOURCE || 30);
+/* Aggregator rows are classified from the site's own table, so a detail page is
+   fetched only for the rows that already survived — and only to attach the real
+   official notice URL. Eight per source per run keeps the five aggregators inside
+   a couple of minutes of the workflow's timeout while still covering a day's new
+   postings across the 2-hourly runs. */
+const MAX_DETAIL_FETCHES = Number(process.env.GOVT_MAX_DETAIL_FETCHES_PER_SOURCE || 8);
 const HOST_GAP_MS = 5000;
 const config = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'config', 'govt-sources.json'), 'utf8'));
 
@@ -281,26 +288,59 @@ async function recordProvenance(stagingId, source, candidate, fields) {
 }
 
 async function stageLead(source, sourceId, lead, candidate, pageText) {
-  const text = clean(`${candidate.title}\n${pageText}`).slice(0, 12000);
-  const deadline = extractDeadline(text);
+  /* A structured candidate comes from a per-site aggregator adapter and already
+     carries the posting's own words: post name, qualification, and the section the
+     site filed it under. That is the evidence the classifier needs. Handing it the
+     whole LISTING page instead is what made every civil post on those pages look
+     like noise — one job's qualification cannot be told apart from the next one's. */
+  const scoped = candidate.structured === true;
+  /* pageText is the DETAIL page when the adapter could fetch one, and '' when it
+     could not — the listing page must never be mixed back in, which is the bug
+     this whole path exists to avoid. */
+  const own = scoped
+    ? [candidate.postName, candidate.qualification, candidate.excerpt, (candidate.qualification ? '' : pageText)].filter(Boolean).join('\n')
+    : '';
+  const text = clean(`${candidate.title}\n${scoped ? own : pageText}`).slice(0, 12000);
+  const deadline = extractDeadline(clean(`${candidate.deadlineText || ''}\n${text}`));
   if (deadline.date && deadline.date < new Date().toISOString().slice(0, 10)) return { skipped: 'expired' };
-  const post = { post_name: candidate.title, discipline: /civil/i.test(text) ? 'Civil' : null, qualification: extractQualification(text) };
-  const classified = classifyNotificationDetailed([post], { title: candidate.title, description: text, organization: source.org, org_hint: source.org });
+  const post = scoped
+    ? {
+      post_name: candidate.postName || candidate.title,
+      discipline: candidate.discipline || candidate.section || null,
+      qualification: candidate.qualification || extractQualification(text) || null,
+      civil_eligible: candidate.civilEligible === true || undefined,
+    }
+    : { post_name: candidate.title, discipline: /civil/i.test(text) ? 'Civil' : null, qualification: extractQualification(text) };
+  const orgHint = candidate.org || source.org;
+  const classified = classifyNotificationDetailed([post], {
+    title: candidate.title,
+    description: text,
+    organization: scoped ? orgHint : source.org,
+    org_hint: orgHint,
+  });
   if (classified.civil_status === 'not_civil' && classified.civil_discipline === 'not_civil') return { skipped: 'not_civil' };
   const top = classified.posts[0];
-  const officialNotice = officialUrl(candidate.url) ? candidate.url : (officialUrl(source.url) ? source.url : null);
+  const officialNotice = (candidate.officialNotice && officialUrl(candidate.officialNotice)) ? candidate.officialNotice
+    : officialUrl(candidate.url) ? candidate.url
+      : (officialUrl(source.url) ? source.url : null);
   /* Spec §8: a discovery portal URL is a lead, never the official link. */
   if (source.type === 'official' && !officialUrl(candidate.url)) return { skipped: 'not_official' };
   const payload = {
     title: clean(candidate.title).slice(0, 500),
-    organization: parseOrg(text, source.org),
-    organization_hint: source.org,
+    organization: parseOrg(text, orgHint),
+    organization_hint: orgHint,
     source_type: source.type,
     source_url: candidate.url,
     official_notice_url: officialNotice || candidate.url || '',
     official_site_url: (officialNotice || candidate.url) ? new URL(officialNotice || candidate.url).origin : '',
     official_notification_url: candidate.url,
     notification_no: parseNotificationNo(text),
+    /* Carried so the reviewer (and the publish job, which reads p.qualification)
+       sees exactly what the aggregator's own row said, and why it qualified. */
+    qualification: post.qualification || null,
+    vacancies: scoped ? (String(candidate.vacancies || '').trim() || null) : null,
+    source_section: scoped ? (candidate.section || null) : null,
+    civil_evidence: scoped ? (candidate.evidence || null) : null,
     deadline,
     post_candidates: classified.posts.map(x => ({ ...x.post, outcome: x.outcome, tier: x.tier, score: x.score, level: x.level, specialization: x.specialization })),
     civil_discipline: classified.civil_discipline,
@@ -389,8 +429,72 @@ async function pdfText(url) {
   finally { try { fs.unlinkSync(tmp); } catch (_) {} }
 }
 
+/* ── aggregator feeds ─────────────────────────────────────────────────────
+   The five engineering aggregators do not publish a feed: they publish a table
+   per discipline or a card per posting, with anchors that only ever say "Apply
+   Now" / "View / Apply" / "Detail". `lib/govt-aggregators` reads each site's own
+   structure and returns one record per posting, carrying the qualification and
+   section the site itself used. Each record is then judged on its own words —
+   the whole-page text is never the evidence — and only the survivors cost a
+   network fetch, used to attach the official notification link the review gate
+   requires before anything can be published. */
+async function collectFromAdapter(source, sourceId, adapter, listingText, result) {
+  let records = adapter.extract(listingText, source.url);
+  if (typeof adapter.nextPage === 'function') {
+    const next = adapter.nextPage(listingText, source.url);
+    if (next && (await robotsAllowed(next))) {
+      try { records = records.concat(adapter.extract((await fetchText(next)).text, source.url)); }
+      catch (_) { /* a missing second page must never fail the whole source */ }
+    }
+  }
+  const seen = new Set();
+  records = records.filter(r => r.url && !seen.has(r.url) && (seen.add(r.url), true));
+  result.records = records.length;
+
+  const kept = [];
+  for (const r of records) {
+    const select = selectCivil(r);
+    if (!select.keep) { result.skipped[select.reason] = (result.skipped[select.reason] || 0) + 1; continue; }
+    /* Same classifier the staging writer uses, run locally first, so a posting that
+       cannot be civil never creates a lead row at all. */
+    const verdict = classifyRecord(r, select);
+    if (verdict.civil_status === 'not_civil' && verdict.posts[0].level === 'not_civil') {
+      result.skipped.not_civil = (result.skipped.not_civil || 0) + 1;
+      continue;
+    }
+    kept.push({ r, select });
+  }
+  result.found = kept.length;
+
+  for (const { r, select } of kept) {
+    const lead = await createLead(sourceId, { title: r.title, url: r.url }, r.org || source.org);
+    if (!lead) { result.skipped.duplicate = (result.skipped.duplicate || 0) + 1; continue; }
+    let detail = '';
+    let officialNotice = '';
+    if (result.detailFetches < MAX_DETAIL_FETCHES) {
+      result.detailFetches += 1;
+      try {
+        if (!(await robotsAllowed(r.url))) throw new Error('robots.txt disallows candidate');
+        if (/\.pdf(?:$|[?#])/i.test(r.url)) detail = await pdfText(r.url);
+        else { const d = await fetchText(r.url); detail = d.text; }
+        officialNotice = officialNoticeLinks(detail, r.url, officialUrl)[0] || '';
+      } catch (e) {
+        result.errors += 1;
+        if (!result.detailError) result.detailError = String(e.message || e).slice(0, 120);
+      }
+    }
+    const staged = await stageLead(
+      source, sourceId, lead,
+      { ...r, structured: true, civilEligible: Boolean(select.eligible), officialNotice },
+      detail
+    );
+    if (staged.staged) result.staged += 1;
+    else result.skipped[staged.skipped || 'unknown'] = (result.skipped[staged.skipped || 'unknown'] || 0) + 1;
+  }
+}
+
 async function runSource(source, sourceId) {
-  const result = { source: source.name, found: 0, staged: 0, skipped: {}, error: null };
+  const result = { source: source.name, found: 0, staged: 0, skipped: {}, error: null, errors: 0, detailFetches: 0, records: 0 };
   try {
     if (!(await robotsAllowed(source.url))) { result.error = 'robots.txt disallows this source'; await updateSource(sourceId, { robots_ok: false, last_status: 'robots_blocked', last_run_at: new Date().toISOString(), last_error: result.error }); return result; }
     const metaR = await supa(`govt_sources?id=eq.${encodeURIComponent(sourceId)}&select=etag,last_modified&limit=1`);
@@ -398,6 +502,15 @@ async function runSource(source, sourceId) {
     const headers = {}; if (meta.etag) headers['If-None-Match'] = meta.etag; if (meta.last_modified) headers['If-Modified-Since'] = meta.last_modified;
     const page = await fetchText(source.url, headers);
     if (page.notModified) { await updateSource(sourceId, { robots_ok: true, last_status: 'not_modified', last_run_at: new Date().toISOString() }); return result; }
+    /* An aggregator feed publishes structured tables; read them and judge each
+       posting on its own words before spending a fetch on it. Everything else
+       (official govt/PSU sites) keeps the generic anchor harvester. */
+    const adapter = adapterFor(source.url);
+    if (adapter) {
+      await collectFromAdapter(source, sourceId, adapter, page.text, result);
+      await updateSource(sourceId, { robots_ok: true, last_status: `ok; adapter=${adapter.id}; candidates=${result.found}; staged=${result.staged}; errors=${result.errors}`, last_run_at: new Date().toISOString(), etag: page.etag || null, last_modified: page.lastModified || null, last_error: null, items_found: result.found, items_staged: result.staged });
+      return result;
+    }
     let candidates = source.kind === 'rss' ? extractRss(page.text, source.url) : extractLinks(page.text, source.url);
     if (!candidates.length) candidates = [{ title: source.name, url: source.url }];
     candidates = candidates

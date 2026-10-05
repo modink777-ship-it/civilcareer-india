@@ -6079,17 +6079,65 @@ function govtRenderSaved(tab){
 function govtRenderReview(){
   const el=$('govtListReview'); const list=govtCache.review||[];
   if(!list.length){el.innerHTML='<p class="govt-empty">Nothing here for this status.</p>';return;}
-  el.innerHTML=list.map(it=>{
+  /* Bulk review. Six aggregator feeds can add dozens of civil leads in one
+     crawl, and clearing them one confirm() at a time is the slowest part of
+     publishing. Every row carries a checkbox; the bar applies one action to the
+     whole selection sequentially and reports how many went through. */
+  el.innerHTML='<div class="admin-jobs-bulkbar">'
+    +'<label><input type="checkbox" id="govtBulkAll" onchange="govtBulkSelectAll(this.checked)"> Select all</label>'
+    +'<span class="admin-jobs-selected-count" id="govtBulkCount">0 selected</span>'
+    +'<button class="btn-publish" onclick="govtBulk(\'approve\')">✅ Publish selected</button>'
+    +'<button class="btn-ghost" onclick="govtBulk(\'needs_info\')">❓ Needs Info</button>'
+    +'<button class="btn-reject" onclick="govtBulk(\'reject\')">✕ Reject</button>'
+    +'</div>'
+    +list.map(it=>{
     const p=it.payload||{};
-    return '<div class="govt-item" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
-      +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span></h4>'
-      +'<p>'+govtEsc((it.reject_reason||it.review_notes||p.excerpt||'').slice(0,180))+'</p>'
+    const evid=(p.civil_evidence?' · '+p.civil_evidence:'')+(p.source_section?' · '+p.source_section:'');
+    return '<div class="govt-item admin-job-row" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
+      +'<input type="checkbox" class="admin-job-select govt-bulk-select" value="'+govtEsc(it.id)+'" onchange="govtBulkUpdate()">'
+      +'<div class="list-item-info">'
+      +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span>'+(evid?' <span class="govt-badge">'+govtEsc(evid.slice(0,40))+'</span>':'')+'</h4>'
+      +'<p>'+govtEsc((p.qualification||it.reject_reason||it.review_notes||p.excerpt||'').slice(0,180))+'</p>'
+      +'</div>'
       +'<div class="govt-actions">'
       +(it.status==='pending'||it.status==='needs_info'?'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Approve &amp; Publish</button>':'')
       +(it.status!=='approved'?'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>':'')
       +(it.status!=='rejected'&&it.status!=='approved'?'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>':'')
       +'</div></div>';
   }).join('');
+}
+
+function govtBulkSelected(){
+  return [...document.querySelectorAll('.govt-bulk-select:checked')].map(c=>c.value);
+}
+function govtBulkUpdate(){
+  const n=govtBulkSelected().length;
+  const c=$('govtBulkCount'); if(c)c.textContent=n+' selected';
+  const all=$('govtBulkAll'); const boxes=document.querySelectorAll('.govt-bulk-select');
+  if(all)all.checked=boxes.length>0&&n===boxes.length;
+}
+function govtBulkSelectAll(on){
+  document.querySelectorAll('.govt-bulk-select').forEach(c=>{c.checked=!!on;});
+  govtBulkUpdate();
+}
+async function govtBulk(action){
+  const ids=govtBulkSelected();
+  if(!ids.length){toast('Select at least one item first.');return;}
+  const verb={approve:'publish',needs_info:'mark Needs Info',reject:'reject'}[action]||action;
+  const warn=action==='approve'?' They become publicly visible immediately.':'';
+  if(!confirm(verb+' '+ids.length+' selected item(s)?'+warn))return;
+  let ok=0; let firstError='';
+  for(const id of ids){
+    try{
+      if(action==='approve')await govtPost('approve',{id});
+      else if(action==='reject')await govtPost('reject',{id,reason:'Bulk rejected from the review queue'});
+      else await govtPost('needs_info',{id,notes:'Bulk marked needs-info from the review queue'});
+      ok++;
+    }catch(e){ if(!firstError)firstError=(e.message||'failed').slice(0,90); }
+  }
+  const failed=ids.length-ok;
+  toast(ok+' of '+ids.length+' '+(action==='approve'?'published':'updated')+(failed?' · '+failed+' failed: '+firstError:''));
+  govtLoad(govtActiveTab);
 }
 
 function govtRenderOrgs(){

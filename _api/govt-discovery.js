@@ -35,6 +35,14 @@ function rest(path, opts = {}) {
   });
 }
 
+/* The sources that remain enabled are engineering AGGREGATORS, not official
+   notice pages. Their anchors say "Apply Now" / "View / Apply", so harvesting
+   anchors and classifying the anchor text finds no discipline at all and stages
+   noise. The shared adapter library reads each site's own table/card structure
+   and rules on the posting's own words — the same extraction the GitHub crawler
+   uses, so both writers agree on what "civil" means. */
+const { adapterFor, selectCivil, classifyRecord } = require("../lib/govt-aggregators");
+
 const ROBOTS_UA =
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
 
@@ -431,6 +439,50 @@ function extractCandidates(html, source) {
   return candidates;
 }
 
+/* Structured extraction for aggregator sources: one candidate per posting, from
+   the site's own table, pre-classified with the shared civil classifier. Returns
+   null when the source has no adapter, so official sources keep the anchor
+   harvester below. */
+function adapterCandidates(html, source, adapter) {
+  const candidates = [];
+
+  for (const record of adapter.extract(html, source.url)) {
+    if (candidates.length >= 30) break;
+
+    const select = selectCivil(record);
+    if (!select.keep) continue;
+
+    const verdict = classifyRecord(record, select);
+    const top = verdict.posts[0] || {};
+
+    /* Same gate the GitHub crawler applies: a posting that is neither civil nor
+       civil-eligible never reaches the review queue. */
+    if (verdict.civil_status === "not_civil" && top.level === "not_civil") continue;
+
+    candidates.push({
+      title: record.title.slice(0, 240),
+      source_url: record.url,
+      excerpt: [record.postName, record.qualification, record.section]
+        .filter(Boolean)
+        .join(" · ")
+        .slice(0, 500),
+      org_hint: record.org || source.org || source.name,
+      classification: {
+        civil_status: verdict.civil_status,
+        tier: top.tier || "B",
+        relevance_score: top.score || 60,
+        confidence: top.outcome === "civil" ? 0.9 : 0.6,
+        match_reasons: {
+          positive: Array.isArray(top.reasons) ? top.reasons : [],
+          negative: [],
+        },
+      },
+    });
+  }
+
+  return candidates;
+}
+
 const CIVIL_POSITIVE = [
   /\bcivil\s+engineer(?:ing)?\b/i,
   /\b(?:je|ae|aee|ee)\s*[-/]?\s*civil\b/i,
@@ -673,15 +725,18 @@ async function processSource(source) {
     return result;
   }
 
-  const candidates = extractCandidates(fetched.body, {
-    ...source,
-    url: fetched.url,
-  });
+  const adapter = adapterFor(source.url);
+  const candidates = adapter
+    ? adapterCandidates(fetched.body, source, adapter)
+    : extractCandidates(fetched.body, {
+      ...source,
+      url: fetched.url,
+    });
 
   result.candidates = candidates.length;
 
   for (const candidate of candidates) {
-    const classification = classifyCivil(
+    const classification = candidate.classification || classifyCivil(
       candidate.title,
       candidate.excerpt
     );
