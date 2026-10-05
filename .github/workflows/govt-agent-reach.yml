@@ -1,5 +1,7 @@
 name: Government Agent Reach
 
+# Single scheduled trigger for the government discovery agent.
+#
 # /api/govt-discovery is a dispatcher CRON_ROUTE. Its admin rule is
 #   '/api/govt-discovery': req => !isValidCronRequest(req)
 # so the ONLY non-admin credential the route accepts is the scheduler token:
@@ -8,10 +10,14 @@ name: Government Agent Reach
 # Supabase admin session, so an owner-key request is rejected with
 # 401 {"error":"Invalid admin session."}. (Owner-key triggers live on the
 # /api/jobs and /api/civil-scraper routes instead.)
+#
+# This file used to be duplicated by govt-discovery-daily.yml, which hit the
+# same endpoint on the same 2-hour cadence. They are now consolidated here so
+# one schedule drives the route.
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */2 * * *'   # every 2 hours
   workflow_dispatch:
 
 concurrency:
