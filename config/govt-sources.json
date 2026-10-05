@@ -201,6 +201,56 @@
             "category": "Employment News",
             "state": null,
             "enabled": true
+        },
+        {
+            "name": "govtjobguru Engineering Jobs",
+            "type": "aggregator_lead",
+            "url": "https://govtjobguru.in/jobs-by-post/engineering-jobs/",
+            "kind": "html",
+            "org": "govtjobguru.in",
+            "category": "Other",
+            "state": null,
+            "enabled": true
+        },
+        {
+            "name": "Karnataka Careers Civil Engineering",
+            "type": "aggregator_lead",
+            "url": "https://www.karnatakacareers.org/qualification/civil-engineering-jobs/",
+            "kind": "html",
+            "org": "karnatakacareers.org",
+            "category": "Other",
+            "state": "Karnataka",
+            "enabled": true
+        },
+        {
+            "name": "Linking Sky Engineer Jobs",
+            "type": "aggregator_lead",
+            "url": "https://linkingsky.com/government-exams/Engineers_Jobs.html",
+            "kind": "html",
+            "org": "linkingsky.com",
+            "category": "Other",
+            "state": null,
+            "enabled": true
+        },
+        {
+            "name": "All Government Jobs Civil Engineering",
+            "type": "aggregator_lead",
+            "url": "https://allgovernmentjobs.in/civil-engineering-jobs",
+            "kind": "html",
+            "org": "allgovernmentjobs.in",
+            "category": "Other",
+            "state": null,
+            "enabled": true
+        },
+        {
+            "name": "FreeJobAlert Engineering Jobs",
+            "type": "aggregator_lead",
+            "url": "https://www.freejobalert.com/engineering-jobs/",
+            "kind": "html",
+            "org": "freejobalert.com",
+            "category": "Other",
+            "state": null,
+            "enabled": true
         }
     ]
 }

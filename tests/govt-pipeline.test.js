@@ -135,4 +135,31 @@ for (const s of sourcesCfg.sources) {
   }
 }
 
+/* ── aggregators and the source cap ──────────────────────────────────────
+   Two ways a source can be configured and still never produce anything:
+
+   1. crawl-govt-pipeline.js does `.slice(0, MAX_SOURCES)`, so a source
+      enabled past that cap is never crawled and never errors — it just shows
+      a stale status forever. Keep the config inside the cap.
+   2. An aggregator typed "official" would skip the official-host filter the
+      crawler applies only to official rows, and would be staged as verified.
+      Lead-only portals must stay aggregator_lead. */
+const crawlerSrc = fs.readFileSync(path.join(root, 'scripts', 'crawl-govt-pipeline.js'), 'utf8');
+const capMatch = crawlerSrc.match(/MAX_SOURCES\s*=\s*Number\(process\.env\.GOVT_MAX_SOURCES\s*\|\|\s*(\d+)\)/);
+assert.ok(capMatch, 'crawl-govt-pipeline.js must declare a numeric MAX_SOURCES default');
+const cap = Number(capMatch[1]);
+const enabledCount = sourcesCfg.sources.filter(s => s.enabled).length;
+assert.ok(enabledCount <= cap,
+  `${enabledCount} sources are enabled but GOVT_MAX_SOURCES is ${cap}: ${enabledCount - cap} would never be crawled`);
+assert.ok(/enabledSources\.length > sources\.length/.test(crawlerSrc),
+  'the crawler must warn when it drops sources past the cap instead of skipping silently');
+
+const AGGREGATOR = /(govtjobguru|karnatakacareers|linkingsky|allgovernmentjobs|freejobalert|mysarkarinaukri|indgovtjobs|karnatakagovtjobs)/i;
+for (const s of sourcesCfg.sources) {
+  if (AGGREGATOR.test(s.url) || AGGREGATOR.test(s.org || '')) {
+    assert.strictEqual(s.type, 'aggregator_lead',
+      `${s.name} is a lead-only aggregator and must not be typed "${s.type}"`);
+  }
+}
+
 console.log('Government civil pipeline tests: PASS');

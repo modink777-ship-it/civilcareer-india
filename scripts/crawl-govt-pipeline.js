@@ -13,7 +13,7 @@ const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const SITE = String(process.env.SITE_URL || 'https://civilcareer-india-two.vercel.app').replace(/\/+$/, '');
 const UA = `CivilCareer-GovtBot/1.0 (+${SITE}/about)`;
 const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 30000);
-const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 12);
+const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 24);
 const MAX_CANDIDATES = Number(process.env.GOVT_MAX_CANDIDATES_PER_SOURCE || 30);
 const HOST_GAP_MS = 5000;
 const config = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'config', 'govt-sources.json'), 'utf8'));
@@ -400,7 +400,15 @@ async function runSource(source, sourceId) {
 
 async function main() {
   const ids = await ensureSources();
-  const sources = config.sources.filter(s => s.enabled).slice(0, MAX_SOURCES);
+  const enabledSources = config.sources.filter(s => s.enabled);
+  const sources = enabledSources.slice(0, MAX_SOURCES);
+  /* Truncation used to be silent: enabling a source past the cap meant it never
+     ran and never errored, so the panel showed a stale "not run yet" forever and
+     the source looked configured. Name whatever gets dropped instead. */
+  if (enabledSources.length > sources.length) {
+    console.error(`WARN: ${enabledSources.length} sources are enabled but GOVT_MAX_SOURCES=${MAX_SOURCES}; not crawled: `
+      + enabledSources.slice(MAX_SOURCES).map(s => s.name).join(', '));
+  }
   const reports = [];
   for (const source of sources) {
     const id = ids.get(source.url);
