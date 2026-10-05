@@ -1,39 +1,67 @@
 name: Government Agent Reach
 
+# /api/govt-discovery is a dispatcher CRON_ROUTE. Its admin rule is
+#   '/api/govt-discovery': req => !isValidCronRequest(req)
+# so the ONLY non-admin credential the route accepts is the scheduler token:
+#   Authorization: Bearer ${CRON_SECRET}
+# The owner key (x-owner-key) is NOT accepted here: requireAdmin only verifies a
+# Supabase admin session, so an owner-key request is rejected with
+# 401 {"error":"Invalid admin session."}. (Owner-key triggers live on the
+# /api/jobs and /api/civil-scraper routes instead.)
+
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: govt-agent-reach
+  cancel-in-progress: false
 
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Government Agent Reach — scan
+      - name: Run Government Agent Reach
         env:
-          SITE_URL: ${{ secrets.SITE_URL }}
-          OWNER_KEY: ${{ secrets.OWNER_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "Run time: $(date -u '+%Y-%m-%d %H:%M') UTC"
-          echo "Results remain unpublished until Admin review."
+          echo "Starting Government Agent Reach..."
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST "${SITE_URL}/api/govt-discovery" \
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET is not set (Settings -> Secrets and variables -> Actions)."
+            echo "::error::/api/govt-discovery only accepts the CRON_SECRET bearer token; the owner key is rejected on this route."
+            exit 1
+          fi
+
+          RESPONSE=$(curl -sS -w '\n%{http_code}' \
+            --max-time 900 \
+            -X POST \
+            "${SITE_URL}/api/govt-discovery" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${OWNER_KEY}" \
-            -d "{\"key\":\"${OWNER_KEY}\"}" \
-            --max-time 55)
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --data '{}')
 
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n-1)
+          HTTP_CODE=$(printf '%s\n' "$RESPONSE" | tail -n1)
+          BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
 
-          echo "HTTP status: $HTTP_CODE"
-          echo "Response: $BODY"
+          echo "HTTP status: ${HTTP_CODE}"
+          echo "Response: ${BODY}"
 
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::error::API returned HTTP $HTTP_CODE"
-            echo "::error::Body: $BODY"
+          if [ "${HTTP_CODE}" -ge 400 ]; then
+            echo "::error::Government discovery API returned HTTP ${HTTP_CODE}"
+            echo "::error::Body: ${BODY}"
             exit 1
           fi
 
           echo "Government discovery completed successfully."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Government Agent Reach" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run time: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Results remain unpublished until Admin review." >> "$GITHUB_STEP_SUMMARY"

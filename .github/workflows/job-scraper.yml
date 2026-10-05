@@ -9,7 +9,11 @@ name: Civil job discovery (every 2 hours)
 # Every run writes only UNPUBLISHED drafts. Nothing reaches the public site
 # until the owner reviews it in Admin → Discovery and publishes it.
 #
-# This workflow runs every 4 hours. Vercel's own cron is kept as a once-a-day
+# The script talks to GET /api/jobs?discovery=cron, which authorizes with
+# either the CRON_SECRET bearer token OR the owner key (x-owner-key) — so at
+# least one of those two repository secrets must be set.
+#
+# This workflow runs every 2 hours. Vercel's own cron is kept as a once-a-day
 # safety net because Vercel limits sub-daily schedules to paid plans, and
 # GitHub's scheduler can be delayed or disabled after 60 days of repository
 # inactivity.
@@ -36,11 +40,29 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Preflight — confirm the trigger configuration
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          OWNER_KEY: ${{ secrets.OWNER_KEY }}
+        run: |
+          echo "SITE_URL: ${SITE_URL}"
+          if [ -z "${CRON_SECRET}" ] && [ -z "${OWNER_KEY}" ]; then
+            echo "::error::Neither CRON_SECRET nor OWNER_KEY is set, so /api/jobs?discovery=cron will reject the run with HTTP 401."
+            echo "::error::Add one of them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          if [ -n "${CRON_SECRET}" ]; then
+            echo "Trigger credential: CRON_SECRET"
+          else
+            echo "Trigger credential: OWNER_KEY"
+          fi
+
       - name: Run civil-only India discovery
         run: node scripts/scrape-jobs.js
         env:
           # Deployment origin that hosts /api/jobs
-          SITE_URL: ${{ secrets.SITE_URL }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
           # Trigger credential — CRON_SECRET is preferred
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           OWNER_KEY: ${{ secrets.OWNER_KEY }}
