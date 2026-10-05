@@ -6112,14 +6112,46 @@ function govtRenderCats(){
     +'</p></div>').join('');
 }
 
+function govtSourceState(s){
+  const st=String(s.last_status||''), err=String(s.last_error||'');
+  if(!st)return {label:'not run yet',cls:'sh-nc'};
+  if(st.startsWith('dead:'))return {label:'⛔ retired source',cls:'sh-nc'};
+  if(st.startsWith('blocked:'))return {label:'⛔ blocked by the site',cls:'sh-nc'};
+  if(st==='ok'||st.startsWith('ok;'))return {label:'✓ healthy',cls:'sh-ok'};
+  if(st==='not_modified')return {label:'○ unchanged (304)',cls:'sh-nc'};
+  const m=st.match(/^source:http-(\d+)/);
+  if(m){
+    if(m[1]==='404'||m[1]==='410')return {label:'✗ page gone ('+m[1]+')',cls:'sh-error'};
+    if(m[1]==='403'||m[1]==='429')return {label:'⛔ blocked ('+m[1]+')',cls:'sh-error'};
+    return {label:'✗ source HTTP '+m[1],cls:'sh-error'};
+  }
+  if(st.startsWith('robots:disallowed')||st==='robots_blocked')return {label:'⛔ robots.txt disallows',cls:'sh-error'};
+  if(st.startsWith('robots:invalid-source-url'))return {label:'✗ bad source URL',cls:'sh-error'};
+  if(st.startsWith('robots:unreachable'))return {label:'⚠ robots.txt unreachable',cls:'sh-warn'};
+  if(st.startsWith('robots:unavailable'))return {label:'⚠ no robots.txt (allowed)',cls:'sh-warn'};
+  if(st.startsWith('robots:unverified'))return {label:'⚠ robots.txt unverified',cls:'sh-warn'};
+  if(st==='error'||/fetch failed/i.test(err)){
+    const c=(err.match(/\b(403|404|410|429)\b/)||[])[1];
+    if(c==='403'||c==='429')return {label:'⛔ blocked ('+c+')',cls:'sh-error'};
+    if(c==='404'||c==='410')return {label:'✗ page gone ('+c+')',cls:'sh-error'};
+    return {label:'✗ fetch failed',cls:'sh-error'};
+  }
+  return {label:st,cls:'sh-nc'};
+}
+
 function govtRenderSources(){
   const el=$('govtListSources'); const list=govtCache.sources||[];
   if(!list.length){el.innerHTML='<p class="govt-empty">No discovery sources configured (config/govt-sources.json).</p>';return;}
-  el.innerHTML=list.map(s=>{
-    const ok=String(s.last_status||'').startsWith('ok');
+  const on=list.filter(s=>s.enabled);
+  const healthy=on.filter(s=>govtSourceState(s).cls==='sh-ok').length;
+  const failing=on.filter(s=>govtSourceState(s).cls==='sh-error').length;
+  const warns=on.filter(s=>govtSourceState(s).cls==='sh-warn').length;
+  const summary='<p class="discovery-summary show" style="margin:0 0 12px">'+on.length+' enabled · <span style="color:#6ee7b7">'+healthy+'</span> healthy · <span style="color:#fca5a5">'+failing+'</span> failing · <span style="color:#fbbf24">'+warns+'</span> warning'+(warns===1?'':'s')+' · '+list.length+' total</p>';
+  el.innerHTML=summary+list.map(s=>{
+    const st=govtSourceState(s);
     return '<div class="govt-item"><h4>'+govtEsc(s.name)+' '
       +'<span class="govt-badge '+(s.type==='official'?'st-official':'st-unverified')+'">'+govtEsc(s.type)+'</span> '
-      +'<span class="govt-badge">'+(ok?'✓ healthy':govtEsc(s.last_status||'not run yet'))+'</span></h4>'
+      +'<span class="govt-badge '+st.cls+'" title="'+govtEsc(String(s.last_status||'never run'))+'">'+govtEsc(st.label)+'</span></h4>'
       +'<p>'+(s.last_run_at?'last run '+govtEsc(String(s.last_run_at).slice(0,16).replace('T',' '))+' UTC · ':'')+govtEsc(String(s.items_found||0))+' found · '+govtEsc(String(s.items_staged||0))+' staged'
       +(s.last_error?' · <span style="color:#fca5a5">'+govtEsc(String(s.last_error).slice(0,120))+'</span>':'')+'</p>'
       +'<div class="govt-actions">'
