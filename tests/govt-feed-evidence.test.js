@@ -30,15 +30,6 @@ const { EventEmitter } = require('node:events');
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-/* v8.js keys its feed labels by hostname; accept the host or its parent domain. */
-const v8IncludesHost = (host) => {
-  const v8 = read('v8.js');
-  const parts = host.split('.');
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    if (v8.includes(`host:'${parts.slice(i).join('.')}'`)) return true;
-  }
-  return false;
-};
 
 process.env.SUPABASE_URL = 'https://unit-test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'unit-test-key';
@@ -303,26 +294,32 @@ test('a feed URL is never shown as an official notice, in the queue or the modal
   );
 });
 
-test('the admin and the public page both name the same six feeds', () => {
+test('the six feeds are admin-only: the admin labels them, the public page never names them', () => {
   const config = JSON.parse(read('config/govt-sources.json'));
   const hosts = config.sources.map(s => new URL(s.url).hostname.replace(/^www\./, ''));
   assert.equal(hosts.length, 6, 'exactly the six aggregator feeds are configured');
 
+  /* Where a lead came from is internal provenance: it belongs in the review queue, so the
+     owner can judge a row, and nowhere a visitor can see it. */
   const admin = read('admin.html');
   for (const h of hosts) {
     assert.ok(admin.includes(`['${h}',`), `admin.html must label a lead that came from ${h}`);
-    assert.ok(v8IncludesHost(h), `v8.js must recognise a lead that came from ${h}`);
   }
 
-  const v8 = read('v8.js');
-  for (const s of config.sources) {
-    assert.ok(v8.includes(s.url), `the public government jobs page must link ${s.url}`);
+  for (const p of ['v8.js', 'app.js', 'government-jobs.html', 'govt-jobs.html', 'index.html']) {
+    const src = read(p);
+    for (const s of config.sources) {
+      assert.ok(!src.includes(s.url), `${p} must not disclose the aggregator feed ${s.url}`);
+    }
+    for (const h of hosts) {
+      const bare = h.replace(/^ka\./, '');
+      assert.ok(!src.includes(h) && !src.includes(`'${bare}'`) && !src.includes(bare),
+        `${p} must not name the aggregator ${h}`);
+    }
   }
-  assert.equal((v8.match(/host:'/g) || []).length, 6, 'v8.js must recognise exactly the six feeds');
-  assert.match(v8, /function ensureGovFeedStrip\(\)/);
-  assert.match(v8, /renderGovFilterBar\(\);ensureGovFeedStrip\(\)/, 'the strip must render with the section');
-  assert.match(v8, /function govtFeedChip\(j\)/, 'each published notification names the feed that surfaced it');
-  assert.match(read('government-jobs.html'), /id="govtFeedSources"/, 'the government page must have somewhere to put it');
+  assert.ok(!/gov-feed-strip|govtFeedSources|govtFeedChip|GOVT_FEEDS/.test(read('v8.js')),
+    'the public government page must not render a feed strip or feed attribution');
+  assert.ok(!/gov-feed/.test(read('styles.css')), 'the public stylesheet must not carry feed-strip styling');
 });
 
 test('the payload builder refuses anything the publish gate would reject', () => {
