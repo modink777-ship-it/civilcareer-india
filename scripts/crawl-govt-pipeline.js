@@ -13,7 +13,11 @@ const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const SITE = String(process.env.SITE_URL || 'https://civilcareer-india-two.vercel.app').replace(/\/+$/, '');
 const UA = `CivilCareer-GovtBot/1.0 (+${SITE}/about)`;
 const TIMEOUT = Number(process.env.GOVT_FETCH_TIMEOUT_MS || 30000);
-const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 24);
+/* Bounded by the job timeout in .github/workflows/govt-pipeline.yml. The last
+   11-source crawl took 5.4 min of the 15 allowed (~30 s per source), so 18 is
+   the most this workflow can be trusted to finish with margin for retries.
+   Raise this only alongside timeout-minutes. */
+const MAX_SOURCES = Number(process.env.GOVT_MAX_SOURCES || 18);
 const MAX_CANDIDATES = Number(process.env.GOVT_MAX_CANDIDATES_PER_SOURCE || 30);
 const HOST_GAP_MS = 5000;
 const config = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'config', 'govt-sources.json'), 'utf8'));
