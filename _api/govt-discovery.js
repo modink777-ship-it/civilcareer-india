@@ -780,6 +780,52 @@ async function processSource(source) {
   return result;
 }
 
+/* Source rows are defined by config/govt-sources.json, and only the GitHub
+   crawler used to seed them. When that workflow cannot run, a table that was
+   emptied or never seeded leaves this sweep reporting a clean "0 sources" — a
+   silent freeze, with the panel showing nothing wrong. Seed here too, with the
+   same idempotent upsert by url, so a cron run is self-sufficient.
+
+   Loaded defensively: if the bundler ever excludes config/, the sweep must
+   still run rather than fail at module load. */
+let SOURCE_CONFIG = null;
+try {
+  SOURCE_CONFIG = require("../config/govt-sources.json");
+} catch (_) {
+  SOURCE_CONFIG = null;
+}
+
+async function ensureSources() {
+  const sources =
+    SOURCE_CONFIG && Array.isArray(SOURCE_CONFIG.sources)
+      ? SOURCE_CONFIG.sources
+      : null;
+
+  if (!sources || !sources.length) {
+    return { seeded: 0, error: "source config unavailable" };
+  }
+
+  /* Only the config's own keys are sent: the seeder spreads this object into
+     PostgREST, and an unknown column rejects the whole batch (PGRST204).
+     merge-duplicates leaves last_status / items_* on an existing row alone. */
+  const payload = sources.map((s) => ({ ...s, enabled: Boolean(s.enabled) }));
+  const r = await rest("govt_sources?on_conflict=url", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r.ok) {
+    return {
+      seeded: 0,
+      error: `HTTP ${r.status} ${(await r.text()).slice(0, 160)}`,
+    };
+  }
+
+  const rows = await r.json();
+  return { seeded: Array.isArray(rows) ? rows.length : 0, error: null };
+}
+
 async function getSources() {
   const select = 'id,name,type,url,kind,org,category,state,enabled,robots_ok,last_run_at,last_status';
   const r = await rest(`govt_sources?select=${select}&enabled=eq.true&order=name`);
@@ -828,6 +874,8 @@ module.exports = async function govtDiscovery(req, res) {
 
   robotsCache.clear();
   hostLastRequest.clear();
+
+  const seed = await ensureSources();
 
   const sources = await getSources();
   const results = [];
@@ -931,6 +979,8 @@ module.exports = async function govtDiscovery(req, res) {
 
   return res.status(200).json({
     ok: true,
+    seeded: seed.seeded,
+    seed_error: seed.error,
     summary,
     alert,
     results,

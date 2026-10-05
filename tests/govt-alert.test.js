@@ -117,5 +117,19 @@ assert.ok(/&quot;/.test(nasty), 'quotes must be escaped');
   assert.ok(/!\s*staged\.update/.test(crawler),
     'only genuinely new postings may be reported — an update to a queued row is not news');
 
+  /* The cron must be able to run with an empty govt_sources table. Only the
+     GitHub crawler used to seed it, so with that workflow unable to run the
+     sweep reported a clean "0 sources" and the queue silently froze. */
+  const cron = fs.readFileSync(path.join(root, '_api', 'govt-discovery.js'), 'utf8');
+  assert.ok(/config\/govt-sources\.json/.test(cron), 'the cron must know the configured sources');
+  assert.ok(/async function ensureSources\(\)/.test(cron), 'the cron must seed them itself');
+  assert.ok(/govt_sources\?on_conflict=url/.test(cron), 'seeding must upsert by url, not insert blindly');
+  assert.ok(/resolution=merge-duplicates/.test(cron), 'seeding must merge so a re-run is a no-op');
+  assert.ok(/SOURCES|getSources\(\)/.test(cron) && /const seed = await ensureSources\(\)/.test(cron),
+    'the sweep must seed before it reads the source list');
+  assert.ok(cron.indexOf('ensureSources()') < cron.indexOf('await getSources()'),
+    'seeding must happen before the sweep reads govt_sources');
+  assert.ok(/seed_error/.test(cron), 'a seeding failure must be visible in the response, not swallowed');
+
   console.log('Government new-civil-jobs alert tests: PASS');
 })().catch(e => { console.error(e); process.exit(1); });
