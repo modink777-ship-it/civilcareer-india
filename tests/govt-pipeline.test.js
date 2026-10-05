@@ -98,4 +98,41 @@ assert.strictEqual(classifyCivilLevel({ title: 'Civil Services Prelims' }).level
 assert.strictEqual(classifySpecialization({ title: 'AE (Civil) Highway Division' }), 'highway');
 assert.strictEqual(classifySpecialization({ title: 'JE (Civil), Irrigation Dept' }), 'irrigation');
 
+/* ── phase 28: dead government sources stay repaired ──────────────────────
+   Two enabled sources can never produce a lead: Employment News 404s on a
+   retired path (the crawler upserts by url, so repointing the config left a
+   stale orphan behind), and UPSC 403s the crawler's declared bot user agent.
+   The repair is easy to undo by accident — the crawler re-writes `enabled`
+   from config/govt-sources.json on every run — so pin both halves. */
+const repairPath = path.join(root, 'phase28-govt-source-repair.sql');
+assert.ok(fs.existsSync(repairPath), 'phase 28 source repair migration must exist');
+const repair = fs.readFileSync(repairPath, 'utf8');
+assert.ok(/name = 'Employment News'/.test(repair), 'repair must disable the retired Employment News row');
+assert.ok(/NewEmp\/AllJobs\.aspx\?k=All/.test(repair), 'repair must protect the working Employment News row');
+assert.ok(/name = 'UPSC Recruitment Advertisements'/.test(repair), 'repair must disable the WAF-blocked UPSC row');
+
+const sourcesCfg = JSON.parse(fs.readFileSync(path.join(root, 'config', 'govt-sources.json'), 'utf8'));
+const upsc = sourcesCfg.sources.find(s => s.name === 'UPSC Recruitment Advertisements');
+assert.ok(upsc, 'UPSC source must stay in the config');
+assert.strictEqual(upsc.enabled, false,
+  'UPSC must also be disabled in the config: the crawler writes enabled back from it on every run');
+
+/* scripts/crawl-govt-pipeline.js sends `{ ...source, enabled }` straight to
+   PostgREST, so a descriptive key added to the config is an unknown column and
+   rejects the row (PGRST204). Keys must stay inside the migration's columns. */
+const sourcesBlock = (sql.match(/create table if not exists public\.govt_sources\s*\(([\s\S]*?)\r?\n\);/i) || [, ''])[1];
+assert.ok(sourcesBlock, 'must be able to read the govt_sources column list');
+const sourceCols = new Set(
+  sourcesBlock.split('\n')
+    .map(l => (l.trim().match(/^([a-z_]+)\s/) || [])[1])
+    .filter(Boolean)
+);
+sourceCols.delete('id');
+for (const s of sourcesCfg.sources) {
+  for (const k of Object.keys(s)) {
+    assert.ok(sourceCols.has(k),
+      `config key "${k}" on "${s.name}" is not a govt_sources column — the seeder spreads it into PostgREST (PGRST204)`);
+  }
+}
+
 console.log('Government civil pipeline tests: PASS');
