@@ -62,10 +62,16 @@ jobs:
 
           fail=0
 
+          # The decoy credentials are deliberately short ("nope"). gitleaks'
+          # curl-auth-header rule treats `-H "Bearer <8+ word chars>"` as a
+          # leaked literal, so a hyphenated placeholder like
+          # "definitely-not-the-cron-secret" turns the secret scan red. Under
+          # eight word characters it cannot match, while the server still
+          # rejects it with 401.
           cron_good=$(curl -sS --max-time 60 -X OPTIONS "${SITE_URL}/api/govt-discovery" \
             -H "Authorization: Bearer ${CRON_SECRET}" -w '\n%{http_code}' || printf '\n000')
           cron_bad=$(curl -sS --max-time 60 -X OPTIONS "${SITE_URL}/api/govt-discovery" \
-            -H "Authorization: Bearer definitely-not-the-cron-secret" -w '\n%{http_code}' || printf '\n000')
+            -H "Authorization: Bearer nope" -w '\n%{http_code}' || printf '\n000')
 
           cron_good_code=$(printf '%s\n' "${cron_good}" | tail -n1)
           cron_bad_code=$(printf '%s\n' "${cron_bad}" | tail -n1)
@@ -85,7 +91,7 @@ jobs:
           own_good=$(curl -sS --max-time 60 "${SITE_URL}/api/whatsapp-subscribe" \
             -H "x-owner-key: ${OWNER_KEY}" -w '\n%{http_code}' || printf '\n000')
           own_bad=$(curl -sS --max-time 60 "${SITE_URL}/api/whatsapp-subscribe" \
-            -H "x-owner-key: definitely-not-the-owner-key" -w '\n%{http_code}' || printf '\n000')
+            -H "x-owner-key: nope" -w '\n%{http_code}' || printf '\n000')
 
           own_good_code=$(printf '%s\n' "${own_good}" | tail -n1)
           own_bad_code=$(printf '%s\n' "${own_bad}" | tail -n1)
