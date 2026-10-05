@@ -62,6 +62,9 @@ const DETAIL = '<html><body><h1>Junior Engineer (Civil)</h1>'
 
 let listingStatus = 200;
 let detailStatus = 200;
+/* Rows already in the queue for this source, returned by the pre-read the writer makes
+   before it upserts. Empty on a first crawl. */
+let existingRows = [];
 const pageHits = [];
 const restCalls = [];
 
@@ -85,6 +88,9 @@ global.fetch = async (url, opts = {}) => {
   if (target.includes('/rest/v1/govt_sources') && method === 'GET') return jsonResponse(200, [GOVTJOBGURU]);
   if (target.includes('/rest/v1/govt_job_leads')) return jsonResponse(200, [{ id: 'lead-1' }]);
   if (target.includes('/rest/v1/govt_job_staging') && method === 'POST') return jsonResponse(201, []);
+  if (target.includes('/rest/v1/govt_job_staging') && target.includes('payload->>source_name')) {
+    return jsonResponse(200, existingRows);
+  }
   if (target.includes('/rest/v1/govt_job_staging')) return jsonResponse(200, []);
   return jsonResponse(200, []);
 };
@@ -200,6 +206,51 @@ test('the feeds\' own evidence reaches the queue, in the feeds\' own columns', a
   assert.ok(notices.every(isOfficialHost), `every staged notice must be official, got ${JSON.stringify(notices)}`);
   assert.ok(payload.results.some(r => /official_links/.test(JSON.stringify(r)) || r.official_links >= 0),
     'the run must report how many official links it found');
+});
+
+test('a notice pasted in the queue survives the next sweep, and a rejected lead stays rejected', async () => {
+  listingStatus = 200;
+  detailStatus = 200;
+  existingRows = [];
+
+  /* First crawl: nothing queued yet. Pick a row the feed gave no notice link for — the
+     kind a reviewer has to fix by hand. */
+  await runScan();
+  const posted = restCalls
+    .filter(c => c.method === 'POST' && c.target.includes('/govt_job_staging'))
+    .map(c => c.body)
+    .filter(b => b && b.payload);
+  const blind = posted.find(b => !b.payload.official_notice_url);
+  assert.ok(blind, 'expected at least one lead with no official link of its own');
+  const key = blind.dedupe_key;
+  assert.ok(key, 'every staged row carries its dedupe key');
+
+  /* The reviewer pastes the notification from the department's own site. */
+  const PASTED = 'https://goa.gov.in/wp-content/uploads/2026/09/goa-housingboard.pdf';
+  existingRows = [{ dedupe_key: key, status: 'needs_info', payload: { official_notice_url: PASTED, official_site_url: 'https://goa.gov.in' } }];
+  await runScan();
+  const again = restCalls
+    .filter(c => c.method === 'POST' && c.target.includes('/govt_job_staging'))
+    .map(c => c.body)
+    .find(b => b && b.dedupe_key === key);
+  assert.ok(again, 'the sweep must still refresh the row it already has');
+  assert.equal(again.payload.official_notice_url, PASTED,
+    'the notice a human attached must not be wiped by the re-crawl');
+  assert.equal(again.status, 'pending', 'and the row becomes reviewable again');
+
+  /* A rejected lead must not come back for review every two hours. */
+  existingRows = [{ dedupe_key: key, status: 'rejected', payload: {} }];
+  const { payload: after } = await runScan();
+  assert.ok(
+    !restCalls.some(c => c.method === 'POST' && c.target.includes('/govt_job_staging') && c.body && c.body.dedupe_key === key),
+    'a rejected row must not be re-staged'
+  );
+  assert.ok(
+    (after.results || []).some(r => r.skipped_reviewed >= 1),
+    `the run must report the rows it left alone, got ${JSON.stringify((after.results || []).map(r => r.skipped_reviewed))}`
+  );
+
+  existingRows = [];
 });
 
 test('a 403 that survives the retry is reported as a throttled feed, not a dead one', async () => {

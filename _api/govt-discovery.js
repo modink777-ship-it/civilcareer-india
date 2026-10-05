@@ -42,7 +42,13 @@ function rest(path, opts = {}) {
    and rules on the posting's own words — the same extraction the GitHub crawler
    uses, so both writers agree on what "civil" means. */
 const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require("../lib/govt-aggregators");
-const { buildPayload, isOfficialHost, extractDeadline } = require("../lib/govt-lead-payload");
+const {
+  buildPayload,
+  keepReviewedFields,
+  reviewedAlready,
+  isOfficialHost,
+  extractDeadline,
+} = require("../lib/govt-lead-payload");
 const { sendCivilDigest, sendPipelineWarning } = require("../lib/govt-alert");
 
 const ROBOTS_UA =
@@ -769,8 +775,39 @@ function stagingPayload(source, candidate, classification) {
   });
 }
 
-async function stageCandidate(source, leadId, candidate, classification) {
+/* One read of this source's queued rows, keyed by dedupe_key. The staging write is an
+   upsert on dedupe_key, which REPLACES the payload — so without this a notice a reviewer
+   pasted would be wiped by the next sweep two hours later, and a row a reviewer had
+   already rejected or published would come back as pending. govt_job_staging has no
+   source_id column, so the rows are scoped by the source_name the payload carries. */
+async function existingStaging(source) {
+  const map = new Map();
+  const name = String((source && source.name) || "").trim();
+  if (!name) return map;
+  try {
+    const r = await rest(
+      `govt_job_staging?payload->>source_name=eq.${encodeURIComponent(name)}`
+        + "&select=dedupe_key,status,payload&limit=500"
+    );
+    if (!r.ok) return map;
+    for (const row of (await r.json()) || []) {
+      if (row && row.dedupe_key) map.set(row.dedupe_key, row);
+    }
+  } catch (_) {
+    /* A failed read must not stop the sweep: worst case the upsert behaves as before. */
+  }
+  return map;
+}
+
+async function stageCandidate(source, leadId, candidate, classification, existing) {
   const key = dedupeKey(candidate, classification);
+  const prev = existing && existing.get ? existing.get(key) : null;
+
+  /* A human already decided this one. Re-staging it as pending would put a rejected lead
+     back in front of the reviewer every two hours and could duplicate a published job. */
+  if (reviewedAlready(prev)) {
+    return { ok: true, error: null, skipped: 'already_reviewed' };
+  }
   /* Column contract: write ONLY columns that exist in the canonical
      migrations (phase19-govt-pipeline.sql). An unknown column makes
      PostgREST reject the whole row with PGRST204 and stages nothing.
@@ -796,8 +833,14 @@ async function stageCandidate(source, leadId, candidate, classification) {
        official_notice_url EMPTY unless a real government/PSU link was found. Writing
        the aggregator's own article URL there is what made every queued row look
        publishable while the publish gate refused all of them. */
-    payload: stagingPayload(source, candidate, classification),
+    payload: keepReviewedFields(stagingPayload(source, candidate, classification), prev),
   };
+
+  /* A notice the reviewer pasted, and the lead URL it arrived on, survive the re-crawl.
+     Only a link the publish gate accepts is carried over — never an aggregator URL. */
+  if (prev && prev.status === 'needs_info' && payload.payload.official_notice_url) {
+    payload.status = 'pending';
+  }
 
   const r = await rest('govt_job_staging?on_conflict=dedupe_key', {
     method: 'POST',
@@ -859,6 +902,7 @@ async function processSource(source, stopAt) {
     return result;
   }
 
+  const existing = await existingStaging(source);
   const adapter = adapterFor(source.url);
   let candidates;
 
@@ -897,11 +941,13 @@ async function processSource(source, stopAt) {
       source,
       lead.id,
       candidate,
-      classification
+      classification,
+      existing
     );
 
     if (staged.ok) {
-      result.staged += 1;
+      if (staged.skipped) result.skipped_reviewed = (result.skipped_reviewed || 0) + 1;
+      else result.staged += 1;
     } else {
       result.errors.push(`stage:${staged.error}`);
     }

@@ -11,7 +11,7 @@ const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require
    once — the cron staged six fields and put the aggregator's own URL in
    official_notice_url — and the review queue showed empty evidence on every lead.
    One builder, one shape. */
-const { buildPayload } = require('../lib/govt-lead-payload');
+const { buildPayload, keepReviewedFields, reviewedAlready } = require('../lib/govt-lead-payload');
 const { sendCivilDigest } = require('../lib/govt-alert');
 const execFileAsync = promisify(execFile);
 
@@ -352,9 +352,16 @@ async function stageLead(source, sourceId, lead, candidate, pageText) {
     deadline,
   });
   const dedupeKey = sha([norm(payload.organization), norm(payload.notification_no || payload.title), norm(payload.deadline.date || payload.deadline.text)].join('|'));
-  const check = await supa(`govt_job_staging?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id,linked_govt_job_id&limit=1`);
+  const check = await supa(`govt_job_staging?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id,linked_govt_job_id,status,payload&limit=1`);
   const dupes = check.ok ? await check.json() : [];
   if (dupes.length) {
+    /* A human already decided this row: rejected means rejected, and an approved row
+       must not be staged again as pending. */
+    if (reviewedAlready(dupes[0])) return { skipped: 'already_reviewed' };
+    /* Everything below writes a fresh payload over the row (upsert on dedupe_key), so
+       carry the notice a reviewer pasted across it — otherwise attaching one is undone
+       by the next two-hourly crawl. */
+    keepReviewedFields(payload, dupes[0]);
     /* Same notification seen again → if its fields changed (e.g. extended
        date), record an UPDATED inbox item instead of dropping it silently. */
     const kind = detectInboxKind(candidate.title, candidate.url);
