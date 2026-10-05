@@ -6092,17 +6092,28 @@ function govtRenderReview(){
     +'</div>'
     +list.map(it=>{
     const p=it.payload||{};
-    const evid=(p.civil_evidence?' · '+p.civil_evidence:'')+(p.source_section?' · '+p.source_section:'');
+    /* Show the aggregator's OWN evidence: the qualification text it published, the
+       section it filed the posting under, and whether a real official notice link
+       was found — publishing is refused without one (spec §7), so the reviewer can
+       see at a glance which rows can go straight out and which need a notice URL. */
+    const evid=p.civil_evidence?govtEsc(p.civil_evidence):'';
+    const section=p.source_section?govtEsc(p.source_section):'';
+    const isOfficialNotice=!!p.official_notice_url && /(^|\.)(gov|nic)\.in$|\.gov\.in$|\.nic\.in$|(^|\.)(bhel\.com|ntpc\.co\.in|rites\.com|ircon\.org|aai\.aero)$/.test((function(u){try{return new URL(u).hostname.toLowerCase().replace(/^www\./,'')}catch(e){return ''}})(p.official_notice_url));
+    const meta=[p.organization,section,p.vacancies?p.vacancies+' posts':'',(p.deadline&&(p.deadline.date||p.deadline.text))?'closes '+(p.deadline.date||p.deadline.text):''].filter(Boolean).join(' · ');
     return '<div class="govt-item admin-job-row" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
       +'<input type="checkbox" class="admin-job-select govt-bulk-select" value="'+govtEsc(it.id)+'" onchange="govtBulkUpdate()">'
       +'<div class="list-item-info">'
-      +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span>'+(evid?' <span class="govt-badge">'+govtEsc(evid.slice(0,40))+'</span>':'')+'</h4>'
-      +'<p>'+govtEsc((p.qualification||it.reject_reason||it.review_notes||p.excerpt||'').slice(0,180))+'</p>'
+      +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span>'+(evid?' <span class="govt-badge">matched: '+evid+'</span>':'')+'</h4>'
+      +(meta?'<p>'+govtEsc(meta.slice(0,150))+'</p>':'')
+      +(p.qualification?'<p style="color:#cbd5e1">Qualification: '+govtEsc(String(p.qualification).slice(0,200))+'</p>':'')
+      +'<p>'+govtEsc((it.reject_reason||it.review_notes||'').slice(0,180)||('discovered '+govtEsc(String(it.created_at||'').slice(0,10))))+'</p>'
       +'</div>'
       +'<div class="govt-actions">'
       +(it.status==='pending'||it.status==='needs_info'?'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Approve &amp; Publish</button>':'')
       +(it.status!=='approved'?'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>':'')
       +(it.status!=='rejected'&&it.status!=='approved'?'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>':'')
+      +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Aggregator ↗</a>':'')
+      +(p.official_notice_url?'<a class="btn-open-src" href="'+govtEsc(p.official_notice_url)+'" target="_blank" rel="noopener noreferrer">'+(isOfficialNotice?'🛡 Official notice ↗':'Notice (unverified) ↗')+'</a>':'')
       +'</div></div>';
   }).join('');
 }

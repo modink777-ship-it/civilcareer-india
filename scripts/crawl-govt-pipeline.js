@@ -7,6 +7,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { classifyPost, classifyNotification, classifyNotificationDetailed } = require('../lib/civil-classifier');
 const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require('../lib/govt-aggregators');
+const { sendCivilDigest } = require('../lib/govt-alert');
 const execFileAsync = promisify(execFile);
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
@@ -488,8 +489,20 @@ async function collectFromAdapter(source, sourceId, adapter, listingText, result
       { ...r, structured: true, civilEligible: Boolean(select.eligible), officialNotice },
       detail
     );
-    if (staged.staged) result.staged += 1;
-    else result.skipped[staged.skipped || 'unknown'] = (result.skipped[staged.skipped || 'unknown'] || 0) + 1;
+    if (staged.staged) {
+      result.staged += 1;
+      /* Only a posting that was not already in the queue is news. A re-crawl that
+         sees the same row, or records a change to it, stays quiet. */
+      if (!staged.update) {
+        (result.newCivil = result.newCivil || []).push({
+          title: r.title,
+          organization: r.org || source.org,
+          qualification: r.qualification,
+          deadline: r.deadlineText,
+          source: `${source.name} — ${r.url}`,
+        });
+      }
+    } else result.skipped[staged.skipped || 'unknown'] = (result.skipped[staged.skipped || 'unknown'] || 0) + 1;
   }
 }
 
@@ -528,8 +541,16 @@ async function runSource(source, sourceId) {
         else { const d = await fetchText(c.url); detail = d.text; }
       } catch (_) { detail = ''; }
       const staged = await stageLead(source, sourceId, lead, c, detail || page.text);
-      if (staged.staged) result.staged += 1;
-      else result.skipped[staged.skipped || 'unknown'] = (result.skipped[staged.skipped || 'unknown'] || 0) + 1;
+      if (staged.staged) {
+        result.staged += 1;
+        if (!staged.update) {
+          (result.newCivil = result.newCivil || []).push({
+            title: c.title,
+            organization: source.org,
+            source: `${source.name} — ${c.url}`,
+          });
+        }
+      } else result.skipped[staged.skipped || 'unknown'] = (result.skipped[staged.skipped || 'unknown'] || 0) + 1;
     }
     await updateSource(sourceId, { robots_ok: true, last_status: 'ok', last_run_at: new Date().toISOString(), etag: page.etag || null, last_modified: page.lastModified || null, last_error: null, items_found: result.found, items_staged: result.staged });
   } catch (e) {
@@ -557,7 +578,14 @@ async function main() {
     reports.push(await runSource(source, id));
   }
   const totals = reports.reduce((a, r) => { a.found += r.found || 0; a.staged += r.staged || 0; if (r.error) a.errors += 1; return a; }, { found: 0, staged: 0, errors: 0 });
-  console.log(JSON.stringify({ ok: totals.errors === 0, totals, reports }, null, 2));
+  /* One digest for the whole run, not one per source. Best effort: a failed
+     notification must never fail the crawl. */
+  const newCivil = reports.flatMap(r => r.newCivil || []);
+  const alert = await sendCivilDigest(newCivil, { siteUrl: SITE });
+  if (alert.sent) console.log(`alert: notified owner about ${newCivil.length} new civil posting(s)`);
+  else if (alert.error) console.error(`alert: not sent (${alert.error})`);
+  else console.log(`alert: skipped (${alert.skipped})`);
+  console.log(JSON.stringify({ ok: totals.errors === 0, totals, new_civil: newCivil.length, alert, reports }, null, 2));
   if (totals.errors === reports.length && reports.length) process.exitCode = 1;
 }
 

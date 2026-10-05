@@ -42,6 +42,7 @@ function rest(path, opts = {}) {
    and rules on the posting's own words — the same extraction the GitHub crawler
    uses, so both writers agree on what "civil" means. */
 const { adapterFor, selectCivil, classifyRecord } = require("../lib/govt-aggregators");
+const { sendCivilDigest } = require("../lib/govt-alert");
 
 const ROBOTS_UA =
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
@@ -883,6 +884,33 @@ module.exports = async function govtDiscovery(req, res) {
 
   const deferred = ordered.slice(cursor).map((s) => s.name);
 
+  /* Tell the owner what is waiting. One query for everything this run actually
+     inserted — the alternate path, a per-candidate existence check, would add a
+     request per posting inside a 50 s budget. The other writer (the GitHub
+     crawler) alerts from its own dedupe, so whichever runs second sees the rows
+     already staged and stays quiet. Best effort: never fails the response. */
+  let alert = { sent: false, skipped: "nothing-new", error: null };
+  try {
+    const since = new Date(startedAt).toISOString();
+    const fresh = await rest(
+      `govt_job_staging?select=status,payload&created_at=gte.${encodeURIComponent(since)}`
+        + `&civil_status=in.(civil,multi_incl_civil)&order=created_at.desc&limit=25`
+    );
+    const rows = fresh.ok ? (await fresh.json()) || [] : [];
+    alert = await sendCivilDigest(
+      rows.map((r) => ({
+        title: (r.payload && r.payload.title) || "(untitled)",
+        organization: (r.payload && r.payload.organization) || "",
+        qualification: (r.payload && r.payload.qualification) || "",
+        deadline: (r.payload && r.payload.deadline && r.payload.deadline.date) || "",
+        source: (r.payload && r.payload.source_url) || "",
+      })),
+      { siteUrl: process.env.SITE_URL }
+    );
+  } catch (e) {
+    alert = { sent: false, skipped: null, error: String((e && e.message) || e).slice(0, 160) };
+  }
+
   const summary = {
     sources: sources.length,
     sources_processed: results.length,
@@ -904,6 +932,7 @@ module.exports = async function govtDiscovery(req, res) {
   return res.status(200).json({
     ok: true,
     summary,
+    alert,
     results,
     deferred,
     note: deferred.length

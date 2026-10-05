@@ -39,8 +39,22 @@ assert.ok(escSrc, 'admin.html must still define govtEsc');
 const rendererSrc = extract('function govtRenderReview(){', "}).join('');");
 const cache = {
   review: [
-    { id: 'aaa', status: 'pending', civil_status: 'civil', tier: 'A', payload: { title: 'PWD Junior Engineer (Civil)', organization: 'PWD', qualification: 'Diploma in Civil Engineering', civil_evidence: 'qualification' } },
-    { id: 'bbb', status: 'needs_info', civil_status: 'multi_incl_civil', tier: 'B', payload: { title: 'MPESB Sub Engineer', organization: 'MPESB', civil_evidence: 'section', source_section: 'Civil (23)' } },
+    {
+      id: 'aaa', status: 'pending', civil_status: 'civil', tier: 'A', created_at: '2026-10-06T02:00:00Z',
+      payload: {
+        title: 'PWD Karnataka - Junior Engineer (Civil)', organization: 'PWD', qualification: 'Diploma in Civil Engineering',
+        civil_evidence: 'qualification', vacancies: '870', deadline: { date: '2026-10-21' },
+        source_url: 'https://govtjobguru.in/jobs/pwd-je-2026/', official_notice_url: 'https://karnataka.gov.in/notice/pwd-je.pdf',
+      },
+    },
+    {
+      id: 'bbb', status: 'needs_info', civil_status: 'multi_incl_civil', tier: 'B', created_at: '2026-10-06T02:00:00Z',
+      payload: {
+        title: 'MPESB Sub Engineer', organization: 'MPESB', civil_evidence: 'section', source_section: 'Civil (23)',
+        source_url: 'https://linkingsky.com/government-exams/Engineers_Jobs.html#engineer-civil',
+        official_notice_url: 'https://govtjobguru.in/jobs/mpeb/',
+      },
+    },
   ],
 };
 let container = { innerHTML: '' };
@@ -68,6 +82,19 @@ assert.ok(/value="aaa"/.test(html) && /value="bbb"/.test(html), 'each checkbox m
 assert.ok(/govtBulkUpdate\(\)/.test(html), 'changing a checkbox must refresh the count');
 assert.ok(html.indexOf('admin-jobs-bulkbar') < html.indexOf('govt-bulk-select'),
   'the bar must come before the rows it controls');
+
+/* The reviewer must be able to judge a row without opening the aggregator: the
+   site's own qualification text, how it qualified, and whether a real official
+   notice link was found (publishing is refused without one, spec §7). */
+assert.ok(/Qualification: Diploma in Civil Engineering/.test(html), 'the aggregator\'s qualification text must be shown');
+assert.ok(/matched: qualification/.test(html), 'how the posting qualified must be shown');
+assert.ok(/matched: section/.test(html) && /Civil \(23\)/.test(html), 'a section-scoped match must name its section');
+assert.ok(/closes 2026-10-21/.test(html) && /870 posts/.test(html), 'deadline and vacancies must be shown');
+assert.ok(/🛡 Official notice ↗/.test(html), 'an official-host notice link must be labelled as official');
+assert.ok(/Notice \(unverified\) ↗/.test(html), 'an aggregator-host notice link must NOT be labelled official');
+assert.ok(/Aggregator ↗/.test(html), 'the source link must stay reachable');
+assert.strictEqual((html.match(/🛡 Official notice ↗/g) || []).length, 1,
+  'only the row with an official-host notice may be labelled official');
 /* An empty queue must not render a bar that selects nothing. */
 const empty = { innerHTML: '' };
 const renderEmpty = new Function('govtEsc', 'govtCache', '$', `${escSrc}\n${rendererSrc}\nreturn govtRenderReview;`)(

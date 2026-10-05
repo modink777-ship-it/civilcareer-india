@@ -27,10 +27,16 @@ jobs:
           node-version: 24
           node-version-file: .nvmrc
 
-      - name: Crawl official sources into the review queue
+      - name: Crawl the aggregator feeds into the review queue
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Optional: one Telegram digest per run, and only when genuinely new
+          # civil postings were staged (a re-crawl of the same rows stays
+          # quiet). Unset values simply skip the alert.
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
         run: node scripts/crawl-govt-pipeline.js
 
       - name: Summary
@@ -38,3 +44,4 @@ jobs:
         run: |
           echo "### Government Civil Pipeline" >> "$GITHUB_STEP_SUMMARY"
           echo "Staged items await human review in /admin → Government Jobs." >> "$GITHUB_STEP_SUMMARY"
+          echo "Each run reads the six engineering aggregator feeds listed in config/govt-sources.json." >> "$GITHUB_STEP_SUMMARY"
