@@ -309,13 +309,17 @@ module.exports = async function handler(req, res) {
     const cronAuthorized = isValidCronRequest(req);
     const socialDrain = pathName === '/api/social' && isSocialDrainRequest(req);
     const rule = ADMIN_RULES[pathName];
-    if (rule && rule(req)) {
-      /* A CRON_SECRET is valid only for the explicitly scheduled routes.
-         Never let possession of the scheduler credential bypass an unrelated
-         admin allowlist. */
-      if (cronAuthorized && CRON_ROUTES.has(pathName)) {
-        req.isCron = true;
-      } else if (socialDrain) {
+    /* A CRON_SECRET is valid only for the explicitly scheduled routes
+       (CRON_ROUTES), and it must be honoured BEFORE the per-route allowlist.
+       For those routes the rule is the negation of this same check
+       ('/api/govt-discovery': req => !isValidCronRequest(req)), so gating on
+       the rule first left req.isCron unset on every legitimate cron run and
+       the handler answered 401 "Cron authorization required.". Never let the
+       scheduler credential bypass an unrelated admin allowlist. */
+    if (cronAuthorized && CRON_ROUTES.has(pathName)) {
+      req.isCron = true;
+    } else if (rule && rule(req)) {
+      if (socialDrain) {
         /* SOCIAL_CRON_SECRET elevates op=drain only — the
            /api/social handler re-verifies the credential and
            refuses every other operation with it. */
