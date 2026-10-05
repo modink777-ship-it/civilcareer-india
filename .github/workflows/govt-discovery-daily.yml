@@ -1,8 +1,7 @@
-name: Govt Discovery Every 2 Hours
+name: Civil job discovery (every 2 hours)
 
 on:
   schedule:
-    # every 2 hours (21:00 UTC = 02:30 IST)
     - cron: '0 */2 * * *'
   workflow_dispatch:
 
@@ -10,12 +9,30 @@ jobs:
   discover:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Government Discovery Scan
+      - name: Civil job discovery run
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          OWNER_KEY: ${{ secrets.OWNER_KEY }}
         run: |
-          # /api/govt-discovery requires the CRON_SECRET bearer token
-          # (the Vercel cron credential) — the owner key is not accepted
-          # on this route since the admin-auth rework.
-          curl -sS -X POST "${{ secrets.SITE_URL }}/api/govt-discovery" \
+          echo "Civil job discovery run"
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M') UTC"
+          echo "Drafts are waiting in Admin → Discovery for review."
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${SITE_URL}/api/civil-scraper" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d "{}"
+            -d "{\"key\":\"${OWNER_KEY}\"}" \
+            --max-time 55)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::API returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "Discovery completed."
