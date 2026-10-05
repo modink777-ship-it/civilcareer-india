@@ -116,16 +116,79 @@ test('the phantom full_payload / relevance_tier columns stay gone', () => {
   );
 });
 
+/* The payload itself is built by lib/govt-lead-payload.js now. Asserting on the real
+   function beats regexing a source literal: this is the object the publish gate reads. */
+const { buildPayload, isOfficialHost } = require('../lib/govt-lead-payload');
+
+const SAMPLE = {
+  source: { name: 'All Government Jobs Civil Engineering', type: 'aggregator_lead', url: 'https://allgovernmentjobs.in/civil-engineering-jobs', category: 'Other' },
+  record: {
+    title: 'Cochin Port Trust Recruitment 2026 - Apply Online for 20 Apprentice Posts',
+    url: 'https://allgovernmentjobs.in/cochin-port-trust-recruitment-2026-apply-online-for-20-apprentice-posts/44433',
+    org: '',
+    postName: 'Apprentice',
+    qualification: '',
+    vacancies: '20',
+    deadlineText: '',
+    section: 'civil engineering jobs',
+  },
+  select: { keep: true, evidence: 'section', eligible: true },
+  verdict: {
+    civil_status: 'civil',
+    posts: [{ post: { post_name: 'Apprentice', discipline: 'Civil', qualification: 'Diploma' }, outcome: 'civil', tier: 'B', score: 62, level: 'related' }],
+  },
+};
+
 test('the staged payload carries what the publish gate reads', () => {
-  /* _api/govt-review.js approve() derives the published job from item.payload:
-     without an official notice URL it refuses to publish. */
-  const payloadSrc = discoverySrc.slice(
-    discoverySrc.indexOf('payload: {', discoverySrc.indexOf('async function stageCandidate'))
-  );
+  const payload = buildPayload(SAMPLE);
   for (const field of ['title', 'organization', 'official_notice_url', 'source_type']) {
     assert.ok(
-      payloadSrc.slice(0, 900).includes(`${field}:`),
+      Object.prototype.hasOwnProperty.call(payload, field),
       `staged payload must include ${field} for approve()`
+    );
+  }
+  assert.equal(payload.title, SAMPLE.record.title);
+  assert.equal(payload.source_type, 'aggregator_lead');
+  assert.equal(payload.source_url, SAMPLE.record.url, 'the aggregator article stays the LEAD url');
+});
+
+test('the aggregator evidence the six feeds publish reaches the queue', () => {
+  const payload = buildPayload(SAMPLE);
+  assert.equal(payload.source_section, 'civil engineering jobs', 'the section the site filed it under');
+  assert.equal(payload.civil_evidence, 'section', 'why it qualified');
+  assert.equal(payload.vacancies, '20', 'the Posts column');
+  assert.equal(payload.source_name, SAMPLE.source.name);
+  assert.ok(Array.isArray(payload.post_candidates) && payload.post_candidates.length, 'post candidates drive the publish gate');
+});
+
+test('an aggregator URL is never staged as the official notice', () => {
+  /* The bug this guards: the cron wrote official_notice_url = candidate.source_url, so
+     every queued row displayed "Official notice https://allgovernmentjobs.in/..." and
+     the human publish gate refused all of them. Empty means "the reviewer attaches one". */
+  const withoutNotice = buildPayload(SAMPLE);
+  assert.equal(withoutNotice.official_notice_url, '', 'no official link found → stage none');
+  assert.notEqual(withoutNotice.official_notice_url, withoutNotice.source_url);
+
+  const withNotice = buildPayload({
+    ...SAMPLE,
+    officialNotice: 'https://cochinport.gov.in/uploads/advt-apprentice-2026.pdf',
+  });
+  assert.equal(withNotice.official_notice_url, 'https://cochinport.gov.in/uploads/advt-apprentice-2026.pdf');
+  assert.equal(withNotice.official_notice_url.startsWith('https://cochinport.gov.in'), true);
+
+  /* Just as important: anything the gate would reject must not be staged as if verified. */
+  const rejected = buildPayload({ ...SAMPLE, officialNotice: 'https://allgovernmentjobs.in/jobs/44433' });
+  assert.equal(rejected.official_notice_url, '');
+  assert.equal(isOfficialHost('https://allgovernmentjobs.in/jobs/44433'), false);
+  assert.equal(isOfficialHost('https://rites.com/careers/advt.pdf'), true, 'the gate allows the known PSU hosts');
+});
+
+test('both writers stage through the same payload builder', () => {
+  const crawlerSrc = fs.readFileSync(path.join(root, 'scripts', 'crawl-govt-pipeline.js'), 'utf8');
+  for (const [name, src] of [['_api/govt-discovery.js', discoverySrc], ['scripts/crawl-govt-pipeline.js', crawlerSrc]]) {
+    assert.ok(
+      /require\(['"]\.\.\/lib\/govt-lead-payload['"]\)/.test(src),
+      `${name} must build its staging payload with lib/govt-lead-payload`
     );
   }
 });

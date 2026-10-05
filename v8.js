@@ -311,7 +311,7 @@ function ensurePager(id,afterId){
   }
 }
 async function renderGovernment(page=1){
-  wireExplorer();wireExplorer2();renderGovFilterBar();
+  wireExplorer();wireExplorer2();renderGovFilterBar();ensureGovFeedStrip();
   const root=$('governmentJobs'); if(!root)return;
   if(page===1)root.innerHTML='<div class="empty-state"><p>Loading government civil recruitment…</p></div>';
   try{
@@ -460,6 +460,33 @@ openMaterialDedicated=function(m,push=true){
    ═══════════════════════════════════════════════════════════════════ */
 function govtEsc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function govtDetailPath(j){return `/government-jobs/job/${encodeURIComponent(j.slug||j.id||'')}`}
+/* The six aggregator feeds this section is built on, in the same order as
+   config/govt-sources.json. A feed is only ever a LEAD: an entry appears on this page
+   after a human editor has reviewed it AND an official government notification link is
+   on record. Showing which feed surfaced it keeps the whole chain visible to the user. */
+const GOVT_FEEDS=[
+  {host:'govtjobguru.in',label:'govtjobguru — Engineering Jobs',url:'https://govtjobguru.in/jobs-by-post/engineering-jobs/'},
+  {host:'karnatakacareers.org',label:'Karnataka Careers — Civil Engineering Jobs',url:'https://www.karnatakacareers.org/qualification/civil-engineering-jobs/'},
+  {host:'linkingsky.com',label:'Linking Sky — Engineer Jobs',url:'https://linkingsky.com/government-exams/Engineers_Jobs.html'},
+  {host:'allgovernmentjobs.in',label:'All Government Jobs — Civil Engineering',url:'https://allgovernmentjobs.in/civil-engineering-jobs'},
+  {host:'freejobalert.com',label:'FreeJobAlert — Engineering Jobs',url:'https://www.freejobalert.com/engineering-jobs/'},
+  {host:'indgovtjobs.net',label:'KA IndGovtJobs — Engineering (Karnataka)',url:'https://ka.indgovtjobs.net/qualifications/engineering-government-jobs-karnataka/'},
+];
+function govtFeedFor(url){
+  let h='';try{h=new URL(String(url||''),location.origin).hostname.toLowerCase().replace(/^www\./,'')}catch(e){return null}
+  return GOVT_FEEDS.find(f=>h===f.host||h.endsWith('.'+f.host))||null;
+}
+function govtFeedChip(j){
+  const f=govtFeedFor(j&&(j.sourceUrl||j.officialSiteUrl));
+  return f?`<span class="gov-feed-chip" title="First seen on ${govtEsc2(f.label)}">via ${govtEsc2(f.label.split(' —')[0])}</span>`:'';
+}
+/* "Where these listings come from" — the six feeds, linked, with the rule stated. */
+function ensureGovFeedStrip(){
+  const box=$('govtFeedSources');if(!box)return;
+  box.innerHTML='<b>Discovery feeds we monitor</b>'
+    +'<div class="gov-feed-links">'+GOVT_FEEDS.map(f=>`<a href="${f.url}" target="_blank" rel="noopener noreferrer">${govtEsc2(f.label)} ↗</a>`).join('')+'</div>'
+    +'<span>These six public aggregator feeds are checked every two hours for civil engineering postings. A feed is only a lead — nothing is listed here until a human editor has reviewed it and an official government notification link is on record.</span>';
+}
 function govtDaysLeftText(j){
   if(j.expired)return'';
   const d=Number(j.daysLeft);
@@ -470,11 +497,12 @@ function govtDaysLeftText(j){
 }
 function govtCard(j){
   const meta=[j.state&&j.state!=='All India'?j.state:'All India',String(j.govLevel||'').toUpperCase(),(j.vacancies!=null?`${j.vacancies} civil vacancies`:null),(j.totalVacancies!=null&&j.vacancies==null?`${j.totalVacancies} total vacancies`:null)].filter(Boolean);
+  const feedChip=govtFeedChip(j);
   const left=govtDaysLeftText(j);
   return `<article class="job-card"><div class="card-top">${j.expired?'<span class="pill closed">Closed</span>':'<span class="pill verified">Human-reviewed</span>'}<span class="verified-date">${govtEsc2(left)}</span></div>`
     +`<h3><a class="detail-link" href="${govtEsc2(govtDetailPath(j))}" data-dynamic-route="true">${govtEsc2(j.title||'Government recruitment')}</a></h3>`
     +`<div class="organization">${govtEsc2(j.organization||'Government organization')}${j.department?` · ${govtEsc2(j.department)}`:''}</div>`
-    +`<div class="card-meta">${meta.map(x=>`<span>${govtEsc2(x)}</span>`).join('')}</div>`
+    +`<div class="card-meta">${meta.map(x=>`<span>${govtEsc2(x)}</span>`).join('')}${feedChip}</div>`
     +(j.post?`<p class="card-copy">Post: ${govtEsc2(j.post)}${j.qualification?` · Qualification: ${govtEsc2(j.qualification)}`:''}</p>`:'')
     +`<div class="card-actions"><a class="detail-link" href="${govtEsc2(govtDetailPath(j))}" data-dynamic-route="true">View notification details</a>${j.officialNotificationUrl?`<a href="${govtEsc2(j.officialNotificationUrl)}" target="_blank" rel="noopener noreferrer">Official notification ↗</a>`:''}</div></article>`;
 }
@@ -504,6 +532,7 @@ async function openGovtJobDetail(slug,path){
     +`${closed?'<div class="expired-banner">Applications for this recruitment have closed. Retained for reference only.</div>':''}`
     +`<div class="card-actions job-apply-top">${links||'<span style="color:var(--muted)">Official links are added only from verified official sources.</span>'}</div>`
     +`<div class="detail-grid">`
+    +govtField('Surfaced by',(govtFeedFor(j.sourceUrl)||{}).label||null)
     +govtField('Post',j.post)
     +govtField('Civil vacancies',j.vacancies!=null?String(j.vacancies):null)
     +govtField('Total vacancies',j.totalVacancies!=null?String(j.totalVacancies):null)

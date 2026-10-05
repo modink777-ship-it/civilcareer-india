@@ -37,6 +37,12 @@ assert.ok(escSrc, 'admin.html must still define govtEsc');
 /* ── the renderer ───────────────────────────────────────────────────────── */
 
 const rendererSrc = extract('function govtRenderReview(){', "}).join('');");
+/* The row is rendered as the six feeds' own columns, so the renderer now calls these
+   helpers. They are injected the same way govtEsc is: real shipped code, stubbed
+   surroundings. */
+const helperSrc = ['function govtIsOfficialUrl(u){', 'function govtFeedColumns(p){', 'function govtFeedTable(p){', 'function govtNoticeAttachHtml(id,p,inputId){']
+  .map((header) => extract(header, ''))
+  .join('\n');
 const cache = {
   review: [
     {
@@ -59,12 +65,12 @@ const cache = {
 };
 let container = { innerHTML: '' };
 const $stub = (id) => { assert.strictEqual(id, 'govtListReview'); return container; };
-const govtRenderReview = new Function('govtEsc', 'govtCache', '$', `${escSrc}\n${rendererSrc}\nreturn govtRenderReview;`)(null, cache, $stub);
+const build = (esc) => new Function('govtEsc', 'govtCache', '$', `${escSrc}\n${helperSrc}\n${rendererSrc}\nreturn govtRenderReview;`)(esc, cache, $stub);
+const govtRenderReview = build(null);
 /* govtEsc is only used for escaping in the real page; keep a faithful stub so the
    markup assertions below are about structure, not escaping. */
-const govtRenderReviewEsc = new Function('govtEsc', 'govtCache', '$', `${escSrc}\n${rendererSrc}\nreturn govtRenderReview;`)(
-  (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
-  cache, $stub
+const govtRenderReviewEsc = build(
+  (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 );
 govtRenderReviewEsc();
 const html = container.innerHTML;
@@ -83,18 +89,30 @@ assert.ok(/govtBulkUpdate\(\)/.test(html), 'changing a checkbox must refresh the
 assert.ok(html.indexOf('admin-jobs-bulkbar') < html.indexOf('govt-bulk-select'),
   'the bar must come before the rows it controls');
 
-/* The reviewer must be able to judge a row without opening the aggregator: the
-   site's own qualification text, how it qualified, and whether a real official
-   notice link was found (publishing is refused without one, spec §7). */
-assert.ok(/Qualification: Diploma in Civil Engineering/.test(html), 'the aggregator\'s qualification text must be shown');
+/* The reviewer must be able to judge a row without opening the aggregator, in the same
+   columns the feed itself printed: Organization, Post, Qualification, Advt no, Posts,
+   Last date, the section it was filed under, and how it qualified. Publishing is
+   refused without a real official notice (spec §7), so that has to be obvious too. */
+const feedRow = (label, value) => new RegExp(`class="rm-label">${label}</span><span class="rm-value">${value}`);
+assert.ok(feedRow('Qualification', 'Diploma in Civil Engineering').test(html),
+  'the aggregator\'s qualification text must be shown in its own column');
+assert.ok(feedRow('Posts', '870').test(html), 'the Posts column must be shown');
+assert.ok(feedRow('Last date', '2026-10-21').test(html), 'the Last date column must be shown');
+assert.ok(feedRow('Feed section', 'Civil \\(23\\)').test(html), 'the section the site filed it under must be shown');
+assert.ok(/govt-feed-grid/.test(html), 'the evidence must render as the feed\'s own columns');
 assert.ok(/matched: qualification/.test(html), 'how the posting qualified must be shown');
-assert.ok(/matched: section/.test(html) && /Civil \(23\)/.test(html), 'a section-scoped match must name its section');
-assert.ok(/closes 2026-10-21/.test(html) && /870 posts/.test(html), 'deadline and vacancies must be shown');
+assert.ok(/matched: section/.test(html), 'a section-scoped match must be labelled');
 assert.ok(/🛡 Official notice ↗/.test(html), 'an official-host notice link must be labelled as official');
 assert.ok(/Notice \(unverified\) ↗/.test(html), 'an aggregator-host notice link must NOT be labelled official');
 assert.ok(/Aggregator ↗/.test(html), 'the source link must stay reachable');
 assert.strictEqual((html.match(/🛡 Official notice ↗/g) || []).length, 1,
   'only the row with an official-host notice may be labelled official');
+/* Three of the six feeds publish no official link at all, so a row without one must
+   offer the paste control the backend validates — otherwise those leads can never be
+   published. */
+assert.ok(/class="govt-notice-paste"/.test(html), 'a row without an official notice must offer the paste control');
+assert.ok(/govtAttachNotice\('bbb'/.test(html), 'the paste control must attach to that staging item');
+assert.ok(govtRenderReview /* built above */ !== null);
 /* An empty queue must not render a bar that selects nothing. */
 const empty = { innerHTML: '' };
 const renderEmpty = new Function('govtEsc', 'govtCache', '$', `${escSrc}\n${rendererSrc}\nreturn govtRenderReview;`)(

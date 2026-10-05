@@ -1888,6 +1888,16 @@ html[data-theme="light"]{color-scheme:light}
 html[data-theme="dark"] .view-toggle button{background:#142B47!important;color:#C7D3E2!important}
 html[data-theme="dark"] .view-toggle button.active{background:#1D72EE!important;color:#fff!important}
 /* Government table view */
+/* Government jobs page: the six aggregator feeds the section is built on, and the
+   "via <feed>" attribution on each published notification. A feed is only a lead —
+   the strip says so, because that rule is the whole reason the section is trustworthy. */
+.gov-feed-strip{border:1px solid var(--cc-border);border-radius:10px;background:var(--soft);padding:12px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
+.gov-feed-strip>b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#354459}
+.gov-feed-strip>span{font-size:12.5px;line-height:1.55;color:#5b6b80}
+.gov-feed-links{display:flex;flex-wrap:wrap;gap:6px}
+.gov-feed-links a{font-size:12px;font-weight:700;color:var(--blue);text-decoration:none;border:1px solid var(--cc-border);border-radius:999px;padding:3px 10px;background:#fff}
+.gov-feed-links a:hover{border-color:var(--blue)}
+.gov-feed-chip{font-size:11px;font-weight:700;color:#6b5a2a;background:rgba(201,151,60,.16);border:1px solid rgba(201,151,60,.35);border-radius:999px;padding:2px 9px;white-space:nowrap}
 .gov-table-wrap{overflow-x:auto;border:1px solid var(--cc-border);border-radius:10px;background:#fff}
 .gov-table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
 .gov-table th{position:sticky;top:0;background:var(--soft);color:#354459;text-align:left;padding:11px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em}

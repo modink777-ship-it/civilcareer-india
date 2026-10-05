@@ -7,6 +7,11 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { classifyPost, classifyNotification, classifyNotificationDetailed } = require('../lib/civil-classifier');
 const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require('../lib/govt-aggregators');
+/* The same payload builder the /api/govt-discovery cron uses. The two writers drifted
+   once — the cron staged six fields and put the aggregator's own URL in
+   official_notice_url — and the review queue showed empty evidence on every lead.
+   One builder, one shape. */
+const { buildPayload } = require('../lib/govt-lead-payload');
 const { sendCivilDigest } = require('../lib/govt-alert');
 const execFileAsync = promisify(execFile);
 
@@ -326,29 +331,26 @@ async function stageLead(source, sourceId, lead, candidate, pageText) {
       : (officialUrl(source.url) ? source.url : null);
   /* Spec §8: a discovery portal URL is a lead, never the official link. */
   if (source.type === 'official' && !officialUrl(candidate.url)) return { skipped: 'not_official' };
-  const payload = {
-    title: clean(candidate.title).slice(0, 500),
-    organization: parseOrg(text, orgHint),
-    organization_hint: orgHint,
-    source_type: source.type,
-    source_url: candidate.url,
-    official_notice_url: officialNotice || candidate.url || '',
-    official_site_url: (officialNotice || candidate.url) ? new URL(officialNotice || candidate.url).origin : '',
-    official_notification_url: candidate.url,
-    notification_no: parseNotificationNo(text),
-    /* Carried so the reviewer (and the publish job, which reads p.qualification)
-       sees exactly what the aggregator's own row said, and why it qualified. */
-    qualification: post.qualification || null,
-    vacancies: scoped ? (String(candidate.vacancies || '').trim() || null) : null,
-    source_section: scoped ? (candidate.section || null) : null,
-    civil_evidence: scoped ? (candidate.evidence || null) : null,
+  /* Carries exactly what the aggregator's own row said — qualification, posts,
+     last date, advt number, section, and why it qualified — so the reviewer (and the
+     publish job, which reads p.qualification) sees the evidence rather than an empty
+     card. `officialNotice` is only ever a URL the publish gate accepts; when the row
+     has none the field is left empty for the reviewer to fill from the queue. */
+  const payload = buildPayload({
+    source,
+    record: {
+      ...candidate,
+      org: parseOrg(text, orgHint),
+      qualification: post.qualification || candidate.qualification || '',
+      vacancies: scoped ? candidate.vacancies : '',
+      advtNo: candidate.advtNo || parseNotificationNo(text),
+    },
+    select: { evidence: scoped ? candidate.evidence : null, eligible: candidate.civilEligible },
+    verdict: classified,
+    officialNotice,
+    detailText: text,
     deadline,
-    post_candidates: classified.posts.map(x => ({ ...x.post, outcome: x.outcome, tier: x.tier, score: x.score, level: x.level, specialization: x.specialization })),
-    civil_discipline: classified.civil_discipline,
-    civil_specialization: classified.specialization,
-    excerpt: text.slice(0, 3500),
-    discovered_at: new Date().toISOString()
-  };
+  });
   const dedupeKey = sha([norm(payload.organization), norm(payload.notification_no || payload.title), norm(payload.deadline.date || payload.deadline.text)].join('|'));
   const check = await supa(`govt_job_staging?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id,linked_govt_job_id&limit=1`);
   const dupes = check.ok ? await check.json() : [];

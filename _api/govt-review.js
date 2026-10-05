@@ -344,6 +344,61 @@ function isOfficialHost(url) {
   } catch { return false; }
 }
 
+/* ── Pipeline liveness ──────────────────────────────────────────────────
+   A health roll-up that can actually go red. Every per-source row can read "ok"
+   while the pipeline has silently stopped producing — that is exactly what happened
+   when the sources table was emptied: the sweep answered 200 with "sources: 0", the
+   panel showed a tidy empty list, and nothing new arrived. The per-source view cannot
+   see that; this can. */
+const STALE_RUN_HOURS = 6;
+const STALE_STAGING_HOURS = 12;
+
+function hoursSince(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return Math.round(((Date.now() - t) / 3600000) * 10) / 10;
+}
+
+function pipelineState(sources, newest) {
+  const enabled = (sources || []).filter(s => s.enabled);
+  const lastRunAt = enabled.map(s => s.last_run_at).filter(Boolean).sort().pop() || null;
+  const lastStagingAt = (newest && newest.created_at) || null;
+  const hours_since_run = hoursSince(lastRunAt);
+  const hours_since_staging = hoursSince(lastStagingAt);
+  const staged_total = enabled.reduce((n, s) => n + (Number(s.items_staged) || 0), 0);
+
+  let stalled = false;
+  let reason = '';
+
+  if (!enabled.length) {
+    stalled = true;
+    reason = 'No enabled sources — the queue cannot fill.';
+  } else if (hours_since_run === null) {
+    stalled = true;
+    reason = 'No source has ever run.';
+  } else if (hours_since_run > STALE_RUN_HOURS) {
+    stalled = true;
+    reason = `No sweep in ${hours_since_run} h — the scheduled crawl is not firing.`;
+  } else if (hours_since_staging === null || hours_since_staging > STALE_STAGING_HOURS) {
+    stalled = true;
+    reason = hours_since_staging === null
+      ? 'No lead has ever been staged.'
+      : `No new lead staged in ${hours_since_staging} h.`;
+  }
+
+  return {
+    enabled: enabled.length,
+    last_run_at: lastRunAt,
+    last_staging_at: lastStagingAt,
+    hours_since_run,
+    hours_since_staging,
+    staged_total,
+    stalled,
+    reason,
+  };
+}
+
 /* ── Social engine bridge (unchanged from previous implementation) ──── */
 
 async function queueSocialSuggestion(sourceId) {
@@ -394,18 +449,24 @@ module.exports = async function handler(req, res) {
     /* ── GET: read models for the admin UI ─────────────────────────── */
     if (req.method === 'GET') {
       if (action === 'health') {
-        const [sources, pending, needs, results] = await Promise.all([
+        const [sources, pending, needs, results, newest] = await Promise.all([
           db('govt_sources?select=id,name,type,enabled,last_run_at,last_status,robots_ok,last_error,items_found,items_staged,url&order=name'),
           db('govt_job_staging?status=eq.pending&select=id&limit=1'),
           db('govt_job_staging?status=eq.needs_info&select=id&limit=1'),
           db('govt_conflicts?status=eq.open&select=id&limit=1'),
+          db('govt_job_staging?select=created_at,civil_status&order=created_at.desc&limit=1'),
         ]);
+        const sourceRows = sources.ok ? await sources.json() : [];
         return res.status(200).json({
           ok: true,
-          sources: sources.ok ? await sources.json() : [],
+          sources: sourceRows,
           pending: pending.ok ? (await pending.json()).length : 0,
           needs_info: needs.ok ? (await needs.json()).length : 0,
           open_conflicts: results.ok ? (await results.json()).length : 0,
+          /* Silence is the failure that hurt most: the queue froze at "sources: 0" while
+             every per-source row still looked clean. This is the one signal that cannot be
+             healthy while nothing is arriving — no run in 6 h, or no new lead in 12 h. */
+          pipeline: pipelineState(sourceRows, newest.ok ? (await newest.json())[0] : null),
         });
       }
 
@@ -516,6 +577,43 @@ module.exports = async function handler(req, res) {
         if (!r.ok) throw new Error((await r.text()).slice(0, 400));
         await audit('govt_job_staging', id, action, req.adminUser, { reason: b.reason || null });
         return res.status(200).json({ ok: true });
+      }
+
+      /* Spec §8 in practice: three of the six aggregator feeds (karnatakacareers,
+         allgovernmentjobs, linkingsky) publish NO official notice link at all, so their
+         leads can never be published until a human supplies one. The reviewer pastes the
+         URL from the department's own site; it is validated against the same host rule
+         the publish gate applies, so this can only ever unblock a real notice — it can
+         never smuggle an aggregator page past the gate. */
+      if (action === 'attach_notice') {
+        if (!id) return res.status(400).json({ ok: false, error: 'id is required.' });
+        const notice = String(b.official_notice_url || '').trim();
+        if (!notice) return res.status(400).json({ ok: false, error: 'official_notice_url is required.' });
+        if (!isOfficialHost(notice)) {
+          return res.status(400).json({
+            ok: false,
+            error: 'That is not an official government/PSU URL — an aggregator or agent page can never be the official notice.',
+          });
+        }
+        const cur = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}&select=id,payload,status&limit=1`);
+        if (!cur.ok) throw new Error((await cur.text()).slice(0, 300));
+        const row = (await cur.json())[0];
+        if (!row) return res.status(404).json({ ok: false, error: 'Staging item not found.' });
+        const payload = Object.assign({}, row.payload || {}, {
+          official_notice_url: notice,
+          official_site_url: (row.payload && row.payload.official_site_url) || new URL(notice).origin,
+        });
+        if (!payload.official_notification_url && payload.source_url) payload.official_notification_url = payload.source_url;
+        const patch = {
+          payload,
+          review_notes: `Official notice attached: ${notice}`.slice(0, 2000),
+        };
+        /* A row parked as needs_info becomes reviewable again the moment it has a notice. */
+        if (row.status === 'needs_info') patch.status = 'pending';
+        const r = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+        if (!r.ok) throw new Error((await r.text()).slice(0, 400));
+        await audit('govt_job_staging', id, 'attach_notice', req.adminUser, { official_notice_url: notice });
+        return res.status(200).json({ ok: true, official_notice_url: notice });
       }
 
       /* AI structuring on a staging item: evidence-only, never publishes. */

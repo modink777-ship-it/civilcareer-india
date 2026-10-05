@@ -41,8 +41,9 @@ function rest(path, opts = {}) {
    noise. The shared adapter library reads each site's own table/card structure
    and rules on the posting's own words — the same extraction the GitHub crawler
    uses, so both writers agree on what "civil" means. */
-const { adapterFor, selectCivil, classifyRecord } = require("../lib/govt-aggregators");
-const { sendCivilDigest } = require("../lib/govt-alert");
+const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require("../lib/govt-aggregators");
+const { buildPayload, isOfficialHost, extractDeadline } = require("../lib/govt-lead-payload");
+const { sendCivilDigest, sendPipelineWarning } = require("../lib/govt-alert");
 
 const ROBOTS_UA =
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
@@ -50,6 +51,9 @@ const ROBOTS_UA =
 const REQUEST_GAP_MS = 2000;
 const MAX_REDIRECTS = 5;
 const robotsCache = new Map();
+/* Raw robots.txt per origin, so a posting's own page can be checked against the same
+   rules without a second download. */
+const robotsText = new Map();
 const hostLastRequest = new Map();
 
 function sleep(ms) {
@@ -226,10 +230,13 @@ async function checkRobots(source) {
 
   if (robotsCache.has(origin)) {
     const cached = robotsCache.get(origin);
-    await updateSource(source.id, {
-      robots_ok: cached.allowed,
-      last_status: cached.status,
-    });
+    /* source.id is absent when this is a bare robots check for a detail page. */
+    if (source.id) {
+      await updateSource(source.id, {
+        robots_ok: cached.allowed,
+        last_status: cached.status,
+      });
+    }
     return cached;
   }
 
@@ -242,6 +249,7 @@ async function checkRobots(source) {
 
     if (response.status >= 200 && response.status < 300) {
       const allowed = robotsAllows(response.body, sourceUrl);
+      robotsText.set(origin, response.body);
       result = {
         allowed,
         status: allowed ? "robots:allowed" : "robots:disallowed",
@@ -281,6 +289,15 @@ async function checkRobots(source) {
   return result;
 }
 
+const BLOCKED_RETRIES = 2;
+const BLOCKED_BACKOFF_MS = 1500;
+
+/* One paced request to the source page. */
+async function sourceRequest(source) {
+  await politeDelay(source.url);
+  return rawFetch(source.url, 15000);
+}
+
 async function fetchSource(source) {
   const robots = await checkRobots(source);
 
@@ -294,15 +311,26 @@ async function fetchSource(source) {
   }
 
   try {
-    await politeDelay(source.url);
-    const response = await rawFetch(source.url, 15000);
+    let response = await sourceRequest(source);
+
+    /* ka.indgovtjobs.net sits behind Cloudflare: the same declared bot user agent gets
+       200 most of the time and an intermittent 403 at others (verified by hand against
+       the live host). One pause-and-retry turns most of those into a normal run; when it
+       still refuses we say so as a TRANSIENT block, not as a broken source, because the
+       page is fine — the site is throttling us. The bot never disguises itself or
+       retries harder than this. */
+    for (let attempt = 1; attempt <= BLOCKED_RETRIES && (response.status === 403 || response.status === 429); attempt += 1) {
+      await sleep(BLOCKED_BACKOFF_MS * attempt);
+      response = await sourceRequest(source);
+    }
 
     if (response.status === 403 || response.status === 429) {
       return {
         ok: false,
-        status: `source:http-${response.status}; stopped`,
+        status: `transient:http-${response.status}; throttled; retried; stopped`,
         body: "",
         url: response.url,
+        transient: true,
       };
     }
 
@@ -468,6 +496,13 @@ function adapterCandidates(html, source, adapter) {
         .join(" · ")
         .slice(0, 500),
       org_hint: record.org || source.org || source.name,
+      /* The site's OWN evidence travels with the candidate: its Qualification column,
+         its deadline column, the section it filed the posting under. Without these the
+         review queue showed "Deadline — / Qualification — / Posts found —" for every
+         aggregator lead, because only the crawler used to carry them. */
+      record,
+      select,
+      verdict,
       classification: {
         civil_status: verdict.civil_status,
         tier: top.tier || "B",
@@ -482,6 +517,86 @@ function adapterCandidates(html, source, adapter) {
   }
 
   return candidates;
+}
+
+/* Aggregator records are classified from the site's own table, so a detail page is
+   fetched only for the records that already survived — and only to attach the real
+   official notice URL the publish gate demands. Card listings (allgovernmentjobs,
+   linkingsky) publish no qualification or last date at all; the posting's own page
+   is where those live. Bounded per source and by the run deadline, so one slow host
+   cannot eat the serverless budget. */
+const MAX_DETAIL_FETCHES = Number(process.env.GOVT_MAX_DETAIL_FETCHES || 4);
+
+async function attachOfficialNotices(candidates, stopAt) {
+  let fetches = 0;
+  let errors = 0;
+
+  for (const candidate of candidates) {
+    if (fetches >= MAX_DETAIL_FETCHES) break;
+    if (Date.now() > stopAt) break;
+    fetches += 1;
+
+    const own = candidate.source_url;
+
+    /* The aggregator sometimes links straight AT the notification (linkingsky posts a
+       direct PDF). If that target is an official host it IS the notice. */
+    if (isOfficialHost(own)) {
+      candidate.officialNotice = own;
+      continue;
+    }
+    if (/\.pdf(?:$|[?#])/i.test(own)) continue;
+
+    try {
+      const detail = await fetchDetail(own);
+      if (!detail.ok) { errors += 1; candidate.detail_error = detail.status; continue; }
+      candidate.detailText = detail.body;
+      candidate.officialNotice = officialNoticeLinks(detail.body, detail.url, isOfficialHost)[0]
+        || (isOfficialHost(detail.url) ? detail.url : "")
+        || "";
+    } catch (error) {
+      errors += 1;
+      candidate.detail_error = String((error && error.message) || error).slice(0, 120);
+    }
+  }
+
+  return { fetches, errors };
+}
+
+/* One posting page. Same robots policy and pacing as every other request in this
+   pipeline: no detail page is fetched that robots.txt disallows. */
+async function fetchDetail(url) {
+  const allowed = await robotsAllowsUrl(url);
+  if (!allowed) return { ok: false, status: "robots_disallows", body: "", url };
+
+  try {
+    await politeDelay(url);
+    const response = await rawFetch(url, 12000);
+    if (![200, 203].includes(response.status)) {
+      return { ok: false, status: `http-${response.status}`, body: "", url: response.url };
+    }
+    return { ok: true, status: `http-${response.status}`, body: response.body, url: response.url };
+  } catch (error) {
+    return { ok: false, status: `error:${String(error.message || "unknown").slice(0, 80)}`, body: "", url };
+  }
+}
+
+/* robots.txt for an arbitrary URL (a posting's own page), reusing the text the
+   source sweep already downloaded for that origin. A failure here means "do not
+   fetch", never "fetch anyway". */
+async function robotsAllowsUrl(targetUrl) {
+  try {
+    const origin = new URL(targetUrl).origin;
+    let text = robotsText.get(origin);
+    if (text === undefined) {
+      await politeDelay(`${origin}/robots.txt`);
+      const response = await rawFetch(`${origin}/robots.txt`, 10000);
+      text = response.status >= 200 && response.status < 300 ? response.body : "";
+      robotsText.set(origin, text);
+    }
+    return robotsAllows(text, targetUrl);
+  } catch (_) {
+    return false;
+  }
 }
 
 const CIVIL_POSITIVE = [
@@ -631,9 +746,31 @@ async function upsertLead(source, candidate) {
   return { ok: true, id: rows[0] && rows[0].id };
 }
 
+/* Adapt either candidate shape into the shared payload builder. An adapter candidate
+   carries the site's own record; a generic anchor candidate IS the record. */
+function stagingPayload(source, candidate, classification) {
+  const record = candidate.record || {
+    title: candidate.title,
+    url: candidate.source_url,
+    org: candidate.org_hint,
+    postName: candidate.title,
+    excerpt: candidate.excerpt,
+  };
+  const officialNotice = candidate.officialNotice
+    || (isOfficialHost(candidate.source_url) ? candidate.source_url : "");
+
+  return buildPayload({
+    source,
+    record,
+    select: candidate.select || {},
+    verdict: candidate.verdict || classification,
+    officialNotice,
+    detailText: candidate.detailText || "",
+  });
+}
+
 async function stageCandidate(source, leadId, candidate, classification) {
   const key = dedupeKey(candidate, classification);
-
   /* Column contract: write ONLY columns that exist in the canonical
      migrations (phase19-govt-pipeline.sql). An unknown column makes
      PostgREST reject the whole row with PGRST204 and stages nothing.
@@ -653,19 +790,13 @@ async function stageCandidate(source, leadId, candidate, classification) {
     extraction_method: "rules",
     dedupe_key: key,
     match_reasons: classification.match_reasons,
-    payload: {
-      title: candidate.title,
-      organization: candidate.org_hint || source.org || source.name,
-      source_url: candidate.source_url,
-      official_notice_url: candidate.source_url,
-      official_site_url: source.url,
-      excerpt: candidate.excerpt,
-      source_name: source.name,
-      source_type: source.type,
-      source_category: source.category,
-      source_state: source.state,
-      civil_status: classification.civil_status,
-    },
+    /* ONE payload shape, built by lib/govt-lead-payload.js and shared with the GitHub
+       crawler. It carries the aggregator's own evidence (qualification, deadline,
+       vacancies, source_section, civil_evidence) and — critically — leaves
+       official_notice_url EMPTY unless a real government/PSU link was found. Writing
+       the aggregator's own article URL there is what made every queued row look
+       publishable while the publish gate refused all of them. */
+    payload: stagingPayload(source, candidate, classification),
   };
 
   const r = await rest('govt_job_staging?on_conflict=dedupe_key', {
@@ -680,7 +811,7 @@ async function stageCandidate(source, leadId, candidate, classification) {
   };
 }
 
-async function processSource(source) {
+async function processSource(source, stopAt) {
   const result = {
     source: source.name,
     source_id: source.id,
@@ -688,6 +819,8 @@ async function processSource(source) {
     fetched: false,
     candidates: 0,
     staged: 0,
+    detail_fetches: 0,
+    official_links: 0,
     errors: [],
   };
 
@@ -727,14 +860,25 @@ async function processSource(source) {
   }
 
   const adapter = adapterFor(source.url);
-  const candidates = adapter
-    ? adapterCandidates(fetched.body, source, adapter)
-    : extractCandidates(fetched.body, {
+  let candidates;
+
+  if (adapter) {
+    candidates = adapterCandidates(fetched.body, source, adapter);
+    result.candidates = candidates.length;
+    /* Only the rows that already survived cost a fetch, and only to attach the real
+       official notice link (plus the qualification/last date the card listings never
+       publish). Bounded per source and by the run deadline. */
+    const detail = await attachOfficialNotices(candidates, stopAt);
+    result.detail_fetches = detail.fetches;
+    result.official_links = candidates.filter((c) => c.officialNotice).length;
+    if (detail.errors) result.errors.push(`detail:${detail.errors} page(s) failed`);
+  } else {
+    candidates = extractCandidates(fetched.body, {
       ...source,
       url: fetched.url,
     });
-
-  result.candidates = candidates.length;
+    result.candidates = candidates.length;
+  }
 
   for (const candidate of candidates) {
     const classification = candidate.classification || classifyCivil(
@@ -776,7 +920,6 @@ async function processSource(source) {
     items_staged: result.staged,
     last_error: result.errors.length ? result.errors[0].slice(0, 300) : null,
   });
-
   return result;
 }
 
@@ -873,6 +1016,7 @@ module.exports = async function govtDiscovery(req, res) {
   }
 
   robotsCache.clear();
+  robotsText.clear();
   hostLastRequest.clear();
 
   const seed = await ensureSources();
@@ -896,13 +1040,16 @@ module.exports = async function govtDiscovery(req, res) {
     return (Number.isNaN(ta) ? 0 : ta) - (Number.isNaN(tb) ? 0 : tb);
   });
 
+  /* Detail fetches stop here, leaving room for the staging writes that follow. */
+  const detailStopAt = startedAt + TIME_BUDGET_MS - 6000;
+
   let cursor = 0;
   async function worker() {
     while (cursor < ordered.length && Date.now() - startedAt <= TIME_BUDGET_MS) {
       const source = ordered[cursor];
       cursor += 1;
       try {
-        results.push(await processSource(source));
+        results.push(await processSource(source, detailStopAt));
       } catch (error) {
         const message = String(
           error?.message || "unknown error"
@@ -977,12 +1124,31 @@ module.exports = async function govtDiscovery(req, res) {
     ),
   };
 
+  /* Silence is the failure mode that hurt most: the queue froze while every health
+     signal still looked clean. A run that seeds no source, or that parses nothing from
+     any source while reporting no errors at all, is a broken pipeline rather than a
+     quiet day. Say it out loud instead of waiting for someone to notice. */
+  const stalled = !seed.seeded || Boolean(seed.error)
+    || (summary.sources > 0 && summary.candidates === 0 && summary.errors === 0);
+
+  let warning = { sent: false, skipped: null, error: null };
+  if (stalled) {
+    const reason = seed.error
+      ? `Could not seed govt_sources: ${seed.error}`
+      : !seed.seeded
+        ? "The sweep seeded 0 sources — the govt_sources table is empty."
+        : `All ${summary.sources} sources ran clean but produced no candidates at all.`;
+    warning = await sendPipelineWarning(reason, { siteUrl: process.env.SITE_URL });
+  }
+
   return res.status(200).json({
     ok: true,
     seeded: seed.seeded,
     seed_error: seed.error,
     summary,
     alert,
+    stalled,
+    warning,
     results,
     deferred,
     note: deferred.length

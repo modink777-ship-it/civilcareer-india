@@ -983,6 +983,16 @@ Interview Q&A — public page /interview
 .govt-sub{display:none}
 .govt-sub.active{display:block}
 .govt-empty{color:#6a8aaa;font-size:.85rem;padding:1rem 0}
+/* The six aggregator feeds all publish the same handful of columns — Organization,
+   Post, Qualification, Advt no, Last date — so a queued lead is shown as those same
+   columns instead of a sentence: the reviewer can hold a row up against the feed it
+   actually came from. */
+.govt-feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 16px;margin:0 0 8px}
+.govt-feed-grid .rm-label{color:#4a6a8a;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:1px}
+.govt-feed-grid .rm-value{color:#cbd5e1;font-size:.78rem;line-height:1.5;word-break:break-word}
+.govt-notice-paste{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1 1 340px}
+.govt-notice-paste input{flex:1 1 240px;min-width:180px;background:#0b1f38;border:1px solid rgba(255,255,255,.16);border-radius:8px;color:#e6eefb;font-size:.75rem;padding:7px 10px}
+.govt-notice-missing{font-size:.72rem;color:#fca5a5}
 .govt-detail{background:#0a1c35;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;margin-top:10px}
 .govt-detail dl{display:grid;grid-template-columns:170px 1fr;gap:4px 12px;font-size:.8rem;margin:0}
 .govt-detail dt{color:#8ea8c4;font-weight:600}
@@ -5987,6 +5997,7 @@ async function govtLoad(tab){
     } else if(tab==='sources'){
       const d=await govtAdminApi('/api/govt-review?action=health');
       govtCache.sources=d.sources||[];
+      govtCache.pipeline=d.pipeline||null;
       govtRenderSources();
     } else if(tab==='conflicts'){
       const d=await govtAdminApi('/api/govt-review?action=conflicts');
@@ -6069,11 +6080,88 @@ function govtRenderSaved(tab){
     actions.push('<button class="btn-ghost" onclick="govtDuplicate(\''+j.id+'\')">⧉ Duplicate</button>');
     if(j.official_notification_url)actions.push('<a class="btn-open-src" href="'+govtEsc(j.official_notification_url)+'" target="_blank" rel="noopener noreferrer">Notification ↗</a>');
     const verif=govtVerifBadge(j.verification_status)+(j.human_reviewed?'':' <span class="govt-badge">⏳ NOT human-reviewed</span>');
+    /* Same columns the queue and the six feeds use, so a published row is readable
+       without opening it: post, qualification, last date, and the feed that found it. */
+    const feed=govtFeedName(j.official_site_url||j.official_notification_url||j.official_notice_url);
+    const facts=[j.post_name?'Post: '+govtEsc(String(j.post_name).slice(0,90)):'',j.qualification?'Qualification: '+govtEsc(String(j.qualification).slice(0,110)):'',j.notification_no?'Advt no. '+govtEsc(String(j.notification_no).slice(0,40)):''].filter(Boolean).join(' · ');
     return '<div class="govt-item" data-search="'+govtEsc((j.title||'')+' '+(j.organization||'')).toLowerCase()+'">'
-      +'<h4>'+govtEsc(j.title||'(untitled)')+' '+verif+'</h4>'
+      +'<h4>'+govtEsc(j.title||'(untitled)')+' '+verif+(feed?' <span class="govt-badge">via '+govtEsc(feed)+'</span>':'')+'</h4>'
       +'<p>'+govtEsc(j.organization||'')+(j.state?' · '+govtEsc(j.state):'')+(j.gov_level?' · '+govtEsc(j.gov_level):'')+(j.apply_end?' · closes '+govtEsc(j.apply_end):'')+'</p>'
+      +(facts?'<p style="color:#cbd5e1">'+facts+'</p>':'')
       +'<div class="govt-actions">'+actions.join('')+'</div></div>';
   }).join('');
+}
+
+/* The six feeds the pipeline is built on, in the order config/govt-sources.json lists
+   them. Used to label which feed first surfaced a published notification. */
+const GOVT_FEED_HOSTS=[['govtjobguru.in','govtjobguru'],['karnatakacareers.org','Karnataka Careers'],['linkingsky.com','Linking Sky'],['allgovernmentjobs.in','All Government Jobs'],['freejobalert.com','FreeJobAlert'],['ka.indgovtjobs.net','KA IndGovtJobs']];
+function govtFeedName(url){
+  let h='';
+  try{h=new URL(String(url||'')).hostname.toLowerCase().replace(/^www\./,'')}catch(e){return ''}
+  const f=GOVT_FEED_HOSTS.find(x=>h===x[0]||h.endsWith('.'+x[0]));
+  return f?f[1]:'';
+}
+
+/* Same host rule the publish gate applies (_api/govt-review.js isOfficialHost):
+   .gov.in / .nic.in / .edu.in plus the known PSU hosts. One function, so the queue and
+   the backend can never disagree about what counts as an official notice. */
+function govtIsOfficialUrl(u){
+  try{
+    const url=new URL(String(u||''));
+    if(url.protocol!=='https:')return false;
+    const h=url.hostname.toLowerCase().replace(/^www\./,'');
+    return /(^|\.)(gov|nic|edu)\.in$/.test(h)||/(^|\.)(bhel\.com|ntpc\.co\.in|rites\.com|ircon\.org|aai\.aero|nhpcindia\.com|nbccindia\.com|coalindia\.in|indianrailways\.gov\.in|irc\.org\.in)$/.test(h);
+  }catch(e){return false;}
+}
+
+/* The six feeds publish the same columns (Organization, Post, Qualification, Advt no,
+   Last date, Posted), so the queue shows those columns rather than a sentence — the
+   reviewer can hold the row up against the feed it came from. */
+function govtFeedColumns(p){
+  p=p||{};
+  const post=p.post_name||(Array.isArray(p.post_candidates)&&p.post_candidates[0]&&p.post_candidates[0].post_name)||'';
+  const deadline=(p.deadline&&(p.deadline.date||p.deadline.text))||'';
+  return [
+    ['Feed',p.source_name||''],
+    ['Organization',p.organization||''],
+    ['Post',post],
+    ['Qualification',p.qualification||''],
+    ['Advt no.',p.notification_no||''],
+    ['Posts',p.vacancies||''],
+    ['Last date',deadline],
+    ['Posted',p.posted_on||''],
+    ['Feed section',p.source_section||''],
+  ].filter(r=>r[1]);
+}
+function govtFeedTable(p){
+  const rows=govtFeedColumns(p);
+  if(!rows.length)return '';
+  return '<div class="govt-feed-grid">'+rows.map(r=>'<div class="rm-field"><span class="rm-label">'+govtEsc(r[0])+'</span><span class="rm-value">'+govtEsc(String(r[1]).slice(0,180))+'</span></div>').join('')+'</div>';
+}
+
+/* Three of the six feeds (karnatakacareers, allgovernmentjobs, linkingsky) publish no
+   official notice link at all, so those leads can never be published until a human
+   supplies the URL from the department's own site. That is this control — and the
+   backend validates the pasted URL against the same host rule before it is stored. */
+function govtNoticeAttachHtml(id,p,inputId){
+  p=p||{};
+  if(govtIsOfficialUrl(p.official_notice_url)){
+    return '<a class="btn-open-src" href="'+govtEsc(p.official_notice_url)+'" target="_blank" rel="noopener noreferrer">🛡 Official notice ↗</a>';
+  }
+  return '<span class="govt-notice-paste"><input id="'+govtEsc(inputId)+'" type="url" placeholder="Paste the official notice URL (govt / PSU)">'
+    +'<button class="btn-ghost" onclick="govtAttachNotice(\''+govtEsc(id)+'\',\''+govtEsc(inputId)+'\')">🔗 Attach</button></span>'
+    +(p.official_notice_url?'<a class="btn-open-src" href="'+govtEsc(p.official_notice_url)+'" target="_blank" rel="noopener noreferrer">Notice (unverified) ↗</a>':'');
+}
+async function govtAttachNotice(id,inputId){
+  const el=$(inputId||('govtNoticeInput-'+id));
+  const v=el?String(el.value||'').trim():'';
+  if(!v){toast('Paste the official notice URL first.');return;}
+  if(!govtIsOfficialUrl(v)){toast('That is not an official government/PSU URL — an aggregator page can never be the notice.');return;}
+  try{
+    await govtPost('attach_notice',{id,official_notice_url:v});
+    toast('Official notice attached ✓ — review the row, then Approve.');
+    govtLoad(govtActiveTab);
+  }catch(e){toast('Could not attach: '+e.message);}
 }
 
 function govtRenderReview(){
@@ -6092,20 +6180,18 @@ function govtRenderReview(){
     +'</div>'
     +list.map(it=>{
     const p=it.payload||{};
-    /* Show the aggregator's OWN evidence: the qualification text it published, the
-       section it filed the posting under, and whether a real official notice link
-       was found — publishing is refused without one (spec §7), so the reviewer can
-       see at a glance which rows can go straight out and which need a notice URL. */
+    /* The aggregator's OWN evidence, in the aggregator's own columns: the qualification
+       it published, the section it filed the posting under, the advt number and last
+       date it printed. Publishing is refused without a real official notice (spec §7),
+       so the row shows which records can go straight out and which need a pasted URL. */
     const evid=p.civil_evidence?govtEsc(p.civil_evidence):'';
-    const section=p.source_section?govtEsc(p.source_section):'';
-    const isOfficialNotice=!!p.official_notice_url && /(^|\.)(gov|nic)\.in$|\.gov\.in$|\.nic\.in$|(^|\.)(bhel\.com|ntpc\.co\.in|rites\.com|ircon\.org|aai\.aero)$/.test((function(u){try{return new URL(u).hostname.toLowerCase().replace(/^www\./,'')}catch(e){return ''}})(p.official_notice_url));
-    const meta=[p.organization,section,p.vacancies?p.vacancies+' posts':'',(p.deadline&&(p.deadline.date||p.deadline.text))?'closes '+(p.deadline.date||p.deadline.text):''].filter(Boolean).join(' · ');
+    const meta=[p.inbox_kind?govtEsc(it.inbox_kind):'',p.excerpt?'':'',(p.deadline&&(p.deadline.date||p.deadline.text))?'closes '+(p.deadline.date||p.deadline.text):''].filter(Boolean).join(' · ');
     return '<div class="govt-item admin-job-row" data-search="'+govtEsc((p.title||'')+' '+(p.organization||'')).toLowerCase()+'">'
       +'<input type="checkbox" class="admin-job-select govt-bulk-select" value="'+govtEsc(it.id)+'" onchange="govtBulkUpdate()">'
       +'<div class="list-item-info">'
       +'<h4>'+govtEsc(p.title||'(untitled)')+' <span class="govt-badge">'+govtEsc(it.civil_status||'')+(it.tier?' · tier '+govtEsc(it.tier):'')+'</span>'+(evid?' <span class="govt-badge">matched: '+evid+'</span>':'')+'</h4>'
-      +(meta?'<p>'+govtEsc(meta.slice(0,150))+'</p>':'')
-      +(p.qualification?'<p style="color:#cbd5e1">Qualification: '+govtEsc(String(p.qualification).slice(0,200))+'</p>':'')
+      +govtFeedTable(p)
+      +(meta?'<p>'+govtEsc(meta.slice(0,120))+'</p>':'')
       +'<p>'+govtEsc((it.reject_reason||it.review_notes||'').slice(0,180)||('discovered '+govtEsc(String(it.created_at||'').slice(0,10))))+'</p>'
       +'</div>'
       +'<div class="govt-actions">'
@@ -6113,7 +6199,7 @@ function govtRenderReview(){
       +(it.status!=='approved'?'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>':'')
       +(it.status!=='rejected'&&it.status!=='approved'?'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>':'')
       +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Aggregator ↗</a>':'')
-      +(p.official_notice_url?'<a class="btn-open-src" href="'+govtEsc(p.official_notice_url)+'" target="_blank" rel="noopener noreferrer">'+(isOfficialNotice?'🛡 Official notice ↗':'Notice (unverified) ↗')+'</a>':'')
+      +govtNoticeAttachHtml(it.id,p,'govtNoticeInput-'+it.id)
       +'</div></div>';
   }).join('');
 }
@@ -6178,6 +6264,12 @@ function govtSourceState(s){
   if(st.startsWith('blocked:'))return {label:'⛔ blocked by the site',cls:'sh-nc'};
   if(st==='ok'||st.startsWith('ok;'))return {label:'✓ healthy',cls:'sh-ok'};
   if(st==='not_modified')return {label:'○ unchanged (304)',cls:'sh-nc'};
+  /* A 403 after the bot's own pause-and-retry is a throttle, not a broken source:
+     ka.indgovtjobs.net sits behind Cloudflare and refuses the declared bot agent
+     intermittently while serving the same page to anyone else. Showing that in red
+     alongside a dead source trains the owner to ignore the panel. */
+  const t=st.match(/^transient:http-(\d+)/);
+  if(t)return {label:'⏳ throttled ('+t[1]+') — retried, will try again',cls:'sh-warn'};
   const m=st.match(/^source:http-(\d+)/);
   if(m){
     if(m[1]==='404'||m[1]==='410')return {label:'✗ page gone ('+m[1]+')',cls:'sh-error'};
@@ -6198,15 +6290,29 @@ function govtSourceState(s){
   return {label:st,cls:'sh-nc'};
 }
 
+/* Every per-source row can read "ok" while the pipeline has stopped producing — that is
+   exactly what a "sources: 0" sweep looks like from the panel: a tidy, empty list. This
+   is the one line that goes red when nothing is arriving, so a silent freeze cannot be
+   mistaken for a quiet day. */
+function govtPipelineBanner(){
+  const p=govtCache.pipeline;
+  if(!p)return '';
+  const ago=v=>v==null?'—':v+' h ago';
+  if(p.stalled){
+    return '<p class="govt-notice-missing" style="display:block;margin:0 0 12px;font-size:.85rem">⚠ <b>Silent freeze:</b> '+govtEsc(p.reason||'the pipeline has stopped producing')+' <span style="color:#6a8aaa">(last sweep '+govtEsc(ago(p.hours_since_run))+' · last new lead '+govtEsc(ago(p.hours_since_staging))+')</span></p>';
+  }
+  return '<p class="discovery-summary show" style="margin:0 0 12px">✓ pipeline live · last sweep '+govtEsc(ago(p.hours_since_run))+' · last new lead '+govtEsc(ago(p.hours_since_staging))+'</p>';
+}
+
 function govtRenderSources(){
   const el=$('govtListSources'); const list=govtCache.sources||[];
-  if(!list.length){el.innerHTML='<p class="govt-empty">No discovery sources configured (config/govt-sources.json).</p>';return;}
+  if(!list.length){el.innerHTML=govtPipelineBanner()+'<p class="govt-empty">No discovery sources configured (config/govt-sources.json).</p>';return;}
   const on=list.filter(s=>s.enabled);
   const healthy=on.filter(s=>govtSourceState(s).cls==='sh-ok').length;
   const failing=on.filter(s=>govtSourceState(s).cls==='sh-error').length;
   const warns=on.filter(s=>govtSourceState(s).cls==='sh-warn').length;
   const summary='<p class="discovery-summary show" style="margin:0 0 12px">'+on.length+' enabled · <span style="color:#6ee7b7">'+healthy+'</span> healthy · <span style="color:#fca5a5">'+failing+'</span> failing · <span style="color:#fbbf24">'+warns+'</span> warning'+(warns===1?'':'s')+' · '+list.length+' total</p>';
-  el.innerHTML=summary+list.map(s=>{
+  el.innerHTML=govtPipelineBanner()+summary+list.map(s=>{
     const st=govtSourceState(s);
     return '<div class="govt-item"><h4>'+govtEsc(s.name)+' '
       +'<span class="govt-badge '+(s.type==='official'?'st-official':'st-unverified')+'">'+govtEsc(s.type)+'</span> '
@@ -6301,24 +6407,25 @@ function govtOpenInbox(id){
   const it=(govtCache.inbox||[]).find(x=>x.id===id);
   if(!it){toast('Item not in the loaded inbox — refresh it first.');return;}
   const p=it.payload||{};
-  const notice=p.official_notice_url||p.official_notification_url||'';
-  govtModalOpen(p.title||'(untitled)', govtEsc(p.organization||'')+' · '+govtEsc(p.source_type||'source'));
+  const notice=p.official_notice_url||'';
+  const official=govtIsOfficialUrl(notice);
+  govtModalOpen(p.title||'(untitled)', govtEsc(p.organization||'')+' · '+govtEsc(p.source_name||p.source_type||'source'));
   govtModalReadonly([
-    ['Deadline',(p.deadline&&(p.deadline.date||p.deadline.text))||'—'],
-    ['Notification no.',p.notification_no],
-    ['Qualification',p.qualification],
-    ['Posts found',(Array.isArray(p.post_candidates)&&p.post_candidates.length)?p.post_candidates.length+' candidate(s)':'—'],
-    ['Official notice',notice||'⚠ none — publishing will be refused'],
-    ['Source URL',p.source_url],
+    ['Official notice',official?notice:(notice?'⚠ '+notice+' (not an official host)':'⚠ none found — paste one to publish')],
+    ['Lead page',p.source_url],
     ['Inbox kind',it.inbox_kind],
-    ['Civil status',it.civil_status],
+    ['Civil status',(it.civil_status||'')+(p.civil_evidence?' · matched: '+p.civil_evidence:'')],
     ['Summary',(p.summary||p.excerpt||'').slice(0,700)],
   ]);
+  /* Same columns the feed itself printed, above the detail — one layout for the queue,
+     this dialog and the posting's page on the six sites. */
+  $('govtModalFields').innerHTML=govtFeedTable(p)+$('govtModalFields').innerHTML;
   $('govtModalActions').innerHTML=
     '<button class="btn-gold" onclick="govtModalClose();govtApprove(\''+it.id+'\')">✅ Publish this</button>'
     +'<button class="btn-review" onclick="govtModalClose();govtAiStructure(\''+it.id+'\',null)">🧠 AI Structure</button>'
     +'<button class="btn-ghost" onclick="govtModalClose();govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>'
     +'<button class="btn-reject" onclick="govtModalClose();govtReject(\''+it.id+'\')">✕ Reject</button>'
+    +govtNoticeAttachHtml(it.id,p,'govtModalNotice-'+it.id)
     +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'');
 }
 async function govtOpenSaved(id){
