@@ -642,10 +642,19 @@ async function processSource(source) {
   result.robots = robots.status;
 
   if (!robots.allowed) {
+    /* A blocked robots check is a policy outcome, but an unreachable or
+       unverified robots.txt is a dead source. Record it as an error too:
+       otherwise a run in which a third of the sources never even fetched
+       still reports a clean summary and the admin source-health panel keeps
+       showing the previous run's numbers. */
+    if (/unreachable|unverified/.test(robots.status)) {
+      result.errors.push(robots.status);
+    }
     await updateSource(source.id, {
       last_run_at: new Date().toISOString(),
       last_status: robots.status,
       robots_ok: false,
+      last_error: result.errors.length ? result.errors[0].slice(0, 300) : null,
     });
     return result;
   }
@@ -654,12 +663,13 @@ async function processSource(source) {
   result.fetched = fetched.ok;
 
   if (!fetched.ok) {
+    result.errors.push(fetched.status);
     await updateSource(source.id, {
       last_run_at: new Date().toISOString(),
       last_status: fetched.status,
       robots_ok: true,
+      last_error: fetched.status.slice(0, 300),
     });
-    result.errors.push(fetched.status);
     return result;
   }
 
@@ -697,12 +707,18 @@ async function processSource(source) {
     }
   }
 
+  /* items_found / items_staged / last_error back the admin source-health
+     panel (govt-review?action=health). Only the GitHub crawler wrote them
+     before, so the panel showed zeroes for everything this cron staged. */
   await updateSource(source.id, {
     last_run_at: new Date().toISOString(),
     last_status: result.errors.length
       ? `ok; candidates=${result.candidates}; staged=${result.staged}; errors=${result.errors.length}`
       : `ok; candidates=${result.candidates}; staged=${result.staged}`,
     robots_ok: true,
+    items_found: result.candidates,
+    items_staged: result.staged,
+    last_error: result.errors.length ? result.errors[0].slice(0, 300) : null,
   });
 
   return result;

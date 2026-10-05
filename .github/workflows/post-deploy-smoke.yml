@@ -16,6 +16,10 @@ name: Post-deploy smoke check
 #     x-owner-key header, read-only: 200 with the real key, 401 without it.
 #     (/api/civil-scraper cannot be probed cheaply: it answers 405 to every
 #     non-POST before the key is even read, and a POST runs the real scraper.)
+#   * a real POST /api/govt-discovery scan, asserting that candidates were
+#     actually staged. Auth and schema drift are independent: a run can be
+#     fully authorized, answer 200, and still insert nothing because a column
+#     does not exist.
 #
 # Only the public origin is probed. Vercel's own deployment URLs
 # (…-<hash>-modinsaheb.vercel.app) answer 302 to a Vercel SSO login, so they
@@ -111,6 +115,51 @@ jobs:
             exit 1
           fi
           echo "Both credentials are accepted and both gates still refuse everyone else."
+
+      - name: Assert leads still stage end-to-end
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://civilcareer-india-two.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # Auth can be perfect while every INSERT fails: the endpoint answers
+          # 200 and stages nothing (PGRST204 on an unknown column). Only a real
+          # scan proves the write path, so run one and read its summary.
+          RESP=$(curl -sS --max-time 300 -X POST "${SITE_URL}/api/govt-discovery" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --data '{}' -w '\n%{http_code}' || printf '\n000')
+          CODE=$(printf '%s\n' "${RESP}" | tail -n1)
+          printf '%s\n' "${RESP}" | sed '$d' > /tmp/govt-scan.json
+          echo "scan HTTP: ${CODE}"
+
+          if [ "${CODE}" != "200" ]; then
+            echo "::error::/api/govt-discovery answered HTTP ${CODE} on a real cron run."
+            exit 1
+          fi
+
+          node -e '
+          const fs = require("fs");
+          let r;
+          try { r = JSON.parse(fs.readFileSync("/tmp/govt-scan.json", "utf8")); }
+          catch (e) { console.error("::error::govt-discovery did not return JSON: " + e.message); process.exit(1); }
+          const s = r.summary || {};
+          const writeErrors = (r.results || [])
+            .flatMap(x => x.errors || [])
+            .filter(e => /^(stage|lead):/.test(e));
+          console.log("sources=" + s.sources + " candidates=" + s.candidates + " staged=" + s.staged + " errors=" + s.errors);
+          if (writeErrors.length) {
+            console.error("::error::" + writeErrors.length + " write(s) to govt_job_leads/govt_job_staging failed.");
+            console.error("::error::" + String(writeErrors[0]).slice(0, 400));
+            process.exit(1);
+          }
+          if (!Number(s.staged || 0)) {
+            if (Number(s.candidates || 0) > 0) {
+              console.error("::error::" + s.candidates + " candidate(s) found but 0 staged — the staging write path is broken.");
+              process.exit(1);
+            }
+            console.log("::warning::No candidates extracted this run (source-side), so staging was not exercised.");
+          }
+          '
 
       - name: Summary
         if: always()

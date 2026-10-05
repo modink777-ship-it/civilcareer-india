@@ -6116,7 +6116,7 @@ function govtRenderSources(){
   const el=$('govtListSources'); const list=govtCache.sources||[];
   if(!list.length){el.innerHTML='<p class="govt-empty">No discovery sources configured (config/govt-sources.json).</p>';return;}
   el.innerHTML=list.map(s=>{
-    const ok=s.last_status==='ok';
+    const ok=String(s.last_status||'').startsWith('ok');
     return '<div class="govt-item"><h4>'+govtEsc(s.name)+' '
       +'<span class="govt-badge '+(s.type==='official'?'st-official':'st-unverified')+'">'+govtEsc(s.type)+'</span> '
       +'<span class="govt-badge">'+(ok?'✓ healthy':govtEsc(s.last_status||'not run yet'))+'</span></h4>'
