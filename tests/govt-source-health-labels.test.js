@@ -52,6 +52,12 @@ const TOKENS = [
   ['error', 'sh-error'],
   ['dead: HTTP 404 (retired path)', 'sh-nc'],     // phase28 repair annotation
   ['blocked: HTTP 403 to declared bot user agent', 'sh-nc'],
+  // Crawler (scripts/crawl-govt-pipeline.js) now stores a transient-style token for
+  // 403/429 after its own retries, matching the cron's vocabulary, so a Cloudflare-
+  // protected aggregator such as ka.indgovtjobs.net shows amber ("throttled") rather
+  // than red ("blocked") when it is intermittently unreachable.
+  ['transient:http-403; throttled; retried; stopped', 'sh-warn'],
+  ['transient:http-429; throttled; retried; stopped', 'sh-warn'],
 ];
 
 for (const [token, cls] of TOKENS) {
@@ -79,6 +85,17 @@ assert.ok(/blocked/i.test(blocked.label), `a 403 should say blocked, got "${bloc
 
 const gone = govtSourceState({ last_status: 'error', last_error: 'HTTP 404 (crawl stopped for this source)' });
 assert.ok(/gone/i.test(gone.label), `a 404 should read as gone, got "${gone.label}"`);
+
+/* The crawler's new transient token is a throttle, not a hard block, so it should be
+   amber — and a legacy row that still carries the old "error" + "HTTP 403 (...)"
+   message must keep rendering red until the next successful crawl rewrites it. */
+const throttled = govtSourceState({
+  last_status: 'transient:http-403; throttled; retried; stopped',
+  last_error: null,
+});
+assert.strictEqual(throttled.cls, 'sh-warn', 'the crawler transient token must render amber');
+assert.ok(/throttled/i.test(throttled.label), `the crawler transient token should say throttled, got "${throttled.label}"`);
+assert.ok(!/blocked/i.test(throttled.label), `the crawler transient token must not say blocked, got "${throttled.label}"`);
 
 /* Class must always be a real bucket: an unknown class silently loses colour
    in the panel (sh-ok/sh-error/sh-warn/sh-nc are the only defined styles). */

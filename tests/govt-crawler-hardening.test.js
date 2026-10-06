@@ -15,8 +15,10 @@ test('government crawler persists and sends conditional HTTP validators', () => 
 });
 
 test('government crawler stops on 403/429 and uses bounded exponential backoff', () => {
-  assert.match(crawler, /HTTP 403/);
-  assert.match(crawler, /HTTP 429/);
+  // 403/429 are now stored as transient throttles (matching the cron's vocabulary) so the
+  // admin panel shows amber for Cloudflare-protected aggregators such as ka.indgovtjobs.net.
+  assert.match(crawler, /transient:http-403/);
+  assert.match(crawler, /transient:http-429/);
   assert.match(crawler, /2000 \* \(2 \*\* \(attempt - 1\)\)/);
 });
 

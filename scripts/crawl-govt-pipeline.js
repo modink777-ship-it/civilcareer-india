@@ -162,8 +162,12 @@ async function fetchText(url, headers = {}) {
       const etag = r.headers.get('etag') || '';
       const lastModified = r.headers.get('last-modified') || '';
       if (r.status === 304) return { status: 304, text: '', etag, lastModified, notModified: true, contentType: r.headers.get('content-type') || '' };
-      // Explicitly stop on access/rate-limit responses. Never bypass them.
-      if (r.status === 403 || r.status === 429) throw new Error(`HTTP ${r.status} (crawl stopped for this source)`);
+      // Access/rate-limit responses are throttles, not broken sources — treat them
+      // like the cron does (transient), so the admin panel shows amber instead of
+      // red for Cloudflare-protected aggregators such as ka.indgovtjobs.net.
+      if (r.status === 403 || r.status === 429) {
+        throw new Error(`transient:http-${r.status}; throttled; retried; stopped`);
+      }
       // Retry transient upstream failures with bounded exponential backoff.
       if (r.status >= 500 && r.status <= 599) {
         if (attempt === maxAttempts) throw new Error(`HTTP ${r.status}`);
@@ -176,7 +180,7 @@ async function fetchText(url, headers = {}) {
       return { status: r.status, text, etag, lastModified, contentType: ct };
     } catch (err) {
       const msg = String(err && err.message || err);
-      if (/HTTP 403|HTTP 429/.test(msg) || attempt === maxAttempts) throw err;
+      if (/transient:http-403|transient:http-429/.test(msg) || attempt === maxAttempts) throw err;
       await sleep(2000 * (2 ** (attempt - 1)));
     }
   }
@@ -572,7 +576,13 @@ async function runSource(source, sourceId) {
     await updateSource(sourceId, { robots_ok: true, last_status: 'ok', last_run_at: new Date().toISOString(), etag: page.etag || null, last_modified: page.lastModified || null, last_error: null, items_found: result.found, items_staged: result.staged });
   } catch (e) {
     result.error = e.message || String(e);
-    await updateSource(sourceId, { last_status: 'error', last_run_at: new Date().toISOString(), last_error: result.error });
+    const msg = result.error;
+    const throttled = /^transient:http-(403|429)/.test(msg);
+    await updateSource(sourceId, {
+      last_status: throttled ? msg : 'error',
+      last_run_at: new Date().toISOString(),
+      last_error: throttled ? null : result.error,
+    });
   }
   return result;
 }
