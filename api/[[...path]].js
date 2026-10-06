@@ -291,6 +291,16 @@ module.exports = async function handler(req, res) {
       pathName = '/api/admin-page';
     }
 
+    /* /sitemap.xml → /api/sitemap: the rewrite reaches this catch-all with
+       the ORIGINAL path intact (the same platform quirk as /admin). Without
+       this mapping the request 404s here — previously invisible because a
+       stale static sitemap.xml shadowed the rewrite from the filesystem.
+       The generated sitemap carries every job page plus /courses; the
+       static snapshot it replaced had neither. */
+    if (pathName === '/sitemap.xml') {
+      pathName = '/api/sitemap';
+    }
+
     /* Owner deep links into the collector / inbox: vercel.json rewrites the
        named routes here, and the platform keeps the original path (same quirk
        as /admin). The tab itself is selected client-side from the pathname. */

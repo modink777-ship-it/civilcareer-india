@@ -570,6 +570,11 @@ test('vercel.json rewrites /courses and the sitemap lists it', () => {
      /api/sitemap was never reachable by crawlers. Keep it deleted. */
   assert.strictEqual(fs.existsSync(path.join(root, 'sitemap.xml')), false,
     'a static sitemap.xml would shadow the dynamic /api/sitemap (and omit /courses and every job URL)');
+  /* With the static file gone the rewrite lands on the catch-all with the
+     original path, so the dispatcher must map it or /sitemap.xml 404s. */
+  const dispatcher = fs.readFileSync(path.join(root, 'api', '[[...path]].js'), 'utf8');
+  assert.ok(/pathName === '\/sitemap\.xml'/.test(dispatcher),
+    'dispatcher must map /sitemap.xml to the sitemap handler');
 });
 
 test('admin.html carries the Courses tab, panel and JS; bundle regenerated', () => {
