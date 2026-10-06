@@ -25,6 +25,8 @@ const {
   classifySpecialization,
 } = require('../lib/civil-classifier');
 const { providerStatus, chatJSON } = require('../lib/ai-models');
+const { titleVerdict, cleanTitle, deriveTitle } = require('../lib/govt-title');
+const { sendPublishSummary } = require('../lib/govt-alert');
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
@@ -196,30 +198,89 @@ async function aiStructureItem(item) {
 
 /* ── Publish one staging item — THE HUMAN GATE ──────────────────────── */
 
+/* A refusal the reviewer can act on: carries a machine code so the admin can point at the
+   exact control that fixes it, and a status so it is a 400 and not a mystery 500. */
+function gateError(code, message, status = 400) {
+  const e = new Error(message);
+  e.code = code;
+  e.status = status;
+  return e;
+}
+
+/** Attach a human-supplied official notice to a staging item. One validated write path,
+    shared by the standalone Attach control and by Publish-with-a-pasted-URL. */
+async function attachNotice(id, url, user) {
+  const notice = String(url || '').trim();
+  if (!notice) throw gateError('notice_required', 'Paste the official notice URL first.');
+  if (!isOfficialHost(notice)) {
+    throw gateError('notice_not_official', 'That is not an official government/PSU URL — an aggregator or agent page can never be the official notice.');
+  }
+  const cur = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}&select=id,payload,status&limit=1`);
+  if (!cur.ok) throw new Error((await cur.text()).slice(0, 300));
+  const row = (await cur.json())[0];
+  if (!row) throw gateError('not_found', 'Staging item not found.', 404);
+  const payload = Object.assign({}, row.payload || {}, {
+    official_notice_url: notice,
+    official_site_url: (row.payload && row.payload.official_site_url) || new URL(notice).origin,
+  });
+  if (!payload.official_notification_url || payload.official_notification_url === payload.source_url) {
+    payload.official_notification_url = notice;
+  }
+  delete payload.notice_blocked_reason;
+  const patch = {
+    payload,
+    review_notes: `Official notice attached: ${notice}`.slice(0, 2000),
+  };
+  /* A row parked as needs_info becomes reviewable again the moment it has a notice. */
+  if (row.status === 'needs_info') patch.status = 'pending';
+  const r = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  if (!r.ok) throw new Error((await r.text()).slice(0, 400));
+  await audit('govt_job_staging', id, 'attach_notice', user, { official_notice_url: notice });
+  return notice;
+}
+
 async function approve(id, user, payloadOverride = null) {
   const r = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}&limit=1`);
   if (!r.ok) throw new Error('Could not load staging item.');
   const rows = await r.json();
   const item = rows[0];
   if (!item) throw new Error('Staging item not found.');
-  if (item.status === 'approved') throw new Error('Staging item is already approved.');
+  if (item.status === 'approved') throw gateError('already_approved', 'Staging item is already approved.');
 
-  const p = payloadOverride || item.payload || {};
+  /* A supplied payload SHAPES the stored one — it never replaces it, or a form that posts
+     only the title it fixed would drop the organisation with it. */
+  const p = payloadOverride ? Object.assign({}, item.payload || {}, payloadOverride) : (item.payload || {});
 
-  /* Spec §8: never publish an aggregator URL as the official notice. */
-  const officialNotice = String(p.official_notice_url || item.payload && item.payload.official_notice_url || '').trim();
-  const sourceType = (item.payload && item.payload.source_type) || '';
-  if (!officialNotice) throw new Error('Official notice URL is required before publishing.');
-  if (sourceType === 'aggregator_lead' && (!officialNotice || !isOfficialHost(officialNotice))) {
-    const knownPsuHosts = ['ircon.org', 'ntpc.co.in', 'bhel.com', 'rites.com', 'aai.aero', 'nhai.gov.in', 'cpwd.gov.in', 'up.gov.in', 'rrbcdg.gov.in'];
-    const host = new URL(officialNotice || '').hostname.toLowerCase();
-    const isKnownPsu = knownPsuHosts.some(h => host.endsWith(h) || host === h);
-    if (!isKnownPsu) {
-      throw new Error('Official notice URL must be an official government/PSU domain — verify it before publishing.');
-    }
+  /* Spec §8: never publish an aggregator URL as the official notice.
+     A stored notice that is not on an official host IS the aggregator's own page — the
+     pre-fix sweep wrote source_url there — so it counts as "no notice on record" and the
+     reviewer is asked for one, instead of being told their paste is invalid. */
+  const stored = String((item.payload && item.payload.official_notice_url) || '').trim();
+  const supplied = String((payloadOverride && payloadOverride.official_notice_url) || '').trim();
+  const officialNotice = [supplied, stored].find(u => isOfficialHost(u)) || '';
+  if (!officialNotice) {
+    throw gateError('notice_required', supplied
+      ? 'The URL supplied is not an official government/PSU page — check the department domain.'
+      : stored
+        ? 'The only notice on record is the aggregator page itself. Paste the department\u2019s own notice URL to publish this lead.'
+        : 'Official notice URL is required before publishing.');
   }
 
-  const title = String(p.title || 'Government Civil Recruitment').trim();
+  /* The published title is the POST NAME. Four records went out on 2026-10-03 titled
+     "Click here to view the advertisement/apply" because the source's link text was used
+     verbatim; a link text or a result page is refused here, so it can never reach the
+     public list again. Anything merely padded is cleaned, never invented. */
+  const requestedTitle = String(p.title || '').trim();
+  const verdict = titleVerdict(requestedTitle);
+  if (verdict.verdict === 'junk') {
+    throw gateError('title_required', requestedTitle
+      ? `This title is ${verdict.reason}. Put the post name in Title, then publish.`
+      : 'This lead has no post title yet. Put the post name in Title, then publish.');
+  }
+  if (verdict.verdict === 'not_recruitment') {
+    throw gateError('not_a_vacancy', `This is ${verdict.reason} — it is not a recruitment, so it must not be published as one.`);
+  }
+  const title = cleanTitle(requestedTitle) || 'Government Civil Recruitment';
   const organization = String(p.organization || p.organization_hint || 'Government organization').trim();
   let slug = slugify(`${organization}-${title}`);
   const existing = await db(`govt_jobs?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`);
@@ -379,7 +440,7 @@ async function publishReady(user, limit = READY_DEFAULT_LIMIT) {
   if (!r.ok) throw new Error((await r.text()).slice(0, 300));
   const rows = (await r.json()) || [];
 
-  const out = { published: 0, skipped: [], failed: [], jobs: [], remaining: 0 };
+  const out = { published: 0, skipped: [], failed: [], jobs: [], remaining: 0, quieter: { sends: 0, errors: [] } };
 
   for (const row of rows) {
     if (out.published >= limit) {
@@ -411,6 +472,14 @@ async function publishReady(user, limit = READY_DEFAULT_LIMIT) {
     } catch (e) {
       out.failed.push({ id: row.id, title, error: String((e && e.message) || e).slice(0, 160) });
     }
+  }
+
+  /* Tell the owner what the click just did — count, live titles, and the reasons the
+     rest stayed in the queue (so the next action is obvious, not a magic click). */
+  const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+  if (siteUrl && out.published !== undefined) {
+    const sent = await sendPublishSummary(out, { siteUrl }).catch(err => ({ error: String((err && err.message) || err).slice(0, 160) }));
+    out.quieter = Object.assign({ sends: 1 }, sent, { errors: sent && sent.error ? [sent.error] : [] });
   }
 
   return out;
@@ -631,8 +700,23 @@ module.exports = async function handler(req, res) {
 
       /* Queue-based actions act on a staging id. */
       if (action === 'approve') {
-        if (!id) return res.status(400).json({ ok: false, error: 'id is required.' });
-        return res.status(200).json({ ok: true, job: await approve(id, req.adminUser, b.payload || null) });
+        if (!id) return res.status(400).json({ ok: false, code: 'id_required', error: 'id is required.' });
+        /* A notice pasted next to the Publish button is stored first, through the same
+           validated path as the standalone Attach control — one write path, one host rule. */
+        if (String(b.official_notice_url || '').trim()) {
+          try {
+            await attachNotice(id, b.official_notice_url, req.adminUser);
+          } catch (e) {
+            return res.status(e.status || 400).json({ ok: false, code: e.code || 'notice_invalid', error: String(e.message || e) });
+          }
+        }
+        try {
+          return res.status(200).json({ ok: true, job: await approve(id, req.adminUser, b.payload || null) });
+        } catch (e) {
+          /* A refused publish is the reviewer's to fix, so it answers with the reason and
+             a code the admin turns into a pointed instruction — not a bare 500. */
+          return res.status(e.status || 500).json({ ok: false, code: e.code || 'publish_failed', error: String(e.message || e) });
+        }
       }
 
       if (action === 'reject' || action === 'needs_info' || action === 'duplicate') {
@@ -658,34 +742,13 @@ module.exports = async function handler(req, res) {
          the publish gate applies, so this can only ever unblock a real notice — it can
          never smuggle an aggregator page past the gate. */
       if (action === 'attach_notice') {
-        if (!id) return res.status(400).json({ ok: false, error: 'id is required.' });
-        const notice = String(b.official_notice_url || '').trim();
-        if (!notice) return res.status(400).json({ ok: false, error: 'official_notice_url is required.' });
-        if (!isOfficialHost(notice)) {
-          return res.status(400).json({
-            ok: false,
-            error: 'That is not an official government/PSU URL — an aggregator or agent page can never be the official notice.',
-          });
+        if (!id) return res.status(400).json({ ok: false, code: 'id_required', error: 'id is required.' });
+        try {
+          const notice = await attachNotice(id, b.official_notice_url, req.adminUser);
+          return res.status(200).json({ ok: true, official_notice_url: notice });
+        } catch (e) {
+          return res.status(e.status || 400).json({ ok: false, code: e.code || 'notice_invalid', error: String(e.message || e) });
         }
-        const cur = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}&select=id,payload,status&limit=1`);
-        if (!cur.ok) throw new Error((await cur.text()).slice(0, 300));
-        const row = (await cur.json())[0];
-        if (!row) return res.status(404).json({ ok: false, error: 'Staging item not found.' });
-        const payload = Object.assign({}, row.payload || {}, {
-          official_notice_url: notice,
-          official_site_url: (row.payload && row.payload.official_site_url) || new URL(notice).origin,
-        });
-        if (!payload.official_notification_url && payload.source_url) payload.official_notification_url = payload.source_url;
-        const patch = {
-          payload,
-          review_notes: `Official notice attached: ${notice}`.slice(0, 2000),
-        };
-        /* A row parked as needs_info becomes reviewable again the moment it has a notice. */
-        if (row.status === 'needs_info') patch.status = 'pending';
-        const r = await db(`govt_job_staging?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
-        if (!r.ok) throw new Error((await r.text()).slice(0, 400));
-        await audit('govt_job_staging', id, 'attach_notice', req.adminUser, { official_notice_url: notice });
-        return res.status(200).json({ ok: true, official_notice_url: notice });
       }
 
       /* Publish every queued lead that is already complete. Same gate as approve():
@@ -707,9 +770,98 @@ module.exports = async function handler(req, res) {
         return res.status(result.ok ? 200 : 502).json({ ok: result.ok, ...result });
       }
 
+      /* ── Title hygiene ──────────────────────────────────────────────────
+         Part of "Clean the four published titles". Reads the published queue, tells the
+         reviewer which ones still carry a junk or weak title, and fixes the low-risk ones
+         in one pass. reject=true means "keep the row, but give it a reason to stay parked". */
+
+      if (action === 'title_audit') {
+        const limit = Math.min(200, Math.max(1, Number(b.limit) || 200));
+        const rows = await db('govt_jobs?status=eq.active&select=id,title,slug,post_name,organization,published_at&order=published_at.desc&limit=' + limit);
+        if (!rows.ok) return res.status(500).json({ ok: false, error: 'Could not read published jobs.' });
+        const jobs = await rows.json();
+        const audit = [];
+        for (const j of (jobs || [])) {
+          const v = titleVerdict(String(j.title || j.post_name || ''));
+          audit.push({
+            id: j.id, slug: j.slug, title: j.title, post_name: j.post_name, organization: j.organization,
+            verdict: v.verdict, reason: v.reason, cleaned: v.cleaned,
+            published_at: j.published_at,
+          });
+        }
+        return res.status(200).json({ ok: true, audit, count: audit.length });
+      }
+
+      if (action === 'repair_titles') {
+        const dry = b.dry !== false;
+        const limit = Math.min(200, Math.max(1, Number(b.limit) || 200));
+        const rows = await db('govt_jobs?status=eq.active&select=id,title,slug,post_name,organization,published_at&order=published_at.desc&limit=' + limit);
+        if (!rows.ok) return res.status(500).json({ ok: false, error: 'Could not read published jobs.' });
+        const jobs = await rows.json();
+        const report = { fixed: 0, kept: [], skipped: [] };
+
+        for (const j of (jobs || [])) {
+          const raw = String(j.title || j.post_name || '').trim();
+          const v = titleVerdict(raw);
+
+          /* Only the fixable cases — a junk title gets nothing saved until the reviewer
+             has put a real post name in. A weak title gets cleaned; a not_recruitment row
+             is left alone (fixing the title does not make it a vacancy). */
+          if (v.verdict === 'ok') {
+            /* Already clean — nothing to do. */
+            continue;
+          }
+          if (v.verdict === 'not_recruitment') {
+            report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'not a recruitment posting' });
+            continue;
+          }
+          if (v.verdict === 'junk' && !raw) {
+            report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'no title at all — put one in manually' });
+            continue;
+          }
+          if (v.verdict === 'junk') {
+            report.kept.push({ id: j.id, title: raw, slug: j.slug, reason: 'junk/furniture title — leave parked until the real post name is set' });
+            continue;
+          }
+
+          /* weak or cleaned weak */
+          const candidate = v.cleaned || raw;
+          if (!candidate || candidate.split(' ').length < 2) {
+            report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'nothing left after cleaning — set it manually' });
+            continue;
+          }
+
+          if (!dry) {
+            const cur = await db(`govt_jobs?id=eq.${encodeURIComponent(j.id)}&select=id,title,published_at,status,human_reviewed&limit=1`);
+            if (!cur.ok) {
+              report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'read failed' });
+              continue;
+            }
+            const curRow = (await cur.json())[0];
+            if (!curRow) {
+              report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'row gone' });
+              continue;
+            }
+            if (curRow.title === candidate) { continue; }
+            const patch = { title: candidate, updated_at: now() };
+            if (curRow.status === 'active') patch.verified_at = now();
+            const pr = await db(`govt_jobs?id=eq.${encodeURIComponent(j.id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+            if (!pr.ok) {
+              report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'patch failed' });
+              continue;
+            }
+            await audit('govt_jobs', j.id, 'repair_title', req.adminUser, { from: raw, to: candidate, dry: dry });
+          }
+          report.fixed += 1;
+        }
+
+        if (dry) report.dry = true;
+        return res.status(200).json({ ok: true, ...report });
+      }
+
       /* Saved-governance actions act on a govt_jobs id. */
       if (['unpublish', 'archive', 'restore', 'delete', 'delete_permanent', 'duplicate', 'schedule', 'mark_verified', 'mark_expired', 'publish_draft'].includes(action)) {
-        if (!id) return res.status(400).json({ ok: false, error: 'id is required.' });
+        if (!id) return res.status(400).json({ ok: false, code: 'id_required', error: 'id is required.' });
         return savedJobAction(action, id, req, res, b);
       }
 
@@ -772,17 +924,17 @@ module.exports = async function handler(req, res) {
 
       /* Edit a saved government job (draft or published). */
       if (action === 'update') {
-        if (!id) return res.status(400).json({ ok: false, error: 'id is required.' });
+        if (!id) return res.status(400).json({ ok: false, code: 'id_required', error: 'id is required.' });
         const allowed = ['title', 'organization', 'org_type', 'scope', 'gov_level', 'state', 'department_category', 'department', 'post_name', 'notification_no', 'qualification', 'branch', 'experience', 'total_vacancies', 'civil_vacancies', 'age_limit', 'age_relaxation', 'pay_level', 'application_start', 'application_mode', 'application_fee', 'correction_window', 'exam_date', 'exam_mode', 'selection_stages', 'timeline', 'deadline_text', 'apply_end', 'official_notice_url', 'official_notification_url', 'official_apply_url', 'official_site_url', 'summary', 'scheduled_for'];
         const patch = {};
         for (const k of allowed) if (b.payload && b.payload[k] !== undefined) patch[k] = b.payload[k];
-        if (!Object.keys(patch).length) return res.status(400).json({ ok: false, error: 'No editable fields supplied.' });
+        if (!Object.keys(patch).length) return res.status(400).json({ ok: false, code: 'no_fields', error: 'No editable fields supplied.' });
         patch.updated_at = now();
         const cur = await db(`govt_jobs?id=eq.${encodeURIComponent(id)}&select=status,human_reviewed&limit=1`);
         if (!cur.ok) throw new Error((await cur.text()).slice(0, 300));
         const rows = await cur.json();
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Government job not found.' });
-        /* Editing a published record keeps it published (human edited it);
+        if (!rows.length) return res.status(404).json({ ok: false, code: 'not_found', error: 'Government job not found.' });
+        /* Editing a published record keeps it published (a human edited it);
            editing a draft does NOT publish it. The gate holds either way. */
         const r = await db(`govt_jobs?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
         if (!r.ok) throw new Error(`Could not update: ${(await r.text()).slice(0, 400)}`);
@@ -867,6 +1019,17 @@ module.exports = async function handler(req, res) {
         await audit('govt_sources', b.source_id, 'source_toggle', req.adminUser, { enabled: b.enabled === true });
         return res.status(200).json({ ok: true });
       }
+    }
+
+    /* Publish-all summary lookup. The desktop alert is the same message that the admin
+       already saw in its toast, so this is the written record — also the fallback for
+       anyone who clicked publish-ready and did not watch the toast. */
+    if (action === 'publish_summary') {
+      const r = await db('govt_job_staging?select=id,created_at&limit=1&order=created_at.desc');
+      if (!r.ok) return res.status(500).json({ ok: false, error: 'Could not confirm a run recently.' });
+      const last = (await r.json())[0];
+      const s = last ? new Date(last.created_at).toISOString().slice(0, 16) : 'unknown';
+      return res.status(200).json({ ok: true, last_publish_ready_at: s });
     }
 
     return res.status(400).json({ ok: false, error: 'Unsupported action.' });

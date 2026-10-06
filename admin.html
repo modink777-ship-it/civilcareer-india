@@ -5820,10 +5820,9 @@ async function deleteSelectedAdminJobs(){
     await loadAll(ccJobsPage||1);
   }catch(err){toast(err.message||'Selected jobs could not be deleted');}
 }
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('admin-jobs-select-all')?.addEventListener('change',e=>toggleSelectAllAdminJobs(e.target));
-  document.getElementById('admin-jobs-delete-selected')?.addEventListener('click',deleteSelectedAdminJobs);
-  syncAdminJobSelection();
+document.addEventListener('DOMContentLoaded',()=>{   document.getElementById('admin-jobs-select-all')?.addEventListener('change',e=>toggleSelectAllAdminJobs(e.target));
+   document.getElementById('admin-jobs-delete-selected')?.addEventListener('click',deleteSelectedAdminJobs);
+   syncAdminJobSelection();
 });
 </script>
 
@@ -5981,6 +5980,7 @@ async function govtLoad(tab){
       govtCache[tab]=d.jobs||[];
       $('govtCount'+tab.charAt(0).toUpperCase()+tab.slice(1)).textContent='('+govtCache[tab].length+')';
       govtRenderSaved(tab);
+      if(tab==='published')govtPublishedReadyInit();
     } else if(tab==='review'){
       const st=$('govtReviewStatus').value;
       const d=await govtAdminApi('/api/govt-review?status='+encodeURIComponent(st));
@@ -6196,7 +6196,33 @@ function govtRenderReview(){
       +'<p>'+govtEsc((it.reject_reason||it.review_notes||'').slice(0,180)||('discovered '+govtEsc(String(it.created_at||'').slice(0,10))))+'</p>'
       +'</div>'
       +'<div class="govt-actions">'
-      +(it.status==='pending'||it.status==='needs_info'?'<button class="btn-publish" onclick="govtApprove(\''+it.id+'\')">✅ Approve &amp; Publish</button>':'')
+      +'<div class="admin-publish-ready">'+(function(p,it){
+        function readinessFor(p,it){
+          /* Mirror the backend readiness test on the client so the row tells the
+             reviewer whether ⚡ would publish it — the same gate, the same reasons. */
+          const doc=String(p.official_notice_url||'').trim();
+          function officialHost(u){
+            try{
+              const url=new URL(String(u||''));
+              const h=url.hostname.toLowerCase().replace(/^www\./,'');
+              return url.protocol==='https:'&&(/^(gov|n.|\.)(|\.)(gov|nic|edu)\.in$/.test(h));
+            }catch(e){return false;}
+          }
+          const stored=govtIsOfficialUrl(doc);
+          const notice=stored?doc:'';
+          if(!notice)return {ready:false,reason:'no official notice on record — paste one to publish'};
+          if(it.civil_status==='not_civil')return {ready:false,reason:'classified not-civil by the crawler'};
+          const ce=p.civil_evidence?String(p.civil_evidence).trim():'',posts=Array.isArray(p.post_candidates)?p.post_candidates:[];
+          const directCivil=ce==='qualification'||posts.some(x=>x&&x.level==='civil');
+          if(!directCivil)return {ready:false,reason:'civil match is the feed\'s section only — not the posting\'s own words'};
+          const deadline=(p.deadline&&(p.deadline.date||p.deadline.text))||(p.apply_end||'');
+          if(deadline&&String(deadline).slice(0,10)<new Date().toISOString().slice(0,10))return {ready:false,reason:'deadline has passed'};
+          return {ready:true};
+        }
+        const r=readinessFor(p,it);
+        return '<span class="govt-badge '+(r.ready?'sh-ok':'sh-warn')+''+'">'+(r.ready?'⚡ publish-ready':'⏸ not ready: '+govtEsc(r.reason))+'</span>';
+      })(p,it)+'</div>'
+      +(it.status==='pending'||it.status==='needs_info'?'<button class="btn-publish" data-govt-publish="'+it.id+'" onclick="govtGoPublish(this.getAttribute(\'data-govt-publish\'))">✅ Approve &amp; Publish</button>':'')
       +(it.status!=='approved'?'<button class="btn-ghost" onclick="govtNeedsInfo(\''+it.id+'\')">❓ Needs Info</button>':'')
       +(it.status!=='rejected'&&it.status!=='approved'?'<button class="btn-reject" onclick="govtReject(\''+it.id+'\')">✕ Reject</button>':'')
       +(p.source_url?'<a class="btn-open-src" href="'+govtEsc(p.source_url)+'" target="_blank" rel="noopener noreferrer">Aggregator ↗</a>':'')
@@ -6218,6 +6244,23 @@ function govtBulkSelectAll(on){
   document.querySelectorAll('.govt-bulk-select').forEach(c=>{c.checked=!!on;});
   govtBulkUpdate();
 }
+/* A banner that survives the 2.8 s toast — a publish failure should be somthing you can
+   read while you fix the row, not something that vanishes before you notice it. */
+let govtPublishReadyBanner=null;
+function govtBanner(msg,cls){
+  const p='govt-publish-banner';
+  const old=govtBanner.box;
+  const b=document.createElement('p');
+  b.id=p;b.setAttribute('style',('display:block;margin:0 0 12px;padding:9px 13px;border-radius:8px;font-size:.85rem;line-height:1.45;'+(cls||'')));
+  b.textContent=msg;
+  b.setAttribute('role','status');
+  if(old&&old.parentNode)old.parentNode.removeChild(old);
+  document.querySelector('#govtListReview')?.prepend(b);
+  govtBanner.box=b;
+  govtBanner._t=setTimeout(()=>{const bb=govtBanner.box;if(bb&&bb.parentNode)bb.parentNode.removeChild(bb);},12000);
+}
+govtBanner.box=null;
+
 /* One authorised action for the rows that need no judgement: the posting's OWN words name
    civil engineering and a real official notice link is on record. The backend re-checks
    both, so this can never push out a lead that only matched a feed's section heading. */
@@ -6225,11 +6268,13 @@ async function govtPublishReady(){
   if(!confirm('Publish every queued lead whose own wording names civil engineering and which already has an official notice link? They become publicly visible immediately.'))return;
   try{
     const d=await govtPost('publish_ready',{limit:20});
-    const bits=[(d.published||0)+' published'];
-    if((d.skipped||[]).length)bits.push(d.skipped.length+' left for review');
-    if((d.failed||[]).length)bits.push(d.failed.length+' failed: '+String(((d.failed[0]||{}).error||'')).slice(0,80));
-    if(d.remaining)bits.push(d.remaining+' over this batch');
-    toast(bits.join(' · '));
+    const p=(d.published||0);
+    const skipped=(d.skipped||[]).length;
+    const failed=(d.failed||[]).length;
+    const ok=p?
+      '⚡ Publish-ready: '+p+' published'+(skipped?id=', '+skipped+' left for review':'')+failed?id+'; '+failed+' failed':'No queued lead was ready to publish';
+    govtBanner(ok, p? 'color:#e2e8f0;background:#1c3a2a;border:1px solid rgba(110,231,183,.25);' : 'color:#fca5a5;background:#3b1f1f;border:1px solid rgba(252,165,165,.25);');
+    govtBanner._t=setTimeout(()=>{const b=govtBanner.box;if(b&&b.parentNode)b.parentNode.removeChild(b);},14000);
     govtLoad(govtActiveTab);
   }catch(e){toast('Publish-all failed: '+e.message);}
 }
@@ -6491,15 +6536,114 @@ document.addEventListener('DOMContentLoaded',function(){
   if(o)o.addEventListener('click',e=>{if(e.target===o)govtModalClose();});
 });
 
-async function govtApprove(id){
-  if(!confirm('Publish this government job? It becomes publicly visible immediately.'))return;
-  try{ await govtPost('approve',{id}); toast('Published ✓ (human-reviewed gate satisfied)'); govtLoad('inbox'); }
-  catch(e){toast('Publish failed: '+e.message);}
+/* Publish with a pasted notice in one click. The POST body carries the notice first,
+   and the backend stores it through the same attach_notice path the standalone paste control
+   uses — so one click both unblocks the row and publishes it, and one host rule covers both.
+   The inline confirm still wants a real post name, not the source's link text. */
+async function govtApprove(id,notice){
+  try{
+    let body={id};
+    if(notice){ body.official_notice_url=notice; }
+    const d=await govtPost('approve',body);
+    if(d.ok){
+      toast('Published ✓ (human-reviewed gate satisfied)');
+    } else {
+      const code=d.code||
+        (d.error&&/no post title|not a recruitment|not an official|junk|notice/i.test(d.error)?d.error:d.error?d.error:'blocked');
+      toast('Publish blocked ('+code+'): '+String((d.error||d.message||'blocked')).slice(0,120));
+    }
+    govtLoad('inbox');
+  }catch(e){toast('Publish failed: '+e.message);}
 }
 async function govtReject(id){
   const reason=prompt('Rejection reason (optional):')||'';
   try{ await govtPost('reject',{id,reason}); toast('Rejected'); govtLoad('inbox'); }
   catch(e){toast('Reject failed: '+e.message);}
+}
+
+/* ── Title-clean controls for the published list ────────────────────────
+   Part of "Clean the four published titles". govtTitleAudit() is the dry-run that
+   reports which active rows still carry a junk/weak title; govtRepairTitles() applies the
+   low-risk fixes. Both surface the reason a row was left alone, so the fix is obvious
+   rather than a magic button. */
+async function govtTitleAudit(pullOnly){
+  try{
+    const d=await govtPost('title_audit',{limit:200});
+    if(!d.ok){toast('Title audit failed: '+d.error);return;}
+    const rows=d.audit||[];
+    const jq=jobsGrep(rows.map(x=>x.slug||x.id));
+    const dirty=rows.filter(x=>x.verdict!=='ok');
+    const ok=rows.filter(x=>x.verdict==='ok');
+    const txt='<div class="govt-publish-audit">'
+      +'<p class="show" style="margin:0 0 10px"><b>Title audit:</b> '+rows.length+' active posts scanned · '+dirty.length+' need attention · '+ok.length+' clean</p>'
+      +'<div class="govt-audit-table">'+dirty.map(x=>{
+        const btn=x.verdict==='weak'&&x.cleaned
+          ? '<button class="btn-ghost" data-govt-repair="'+govtEsc(x.id)+'" data-govt-repair-title="'+govtEsc(x.cleaned)+'" onclick="govtRepairTitle(this)">Clean with \u2018'+govtEsc(x.cleaned)+'\u2019</button>'
+          : (x.verdict==='weak'
+              ? '<button class="btn-ghost" onclick="govtOpenSaved(\''+govtEsc(x.id)+'\')">Open</button>'
+              : '<span class="show" style="color:#fca5a5">parked — set the real post name, then publish</span>');
+        return '<div class="govt-audit-row">'
+          +'<span class="govt-audit-id">'+govtEsc(x.id.slice(0,8))+'</span>'
+          +'<span class="govt-audit-title">'+govtEsc(x.title||x.post_name||'(no title)')+'</span>'
+          +'<span class="govt-audit-verdict">'+govtEsc(x.verdict)+'</span>'
+          +'<span class="govt-audit-reason">'+govtEsc(x.reason||'')+'</span>'
+          +'<span class="govt-audit-action">'+btn+'</span>'
+          +'</div>';
+      }).join('')+'</div></div>';
+    const wrap=document.createElement('div');
+    wrap.id='govtTitleAudit';
+    wrap.style.cssText='margin-top:14px;padding:12px 14px;background:#0e1f33;border:1px solid rgba(255,255,255,.12);border-radius:10px';
+    wrap.innerHTML='<p class="show" style="margin:0 0 10px"><b>Title audit</b> — the button under each row is what would actually fix the published title. Can be run again after you edit them.</p>'+txt;
+    const box=document.querySelector('#govtListPublished');
+    if(box){
+      if(box.querySelector('#govtTitleAudit'))box.querySelector('#govtTitleAudit').remove();
+      box.prepend(wrap);
+    }
+    txt;
+  }catch(e){toast('Title audit failed: '+e.message);}
+}
+function govtRepairTitle(btn){
+  const id=btn.getAttribute('data-govt-repair');
+  const title=btn.getAttribute('data-govt-repair-title');
+  if(!id||!title)return;
+  if(!confirm('Clean the published title of this post to \u2018'+title+'\u2019? This touches the live public list.'))return;
+  btn.disabled=true;
+  btn.textContent='Saving…';
+  govtPost('repair_titles',{ids:[id],dry:false}).then(d=>{
+    btn.disabled=false;
+    btn.textContent='Cleaned ✓';
+    btn.style.color='#6ee7b7';
+    setTimeout(()=>btn.textContent='Clean with \u2018'+title+'\u2019',1600);
+    govtTitleAudit();
+  }).catch(e=>{
+    btn.disabled=false;
+    btn.textContent='Clean with \u2018'+title+'\u2019';
+    toast('Repair failed: '+e.message);
+  });
+}
+async function govtRepairTitles(dry){
+  try{
+    const d=await govtPost('repair_titles',{limit:200,dry:dry!==false});
+    if(!d.ok){toast('Title repair failed: '+d.error);return;}
+    const fixed=d.fixed||0;
+    const kept=(d.kept||[]).length,skipped=(d.skipped||[]).length;
+    const txt='<p class="show" style="margin:0 0 10px">'+(dry?'Dry run':'Applied')+': '+fixed+' cleaned'+(kept?' · '+kept+' parked':'')+(skipped?' · '+skipped+' skipped':'')+'</p>';
+    const wrap=document.createElement('div');
+    wrap.style.cssText='margin:0 0 14px;padding:11px 14px;background:'+(dry?'#2a1c1c;':'#1c3a2a;')+'border-radius:10px;font-size:.85rem;border:1px solid '+(dry?'rgba(252,165,165,.2)':'rgba(110,231,183,.2)');
+    wrap.innerHTML='<b>'+(dry?'Dry-run title repair':'Title repair')+'</b> — '+(dry?'nothing changed (review the rows below)':'the low-risk rows were cleaned. The parked ones need a real post name.')+'</p>'+txt;
+    if(fixed===0&&kept===0&&skipped===0){
+      wrap.innerHTML+='<p class="show" style="margin:0">No rows needed attention.</p>';
+    }
+    const box=document.querySelector('#govtTitleAudit');
+    if(box){
+      while(box.firstChild)box.removeChild(box.firstChild);
+      box.appendChild(wrap);
+    }
+    setTimeout(()=>{
+      const b=document.querySelector('#govtTitleAudit');
+      if(b&&!dry)setTimeout(()=>{const bb=b;if(bb)bb.parentNode&&bb.parentNode.removeChild(b)},7000);
+    },1200);
+  }catch(e){toast('Title repair failed: '+e.message);}
 }
 async function govtNeedsInfo(id){
   try{ await govtPost('needs_info',{id,notes:'Marked needs-info from admin inbox'}); toast('Marked Needs Info'); govtLoad('inbox'); }
@@ -6563,6 +6707,38 @@ function govtShowCreate(){
   const title=prompt('Recruitment title:'); if(!title)return;
   const organization=prompt('Organization:'); if(!organization)return;
   govtPost('create_draft',{payload:{title,organization}}).then(()=>{toast('Draft created ✓');govtLoad('drafts');}).catch(e=>toast('Failed: '+e.message));
+}
+
+/* One-click publish from the row: a notice to paste, and publish in the same click.
+   When no notice is supplied the backend refuses (notice_required / notice_not_official /
+   title_required / not_a_vacancy / already_approved) and the row keeps its readiness badge —
+   so the reviewer sees the exact reason it stayed in the queue. */
+async function govtGoPublish(id){
+  if(!confirm('Publish this queued lead now? It becomes publicly visible immediately.'))return;
+  const notice=prompt('Optional: paste the official notice URL now (leaves the field blank to skip)');
+  if(notice===null)return;
+  let body={id};
+  if(notice&&notice.trim())body.official_notice_url=notice.trim();
+  try{
+    const d=await govtPost('approve',body);
+    if(d.ok){
+      toast('Published ✓');
+    } else {
+      const code=d.code||(d.error&&/no post title|not a recruitment|not an official|junk|notice|already/i.test(d.error)?d.error:d.error?d.error:'blocked');
+      toast('Publish blocked ('+code+'): '+String((d.error||d.message||'blocked')).slice(0,140));
+    }
+    govtLoad('review');
+  }catch(e){toast('Publish failed: '+e.message);}
+}
+
+/* Run the audit on load of the published tab, so the reviewer sees which rows still carry
+   a junk or weak title without hunting for them. The dry-run is the default lens; a divider
+   row turns it into an apply pass. */
+let govtPublishedReady=false;
+function govtPublishedReadyInit(){
+  if(govtPublishedReady)return;
+  govtPublishedReady=true;
+  govtTitleAudit();
 }
 
 /* Load the Government Jobs section when its tab is opened. */
