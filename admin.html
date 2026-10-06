@@ -278,7 +278,6 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
   <button data-tab="contact">Contact</button>
-  <button data-tab="review-jobs">⚡ Review Jobs</button>
   <button data-tab="govt">🏛 Government Jobs</button>
   <button data-tab="collector">📥 Job Collector</button>
   <button data-tab="inbox">📬 Job Inbox</button>
@@ -521,18 +520,6 @@ Show expired
     <code>/api/agent-reach-ingest</code>. Everything arrives as <strong style="color:#fbbf24">Pending Review</strong> —
     Agent Reach never publishes directly. Verify the original source, edit if needed, then publish explicitly.
   </p>
-
-  <!-- BLOCK A — Built-in free civil job scan -->
-  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
-    <h3 style="color:#c9973c">🔎 Free Civil Job Scan</h3>
-    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Run the same zero-cost public/company-source discovery pipeline without leaving Agent Reach.</p>
-    <p style="color:#6a8aaa;font-size:.76rem;margin-bottom:12px">Results are saved as <strong style="color:#fbbf24">Pending Review</strong>. Nothing is published automatically.</p>
-    <div class="admin-actions" style="margin-bottom:0">
-      <button id="arJobScanBtn" class="btn-gold" onclick="arRunJobScan()">▶ Scan Civil Jobs</button>
-      <button class="btn-ghost" type="button" onclick="document.querySelector('[data-tab=\"discovery\"]').click()">Open Discovery</button>
-    </div>
-    <div id="arJobScanStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
-  </div>
 
   <!-- BLOCK B — Exam Alerts Scanner -->
 
@@ -971,62 +958,6 @@ Interview Q&A — public page /interview
 <div id="adminContact">
 <p style="color:#6a8aaa;font-size:.85rem">Loading messages…</p>
 </div>
-</div>
-
-<!-- ⚡ REVIEW JOBS PANEL -->
-<div class="panel" id="panel-review-jobs">
-<style>
-.rj-scraper-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#071828;border:1px solid rgba(201,151,60,.2);border-radius:10px;margin-bottom:14px;align-items:center}
-.rj-scraper-bar span{font-size:.78rem;color:#6a8aaa;flex:1}
-.rj-tabs{display:flex;gap:4px;margin-bottom:14px;background:#071828;padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
-.rj-tabs button{padding:7px 14px;border-radius:7px;border:none;background:transparent;color:#6a8aaa;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
-.rj-tabs button.active{background:#c9973c;color:#0b1f3a}
-.rj-tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
-.rj-bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:10px;margin-bottom:10px}
-.rj-bulk-bar label{font-size:.8rem;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer}
-.rj-count{font-size:.78rem;color:#6a8aaa}
-.btn-pub-bulk{background:rgba(5,150,105,.15);color:#6ee7b7;border:1px solid rgba(5,150,105,.35);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
-.btn-pub-bulk:hover{background:rgba(5,150,105,.3)}
-.btn-rej-bulk{background:rgba(220,38,38,.1);color:#fca5a5;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
-.btn-del-bulk{background:rgba(100,50,50,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.2);border-radius:7px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
-.rj-search{width:100%;padding:9px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:.85rem;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box}
-.rj-search:focus{border-color:#c9973c}
-.rj-item{background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
-.rj-item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:#c9973c}
-.rj-item-body{flex:1;min-width:0}
-.rj-item-body h4{font-size:.9rem;font-weight:700;color:#fff;margin:0 0 3px;line-height:1.35}
-.rj-item-body p{font-size:.75rem;color:#6a8aaa;margin:0 0 6px}
-.rj-item-actions{display:flex;gap:6px;flex-wrap:wrap}
-.rj-tg-badge{font-size:.65rem;padding:2px 7px;border-radius:999px;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);font-weight:600;margin-left:6px}
-.rj-tg-no{background:rgba(100,100,100,.1);color:#4a6a8a;border-color:rgba(255,255,255,.08)}
-.rj-pager{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
-</style>
-
-<div class="rj-scraper-bar">
-  <span>Scrape 9 portals for civil engineering jobs → saved as pending review</span>
-  <button class="btn-gold" onclick="rjRunScraper()" id="rjScraperBtn">🔍 Run Scraper Now</button>
-  <button class="btn-ghost" onclick="rjLoadTab(rjActiveTab)">⟳ Refresh</button>
-</div>
-
-<div class="rj-tabs">
-  <button class="active" data-rjtab="review" onclick="rjLoadTab('review')">📋 Pending Review <span id="rjReviewCount"></span></button>
-  <button data-rjtab="published" onclick="rjLoadTab('published')">✅ Published <span id="rjPubCount"></span></button>
-  <button data-rjtab="deleted" onclick="rjLoadTab('deleted')">🗑️ Deleted <span id="rjDelCount"></span></button>
-</div>
-
-<input class="rj-search" id="rjSearch" placeholder="Search by job title…" oninput="rjFilterList()">
-
-<div class="rj-bulk-bar">
-  <label><input type="checkbox" id="rjSelAll" onchange="rjToggleAll(this.checked)"> Select all</label>
-  <span class="rj-count" id="rjSelCount">0 selected</span>
-  <button class="btn-pub-bulk" onclick="rjBulk('publish')">✅ Publish</button>
-  <button class="btn-rej-bulk" onclick="rjBulk('reject')">✕ Reject</button>
-  <button class="btn-del-bulk" onclick="rjBulk('delete')">🗑 Delete</button>
-  <button class="btn-ghost" onclick="rjBulk('restore')" style="font-size:.75rem">↩ Restore</button>
-</div>
-
-<div id="rjList"><p style="color:#6a8aaa;font-size:.85rem;padding:1rem 0">Click a tab above to load jobs.</p></div>
-<div class="rj-pager" id="rjPager"></div>
 </div>
 
 <div class="panel" id="panel-govt">

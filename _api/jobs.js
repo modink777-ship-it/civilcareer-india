@@ -1785,18 +1785,27 @@ module.exports = async function handler(req, res) {
 
   /* bulk delete selected jobs */
   if (req.method === "DELETE") {
-    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-    const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
+    let body;
+    try {
+      body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+    } catch (_) {
+      body = {};
+    }
+    const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : (body.id ? [body.id] : []);
     if (!ids.length) return res.status(400).json({ error: "No job IDs supplied" });
 
     // Soft-delete only. This keeps auditability and makes the Deleted filter useful.
-    const { data, error } = await supabase
-      .from("jobs")
-      .update({ status: "deleted", deleted_at: new Date().toISOString() })
-      .in("id", ids);
+    const inClause = 'id=in.(' + ids.map((id) => '"' + encodeURIComponent(id) + '"').join(',') + ')';
+    const r = await supa(`jobs?${inClause}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ published: false, status: 'Deleted', review_state: 'Deleted' }),
+    });
 
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ ok: true, deleted: ids.length, data });
+    if (!r.ok) {
+      const errText = await r.text();
+      return res.status(500).json({ error: errText || "Failed to delete jobs" });
+    }
+    return res.status(200).json({ ok: true, deleted: ids.length });
   }
 
 
