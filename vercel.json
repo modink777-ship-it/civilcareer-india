@@ -90,6 +90,10 @@
       "destination": "/private-jobs.html"
     },
     {
+      "source": "/courses",
+      "destination": "/courses.html"
+    },
+    {
       "source": "/government-jobs",
       "destination": "/government-jobs.html"
     },
@@ -256,6 +260,11 @@
     }
   ],
   "redirects": [
+    {
+      "source": "/courses.html",
+      "destination": "/courses",
+      "permanent": true
+    },
     {
       "source": "/legal.html",
       "destination": "/legal",

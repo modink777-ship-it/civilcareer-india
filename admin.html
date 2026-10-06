@@ -273,6 +273,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="blog">Blog</button>
   <button data-tab="interview">Interview Q&A</button>
   <button data-tab="materials">Materials</button>
+  <button data-tab="courses">Courses</button>
   <button data-tab="submissions">Submissions</button>
   <button data-tab="reports">Reports</button>
   <button data-tab="contact">Contact</button>
@@ -882,6 +883,74 @@ Interview Q&A — public page /interview
 <div id="adminMaterials">
 <p style="color:#6a8aaa;font-size:.85rem">Loading materials…</p>
 </div>
+
+</div>
+
+<div class="panel" id="panel-courses">
+
+<style>
+.cr-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.cr-stat{background:#0a1c35;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;flex:1;min-width:104px}
+.cr-stat span{display:block;font-size:.64rem;color:#6a8aaa;letter-spacing:.06em;text-transform:uppercase}
+.cr-stat b{display:block;font-size:1.2rem;color:#fff;margin-top:3px}
+.cr-stat.warn b{color:#fbbf24}
+.cr-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;background:#071828;border:1px solid rgba(201,151,60,.2);border-radius:10px;margin-bottom:14px}
+.cr-head span{font-size:.78rem;color:#6a8aaa;flex:1;min-width:200px}
+.cr-prov{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.cr-prov-chip{font-size:.72rem;color:#94a3b8;background:#0a1c35;border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:7px 11px;max-width:340px}
+.cr-prov-chip b{color:#cbd5e1}
+.cr-prov-chip i{font-style:normal;color:#fbbf24}
+.cr-prov-chip em{display:block;font-style:normal;color:#4a6a8a;font-size:.68rem;margin-top:2px}
+.cr-row{display:flex;gap:12px;align-items:flex-start;background:#0f2847;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;margin-bottom:8px;flex-wrap:wrap}
+.cr-row.pending{border-color:rgba(217,119,6,.45);box-shadow:inset 3px 0 0 #f59e0b}
+.cr-row-body{flex:1;min-width:220px}
+.cr-row-body h4{margin:0 0 3px;font-size:.9rem;color:#fff}
+.cr-row-body p{margin:0 0 6px;font-size:.75rem;color:#6a8aaa}
+.cr-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.cr-badge{font-size:.62rem;padding:2px 8px;border-radius:999px;font-weight:700;border:1px solid transparent;text-transform:uppercase;letter-spacing:.04em}
+.cr-badge.draft{background:rgba(217,119,6,.18);color:#fbbf24;border-color:rgba(217,119,6,.35)}
+.cr-badge.live{background:rgba(5,150,105,.2);color:#6ee7b7;border-color:rgba(5,150,105,.35)}
+.cr-badge.free{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.cr-badge.feat{background:rgba(201,151,60,.18);color:#c9973c;border-color:rgba(201,151,60,.35)}
+.cr-badge.mute{background:rgba(255,255,255,.06);color:#94a3b8;border-color:rgba(255,255,255,.1)}
+.cr-row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cr-row-actions button{padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);font-size:.75rem;font-weight:700;color:#94a3b8;cursor:pointer;font-family:inherit;transition:all .15s}
+.cr-row-actions button:hover{background:rgba(255,255,255,.12);color:#fff}
+.cr-row-actions .btn-publish{border-color:rgba(5,150,105,.4);color:#6ee7b7}
+.cr-row-actions .btn-delete{border-color:rgba(220,38,38,.4);color:#fca5a5}
+.cr-clicks{font-size:.72rem;color:#6a8aaa;white-space:nowrap}
+.cr-import{background:#071828;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:none}
+.cr-import.show{display:block}
+.cr-import textarea{width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e2e8f0;font:.78rem/1.5 ui-monospace,Consolas,monospace;padding:10px;min-height:110px;resize:vertical}
+.cr-empty{color:#6a8aaa;font-size:.85rem;padding:1rem 0}
+@media(max-width:640px){.cr-row-actions{width:100%}.cr-row-actions button{flex:1;min-height:40px}}
+</style>
+
+<div class="cr-head">
+  <span>Review queue for the public <b style="color:#c9973c">/courses</b> page. Nothing is public until you publish it — manually added and bulk-imported rows start as drafts.</span>
+  <button class="btn-gold" onclick="crEditor()">+ Add course</button>
+  <button class="btn-ghost" onclick="crLoad()">⟳ Refresh</button>
+  <button class="btn-ghost" onclick="crRunDiscovery()" id="crRunBtn">⚙ Run discovery</button>
+  <button class="btn-ghost" onclick="$('crImportBox').classList.toggle('show')">⬇ Bulk import</button>
+  <a class="btn-ghost" href="/courses" target="_blank" rel="noopener" style="text-decoration:none">Open /courses ↗</a>
+</div>
+
+<div class="import-status" id="crStatus"></div>
+
+<div class="cr-stats" id="crStats"></div>
+
+<div class="cr-prov" id="crProv" style="display:none"></div>
+
+<div class="cr-import" id="crImportBox">
+  <p style="font-size:.75rem;color:#6a8aaa;margin:0 0 8px">Paste a JSON array (max 200) of course objects — either a bare array or <code>{"items":[…]}</code>. Idempotent: the same provider+external_id or normalized URL updates the existing row instead of duplicating it. Everything lands as a <b>draft</b>.</p>
+  <textarea id="crImportText" placeholder='[{"title":"STAAD Pro for Beginners","provider":"Udemy","course_url":"https://…","category":"Structural","career_stage":"Fresher","target_roles":["Structural Engineer"],"price_inr":499,"rating":4.5}]'></textarea>
+  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+    <button class="btn-gold" onclick="crImport()">Import as drafts</button>
+    <button class="btn-ghost" onclick="$('crImportBox').classList.remove('show')">Close</button>
+  </div>
+</div>
+
+<div id="crList"><p class="cr-empty">Loading courses…</p></div>
 
 </div>
 
@@ -2681,6 +2750,216 @@ Save & Publish
       st.textContent=err.message;
     }
   };
+}
+
+/* ── COURSES — course aggregator admin (v32) ─────────────────────────
+   Everything here talks to /api/courses (admin paths) and
+   /api/course-discovery through authedApi() — the dispatcher elevates
+   the dashboard session server-side; the browser never carries a
+   service-role key or provider secret. Review-before-publication:
+   rows arrive as drafts and only crToggle('is_published') makes one
+   public on /courses. */
+let crRows=[], crClicks={}, crStats=null, crProviders=[];
+
+function crStatus(msg, ok){
+  const el=$('crStatus');
+  if(!el)return;
+  el.className='import-status show '+(ok?'success':'error');
+  el.textContent=msg;
+}
+
+function crFind(id){return crRows.find(x=>x.id===id);}
+
+async function crLoad(){
+  const list=$('crList');
+  try{
+    const [data, disc]=await Promise.all([
+      authedApi('/api/courses?admin=1'),
+      authedApi('/api/course-discovery').catch(()=>({providers:[]})),
+    ]);
+    crRows=data.courses||[];
+    crClicks=data.clicks_by_course||{};
+    crStats=data.stats||{};
+    crProviders=disc.providers||[];
+    crRender();
+  }catch(e){
+    if(list)list.innerHTML=`<p style="color:#fca5a5;padding:1rem">${esc(e.message||'Failed to load courses')} — <button class="btn-ghost" onclick="crLoad()">Retry</button></p>`;
+  }
+}
+
+function crRender(){
+  const s=crStats||{};
+  const statsEl=$('crStats');
+  if(statsEl){
+    statsEl.innerHTML=[
+      ['Total',s.total],['Published',s.published],['Pending',s.pending],
+      ['Free',s.free],['Paid',s.paid],['Featured',s.featured],['Clicks',s.clicks],
+    ].map(([label,v])=>`<div class="cr-stat${label==='Pending'?' warn':''}"><span>${label}</span><b>${Number(v||0).toLocaleString('en-IN')}</b></div>`).join('');
+  }
+  const provEl=$('crProv');
+  if(provEl){
+    provEl.style.display=crProviders.length?'flex':'none';
+    provEl.innerHTML=crProviders.map(p=>
+      `<span class="cr-prov-chip"><b>${esc(p.label)}</b> <i>${esc(p.status)}</i>${p.configured?' · credentials set':''}<em>${esc(p.note||'')}</em></span>`
+    ).join('');
+  }
+  const list=$('crList');
+  if(!list)return;
+  if(!crRows.length){
+    list.innerHTML='<p class="cr-empty">No courses yet. Add one manually or use bulk import — everything lands here as a draft for review before it can appear on /courses.</p>';
+    return;
+  }
+  list.innerHTML=crRows.map(c=>{
+    const pub=!!c.is_published;
+    const clicks=Number(crClicks[c.id]||0);
+    const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'—');
+    const was=c.original_price_inr&&Number(c.original_price_inr)>Number(c.price_inr||0)?` (was ₹${Number(c.original_price_inr).toLocaleString('en-IN')})`:'';
+    return `<div class="cr-row${pub?'':' pending'}">
+      <div class="cr-row-body">
+        <div class="cr-badges">
+          <span class="cr-badge ${pub?'live':'draft'}">${pub?'Published':'Pending review'}</span>
+          ${c.is_featured?'<span class="cr-badge feat">Featured</span>':''}
+          ${c.is_free?'<span class="cr-badge free">Free</span>':''}
+          ${c.source?`<span class="cr-badge mute">${esc(c.source)}</span>`:''}
+        </div>
+        <h4>${esc(c.title||'Untitled')}</h4>
+        <p>${esc(c.provider||'')}${c.instructor?' · '+esc(c.instructor):''}${c.category?' · '+esc(c.category):''}${c.career_stage?' · '+esc(c.career_stage):''}${c.language?' · '+esc(c.language):''}</p>
+        <p>${Array.isArray(c.target_roles)&&c.target_roles.length?esc(c.target_roles.join(', ')):'—'} · ${price}${was}${c.rating?' · ★ '+Number(c.rating).toFixed(1):''}${c.enrollment_count?' · '+Number(c.enrollment_count).toLocaleString('en-IN')+' learners':''}${c.duration_hours?' · '+c.duration_hours+'h':''}</p>
+        ${c.admin_notes?`<p style="color:#c9973c">📝 ${esc(c.admin_notes)}</p>`:''}
+        <a href="${esc(c.course_url)}" target="_blank" rel="noopener" style="font-size:.72rem;color:#93c5fd">Open original course ↗</a>
+      </div>
+      <div class="cr-clicks">🖱 ${clicks} click${clicks===1?'':'s'}</div>
+      <div class="cr-row-actions">
+        <button class="btn-publish" onclick="crToggle('${esc(c.id)}','is_published',${!pub})">${pub?'Unpublish':'Publish'}</button>
+        <button class="btn-ghost" style="padding:6px 12px;font-size:.75rem" onclick="crToggle('${esc(c.id)}','is_featured',${!c.is_featured})">${c.is_featured?'Unfeature':'Feature'}</button>
+        <button class="btn-ghost" style="padding:6px 12px;font-size:.75rem" onclick="crEditor(crFind('${esc(c.id)}'))">Edit</button>
+        <button class="btn-delete" onclick="crDelete('${esc(c.id)}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* Publish / unpublish / feature — always sends the whole row back so the
+   server re-validates every field; the boolean we change is explicit. */
+async function crToggle(id, field, value){
+  const c=crFind(id);
+  if(!c)return toast('Course not found — refresh the list.');
+  try{
+    await authedApi('/api/courses',{method:'POST',body:JSON.stringify({...c,[field]:value})});
+    toast(field==='is_published'?(value?'Course published ✓':'Course unpublished — now a draft.'):'Course updated.');
+    crLoad();
+  }catch(e){ toast(e.message||'Update failed.'); }
+}
+
+async function crDelete(id){
+  const c=crFind(id);
+  if(!confirm(`Delete “${c?c.title:'this course'}” permanently?`))return;
+  try{
+    await authedApi(`/api/courses?id=${encodeURIComponent(id)}`,{method:'DELETE'});
+    toast('Course deleted.');
+    crLoad();
+  }catch(e){ toast(e.message||'Delete failed.'); }
+}
+
+function crEditor(c){
+  c=c||{};
+  $('editorTitle').textContent=c.id?'Edit course':'Add course';
+  $('editorBody').innerHTML=`
+<form id="crEdit">
+<div class="field-grid">
+<label class="wide">Title *<input name="title" value="${val(c.title)}" required placeholder="e.g. STAAD.Pro Complete Course"></label>
+<label>Provider *<input name="provider" value="${val(c.provider)}" required placeholder="Udemy / Coursera / NPTEL / YouTube"></label>
+<label>Category<input name="category" value="${val(c.category)}" placeholder="Structural / Quantity Surveying / GATE …"></label>
+<label>Career stage<select name="career_stage">${['','Fresher','0-2 years','3-5 years','5+ years','Senior'].map(s=>`<option value="${s}"${(c.career_stage||'')===s?' selected':''}>${s||'—'}</option>`).join('')}</select></label>
+<label>Target roles (comma separated)<input name="target_roles" value="${val((c.target_roles||[]).join(', '))}" placeholder="Site Engineer, Structural Engineer"></label>
+<label>Instructor<input name="instructor" value="${val(c.instructor)}"></label>
+<label>Price (INR)<input type="number" min="0" step="1" name="price_inr" value="${val(c.price_inr!=null?c.price_inr:0)}"></label>
+<label>Original price (INR)<input type="number" min="0" step="1" name="original_price_inr" value="${val(c.original_price_inr)}"></label>
+<label>Rating (0–5)<input type="number" step="0.1" min="0" max="5" name="rating" value="${val(c.rating)}"></label>
+<label>Enrollment count<input type="number" min="0" step="1" name="enrollment_count" value="${val(c.enrollment_count)}"></label>
+<label>Duration (hours)<input type="number" min="0" step="0.5" name="duration_hours" value="${val(c.duration_hours)}"></label>
+<label>Language<input name="language" value="${val(c.language)}" placeholder="English / Hindi"></label>
+<label class="wide">Course URL *<input type="url" name="course_url" value="${val(c.course_url)}" required placeholder="https://…"></label>
+<label class="wide">Affiliate URL<input type="url" name="affiliate_url" value="${val(c.affiliate_url)}" placeholder="https://… — your affiliate deep link; the public CTA prefers it over course_url"></label>
+<label class="wide">Thumbnail URL<input type="url" name="thumbnail_url" value="${val(c.thumbnail_url)}"></label>
+<label>External ID<input name="external_id" value="${val(c.external_id)}" placeholder="provider course id (optional)"></label>
+<label>Source<input name="source" value="${val(c.source||'manual')}"></label>
+<label class="wide">Admin notes<textarea name="admin_notes" rows="2">${val(c.admin_notes)}</textarea></label>
+<label class="check"><input type="checkbox" name="is_free" ${c.is_free===true||(!c.id&&!(Number(c.price_inr)>0))?'checked':''}> Free course</label>
+<label class="check"><input type="checkbox" name="is_featured" ${c.is_featured?'checked':''}> Featured</label>
+<label class="check"><input type="checkbox" name="is_published" ${c.is_published?'checked':''}> Published (visible on /courses)</label>
+<button type="submit" class="btn-save">${c.id?'Save course':'Add as draft'}</button>
+<div class="save-status" id="crSaveStatus"></div>
+</div>
+</form>`;
+  $('editorDialog').showModal();
+  /* Keep "Free course" honest: entering a price clears it, clearing the
+     price sets it. The admin can still override by toggling the box
+     afterwards — this only reacts to price edits. */
+  (function bindFreeSync(){
+    const form=$('crEdit');
+    if(!form)return;
+    const priceEl=form.querySelector('[name=price_inr]');
+    const freeEl=form.querySelector('[name=is_free]');
+    if(!priceEl||!freeEl)return;
+    priceEl.addEventListener('input',()=>{ freeEl.checked=!(Number(priceEl.value||0)>0); });
+  })();
+  $('crEdit').onsubmit=async e=>{
+    e.preventDefault();
+    const f=e.target;
+    const d=formObject(f);
+    d.is_free=f.querySelector('[name=is_free]').checked;
+    d.is_featured=f.querySelector('[name=is_featured]').checked;
+    d.is_published=f.querySelector('[name=is_published]').checked;
+    d.target_roles=String(d.target_roles||'').split(',').map(x=>x.trim()).filter(Boolean);
+    d.price_inr=Number(d.price_inr||0);
+    d.original_price_inr=d.original_price_inr===''?null:Number(d.original_price_inr);
+    d.rating=d.rating===''?null:Number(d.rating);
+    d.enrollment_count=d.enrollment_count===''?null:Number(d.enrollment_count);
+    d.duration_hours=d.duration_hours===''?null:Number(d.duration_hours);
+    if(c.id)d.id=c.id;
+    const st=$('crSaveStatus');
+    st.className='save-status show';
+    st.textContent='Saving…';
+    try{
+      await authedApi('/api/courses',{method:'POST',body:JSON.stringify(d)});
+      st.className='save-status show success';
+      st.textContent='Saved ✓';
+      toast('Course saved.');
+      crLoad();
+      setTimeout(()=>$('editorDialog').close(),700);
+    }catch(err){
+      st.className='save-status show error';
+      st.textContent=err.message;
+    }
+  };
+}
+
+async function crRunDiscovery(){
+  const btn=$('crRunBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Running…';}
+  try{
+    const r=await authedApi('/api/course-discovery?action=run',{method:'POST',body:'{}'});
+    crStatus((r.message||'Discovery finished.')+(r.staged?` ${r.staged} course(s) staged as drafts.`:'')+(r.hint?' '+r.hint:''), true);
+  }catch(e){ crStatus(e.message||'Discovery failed.', false); }
+  finally{ if(btn){btn.disabled=false;btn.textContent='⚙ Run discovery';} }
+}
+
+async function crImport(){
+  const ta=$('crImportText');
+  let parsed;
+  try{ parsed=JSON.parse(ta.value); }
+  catch(e){ return crStatus('Invalid JSON: '+e.message, false); }
+  const items=Array.isArray(parsed)?parsed:(Array.isArray(parsed.items)?parsed.items:null);
+  if(!items||!items.length)return crStatus('Provide a non-empty JSON array of courses.', false);
+  try{
+    const r=await authedApi('/api/course-discovery?action=import',{method:'POST',body:JSON.stringify({items})});
+    const rej=(r.rejected||[]).length;
+    const first=rej?` First rejection: ${r.rejected[0].title||('#'+r.rejected[0].index)} — ${r.rejected[0].reason}.`:'';
+    crStatus(`Imported ${r.imported||0}, updated ${r.updated||0}${rej?', rejected '+rej:''}. ${r.note||''}${first}`, !rej);
+    if((r.imported||0)+(r.updated||0)>0)ta.value='';
+    crLoad();
+  }catch(e){ crStatus(e.message||'Import failed.', false); }
 }
 
 /* MATERIAL EDITOR */
@@ -5640,6 +5919,8 @@ document
       }
 
       if(b.dataset.tab==='inbox')jiLoad(jiActive);
+
+      if(b.dataset.tab==='courses'){crLoad();}
     };
   });
 
@@ -6271,8 +6552,14 @@ async function govtPublishReady(){
     const p=(d.published||0);
     const skipped=(d.skipped||[]).length;
     const failed=(d.failed||[]).length;
-    const ok=p?
-      '⚡ Publish-ready: '+p+' published'+(skipped?id=', '+skipped+' left for review':'')+failed?id+'; '+failed+' failed':'No queued lead was ready to publish';
+    /* NOTE: this line used to read `...+(skipped?id=', '+...)+failed?id+'; '+failed+' failed':'...';`
+       — an accidental `id=` assignment plus a missing inner ternary closed the
+       outer conditional, so the whole 54 KB script block failed to PARSE and
+       every function in it (Review Jobs, Government Jobs tabs) was undefined
+       in the browser. Kept as one explicit ternary per count. */
+    const ok=p
+      ? '⚡ Publish-ready: '+p+' published'+(skipped?', '+skipped+' left for review':'')+(failed?'; '+failed+' failed':'')
+      : 'No queued lead was ready to publish';
     govtBanner(ok, p? 'color:#e2e8f0;background:#1c3a2a;border:1px solid rgba(110,231,183,.25);' : 'color:#fca5a5;background:#3b1f1f;border:1px solid rgba(252,165,165,.25);');
     govtBanner._t=setTimeout(()=>{const b=govtBanner.box;if(b&&b.parentNode)b.parentNode.removeChild(b);},14000);
     govtLoad(govtActiveTab);

@@ -77,6 +77,7 @@ module.exports = async function handler(req, res) {
       ['/government-jobs', '0.9', 'daily'],
       ['/exams', '0.8', 'weekly'],
       ['/study-materials', '0.8', 'weekly'],
+      ['/courses', '0.8', 'weekly'],
       ['/about', '0.5', 'monthly'],
       ['/career-guides.html', '0.7', 'weekly'],
       ['/career-tools.html', '0.7', 'weekly'],

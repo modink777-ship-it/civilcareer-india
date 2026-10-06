@@ -43,7 +43,7 @@
 @media(max-width:640px){.cm-form .grid2{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
+<body><a class="skip" href="#content">Skip to content</a>
 
 <header class="site-header">
   <div class="container nav">
@@ -58,7 +58,7 @@
   </div>
 </header>
 
-<main class="cm-main" id="cmMain"></main>
+<main class="cm-main" id="content"></main>
 
 <footer>
   <div class="container footer-grid">
@@ -111,7 +111,7 @@ function slugifyName(s){return String(s).toLowerCase().replace(/&/g,'and').repla
 /* ── LIST VIEW ─────────────────────────────────────────────── */
 function renderList(){
   document.title = 'Civil Engineering Company Reviews — L&T, NCC, Tata Projects, PSUs | CivilCareer';
-  var main = document.getElementById('cmMain');
+  var main = document.getElementById('content');
   main.innerHTML =
     '<h1>Company Reviews for Civil Engineers</h1>'+
     '<p style="color:var(--text);max-width:70ch">Anonymous reviews from civil engineers working at India\'s biggest contractors, consultancies, PSUs and government departments. Read before you join — share after you have worked there.</p>'+
@@ -152,7 +152,7 @@ function renderDetail(slug){
   document.title = name + ' — Civil Engineer Reviews | CivilCareer';
   var descMeta = document.querySelector('meta[name="description"]');
   if (descMeta) descMeta.setAttribute('content', 'Anonymous reviews of '+name+' from civil engineers — salary timeliness, growth, work-life balance and management. Read before you join.');
-  var main = document.getElementById('cmMain');
+  var main = document.getElementById('content');
 
   main.innerHTML =
     '<p><a href="/companies" class="text-link">← All companies</a></p>'+

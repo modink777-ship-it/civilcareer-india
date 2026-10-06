@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<link rel="stylesheet" href="/styles.css">
+<script src="/translations.js" defer></script>
+<link rel="icon" href="/icons/icon-96.png">
+<title>Civil Engineering Courses — Software, GATE, Planning, Design &amp; Management | CivilCareer</title>
+<meta name="description" content="Every useful civil engineering learning resource in one place — AutoCAD, STAAD Pro, Primavera P6, BIM, quantity surveying, GATE and SSC JE preparation, curated by career stage and role for Indian civil engineers.">
+<meta property="og:title" content="All Civil Engineering Courses in One Place | CivilCareer">
+<meta property="og:description" content="Curated courses for fresher to senior civil engineers — software, exams, structural design, planning and construction management.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://civilcareer-india-two.vercel.app/courses">
+<meta property="og:image" content="https://civilcareer-india-two.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="All Civil Engineering Courses in One Place | CivilCareer">
+<meta name="twitter:description" content="Curated courses for fresher to senior civil engineers — software, exams, structural design and planning.">
+<link rel="canonical" href="https://civilcareer-india-two.vercel.app/courses">
+<style>
+.co-main{max-width:1160px;margin:0 auto;padding:0 24px 90px}
+.co-hero{padding:56px 0 8px}
+.co-hero h1{font-size:42px;letter-spacing:-1.6px;margin:0 0 10px}
+.co-hero p{max-width:760px;margin:0;color:#516174;font-size:17px}
+.co-filters{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:12px;align-items:end;margin:26px 0 8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.co-filters label{display:block;color:#354459;font-size:12px;font-weight:750}
+.co-filters select,.co-filters input[type=search]{width:100%;margin-top:5px;border:1px solid #cfd8e1;border-radius:7px;background:#fff;padding:10px;color:var(--ink);outline:0}
+.co-filters select:focus,.co-filters input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea812}
+.co-free{display:flex!important;align-items:center;gap:8px;white-space:nowrap;padding-bottom:10px}
+.co-free input{width:auto;margin:0}
+.co-reset{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:42px}
+.co-reset:hover{background:var(--soft)}
+.co-count{margin:14px 0;color:var(--muted);font-size:13.5px}
+.co-grid{display:grid;gap:15px;grid-template-columns:repeat(auto-fill,minmax(255px,1fr))}
+.co-card{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;transition:.17s}
+.co-card:hover{border-color:#aab9c7;box-shadow:var(--shadow)}
+.co-thumb{position:relative;height:132px;background:linear-gradient(135deg,#12365c,#1f6fb2);display:flex;align-items:center;justify-content:center;color:#cfe3f5;font-size:34px;font-weight:850;letter-spacing:-1px}
+.co-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.co-badges{position:absolute;top:9px;left:9px;display:flex;gap:6px;z-index:2}
+.co-badge{background:#0b1f3acc;color:#fff;font-size:10px;font-weight:820;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:99px}
+.co-badge.free{background:#1d7a68}
+.co-badge.feat{background:#9a6114}
+.co-body{display:flex;flex-direction:column;gap:8px;padding:16px;flex:1}
+.co-provider{color:var(--teal);font-size:11.5px;font-weight:820;text-transform:uppercase;letter-spacing:.06em}
+.co-card h2{font-size:15.5px;line-height:1.35;margin:0;color:var(--navy)}
+.co-meta{display:flex;gap:6px;flex-wrap:wrap;color:#687587;font-size:12px}
+.co-meta span{background:var(--soft);border:1px solid #e6ebef;border-radius:5px;padding:3px 7px}
+.co-roles{display:flex;gap:5px;flex-wrap:wrap}
+.co-roles span{font-size:10.5px;color:#4b6a8a;background:#eaf2fa;border-radius:99px;padding:2px 8px}
+.co-price{display:flex;align-items:baseline;gap:8px;margin-top:auto;padding-top:4px;color:var(--navy);font-weight:820}
+.co-price s{color:var(--muted);font-weight:600;font-size:12.5px}
+.co-price .free{color:#1d7a68}
+.co-cta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;min-height:42px;padding:0 14px;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;font-size:14px}
+.co-cta:hover{background:#0f4f91}
+.co-leave{color:var(--muted);font-size:11px;margin-top:6px}
+.co-state{grid-column:1/-1;padding:44px 20px;text-align:center;border:1px dashed #bfcad4;border-radius:12px;background:#fafbfc;color:#546274}
+.co-state button{margin-top:12px}
+.co-pager{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:26px}
+.co-pager button{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:8px;padding:10px 18px;font-weight:750;cursor:pointer}
+.co-pager button:disabled{opacity:.45;cursor:default}
+.co-pager span{color:var(--muted);font-size:13px}
+.co-disclosure{margin-top:38px;padding:16px 18px;border-left:3px solid var(--teal);background:#edf6f3;border-radius:0 10px 10px 0;color:#38564f;font-size:13.5px}
+.co-keep{margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
+.co-keep h2{font-size:20px;margin:0 0 8px}
+.co-keep p{margin:0 0 12px;color:#687587;font-size:14px}
+.co-keep nav{display:flex;gap:8px;flex-wrap:wrap}
+.co-keep nav a{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;color:var(--navy)}
+.co-keep nav a:hover{border-color:var(--blue);color:var(--blue)}
+@media(max-width:860px){
+  .co-filters{grid-template-columns:1fr 1fr}
+  .co-hero h1{font-size:32px;letter-spacing:-1px}
+}
+@media(max-width:540px){
+  .co-filters{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#content">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="/">Civil<span>Career</span></a>
+    <nav aria-label="Primary">
+      <a href="/private-jobs">Jobs</a>
+      <a href="/government-jobs">Government</a>
+      <a href="/exams">Exams</a>
+      <a href="/exam-tracker">Exam Tracker</a>
+      <a href="/courses" aria-current="page">Courses</a>
+      <a href="/blog">Blog</a>
+    </nav>
+  </div>
+</header>
+
+<main id="content" class="co-main">
+
+  <section class="co-hero">
+    <p class="eyebrow">Learn the skills employers want</p>
+    <h1>All Civil Engineering Courses in One Place</h1>
+    <p>Curated learning for every stage of a civil engineering career — fresher software skills,
+       government exam preparation, structural design, planning, quantity surveying and construction
+       management. Free resources are labelled FREE.</p>
+  </section>
+
+  <form class="co-filters" id="coFilters" role="search" aria-label="Filter courses">
+    <label>Category
+      <select id="coCategory" name="category"><option value="">All categories</option></select>
+    </label>
+    <label>Career stage
+      <select id="coStage" name="stage"><option value="">All stages</option></select>
+    </label>
+    <label>Provider
+      <select id="coProvider" name="provider"><option value="">All providers</option></select>
+    </label>
+    <label class="co-free"><input type="checkbox" id="coFree"> Free only</label>
+    <label style="grid-column:1/-2">Search
+      <input type="search" id="coSearch" placeholder="e.g. Primavera P6, GATE, AutoCAD…" autocomplete="off">
+    </label>
+    <button type="button" class="co-reset" id="coReset">Reset</button>
+  </form>
+
+  <p class="co-count" id="coCount" role="status" aria-live="polite">Loading courses…</p>
+
+  <div class="co-grid" id="coGrid">
+    <div class="co-state">Loading courses…</div>
+  </div>
+
+  <nav class="co-pager" id="coPager" aria-label="Course pages" hidden>
+    <button type="button" id="coPrev">← Previous</button>
+    <span id="coPageInfo"></span>
+    <button type="button" id="coNext">Next →</button>
+  </nav>
+
+  <p class="co-disclosure">
+    <strong>Affiliate disclosure:</strong> Some course links may be affiliate links. If you purchase
+    through them, CivilCareer may earn a commission at no additional cost to you. Free resources
+    (NPTEL, YouTube and other open material) never carry affiliate links. Course pages open on the
+    provider's website — you are leaving CivilCareer.
+  </p>
+
+  <section class="co-keep" aria-labelledby="coKeepHead">
+    <h2 id="coKeepHead">Keep building your career</h2>
+    <p>Courses work best next to real opportunities and exam plans — pair your learning with:</p>
+    <nav aria-label="Related CivilCareer sections">
+      <a href="/private-jobs">Private jobs for civil engineers</a>
+      <a href="/government-jobs">Government civil jobs</a>
+      <a href="/exams">Civil engineering exams</a>
+      <a href="/exam-tracker">Exam tracker</a>
+      <a href="/study-materials">Free study materials</a>
+      <a href="/salary">Salary guide</a>
+      <a href="/interview">Interview questions</a>
+    </nav>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container footer-grid">
+    <div><a class="logo" href="/">Civil<span>Career</span></a><p>India's Civil Engineering Career Platform</p></div>
+    <div><b>Explore</b><a href="/private-jobs">Private Jobs</a><a href="/government-jobs">Government Civil Jobs</a><a href="/courses">Courses</a><a href="/exams">Civil Engineering Exams</a><a href="/exam-tracker">Exam Tracker</a><a href="/study-materials">Study Materials</a></div>
+    <div><b>Career Tools</b><a href="/salary">Salary Guide</a><a href="/create-profile">Create Portfolio</a><a href="/talent">Browse Talent</a><a href="/companies">Company Reviews</a><a href="/interview">Interview Questions</a><a href="/walk-in">Walk-In Interviews</a><a href="/mock-tests">Mock Tests</a></div>
+    <div><b>Company</b><a href="/about">About</a><a href="/legal.html">Terms · Privacy · Disclaimer</a></div>
+  </div>
+</footer>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"CollectionPage","name":"All Civil Engineering Courses in One Place","url":"https://civilcareer-india-two.vercel.app/courses","description":"Curated civil engineering courses for every career stage — software, exam preparation, structural design, planning, quantity surveying and construction management.","isPartOf":{"@type":"WebSite","name":"CivilCareer","url":"https://civilcareer-india-two.vercel.app"}}
+</script>
+
+<script>
+(function(){
+  'use strict';
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function fmtNum(n){n=Number(n)||0;if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,'')+'k';return String(n);}
+
+  var state={page:1,category:'',stage:'',provider:'',free:false,search:''};
+  var filtersLoaded=false;
+
+  function $(id){return document.getElementById(id);}
+
+  /* Read the URL first so a filtered view is shareable. */
+  function readUrl(){
+    var p=new URLSearchParams(location.search);
+    state.category=p.get('category')||'';
+    state.stage=p.get('stage')||'';
+    state.provider=p.get('provider')||'';
+    state.free=p.get('free')==='true';
+    state.search=p.get('search')||'';
+    state.page=Math.max(parseInt(p.get('page')||'1',10)||1,1);
+  }
+  function writeUrl(){
+    var p=new URLSearchParams();
+    if(state.category)p.set('category',state.category);
+    if(state.stage)p.set('stage',state.stage);
+    if(state.provider)p.set('provider',state.provider);
+    if(state.free)p.set('free','true');
+    if(state.search)p.set('search',state.search);
+    if(state.page>1)p.set('page',String(state.page));
+    var qs=p.toString();
+    history.replaceState(null,'',location.pathname+(qs?'?'+qs:''));
+  }
+
+  function query(){
+    var p=new URLSearchParams();
+    p.set('page',String(state.page));
+    p.set('limit','24');
+    if(state.category)p.set('category',state.category);
+    if(state.stage)p.set('stage',state.stage);
+    if(state.provider)p.set('provider',state.provider);
+    if(state.free)p.set('free','true');
+    if(state.search)p.set('search',state.search);
+    return p.toString();
+  }
+
+  function fillSelect(el,values,selected){
+    if(!el)return;
+    var keep=el.cloneNode(false);
+    keep.appendChild(new Option(el.options[0]?el.options[0].text:'All',''));
+    (values||[]).forEach(function(v){keep.appendChild(new Option(v,v));});
+    keep.value=selected||'';
+    el.parentNode.replaceChild(keep,el);
+    keep.addEventListener('change',function(){onFilter();});
+  }
+
+  function card(c){
+    var thumb=c.thumbnail_url
+      ? '<div class="co-thumb"><img src="'+esc(c.thumbnail_url)+'" alt="" loading="lazy" onerror="this.remove()"><div class="co-badges">'+badges(c)+'</div></div>'
+      : '<div class="co-thumb" aria-hidden="true">'+esc((c.provider||'?').charAt(0))+'<div class="co-badges">'+badges(c)+'</div></div>';
+    var bits=[];
+    if(c.rating!=null)bits.push('<span>★ '+Number(c.rating).toFixed(1)+'</span>');
+    if(c.enrollment_count!=null)bits.push('<span>'+fmtNum(c.enrollment_count)+' learners</span>');
+    if(c.duration_hours!=null)bits.push('<span>'+Math.round(c.duration_hours)+'h</span>');
+    if(c.language)bits.push('<span>'+esc(c.language)+'</span>');
+    if(c.career_stage)bits.push('<span>'+esc(c.career_stage)+'</span>');
+    var price=c.is_free||c.price_inr===0
+      ? '<span class="free">FREE</span>'
+      : '₹'+fmtNum(c.price_inr)+(c.original_price_inr&&c.original_price_inr>c.price_inr?' <s>₹'+fmtNum(c.original_price_inr)+'</s>':'');
+    var href=c.affiliate_url||c.course_url;
+    var roles=(c.target_roles||[]).slice(0,3).map(function(r){return '<span>'+esc(r)+'</span>';}).join('');
+    return '<article class="co-card">'+thumb+
+      '<div class="co-body">'+
+        '<span class="co-provider">'+esc(c.provider)+(c.instructor?' · '+esc(c.instructor):'')+'</span>'+
+        '<h2>'+esc(c.title)+'</h2>'+
+        (bits.length?'<div class="co-meta">'+bits.join('')+'</div>':'')+
+        (roles?'<div class="co-roles">'+roles+'</div>':'')+
+        '<div class="co-price">'+price+'</div>'+
+        '<a class="co-cta" data-id="'+esc(c.id)+'" data-provider="'+esc(c.provider)+'" href="'+esc(href)+'" target="_blank" rel="noopener sponsored" aria-label="View '+esc(c.title)+' on '+esc(c.provider)+' (opens the provider website in a new tab)" onclick="return window.coTrack(this)">View Course ↗</a>'+
+        '<p class="co-leave">Opens on '+esc(c.provider)+' — you are leaving CivilCareer.</p>'+
+      '</div>'+
+    '</article>';
+  }
+  function badges(c){
+    var out='';
+    if(c.is_free||c.price_inr===0)out+='<span class="co-badge free">Free</span>';
+    else out+='<span class="co-badge">Paid</span>';
+    if(c.is_featured)out+='<span class="co-badge feat">Featured</span>';
+    return out;
+  }
+
+  /* Click tracking is server-side and best-effort: the beacon fires and the
+     navigation still proceeds even if it never lands. */
+  window.coTrack=function(a){
+    try{
+      var id=a.getAttribute('data-id');
+      if(id&&navigator.sendBeacon){
+        navigator.sendBeacon('/api/courses?action=click',
+          new Blob([JSON.stringify({id:id,referrer:location.href,source:'courses-page'})],{type:'application/json'}));
+      }
+    }catch(e){}
+    return true;
+  };
+
+  function render(data){
+    var grid=$('coGrid');
+    if(!filtersLoaded){
+      filtersLoaded=true;
+      fillSelect($('coCategory'),data.filters.categories,state.category);
+      fillSelect($('coStage'),data.filters.stages,state.stage);
+      fillSelect($('coProvider'),data.filters.providers,state.provider);
+      var freeBox=$('coFree');if(freeBox)freeBox.checked=state.free;
+      var searchBox=$('coSearch');if(searchBox)searchBox.value=state.search;
+    }
+    $('coCount').textContent=data.total===0
+      ? 'No published courses yet — new ones are added after review.'
+      : data.total+' course'+(data.total===1?'':'s')+' · showing '+data.courses.length+' · page '+data.page+' of '+data.pages;
+    if(!data.courses.length){
+      grid.innerHTML='<div class="co-state"><b>No courses match these filters.</b><br>Try clearing the search or category.'+
+        '<br><button type="button" class="co-reset" onclick="document.getElementById(\'coReset\').click()">Clear all filters</button></div>';
+    }else{
+      grid.innerHTML=data.courses.map(card).join('');
+    }
+    var pager=$('coPager');
+    if(data.pages>1){pager.hidden=false;$('coPageInfo').textContent='Page '+data.page+' of '+data.pages;
+      $('coPrev').disabled=data.page<=1;$('coNext').disabled=data.page>=data.pages;
+    }else{pager.hidden=true;}
+  }
+
+  function load(){
+    $('coGrid').innerHTML='<div class="co-state">Loading courses…</div>';
+    $('coCount').textContent='Loading courses…';
+    fetch('/api/courses?'+query())
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(render)
+      .catch(function(){
+        $('coGrid').innerHTML='<div class="co-state"><b>Could not load courses.</b><br>The list is temporarily unavailable.'+
+          '<br><button type="button" class="co-reset" id="coRetry">Retry</button></div>';
+        var retry=$('coRetry');if(retry)retry.addEventListener('click',load);
+        $('coCount').textContent='';
+      });
+  }
+
+  function onFilter(){
+    state.category=$('coCategory')?$('coCategory').value:'';
+    state.stage=$('coStage')?$('coStage').value:'';
+    state.provider=$('coProvider')?$('coProvider').value:'';
+    state.free=$('coFree')?$('coFree').checked:false;
+    state.search=$('coSearch')?$('coSearch').value.trim():'';
+    state.page=1;
+    writeUrl();load();
+  }
+
+  var searchTimer=null;
+  document.addEventListener('DOMContentLoaded',function(){
+    readUrl();
+    $('coFilters').addEventListener('submit',function(e){e.preventDefault();onFilter();});
+    ['coCategory','coStage','coProvider','coFree'].forEach(function(id){
+      var el=$(id);if(el)el.addEventListener('change',onFilter);
+    });
+    $('coSearch').addEventListener('input',function(){
+      clearTimeout(searchTimer);searchTimer=setTimeout(onFilter,300);
+    });
+    $('coReset').addEventListener('click',function(){
+      state.category='';state.stage='';state.provider='';state.free=false;state.search='';state.page=1;
+      filtersLoaded=false;
+      writeUrl();load();
+    });
+    $('coPrev').addEventListener('click',function(){if(state.page>1){state.page--;writeUrl();load();window.scrollTo(0,0);}});
+    $('coNext').addEventListener('click',function(){state.page++;writeUrl();load();window.scrollTo(0,0);});
+    load();
+  });
+})();
+</script>
+</body>
+</html>

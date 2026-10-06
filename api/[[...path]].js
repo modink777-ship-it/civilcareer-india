@@ -61,6 +61,10 @@ const handlers = {
   /* Sieve scrape API (v31): start/poll/resume runs, follow-up turns and
      file download. Admin-only; inert when SIEVE_API_KEY is unset. */
   '/api/sieve':                () => require('../_api/sieve'),
+  /* Course aggregator (v32): public catalog + admin CRUD + click
+     tracking; discovery is admin-only (see ADMIN_RULES below). */
+  '/api/courses':              () => require('../_api/courses'),
+  '/api/course-discovery':     () => require('../_api/course-discovery'),
 };
 
 
@@ -125,6 +129,24 @@ const ADMIN_RULES = {
                                const isMgmt = b && typeof b === 'object' && (b.action || b.key);
                                return Boolean(isMgmt) && !hasValidOwnerKey(req);
                              },
+  /* Course aggregator (v32). Public surface is deliberately tiny:
+     GET without ?admin (published rows only) and POST ?action=click
+     (rate-limited click counter). Everything else — the admin list,
+     create, update, delete — is elevated through verifyAdminToken
+     exactly like govt-review, so a browser can never claim admin by
+     sending a flag. Discovery is admin-only on every method: its
+     credentials live in server-side environment variables. */
+  '/api/courses': req => {
+                               if (req.method === 'OPTIONS') return false;
+                               if (req.method === 'GET') {
+                                 return new URL(req.url, 'http://localhost').searchParams.has('admin');
+                               }
+                               if (req.method === 'POST') {
+                                 return new URL(req.url, 'http://localhost').searchParams.get('action') !== 'click';
+                               }
+                               return true;
+                             },
+  '/api/course-discovery': () => true,
 };
 
 function isValidCronRequest(req) {

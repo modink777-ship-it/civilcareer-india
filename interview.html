@@ -55,7 +55,7 @@
 @media(max-width:680px){.iv-controls{grid-template-columns:1fr}.iv-form .grid2{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
+<body><a class="skip" href="#content">Skip to content</a>
 
 <header class="site-header">
   <div class="container nav">
@@ -70,7 +70,7 @@
   </div>
 </header>
 
-<main class="iv-main" id="ivMain">
+<main class="iv-main" id="content">
   <p class="iv-empty">Loading interview questions…</p>
 </main>
 
@@ -200,7 +200,7 @@ function wireForm(){
 /* ── LIST VIEW ─────────────────────────────────────────────── */
 function renderList(){
   document.title = 'Civil Engineering Interview Questions — L&T, AECOM, NCC & More | CivilCareer';
-  var main = document.getElementById('ivMain');
+  var main = document.getElementById('content');
   main.innerHTML =
     '<div class="iv-hero"><h1>Civil Engineering Interview Questions</h1>' +
     '<p>Real questions asked in technical, HR and manager rounds at India\'s biggest contractors and consultancies — with community answers, difficulty ratings and upvotes. Filter by company, round or difficulty.</p></div>' +
@@ -232,7 +232,7 @@ function renderList(){
 
 /* ── COMPANY VIEW ──────────────────────────────────────────── */
 function renderCompany(slug){
-  var main = document.getElementById('ivMain');
+  var main = document.getElementById('content');
   main.innerHTML = '<p class="iv-empty">Loading questions…</p>';
   fetch('/api/interview').then(function(r){return r.json();}).then(function(d){
     var companies = d.companies || [];

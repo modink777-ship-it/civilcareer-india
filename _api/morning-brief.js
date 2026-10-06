@@ -145,7 +145,7 @@ function buildBrief({ jobs, closing, exams }, now) {
   }
   lines.push('');
   lines.push(sep);
-  lines.push('🔗 [View all jobs →](https://civilcareer.in)');
+  lines.push('🔗 [View all jobs →](https://civilcareer-india-two.vercel.app)');
   lines.push('📢 @CivilCareerIndiaJobs');
   return lines.join('\n');
 }

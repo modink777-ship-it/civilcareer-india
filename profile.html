@@ -33,7 +33,7 @@
 .pf-status{margin-top:18px;color:var(--red)}
 </style>
 </head>
-<body>
+<body><a class="skip" href="#content">Skip to content</a>
 
 <header class="site-header">
   <div class="container nav">
@@ -48,7 +48,7 @@
   </div>
 </header>
 
-<main class="pf-main" id="pfMain">
+<main class="pf-main" id="content">
   <div class="skeleton" style="height:120px"></div>
   <noscript><p>This portfolio requires JavaScript to load. Browse <a href="/talent">all civil engineer profiles</a> instead.</p></noscript>
   <p class="pf-status" id="pfStatus" hidden></p>
@@ -66,7 +66,7 @@
 <script>
 (function(){
   var slug = decodeURIComponent((location.pathname.split('/').pop() || '')).replace(/[^a-zA-Z0-9-]/g, '');
-  var main = document.getElementById('pfMain');
+  var main = document.getElementById('content');
 
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 

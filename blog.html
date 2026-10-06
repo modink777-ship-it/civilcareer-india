@@ -46,7 +46,7 @@
 .bl-tags span{background:var(--soft);color:var(--text);font-size:11.5px;padding:3px 10px;border-radius:99px}
 </style>
 </head>
-<body>
+<body><a class="skip" href="#content">Skip to content</a>
 
 <header class="site-header">
   <div class="container nav">
@@ -61,7 +61,7 @@
   </div>
 </header>
 
-<main class="bl-main" id="blMain">
+<main class="bl-main" id="content">
   <div class="bl-loading">Loading articles…</div>
 </main>
 
@@ -130,7 +130,7 @@ function renderContent(raw){
 /* ── LIST VIEW ─────────────────────────────────────────────── */
 function renderList(){
   document.title = 'Civil Engineering Blog — Careers, Exams, Salary & Site Guides | CivilCareer';
-  var main = document.getElementById('blMain');
+  var main = document.getElementById('content');
   main.innerHTML =
     '<div class="bl-hero"><h1>Civil Engineering Blog</h1>' +
     '<p>Practical, India-specific guides for civil engineers — landing your first site job, cracking government exams, understanding salaries and growing from site to planning to design roles.</p></div>' +
@@ -158,7 +158,7 @@ function renderList(){
 
 /* ── POST VIEW ─────────────────────────────────────────────── */
 function renderPost(slug){
-  var main = document.getElementById('blMain');
+  var main = document.getElementById('content');
   main.innerHTML = '<div class="bl-loading">Loading article…</div>';
   fetch('/api/blog?slug='+encodeURIComponent(slug)).then(function(r){
     if(!r.ok) throw new Error('not found');
