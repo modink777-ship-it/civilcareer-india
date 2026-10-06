@@ -10,6 +10,8 @@
  * so a demoted or removed admin cannot mint fresh access.
  */
 
+const { recordAdminEvent, ADMIN_SESSION_TTL_SECONDS } = require('../lib/security');
+
 const SUPA_URL = process.env.SUPABASE_URL;
 const ANON = process.env.SUPABASE_ANON_KEY;
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
@@ -69,14 +71,25 @@ module.exports = async function handler(req, res) {
       });
       const x = await r.json().catch(() => ({}));
       if (!r.ok || !x.access_token) {
+        await recordAdminEvent('refresh_deny', req, { detail: { reason: 'refresh token rejected' } });
         return res.status(401).json({ error: x.error_description || 'Session refresh failed — sign in again.' });
       }
       const user = await fetchUser(x.access_token);
-      if (!allowed(user)) return res.status(403).json({ error: 'Administrator access denied.' });
+      if (!allowed(user)) {
+        await recordAdminEvent('refresh_deny', req, {
+          user,
+          detail: { reason: 'account is not on the admin allowlist' },
+        });
+        return res.status(403).json({ error: 'Administrator access denied.' });
+      }
+      await recordAdminEvent('refresh_ok', req, { user, detail: { ttl_seconds: ADMIN_SESSION_TTL_SECONDS } });
       return res.status(200).json({
         access_token: x.access_token,
         refresh_token: x.refresh_token,
+        /* The client caps its own session at the TTL, not at Supabase's
+           ~1h token life (expires_in is reported for transparency). */
         expires_in: x.expires_in || 3600,
+        session_ttl_seconds: ADMIN_SESSION_TTL_SECONDS,
       });
     }
 

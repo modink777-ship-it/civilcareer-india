@@ -19,7 +19,7 @@
  * is never publicly fetchable.
  */
 
-const { verifyAdminToken } = require('../lib/security');
+const { verifyAdminToken, recordAdminEvent } = require('../lib/security');
 const { html: ADMIN_HTML } = require('./admin-page-html');
 
 function bearerToken(req) {
@@ -115,6 +115,17 @@ module.exports = async function handler(req, res) {
   /* Fail closed: no credential or any verification failure
      (including misconfiguration / network error) gets the shell. */
   const auth = token ? await verifyAdminToken(token) : { ok: false };
+  /* Audit every gate decision. Only attempts that actually presented a
+     credential are recorded, so anonymous crawls of /admin don't flood
+     the table; the token itself is never written. */
+  if (auth.ok) {
+    await recordAdminEvent('gate_allow', req, { user: auth.user, detail: { surface: 'admin-page' } });
+  } else if (token) {
+    await recordAdminEvent('gate_deny', req, {
+      user: auth.user || null,
+      detail: { surface: 'admin-page', status: auth.status || 401, reason: String(auth.error || 'verification failed').slice(0, 120) },
+    });
+  }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.statusCode = 200;
   res.end(auth.ok ? ADMIN_HTML : SHELL);

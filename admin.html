@@ -251,6 +251,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
     <p style="color:#6a8aaa;font-size:.72rem;text-transform:uppercase;font-weight:700;letter-spacing:.06em;margin-bottom:4px">Founder / Product Owner</p>
     <h1>CivilCareer Overview</h1>
   </div>
+  <button class="sign-out" onclick="adminRevokeAllSessions()" title="Revoke every session for this account (all devices)">Sign out everywhere</button>
   <button class="sign-out" onclick="signOut()">Sign out</button>
 </div>    <h3 class="kpi-title">Weekly KPI report</h3>
     <div class="metrics" id="kpiReport" style="margin-top:.5rem"><p>Loading KPIs…</p></div>
@@ -1390,8 +1391,16 @@ function formObject(form){
    the same short-lived ACCESS token that is already in
    sessionStorage (never the refresh token) so the gate recognises
    this browser on the next /admin visit. */
-function setAdminSessionCookie(token,maxAge){document.cookie='cc_admin_session='+encodeURIComponent(token)+'; path=/; same-site=lax; max-age='+(parseInt(maxAge,10)||3600);}
-function clearAdminSessionCookie(){document.cookie='cc_admin_session=; path=/; same-site=lax; max-age=0';}
+/* Session hardening: the browser keeps its own cap of
+   CC_SESSION_TTL_SECONDS (matches ADMIN_SESSION_TTL_SECONDS in
+   lib/security.js), independent of Supabase's ~1h access-token life,
+   and the gate cookie is SameSite=Strict. The server refuses stale
+   sessions too, so a tampered clock here cannot extend access. */
+var CC_SESSION_TTL_SECONDS=1800;
+function setAdminSessionCookie(token,maxAge){var ttl=Math.min(parseInt(maxAge,10)||CC_SESSION_TTL_SECONDS,CC_SESSION_TTL_SECONDS);document.cookie='cc_admin_session='+encodeURIComponent(token)+'; path=/; same-site=strict; max-age='+ttl;try{sessionStorage.setItem('cc_admin_issued',String(Date.now()));}catch(e){}}
+function clearAdminSessionCookie(){document.cookie='cc_admin_session=; path=/; same-site=strict; max-age=0';try{sessionStorage.removeItem('cc_admin_issued');}catch(e){}}
+function adminSessionExpired(){try{var at=Number(sessionStorage.getItem('cc_admin_issued')||0);if(!at)return false;return (Date.now()-at)>CC_SESSION_TTL_SECONDS*1000;}catch(e){return false;}}
+async function adminRevokeAllSessions(){if(!confirm('Sign out this account everywhere? Every device will need to sign in again with the current password.'))return;try{const r=await authedApi('/api/admin-session',{method:'POST',body:JSON.stringify({action:'revoke-sessions'})});toast(r.message||'Sessions revoked everywhere.');}catch(e){toast(e.message||'Could not revoke sessions.');}setTimeout(signOut,1200);}
 
 /* AUTH — Supabase password login. Server enforces ADMIN_EMAIL / ADMIN_USER_ID. */
 async function getAuthConfig(){
@@ -1426,6 +1435,8 @@ async function showDashboard(){ $('loginWrap').style.display='none'; $('dashboar
 (function restoreAdminSession(){
   adminKey=sessionStorage.getItem('cc_admin_token')||'';
   adminRefresh=sessionStorage.getItem('cc_admin_refresh')||'';
+  /* A session older than the TTL is dropped instead of restored. */
+  if(adminKey&&adminSessionExpired()){sessionStorage.removeItem('cc_admin_token');sessionStorage.removeItem('cc_admin_refresh');clearAdminSessionCookie();adminKey='';adminRefresh='';}
   if(adminKey)showDashboard().catch(()=>signOut());
 })();
 

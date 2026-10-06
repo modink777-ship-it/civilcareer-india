@@ -65,6 +65,8 @@ const handlers = {
      tracking; discovery is admin-only (see ADMIN_RULES below). */
   '/api/courses':              () => require('../_api/courses'),
   '/api/course-discovery':     () => require('../_api/course-discovery'),
+  /* Admin session policy + global revoke (hardening). Admin-only. */
+  '/api/admin-session':        () => require('../_api/admin-session'),
 };
 
 
@@ -147,6 +149,7 @@ const ADMIN_RULES = {
                                return true;
                              },
   '/api/course-discovery': () => true,
+  '/api/admin-session': () => true,
 };
 
 function isValidCronRequest(req) {
@@ -348,7 +351,20 @@ module.exports = async function handler(req, res) {
         req.isSocialCron = true;
       } else {
         const auth = await requireAdmin(req);
-        if (!auth.ok) return sendJson(res, auth.status, { error: auth.error });
+        if (!auth.ok) {
+          /* Refused admin attempt. Audited only when a credential was
+             actually presented, so unauthenticated probing of a route
+             cannot flood the trail. Fire-and-forget: a slow audit write
+             must not delay the refusal. */
+          if (/^Bearer\s+\S+/i.test(String(req.headers.authorization || ''))) {
+            const { recordAdminEvent } = require('../lib/security');
+            recordAdminEvent('admin_denied', req, {
+              user: auth.user || null,
+              detail: { path: pathName, status: auth.status, reason: String(auth.error || '').slice(0, 120) },
+            }).catch(() => {});
+          }
+          return sendJson(res, auth.status, { error: auth.error });
+        }
         req.adminUser = auth.user;
       }
       // Legacy handlers still expect their owner key. Keep the secret server-side.

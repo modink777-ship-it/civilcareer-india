@@ -564,6 +564,12 @@ test('vercel.json rewrites /courses and the sitemap lists it', () => {
     '/courses.html must 301 to /courses');
   const sitemap = fs.readFileSync(path.join(root, '_api', 'sitemap.js'), 'utf8');
   assert.ok(sitemap.includes("['/courses'"), '/courses missing from the sitemap');
+  /* A static sitemap.xml at the repo root is served from the filesystem
+     BEFORE the /sitemap.xml -> /api/sitemap rewrite, so it silently
+     replaced the generated one (148 stale URLs, zero job pages) while
+     /api/sitemap was never reachable by crawlers. Keep it deleted. */
+  assert.strictEqual(fs.existsSync(path.join(root, 'sitemap.xml')), false,
+    'a static sitemap.xml would shadow the dynamic /api/sitemap (and omit /courses and every job URL)');
 });
 
 test('admin.html carries the Courses tab, panel and JS; bundle regenerated', () => {
