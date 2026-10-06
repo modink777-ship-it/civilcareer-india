@@ -808,8 +808,11 @@ module.exports = async function handler(req, res) {
              has put a real post name in. A weak title gets cleaned; a not_recruitment row
              is left alone (fixing the title does not make it a vacancy). */
           if (v.verdict === 'ok') {
-            /* Already clean — nothing to do. */
-            continue;
+            /* The verdict is reached on the CLEANED title, so an "ok" row whose stored
+               text still carries the notice wrapper ("Advertisement for the post of …")
+               is fixable without inventing anything: apply the very peel the audit
+               already proposes. A title that is already bare has nothing to do. */
+            if (!v.cleaned || v.cleaned === raw) continue;
           }
           if (v.verdict === 'not_recruitment') {
             report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'not a recruitment posting' });
