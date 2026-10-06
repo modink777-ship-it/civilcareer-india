@@ -18,11 +18,10 @@ test('free discovery sources are wired into the canonical discovery pipeline', (
   assert.equal(typeof jobs._internal.discoveryFetchHimalayas, 'function');
 });
 
-test('Agent Reach exposes a built-in zero-cost civil job scan', () => {
-  assert.match(admin, /id="arJobScanBtn"/);
-  assert.match(admin, /function arRunJobScan\(\)/);
-  assert.match(admin, /\/api\/jobs\?discovery=1/);
-  assert.match(admin, /Pending Review/);
+test('Exam Alerts Scanner is present in admin', () => {
+  assert.match(admin, /id="arExamScanBtn"/);
+  assert.match(admin, /function arRunExamScan\(\)/);
+  assert.match(admin, /Exam Alerts Scanner/);
 });
 
 test('Discovery setup no longer tells the owner a paid API key is required', () => {
