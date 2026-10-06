@@ -40,6 +40,10 @@ const SEEDED = [
   { id: 'j6', title: 'Applications are invited for the post of Junior Engineer (Civil) in the Water Resources Department of the Government of Assam, please read the advertisement carefully before applying online',
     slug: 'je-civil-assam-long', post_name: null,
     organization: 'Water Resources Department, Assam', status: 'active', published_at: '2026-10-04T09:05:00.000Z' },
+  /* weak but unfixable by cleaning: no wrapper, so cleaned === raw. The dry run
+     used to count this as a fix the real run silently skipped. */
+  { id: 'j7', title: 'Bridge/Fly over', slug: 'ircon-bridge-fly-over', post_name: null,
+    organization: 'IRCON', status: 'active', published_at: '2026-10-03T09:20:00.000Z' },
 ];
 
 function reply(status, payload) {
@@ -94,7 +98,7 @@ test('title_audit classifies the published-title shapes and never writes', async
     const body = JSON.parse(res.bodyText);
     assert.strictEqual(res.statusCode, 200, res.bodyText.slice(0, 200));
     assert.strictEqual(body.ok, true);
-    assert.strictEqual(body.count, 6);
+    assert.strictEqual(body.count, 7);
 
     const v = Object.fromEntries(body.audit.map(a => [a.id, a.verdict]));
     assert.strictEqual(v.j1, 'not_recruitment', 'a results page must never be treated as a vacancy');
@@ -103,6 +107,7 @@ test('title_audit classifies the published-title shapes and never writes', async
     assert.strictEqual(v.j4, 'ok', 'a wrapped headline verdicts ok once cleaned');
     assert.strictEqual(v.j5, 'ok');
     assert.strictEqual(v.j6, 'weak', 'a long notice headline is trimmable');
+    assert.strictEqual(v.j7, 'weak', 'a terse title that names no post is weak, never garbage');
 
     const j4 = body.audit.find(a => a.id === 'j4');
     assert.notStrictEqual(j4.cleaned, j4.title, 'the audit must propose the peeled title');
@@ -125,6 +130,8 @@ test('repair_titles defaults to a dry run and writes nothing', async () => {
       'a dry run must issue zero writes');
 
     assert.strictEqual(body.fixed, 2, 'the wrapped peel and the long trim are the fixable two');
+    /* j7 is weak but cleaning changes nothing — a dry run that counted it would
+       promise a repair the real run never performs. */
     assert.strictEqual(body.kept.length, 2, 'junk titles stay parked for the reviewer');
     assert.ok(body.kept.every(k => k.id === 'j2' || k.id === 'j3'));
     assert.ok(body.skipped.some(s => s.id === 'j1' && /not a recruitment/.test(s.reason)),
@@ -147,12 +154,56 @@ test('repair_titles applies the proven peel and never touches junk', async () =>
     const j4 = patches.find(p => p.url.includes('id=eq.j4'));
     assert.strictEqual(j4.body.title, 'Assistant Engineer (Civil)',
       'the wrapper must be peeled down to the bare post name');
-    assert.ok(j4.body.verified_at, 'an active row keeps its verification stamp on repair');
+    /* The live table's column is last_verified_at. Writing verified_at made every
+       repair of an active row fail with "patch failed" — the stub used to accept
+       it silently, which is exactly how the bug shipped. */
+    assert.ok(j4.body.last_verified_at, 'an active row refreshes its verification stamp on repair');
+    assert.ok(!('verified_at' in j4.body), 'verified_at is not a column of govt_jobs and must never be sent');
 
-    for (const id of ['j1', 'j2', 'j3', 'j5']) {
+    for (const id of ['j1', 'j2', 'j3', 'j5', 'j7']) {
       assert.ok(!patches.some(p => p.url.includes('id=eq.' + id)),
         'row ' + id + ' must never be written');
     }
     assert.strictEqual(body.fixed, 2);
+  } finally { stub.restore(); }
+});
+
+test('repair survives a column the live schema lacks, like the publish path does', async () => {
+  const stub = stubSupabase();
+  try {
+    /* Simulate schema lag: the table rejects last_verified_at with PGRST204. */
+    const stubFetch = global.fetch;
+    global.fetch = async (url, opts = {}) => {
+      const target = String(url);
+      const method = (opts.method || 'GET').toUpperCase();
+      if (target.includes('/rest/v1/govt_jobs') && method === 'PATCH') {
+        let body = null;
+        try { body = opts.body ? JSON.parse(opts.body) : null; } catch (_) { body = null; }
+        if (body && Object.prototype.hasOwnProperty.call(body, 'last_verified_at')) {
+          stub.calls.push({ url: target, method, body });
+          return reply(400, {
+            code: 'PGRST204',
+            message: "Could not find the 'last_verified_at' column of 'govt_jobs' in the schema cache",
+          });
+        }
+      }
+      return stubFetch(url, opts);
+    };
+
+    const res = await run('repair_titles', { dry: false });
+    const body = JSON.parse(res.bodyText);
+    assert.strictEqual(res.statusCode, 200, res.bodyText.slice(0, 200));
+    assert.strictEqual(body.fixed, 2, 'an unknown column must not stop the repair');
+    assert.strictEqual(body.skipped.filter(s => s.reason === 'patch failed').length, 0,
+      'the retry must succeed, so nothing is reported as patch failed');
+
+    const j4 = stub.calls.filter(c => c.method === 'PATCH' && c.url.includes('id=eq.j4'));
+    assert.ok(j4.length >= 2, `expected a rejected attempt plus a retry, got ${j4.length}`);
+    assert.ok(Object.prototype.hasOwnProperty.call(j4[0].body, 'last_verified_at'),
+      'the first attempt carries the column');
+    const last = j4[j4.length - 1];
+    assert.ok(!Object.prototype.hasOwnProperty.call(last.body, 'last_verified_at'),
+      'the retry must drop the unknown column');
+    assert.strictEqual(last.body.title, 'Assistant Engineer (Civil)', 'and still apply the title');
   } finally { stub.restore(); }
 });

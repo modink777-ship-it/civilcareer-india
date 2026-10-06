@@ -97,6 +97,26 @@ async function insertRow(table, row, context) {
   }
   throw new Error(`${context}: could not insert after dropping unknown columns`);
 }
+
+/* The PATCH twin of insertRow: the live schema can lag the code exactly as it
+   did for pay_level, and a repair must not hard-stop on a column the table
+   does not have yet. Drop the unknown column and retry; anything else is a real
+   failure and is thrown for the caller to report. */
+async function patchRow(target, patch, context) {
+  const payload = Object.assign({}, patch);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const r = await db(target, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (r.ok) return r;
+    const body = await r.text();
+    const col = unknownColumn(body);
+    if (!col || !Object.prototype.hasOwnProperty.call(payload, col)) {
+      throw new Error(`${context}: ${body.slice(0, 400)}`);
+    }
+    console.error(`${context}: "${col}" is not a column — run the latest migration; retrying without it.`);
+    delete payload[col];
+  }
+  throw new Error(`${context}: could not patch after dropping unknown columns`);
+}
 function bodyOf(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   try { return JSON.parse(req.body || '{}'); } catch { return {}; }
@@ -833,6 +853,10 @@ module.exports = async function handler(req, res) {
             report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'nothing left after cleaning — set it manually' });
             continue;
           }
+          /* Nothing would change. The dry run used to count this as a fix the
+             real run then skipped after re-reading the row, so the report
+             promised one repair more than would ever happen. */
+          if (candidate === raw) continue;
 
           if (!dry) {
             const cur = await db(`govt_jobs?id=eq.${encodeURIComponent(j.id)}&select=id,title,published_at,status,human_reviewed&limit=1`);
@@ -847,9 +871,13 @@ module.exports = async function handler(req, res) {
             }
             if (curRow.title === candidate) { continue; }
             const patch = { title: candidate, updated_at: now() };
-            if (curRow.status === 'active') patch.verified_at = now();
-            const pr = await db(`govt_jobs?id=eq.${encodeURIComponent(j.id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
-            if (!pr.ok) {
+            /* The live table's column is last_verified_at — verified_at does not
+               exist (the same schema lag class as pay_level), and writing it made
+               every repair of an active row fail with "patch failed". */
+            if (curRow.status === 'active') patch.last_verified_at = now();
+            try {
+              await patchRow(`govt_jobs?id=eq.${encodeURIComponent(j.id)}`, patch, 'repair_title');
+            } catch (_) {
               report.skipped.push({ id: j.id, title: raw, slug: j.slug, reason: 'patch failed' });
               continue;
             }
