@@ -140,6 +140,13 @@ test('a successful scan records items_found / items_staged / last_error for the 
   assert.ok(!('relevance_tier' in staged.body), 'the staging row must not use the phantom relevance_tier column');
   assert.ok('payload' in staged.body, 'the publish gate reads item.payload');
   assert.ok('tier' in staged.body, 'the publish gate reads item.tier');
+
+  /* The title guard rides along on every sweep. The stubbed govt_jobs table is
+     empty, so there is nothing bad to report — but the key must be present and
+     the skip must be honest, otherwise the guard is silently not running. */
+  assert.ok(payload.title_guard, 'the cron response must report the title guard');
+  assert.strictEqual(payload.title_guard.sent, false, 'a clean sweep sends nothing');
+  assert.strictEqual(payload.title_guard.skipped, 'nothing-bad');
 });
 
 test('an unreachable robots.txt is reported instead of silently skipped', async () => {

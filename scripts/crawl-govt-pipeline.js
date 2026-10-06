@@ -12,7 +12,8 @@ const { adapterFor, selectCivil, classifyRecord, officialNoticeLinks } = require
    official_notice_url — and the review queue showed empty evidence on every lead.
    One builder, one shape. */
 const { buildPayload, keepReviewedFields, reviewedAlready } = require('../lib/govt-lead-payload');
-const { sendCivilDigest } = require('../lib/govt-alert');
+const { sendCivilDigest, sendTitleGuard } = require('../lib/govt-alert');
+const { auditPublished } = require('../lib/govt-title');
 const execFileAsync = promisify(execFile);
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
@@ -612,7 +613,27 @@ async function main() {
   if (alert.sent) console.log(`alert: notified owner about ${newCivil.length} new civil posting(s)`);
   else if (alert.error) console.error(`alert: not sent (${alert.error})`);
   else console.log(`alert: skipped (${alert.skipped})`);
-  console.log(JSON.stringify({ ok: totals.errors === 0, totals, new_civil: newCivil.length, alert, reports }, null, 2));
+  /* Title guard: the publish gate refuses a junk title today, but rows that
+     went live before the gate still carry the source's link text on the public
+     list. Read-only sweep — alert only, and a notification failure must never
+     fail the crawl. Runs every crawl on purpose: silence while a bad title is
+     live is the failure mode this exists to prevent. */
+  let titleGuard = { sent: false, skipped: 'not-run', error: null };
+  try {
+    const pub = await supa('govt_jobs?status=eq.active&select=id,title,slug,post_name&order=published_at.desc&limit=500');
+    if (pub.ok) {
+      const report = auditPublished((await pub.json()) || []);
+      titleGuard = await sendTitleGuard(report, { siteUrl: SITE });
+      if (report.garbage.length) {
+        console.error(`title-guard: ${report.garbage.length} bad published title(s) live (${report.weak.length} weak)`);
+      } else console.log('title-guard: published titles clean');
+    } else {
+      titleGuard = { sent: false, skipped: 'read-failed', error: `HTTP ${pub.status}` };
+    }
+  } catch (e) {
+    titleGuard = { sent: false, skipped: null, error: String((e && e.message) || e).slice(0, 160) };
+  }
+  console.log(JSON.stringify({ ok: totals.errors === 0, totals, new_civil: newCivil.length, alert, title_guard: titleGuard, reports }, null, 2));
   if (totals.errors === reports.length && reports.length) process.exitCode = 1;
 }
 

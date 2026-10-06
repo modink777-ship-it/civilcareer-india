@@ -51,7 +51,8 @@ const {
   hash,
   extractDeadline,
 } = require("../lib/govt-lead-payload");
-const { sendCivilDigest, sendPipelineWarning } = require("../lib/govt-alert");
+const { sendCivilDigest, sendPipelineWarning, sendTitleGuard } = require("../lib/govt-alert");
+const { auditPublished } = require("../lib/govt-title");
 
 const ROBOTS_UA =
   "CivilCareerBot/1.0 (+https://civilcareer-india-two.vercel.app)";
@@ -1235,6 +1236,23 @@ module.exports = async function govtDiscovery(req, res) {
     warning = await sendPipelineWarning(reason, { siteUrl: process.env.SITE_URL });
   }
 
+  /* Title guard: the same read-only sweep the crawler runs, from the other
+     writer. Rows published before the title gate still carry their link-text
+     titles on the public list; say so on every run until they are fixed.
+     Best effort — never fails the response. */
+  let titleGuard = { sent: false, skipped: "not-run", error: null };
+  try {
+    const pub = await rest(`govt_jobs?status=eq.active&select=id,title,slug,post_name&order=published_at.desc&limit=500`);
+    if (pub.ok) {
+      const report = auditPublished((await pub.json()) || []);
+      titleGuard = await sendTitleGuard(report, { siteUrl: process.env.SITE_URL });
+    } else {
+      titleGuard = { sent: false, skipped: "read-failed", error: `HTTP ${pub.status}` };
+    }
+  } catch (e) {
+    titleGuard = { sent: false, skipped: null, error: String((e && e.message) || e).slice(0, 160) };
+  }
+
   return res.status(200).json({
     ok: true,
     seeded: seed.seeded,
@@ -1243,6 +1261,7 @@ module.exports = async function govtDiscovery(req, res) {
     alert,
     stalled,
     warning,
+    title_guard: titleGuard,
     results,
     deferred,
     note: deferred.length
