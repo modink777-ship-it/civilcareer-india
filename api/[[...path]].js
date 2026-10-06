@@ -297,7 +297,7 @@ module.exports = async function handler(req, res) {
        stale static sitemap.xml shadowed the rewrite from the filesystem.
        The generated sitemap carries every job page plus /courses; the
        static snapshot it replaced had neither. */
-    if (pathName === '/sitemap.xml') {
+    if (pathName === '/sitemap.xml' || pathName === '/sitemap') {
       pathName = '/api/sitemap';
     }
 
