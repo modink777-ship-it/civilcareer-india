@@ -30,3 +30,17 @@ test('Discovery setup no longer tells the owner a paid API key is required', () 
   assert.doesNotMatch(admin, /Connect a job source to get results/);
   assert.doesNotMatch(admin, /Adzuna.*Recommended.*Vercel.*Environment Variables/s);
 });
+
+test('the removed Free Civil Job Scan leaves no dead code behind', () => {
+  /* The card and its button are gone; a function that still looks the button up
+     would be unreachable code, and the served bundle must match the source. */
+  const bundle = fs.readFileSync(path.join(root, '_api', 'admin-page-html.js'), 'utf8');
+  for (const dead of ['arRunJobScan', 'arJobScanBtn', 'arJobScanStatus', 'Free Civil Job Scan', 'panel-review-jobs']) {
+    assert.doesNotMatch(admin, new RegExp(dead), 'admin.html still carries ' + dead);
+    assert.doesNotMatch(bundle, new RegExp(dead), 'the served admin bundle still carries ' + dead);
+  }
+  /* The scanners that were KEPT must still be wired end to end. */
+  assert.match(admin, /id="arExamScanBtn"/);
+  assert.match(admin, /function arRunExamScan\(\)/);
+  assert.match(bundle, /arExamScanBtn/);
+});
