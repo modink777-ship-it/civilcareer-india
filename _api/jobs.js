@@ -311,14 +311,15 @@ function buildJobListQuery(query, { admin = false } = {}) {
 /* Homepage/live summary counts — real database counts, bounded queries. */
 async function getJobSummary() {
   const makeCount = (sector) => {
-    const filters = buildJobFilters({ sector });
+    const filters = buildJobFilters(sector ? { sector } : {});
     return supa(`jobs?select=id&${filters.join('&')}&limit=1`, {
       headers: { Prefer: 'count=exact' },
     });
   };
-  const [privateResponse, governmentResponse] = await Promise.all([
+  const [privateResponse, governmentResponse, totalResponse] = await Promise.all([
     makeCount('Private'),
     makeCount('Government'),
+    makeCount(null),
   ]);
   const countFrom = (response) => {
     const range = response.headers.get('content-range') || '';
@@ -328,6 +329,9 @@ async function getJobSummary() {
   return {
     private: countFrom(privateResponse),
     government: countFrom(governmentResponse),
+    /* What the homepage tile means by "active civil jobs": every live listing
+       the page lists, so the displayed number cannot contradict the cards. */
+    total: countFrom(totalResponse),
   };
 }
 

@@ -331,9 +331,9 @@ function statUnavailable(id){
 }
 function updateStats(){
   const setStat=(id,val)=>{if(!statUnavailable(id)){const el=$(id);if(el)el.textContent=String(val)}};
-  const [priv,govt]=liveCounts();
+  const [,govt,total]=liveCounts();
   const openExams=exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length;
-  setStat('statJobs',priv);setStat('statGovt',govt);
+  setStat('statJobs',total);setStat('statGovt',govt);
   setStat('statExams',openExams);setStat('statRes',materials.length);
   updateNavCounts();
 }
@@ -353,14 +353,18 @@ function liveCounts(){
   const summary=window.__ccJobSummary||{};
   const priv=Number.isFinite(Number(summary.private))?Number(summary.private):jobs.filter(j=>sectorOf(j)==='Private'&&active(j)).length;
   const govt=Number.isFinite(Number(summary.government))?Number(summary.government):jobs.filter(j=>isGovJob(j)&&active(j)).length;
-  return [priv,govt];
+  /* "Active civil jobs" means every live listing the page itself shows — not
+     just the private-sector slice of it, which is what made the tile read "1"
+     above a list of forty cards. */
+  const total=Number.isFinite(Number(summary.total))?Number(summary.total):jobs.filter(j=>active(j)).length;
+  return [priv,govt,total];
 }
 function updateNavCounts(){
   const isLive=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));
-  const [priv,govt]=liveCounts();
+  const [priv,govt,total]=liveCounts();
   $$('a[data-route="private"]').forEach(a=>{if(priv>0)a.setAttribute('data-count',priv)});
   $$('a[data-route="government"]').forEach(a=>{if(govt>0)a.setAttribute('data-count',govt)});
-  if(!statUnavailable('statJobs')&&$('statJobs'))$('statJobs').textContent=String(priv);
+  if(!statUnavailable('statJobs')&&$('statJobs'))$('statJobs').textContent=String(total);
   if(!statUnavailable('statGovt')&&$('statGovt'))$('statGovt').textContent=String(govt);
   if(!statUnavailable('statExams')&&$('statExams'))$('statExams').textContent=String(exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
   if(!statUnavailable('statRes')&&$('statRes'))$('statRes').textContent=String(materials.length);

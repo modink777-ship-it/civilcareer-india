@@ -16,6 +16,9 @@ assert.ok(health.includes('503'), 'health endpoint must expose a not-ready statu
 assert.ok(jobsApi.includes('summary'), 'jobs API must support summary counts');
 assert.ok(jobsApi.includes('expires_at'), 'jobs API must enforce expiry-aware filtering');
 assert.ok(app.includes('/api/jobs?summary=1'), 'browser must use server-side live summary counts');
+assert.ok(jobsApi.includes('total: countFrom('), 'the live summary must expose a total, not only the private-sector slice');
+assert.ok(app.includes("setStat('statJobs',total)"), 'the active-jobs tile must count what the list shows, not one sector of it');
+assert.ok(app.includes("$('statJobs').textContent=String(total)"), 'the nav refresh must keep the active-jobs tile consistent too');
 assert.ok(v8.includes('fetchExplorerJobs'), 'explorer must use server-side pagination/filtering');
 assert.ok(!app.includes('International') || !v8.includes('International'), 'final browser code must not reintroduce International scope');
 assert.ok(robots.includes('Disallow: /admin'), 'robots must protect admin paths from crawlers');
