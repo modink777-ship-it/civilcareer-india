@@ -326,9 +326,17 @@ async function getJobSummary() {
     const match = range.match(/\/(\d+)$/);
     return match ? Number(match[1]) : null;
   };
+  /* There is deliberately no `government` key here. The jobs table's sector
+     column is discovery provenance — a documented history of adzuna and
+     staffing ads carrying sector = "Government" is why
+     scripts/fix-mislabeled-sectors.js exists — so it must never be published
+     under a name that a government-branded surface would grab. The one
+     authoritative government count is /api/govt-jobs (totals.notifications),
+     which lists only human-reviewed rows with an official notice on record.
+     This per-sector count is for internal cross-checks only. */
   return {
     private: countFrom(privateResponse),
-    government: countFrom(governmentResponse),
+    governmentSector: countFrom(governmentResponse),
     /* What the homepage tile means by "active civil jobs": every live listing
        the page lists, so the displayed number cannot contradict the cards. */
     total: countFrom(totalResponse),

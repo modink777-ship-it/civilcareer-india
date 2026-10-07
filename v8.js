@@ -656,11 +656,29 @@ async function routeV8() {
 
 openMaterial=function(m,push=true){return openMaterialDedicated(m,push)};
 
+/* Each page ships its own subset of the screens: /government-jobs/job/<slug>
+   needs #govtDetailPage, which government-jobs.html has and index.html does
+   not. Intercepting a link whose screen this document lacks replaced the
+   address bar and rendered nothing — the visitor stayed exactly where they
+   were, on a page that no longer matched the URL. So a dynamic link is only
+   swallowed when the screen it targets exists here; otherwise the browser
+   follows the link normally and the server serves the page that can show it. */
+function dynamicRouteHost(path){
+  if(/^\/government-jobs\/job\//.test(path))return 'govtDetailPage';
+  if(/^\/government-jobs\//.test(path))return 'govtListingJobs';
+  if(/^\/jobs\//.test(path))return 'jobDetailPage';
+  if(/^\/exams\//.test(path))return 'examDetailPage';
+  if(/^\/study-materials\//.test(path))return 'materialDetailPage';
+  return null; /* an ordinary route: app.js swaps the screens it already has */
+}
+
 document.addEventListener('click',e=>{
   const a=e.target.closest('a[data-dynamic-route]');
   if(!a || e.defaultPrevented || e.button!==0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target==='_blank') return;
   const href=a.getAttribute('href');
   if(!href || !href.startsWith('/')) return;
+  const host=dynamicRouteHost(href);
+  if(host&&!document.getElementById(host))return;
   e.preventDefault();
   history.pushState({},'',href);
   routeV8();

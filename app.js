@@ -241,7 +241,7 @@ function bindCards(){
     toast(saved?'Job saved! ★':'Bookmark removed.');
   });
 }function empty(title,text){return `<div class="empty-state"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`}
-function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>sectorOf(j)==='Private'&&live(j)).slice(0,3),g=jobs.filter(j=>isGovJob(j)&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty('Opportunities are being added','Verified civil engineering jobs will appear here as they are published.');$('homeGovernment').innerHTML=g.length?g.map(x=>jobCard(x,true)).join(''):empty('Recruitment updates are being added','Civil-focused Central and State opportunities will appear here after verification.');const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);var _cs=document.getElementById('closingSoon');if(_cs)_cs.innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||'Opportunity')}</span></div><span>${date(j.deadline)}</span></div>`).join(''):'<div class="compact-item"><span>No active deadlines published.</span></div>';var _he=document.getElementById('homeExams');if(_he)_he.innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||'Examination update')}</span></div><span>${x.application_end?date(x.application_end):'Official dates'}</span></div>`).join('')||'<div class="compact-item"><span>Exam updates are being added.</span></div>';$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards();translate();renderUrgencyStrip();}
+function renderHome(){const live=typeof active==='function'?active:(j=>j.status!=='Expired'&&(!j.expires_at||new Date(j.expires_at)>new Date())&&(!j.deadline||new Date(j.deadline+'T23:59:59')>new Date()));const p=jobs.filter(j=>sectorOf(j)==='Private'&&live(j)).slice(0,3);$('homePrivate').innerHTML=p.length?p.map(x=>jobCard(x)).join(''):empty('Opportunities are being added','Verified civil engineering jobs will appear here as they are published.');renderHomeGovernment();const close=jobs.filter(j=>j.deadline&&!isClosed(j)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,4);var _cs=document.getElementById('closingSoon');if(_cs)_cs.innerHTML=close.length?close.map(j=>`<div class="compact-item"><div><b>${esc(j.role)}</b><span>${esc(j.company||j.location||'Opportunity')}</span></div><span>${date(j.deadline)}</span></div>`).join(''):'<div class="compact-item"><span>No active deadlines published.</span></div>';var _he=document.getElementById('homeExams');if(_he)_he.innerHTML=exams.slice(0,4).map(x=>`<div class="compact-item"><div><b>${esc(x.code)} — ${esc(x.title_en)}</b><span>${esc(x.authority||'Examination update')}</span></div><span>${x.application_end?date(x.application_end):'Official dates'}</span></div>`).join('')||'<div class="compact-item"><span>Exam updates are being added.</span></div>';$('homeMaterials').innerHTML=materials.slice(0,3).map(materialCard).join('')||empty('Resources are being added','Free civil engineering, exam and working-professional resources will appear here as they are published.');bindCards();translate();renderUrgencyStrip();}
 
 function renderUrgencyStrip(){
   const strip=$('urgencyStrip'),el=$('urgencyJobs');
@@ -252,6 +252,52 @@ function renderUrgencyStrip(){
   strip.style.display='block';
   el.innerHTML=urgent.map(j=>`<button class="urgency-job" data-job="${j.id}"><b>${esc(j.role||'Opportunity')}</b><span>${esc(j.company||j.location||'')}</span><span class="urg-tag">Closes today</span></button>`).join('');
   bindCards();
+}
+/* ═══ ONE AUTHORITATIVE GOVERNMENT SOURCE ═══════════════════════════════
+   Every public government surface — this homepage section, the "Active Govt
+   Civil Jobs" tile, the nav badge, and the /government-jobs and /govt-jobs
+   pages — reads /api/govt-jobs, the human-reviewed pipeline whose every row
+   carries an official notification link on record. The jobs explorer's sector
+   column is discovery provenance with a documented history of labelling
+   private staffing and adzuna ads as "Government", so it is never used to
+   build a government surface. The count and the cards below it come out of one
+   response, so they can no longer disagree.
+
+   loadData() fetches that feed for the whole site and stores it in
+   window.__ccGovtFeed: undefined = not read yet, {ok:false} = the read failed.
+   A failed read is never rendered as an empty database. */
+function govtFeedTotal(data){
+  const meta=Number((data.meta||{}).total);
+  if(Number.isFinite(meta))return meta;
+  const totals=Number((data.totals||{}).notifications);
+  if(Number.isFinite(totals))return totals;
+  return (data.jobs||[]).length;
+}
+function govtHomeCard(j){
+  const path=typeof govtDetailPath==='function'?govtDetailPath(j):'/government-jobs';
+  const left=j.expired?'':(Number.isFinite(Number(j.daysLeft))&&Number(j.daysLeft)>=0?(j.daysLeft===0?'closes today':`closes in ${j.daysLeft} day${j.daysLeft===1?'':'s'}`):'');
+  return `<article class="job-card"><div class="card-top">${j.expired?'<span class="pill closed">Closed</span>':'<span class="pill verified">Human-reviewed</span>'}<span class="verified-date">${esc(left)}</span></div>`
+    +`<h3><a class="detail-link" href="${esc(path)}">${esc(j.title||j.role||'Government recruitment')}</a></h3>`
+    +`<div class="organization">${esc(j.organization||j.company||'Government organization')}</div>`
+    +`<div class="card-meta"><span>${esc(j.state||'All India')}</span>${j.govLevel?`<span>${esc(String(j.govLevel).toUpperCase())}</span>`:''}${j.vacancies!=null?`<span>${esc(j.vacancies)} civil vacancies</span>`:''}</div>`
+    +`<div class="card-actions"><a class="detail-link" href="${esc(path)}">View notification details</a>${j.officialNotificationUrl?`<a href="${esc(j.officialNotificationUrl)}" target="_blank" rel="noopener noreferrer">Official notification ↗</a>`:''}</div></article>`;
+}
+function renderHomeGovernment(){
+  const root=$('homeGovernment');if(!root)return;
+  const feed=window.__ccGovtFeed;
+  if(feed===undefined)return; /* loadData() has not answered yet; it re-renders. */
+  const placeholder=$('homeGovernmentEmpty');
+  const settle=list=>{const has=list.length>0;root.style.display=has?'':'none';if(placeholder)placeholder.style.display=has?'none':''};
+  if(feed&&feed.ok){
+    const list=feed.jobs||[];
+    const render=typeof govtCard==='function'?govtCard:govtHomeCard;
+    root.innerHTML=list.map(render).join('');
+    settle(list);
+    return;
+  }
+  /* The feed could not be read. Say that — an outage is not an empty database. */
+  root.innerHTML='<div class="empty-state"><h3>Unable to load government jobs</h3><p>The government recruitment service could not be reached, so nothing is listed here. This is a failed request, not an empty list.</p></div>';
+  settle([1]);
 }
 /* CANONICAL PRIVATE JOBS (FIX-2026-09-25): the Civil Job Explorer assigned in
    v8.js is the single private-jobs renderer. The former category-tile renderer
@@ -325,12 +371,19 @@ function animateCount(el,target,duration=1500){
 function statUnavailable(id){
   const el=$(id);if(!el)return false;
   const f=window.__ccLoadFailed||{};
-  const map={statJobs:f.jobs,statGovt:f.jobs,statExams:f.exams,statRes:f.materials};
-  if(map[id]){el.textContent='Unable to load';el.classList.add('stat-error');el.setAttribute('title','Could not reach the statistics API. Refresh to retry.');return true}
+  const g=window.__ccGovtFeed;
+  /* statGovt is fed by the government feed, not by the jobs endpoints, so a
+     failed government read — not a failed jobs read — is what makes it
+     unavailable. */
+  const map={statJobs:f.jobs,statGovt:!!(g&&!g.ok),statExams:f.exams,statRes:f.materials};
+  if(map[id]){el.textContent='Unable to load';el.classList.add('stat-error');el.setAttribute('title',id==='statGovt'?'Could not reach the government jobs feed. Refresh to retry.':'Could not reach the statistics API. Refresh to retry.');return true}
   el.classList.remove('stat-error');el.removeAttribute('title');return false;
 }
 function updateStats(){
-  const setStat=(id,val)=>{if(!statUnavailable(id)){const el=$(id);if(el)el.textContent=String(val)}};
+  /* Availability is decided BEFORE the value: a null means "not known yet",
+     and skipping straight past it left a failed read showing whatever number
+     happened to be on screen already. */
+  const setStat=(id,val)=>{if(statUnavailable(id))return;if(val==null)return;const el=$(id);if(el)el.textContent=String(val)};
   const [,govt,total]=liveCounts();
   const openExams=exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length;
   setStat('statJobs',total);setStat('statGovt',govt);
@@ -352,7 +405,14 @@ function statsLoading(){
 function liveCounts(){
   const summary=window.__ccJobSummary||{};
   const priv=Number.isFinite(Number(summary.private))?Number(summary.private):jobs.filter(j=>sectorOf(j)==='Private'&&active(j)).length;
-  const govt=Number.isFinite(Number(summary.government))?Number(summary.government):jobs.filter(j=>isGovJob(j)&&active(j)).length;
+  /* Government has ONE source: the reviewed /api/govt-jobs feed loadData()
+     already fetched. It is deliberately not derived from the jobs table's
+     sector column — that column is discovery provenance, not a government
+     register, and the two used to disagree while wearing the same label.
+     null means "not known yet", which the tile shows as Loading…/Unable to
+     load rather than a fabricated number. */
+  const feed=window.__ccGovtFeed;
+  const govt=feed&&feed.ok&&Number.isFinite(Number(feed.total))?Number(feed.total):null;
   /* "Active civil jobs" means every live listing the page itself shows — not
      just the private-sector slice of it, which is what made the tile read "1"
      above a list of forty cards. */
@@ -360,8 +420,8 @@ function liveCounts(){
      client it reports only the two sector counts, and adding those beats
      dropping to a page-local number, which would read far too low. */
   const serverTotal=Number.isFinite(Number(summary.total))?Number(summary.total)
-    :(Number.isFinite(Number(summary.private))&&Number.isFinite(Number(summary.government))
-      ?Number(summary.private)+Number(summary.government):null);
+    :(Number.isFinite(Number(summary.private))&&Number.isFinite(Number(summary.governmentSector))
+      ?Number(summary.private)+Number(summary.governmentSector):null);
   const total=serverTotal!==null?serverTotal:jobs.filter(j=>active(j)).length;
   return [priv,govt,total];
 }
@@ -371,7 +431,7 @@ function updateNavCounts(){
   $$('a[data-route="private"]').forEach(a=>{if(priv>0)a.setAttribute('data-count',priv)});
   $$('a[data-route="government"]').forEach(a=>{if(govt>0)a.setAttribute('data-count',govt)});
   if(!statUnavailable('statJobs')&&$('statJobs'))$('statJobs').textContent=String(total);
-  if(!statUnavailable('statGovt')&&$('statGovt'))$('statGovt').textContent=String(govt);
+  if(!statUnavailable('statGovt')&&govt!=null&&$('statGovt'))$('statGovt').textContent=String(govt);
   if(!statUnavailable('statExams')&&$('statExams'))$('statExams').textContent=String(exams.filter(x=>!(x.application_end&&new Date(x.application_end+'T23:59:59')<new Date())).length);
   if(!statUnavailable('statRes')&&$('statRes'))$('statRes').textContent=String(materials.length);
 }
@@ -700,7 +760,7 @@ function saveProfile(){
 
 /* Live statistics (FIX-2026-09-25): a failed endpoint is remembered so the UI can
    show “Unable to load” instead of silently pretending the count is 0. */
-async function loadData(){clearTimeout(window.__ccStatsTimer);const [j,e,m,s]=await Promise.allSettled([api('/api/jobs?limit=40&page=1'),api('/api/exams'),api('/api/materials'),api('/api/jobs?summary=1')]);const okJobs=j.status==='fulfilled',okExams=e.status==='fulfilled',okMats=m.status==='fulfilled',okSummary=s.status==='fulfilled';window.__ccLoadFailed={jobs:!okJobs,exams:!okExams,materials:!okMats};jobs=okJobs?j.value.jobs||[]:[];exams=okExams?e.value.exams||[]:[];materials=okMats?m.value.materials||[]:[];window.__ccJobSummary=okSummary?s.value:null;window.__ccAllJobs=jobs;normalizeJobs();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
+async function loadData(){clearTimeout(window.__ccStatsTimer);const [j,e,m,s,g]=await Promise.allSettled([api('/api/jobs?limit=40&page=1'),api('/api/exams'),api('/api/materials'),api('/api/jobs?summary=1'),api('/api/govt-jobs?limit=3&page=1')]);const okJobs=j.status==='fulfilled',okExams=e.status==='fulfilled',okMats=m.status==='fulfilled',okSummary=s.status==='fulfilled',okGovt=g.status==='fulfilled';window.__ccLoadFailed={jobs:!okJobs,exams:!okExams,materials:!okMats};jobs=okJobs?j.value.jobs||[]:[];exams=okExams?e.value.exams||[]:[];materials=okMats?m.value.materials||[]:[];window.__ccJobSummary=okSummary?s.value:null;/* One government read for the whole site: the count and the homepage cards both come from this single response. */window.__ccGovtFeed=okGovt?{ok:true,jobs:(g.value.jobs||[]).slice(0,3),total:govtFeedTotal(g.value)}:{ok:false,jobs:[],total:null};window.__ccAllJobs=jobs;normalizeJobs();renderHome();renderPrivate();renderGovernment();renderExams();renderMaterials();updateStats();updateNavCounts();renderForYou()}
 /* Normalize every loaded record in place so inconsistent sector strings, missing
    optional location fields and similar data quirks never break rendering. */
 function normalizeJobs(){

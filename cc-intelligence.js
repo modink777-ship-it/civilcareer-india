@@ -197,11 +197,20 @@
       const t = (/T/.test(raw) ? new Date(raw) : new Date(raw + 'T23:59:59')).getTime();
       return Number.isFinite(t) && t > now && (t - now) / day <= 7;
     };
+    /* The radar's "Government" cell points at /government-jobs, so it shows that
+       page's authoritative count (the reviewed pipeline, read once by loadData)
+       instead of however many government rows happen to be in this page slice.
+       The slice is forty rows of every sector, so counting it here reported a
+       near-zero government figure next to a live government section. */
+    const govtCount = (() => {
+      const feed = window.__ccGovtFeed;
+      return feed && feed.ok && Number.isFinite(Number(feed.total)) ? Number(feed.total) : govt.length;
+    })();
     return {
       newToday: priv.concat(govt).filter(j => within(j, 1)).length,
       closing: jobs.filter(closing).length,
       highMatch: priv.length,
-      govt: govt.length,
+      govt: govtCount,
       freshers: priv.concat(govt).filter(j => /fresher|0\s*[-–]\s*1|entry/.test(norm([j.experience_level, (j.experience_ranges || [])].join(' ')))).length
     };
   }
