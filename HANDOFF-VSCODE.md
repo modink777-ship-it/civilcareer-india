@@ -92,10 +92,10 @@ dispatcher; every feature is a module in `_api/`. Adding a `_api/foo.js` handler
 | `_api/*.js` | 49 serverless handlers (`courses.js`, `jobs.js`, `govt-review.js`, `social.js`, …) |
 | `lib/*.js` | 19 shared modules (`security.js`, `supabase.js`, `rate-limit.js`, `govt-title.js`, pipelines) |
 | `api/[[...path]].js` | dispatcher: `handlers` map + `ADMIN_RULES` + `CRON_ROUTES` |
-| `scripts/*.js` | 9 build/audit/pipeline scripts incl. `build-admin-bundle.js`, `launch-check.js`, `crawl-govt-pipeline.js` |
-| `tests/*.test.js` | 39 files, **254 tests**, `node --test` |
+| `scripts/*.js` | 11 build/audit/pipeline scripts incl. `build-admin-bundle.js`, `launch-check.js`, `crawl-govt-pipeline.js`, and two owner-run proofs: `verify-govt-publish.js` (government publish → public → delete) and `smoke-admin-endpoints.js` (which admin tab has real data, and which credential each route wants) |
+| `tests/*.test.js` | 42 files, **269 tests**, `node --test` |
 | `*.sql` | 36 migrations (`v28`…`v33`, `phase27`…`phase29`) + `run-all-migrations-in-order.sql` |
-| `.github/workflows/*.yml` | 8 workflows (scrapers, govt pipeline, morning brief, social drain, gitleaks, smoke) |
+| `.github/workflows/*.yml` | 7 workflows (scrapers, govt pipeline, morning brief, social drain, gitleaks, smoke) |
 | `vercel.json` | rewrites, redirects, security headers/CSP, **crons** |
 
 **Auth model**
