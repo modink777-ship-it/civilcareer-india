@@ -94,6 +94,10 @@
       "destination": "/courses.html"
     },
     {
+      "source": "/courses/:slug",
+      "destination": "/api/courses-page?slug=:slug"
+    },
+    {
       "source": "/government-jobs",
       "destination": "/government-jobs.html"
     },

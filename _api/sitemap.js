@@ -109,6 +109,39 @@ module.exports = async function handler(req, res) {
       addUrl(`${SITE_URL}${path}`, priority, changefreq)
     );
 
+    /* Civil Engineering course landing pages (/courses/<slug>). Only a
+       specialization with at least one PUBLISHED course is listed: an
+       empty one is served with robots noindex, so offering it to a
+       crawler here would contradict the page itself. */
+    try {
+      const courseRes = await supa(
+        'courses?select=specialization&is_published=eq.true&limit=1000'
+      );
+      if (courseRes.ok) {
+        const rows = await courseRes.json();
+        const {
+          specializationSlug,
+          specializationFromSlug,
+        } = require('../lib/course-civil');
+        const seen = new Set();
+        for (const row of rows) {
+          const label = row && row.specialization
+            ? specializationFromSlug(specializationSlug(row.specialization))
+            : null;
+          if (!label) continue;
+          const slug = specializationSlug(label);
+          if (!slug || seen.has(slug)) continue;
+          seen.add(slug);
+          urls.push(addUrl(`${SITE_URL}/courses/${slug}`, '0.7', 'weekly'));
+        }
+      }
+    } catch (err) {
+      console.warn(
+        'Sitemap course-specialization query failed; omitting those URLs:',
+        String((err && err.message) || err).slice(0, 300)
+      );
+    }
+
     // Paginate job URLs so the sitemap remains correct beyond 5,000 jobs.
     // A single sitemap supports up to 50,000 URLs; each batch below is only
     // 1,000 rows, so memory use stays bounded as CivilCareer grows.

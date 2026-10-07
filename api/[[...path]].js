@@ -65,6 +65,7 @@ const handlers = {
      tracking; discovery is admin-only (see ADMIN_RULES below). */
   '/api/courses':              () => require('../_api/courses'),
   '/api/course-discovery':     () => require('../_api/course-discovery'),
+  '/api/courses-page':         () => require('../_api/courses-page'),
   /* Admin session policy + global revoke (hardening). Admin-only. */
   '/api/admin-session':        () => require('../_api/admin-session'),
 };
@@ -278,6 +279,20 @@ module.exports = async function handler(req, res) {
       if (seoSlug) {
         pathName = '/api/seo-page';
         req.query = Object.assign({}, req.query, { slug: seoSlug[1] });
+      }
+    }
+
+    /* Per-specialization course pages: /courses/structural-engineering →
+       /api/courses-page. The same rewrite quirk applies as above: this
+       catch-all often sees the ORIGINAL path. The exact /courses rule in
+       vercel.json still wins for the directory itself, and the pattern
+       below requires a segment after /courses/, so /courses is never
+       captured here. */
+    if (!handlers[pathName]) {
+      const courseSlug = pathName.match(/^\/courses\/([a-z0-9][a-z0-9-]*)$/i);
+      if (courseSlug) {
+        pathName = '/api/courses-page';
+        req.query = Object.assign({}, req.query, { slug: courseSlug[1] });
       }
     }
 
