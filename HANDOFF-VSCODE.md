@@ -90,11 +90,11 @@ dispatcher; every feature is a module in `_api/`. Adding a `_api/foo.js` handler
 |---|---|
 | `*.html` | 26 pages — 25 public + `admin.html` (source for the admin bundle) |
 | `_api/*.js` | 49 serverless handlers (`courses.js`, `jobs.js`, `govt-review.js`, `social.js`, …) |
-| `lib/*.js` | 19 shared modules (`security.js`, `supabase.js`, `rate-limit.js`, `govt-title.js`, pipelines) |
+| `lib/*.js` | 20 shared modules (`security.js`, `supabase.js`, `rate-limit.js`, `govt-title.js`, `civil-classifier.js`, `course-civil.js`, pipelines) |
 | `api/[[...path]].js` | dispatcher: `handlers` map + `ADMIN_RULES` + `CRON_ROUTES` |
 | `scripts/*.js` | 11 build/audit/pipeline scripts incl. `build-admin-bundle.js`, `launch-check.js`, `crawl-govt-pipeline.js`, and two owner-run proofs: `verify-govt-publish.js` (government publish → public → delete) and `smoke-admin-endpoints.js` (which admin tab has real data, and which credential each route wants) |
-| `tests/*.test.js` | 42 files, **269 tests**, `node --test` |
-| `*.sql` | 36 migrations (`v28`…`v33`, `phase27`…`phase29`) + `run-all-migrations-in-order.sql` |
+| `tests/*.test.js` | 43 files, **302 tests**, `node --test` |
+| `*.sql` | 37 migrations (`v28`…`v34`, `phase27`…`phase29`) + `run-all-migrations-in-order.sql` |
 | `.github/workflows/*.yml` | 7 workflows (scrapers, govt pipeline, morning brief, social drain, gitleaks, smoke) |
 | `vercel.json` | rewrites, redirects, security headers/CSP, **crons** |
 
@@ -181,6 +181,52 @@ Pipeline, exactly as specified: `provider/API → relevance filter → admin rev
 - **Routing:** `vercel.json` rewrite `/courses` → `/courses.html` + permanent `/courses.html` → `/courses`;
   dispatcher `ADMIN_RULES` for both new endpoints; `/courses` added to `_api/sitemap.js`.
 
+#### 5.1b Directory scope — Udemy + Coursera, Civil Engineering only (2026-10-08)
+
+`/courses` stopped being a general learning catalogue. It is now a **Civil-Engineering-only discovery directory
+for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tables, same endpoints, narrower rules:
+
+- **`lib/course-civil.js`** — the single source of scope: `SUPPORTED_PROVIDERS`, `COURSE_SPECIALIZATIONS`
+  (29 labels), `classifyCourse()` and the two notice strings. It is built **on top of** `lib/civil-classifier.js`
+  (the government-pipeline engine) instead of beside it, so "civil engineering" means one thing product-wide. The
+  course-only vocabulary (AutoCAD & Civil 3D, STAAD.Pro, ETABS, Revit/BIM, Primavera P6, quantity surveying,
+  estimation, RCC/steel design, foundations, soil mechanics, highway/traffic, water/hydraulics, environmental,
+  surveying, concrete technology, building materials, construction technology, GATE / SSC JE / RRB JE / state AE-JE)
+  lives here; nothing in the govt classifier was modified. Other branches (mechanical/electrical/…) and generic
+  courses (programming, AI, marketing, finance, Excel, graphic design, generic AutoCAD, generic PMP) are excluded,
+  and an unrecognised course is excluded too — a wrong listing is worse than a missing one.
+- **`v34-courses-civil.sql`** (additive, **not yet applied — run it**): `description`, `specialization`,
+  `civil_verified`; `price_inr` drops NOT NULL/DEFAULT so **0 = free, NULL = the provider did not say** (v32 could
+  not tell "free" from "unknown", and the old default would have shown FREE for a price nobody supplied).
+  RLS is untouched: `courses_published_read` stays the only policy, so the new columns are publicly readable
+  only on published rows.
+- **Provider verdict, re-verified live today rather than assumed:** Udemy still states *"Access to the Affiliate API
+  on Udemy has been discontinued since 1/1/2025"*, and `api.coursera.org/robots.txt` still carries
+  `Disallow: /api/` — Coursera's legacy catalogue endpoint answers, but calling it would violate robots and its
+  terms, so CivilCareer does not. Nothing is scraped, guessed or fabricated. `POST ?action=run` returns the
+  spec's exact sentence: *"Automatic provider API access not configured; manual/bulk Civil Engineering course
+  import remains available."*
+- **The pipeline exists; only the provider fetch is missing.** `stageDiscovery(providerId, items)` normalizes →
+  applies the Civil Engineering filter → deduplicates (provider+external_id, then normalized URL) → stores with
+  `is_published:false` for review. Tests drive it with a sample feed; a future authorized adapter just calls it.
+- **Scope gate on every entry:** bulk import and discovery reject a row whose platform is not Udemy/Coursera, or
+  whose text does not classify as Civil Engineering, reporting the reason per row. An import can never
+  self-verify (`civil_verified` stays false), so nothing discovered is ever auto-published.
+- **Publish gate in `_api/courses.js`:** `is_published:true` is refused (409 + the classifier's reason) unless the
+  course classifies as Civil Engineering or the admin explicitly sets `civil_verified`. The admin UI offers that
+  override from the server's refusal message — the browser never re-implements the classifier.
+- **Public page:** heading *"Civil Engineering Courses"*, subtitle *"Discover Civil Engineering courses from Udemy
+  and Coursera"*, filters **Provider (All/Udemy/Coursera) · Civil Engineering specialization · Category · Career
+  stage · Free/Paid · Search**, cards carrying thumbnail / provider / title / instructor / rating / duration /
+  price / short description and **View Course →** to the provider, plus the required notice: *"Courses are provided
+  by third-party platforms. CivilCareer does not sell these courses. Verify course details and pricing on the
+  provider's website."* The affiliate sentence (and `rel="noopener sponsored"`) appears **only** when a rendered
+  card actually carries an `affiliate_url`; a plain provider link is never labelled one. A price the provider did
+  not publish renders as *"Price not provided"*, never as FREE.
+- **Admin tab:** scope statement, the API's exact provider-access notice, a stats row including **No civil match**,
+  per-row classification badges (*Needs classification*, *Civil verified*, the specialization), and editor fields for
+  specialization, description, course URL and category. Discovered/imported rows land in **Pending review**.
+
 ### 5.2 Admin session hardening (commit `ce6d2a1`) — the owner password had leaked into a chat
 
 - Server-enforced **session TTL** in `verifyAdminToken` (`lib/security.js`) — stale tokens are refused even if the
@@ -223,7 +269,7 @@ Pipeline, exactly as specified: `provider/API → relevance filter → admin rev
 | Item | Status |
 |---|---|
 | Branch / HEAD | `main` @ **`f870690`**, equal to `origin/main`, working tree clean except the intentionally-uncommitted `.env.example` |
-| Tests | **254 / 254 pass, 0 fail, exit 0** (`npm test`) |
+| Tests | **302 / 302 pass, 0 fail, exit 0** (`npm test`) |
 | `git diff --check` | clean, exit 0 |
 | `npm run check:launch` | **0 errors**, exit 0 (1 pre-existing `SITE_URL` warning) |
 | Live: `/courses` | 200, canonical + OG/Twitter + skip link + JSON-LD all correct |
@@ -241,27 +287,36 @@ Pipeline, exactly as specified: `provider/API → relevance filter → admin rev
 
 **Blocked — requires owner action**
 
-1. **Run `v33-admin-audit.sql`** in the Supabase SQL editor. Until then the audit trail silently records nothing
-   (auth still works — the writer returns `false` rather than throwing).
+1. **Run `v33-admin-audit.sql` and `v34-courses-civil.sql`** in the Supabase SQL editor. Until v33 is applied the
+   audit trail silently records nothing (auth still works — the writer returns `false` rather than throwing). Until
+   v34 is applied `/courses` keeps working: the public list falls back to the v32 columns, sets
+   `columnsMissing:true` and names the migration, so descriptions and the specialization filter are the only
+   missing pieces.
 2. **Rotate the admin password** that was shared in chat, then press **"Sign out everywhere"** in `/admin`.
    The TTL + revoke code is deployed, but the exposed credential itself cannot be invalidated from here.
 3. **RLS behaviour** on `courses`/`course_clicks` is unverified against the real database (no SQL access from the
-   agent environment). The migration is written to be service-role-write-only, but confirm it in the Supabase dashboard.
+   agent environment). The migrations are written to be service-role-write-only (v34 adds three columns and no
+   policy, so the new fields inherit `courses_published_read`), but confirm it in the Supabase dashboard.
 4. **`course_clicks` has never recorded a row in production** — there are no published courses yet, so the insert path
    is only proven locally.
 5. **Re-submit `/sitemap.xml` in Google Search Console** (148 → 796 URLs).
 
 **Product reality**
 
-6. **No automated course discovery exists.** Udemy's Affiliate API was **discontinued 2025-01-01**, so there is no
-   programmatic source; `/api/course-discovery?action=run` deliberately answers `no-provider-available` instead of
-   fabricating results. The working path is **Bulk import** (paste JSON → drafts → review → publish) or per-course entry.
+6. **No automated course discovery exists — verified again today, not assumed.** Udemy's Affiliate API was
+   **discontinued 2025-01-01** (Udemy's own page still says so) and `api.coursera.org/robots.txt` **disallows
+   `/api/`**, so Coursera's legacy catalogue endpoint is not called either. `/api/course-discovery?action=run`
+   answers with the exact sentence: *"Automatic provider API access not configured; manual/bulk Civil Engineering
+   course import remains available."* The working path is **Bulk import** (paste JSON → drafts → review → publish) or
+   per-course entry. The staging pipeline behind a future adapter already exists and is tested.
 7. **The catalog is empty.** Start with 50–200 high-quality courses, then measure views/clicks/CTR before scaling.
    Priority order per the curation strategy: freshers (AutoCAD, STAAD Pro, MS Project, BOQ, rate analysis, IS codes) →
    govt exams (GATE Civil, SSC JE, RRB JE, UPSC ESE, state AE/JE) → site engineers (Primavera P6, construction
    management, quantity surveying, contracts/FIDIC, safety) → structural (ETABS, SAP2000, STAAD.Pro, RCC, steel,
    foundation, seismic) → Gulf/international (Civil 3D, BIM, MicroStation, PMP).
-8. **Affiliate links are manual** — paste them into a course's `affiliate_url` in the admin editor.
+8. **Affiliate links are optional and currently unused** — `affiliate_url` may stay NULL on every row; the
+   directory needs no affiliate revenue. When one is set, only that link is marked sponsored (`rel="noopener
+   sponsored"` + the conditional notice); a plain provider URL never is.
 
 **Not tested**
 
@@ -275,8 +330,9 @@ Pipeline, exactly as specified: `provider/API → relevance filter → admin rev
 1. **Seed the catalog** (50 curated courses) and measure clicks — the feature does nothing until it has inventory.
 2. **Wire courses into the career flow:** recommend courses on job/career pages from `target_roles` + `career_stage` of
    *published* courses only, so the platform answers "what should I learn next?".
-3. **A real draft-discovery pipeline** for providers that permit it (public YouTube playlists, NPTEL listings) writing
-   into the same draft queue for review — replacing the dead Udemy integration honestly.
+3. **When a provider grants authorized access, wire its adapter to `stageDiscovery()`** — the
+   normalize → civil filter → dedupe → pending-review chain already exists and is tested, so only the fetch is
+   missing. Do not scrape: Udemy's terms and Coursera's `robots.txt` both forbid it.
 4. **SEO surface for the catalog:** per-category/provider landing pages (`/courses/structural-engineering`) with
    `ItemList`/`Course` structured data, generated from published rows only.
 5. **Referral-driven `course_clicks` analytics** on the admin tab (popular categories/roles, CTR) to guide curation.

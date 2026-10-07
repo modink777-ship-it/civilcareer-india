@@ -127,8 +127,12 @@ test('public projection drops admin-only fields even if the row has them', () =>
   assert.ok(!('admin_notes' in out), 'admin_notes leaked into public payload');
   assert.ok(!('external_id' in out), 'external_id leaked into public payload');
   assert.ok(!('url_status' in out), 'url_status leaked into public payload');
+  assert.ok(!('civil_verified' in out), 'the admin verification flag leaked into public payload');
   assert.deepStrictEqual(out.target_roles, []);
-  assert.strictEqual(out.price_inr, 0);
+  /* A row without a price is "not provided" — never rendered as 0/FREE. */
+  assert.strictEqual(out.price_inr, null);
+  assert.strictEqual(out.description, null);
+  assert.strictEqual(out.specialization, null);
 });
 
 test('anonymous GET /api/courses returns only rows the server filtered as published', async () => {
@@ -350,6 +354,11 @@ test('price 0 implies free; paid price clears the free flag', () => {
   assert.strictEqual(free.payload.is_free, true);
   const paid = coursePayload({ title: 'T', provider: 'P', course_url: 'https://x.test', price_inr: 499 });
   assert.strictEqual(paid.payload.is_free, false);
+  /* An OMITTED price is unknown, not free (directory spec: never invent a
+     price, and "Not provided" is a legitimate state). */
+  const unknown = coursePayload({ title: 'T', provider: 'P', course_url: 'https://x.test' });
+  assert.strictEqual(unknown.payload.price_inr, null);
+  assert.strictEqual(unknown.payload.is_free, false, 'a missing price must not read as FREE');
 });
 
 test('admin create persists through the elevated branch (adminUser set)', async () => {
@@ -392,6 +401,9 @@ test('provider registry is honest about the discontinued Udemy API', () => {
   assert.strictEqual(udemy.status, 'discontinued', 'Udemy Affiliate API ended 2025-01-01');
   assert.ok(/discontinued|1\/1\/2025|2025/i.test(udemy.note), 'the note must say why');
   assert.ok(list.every(p => p.status !== 'available'), 'nothing may claim availability today');
+  assert.ok(list.every(p => p.available !== true), 'without an authorized API nothing may be runnable');
+  /* The registry covers exactly the directory's two platforms now. */
+  assert.deepStrictEqual(list.map(p => p.id).sort(), ['coursera', 'udemy']);
 });
 
 test('discovery GET exposes config booleans, never secret values', async () => {
@@ -430,7 +442,11 @@ test('action=run answers no-provider-available without faking results', async ()
     const body = JSON.parse(res.bodyText);
     assert.strictEqual(body.code, 'no-provider-available');
     assert.strictEqual(body.staged, 0, 'nothing may be invented');
-    assert.ok(/discontinued/i.test(body.message || ''), 'the message must state the fact');
+    /* The exact sentence the directory spec requires, and the facts behind
+       it in the details rather than in the headline. */
+    assert.strictEqual(body.message,
+      'Automatic provider API access not configured; manual/bulk Civil Engineering course import remains available.');
+    assert.ok(/discontinued/i.test(body.details || ''), 'the details must state the Udemy fact');
     const external = stub.calls.filter(c => /udemy|coursera/i.test(c.url));
     assert.strictEqual(external.length, 0, 'no provider API may be called: ' + JSON.stringify(external.map(c => c.url)));
   } finally { stub.restore(); }
@@ -479,10 +495,10 @@ test('bulk import: idempotent, drafts, admin fields preserved', async () => {
       query: { action: 'import' },
       body: {
         items: [
-          { title: 'Known course', provider: 'Udemy', course_url: 'https://udemy.test/1', external_id: 'ext-1', is_published: true },
-          { title: 'Known by URL', provider: 'Coursera', course_url: 'https://coursera.test/2?utm_source=x', is_published: true },
-          { title: 'Fresh import', provider: 'NPTEL', course_url: 'https://nptel.test/3', rating: 4.2 },
-          { title: '', provider: 'X', course_url: 'https://x.test' }, /* rejected */
+          { title: 'STAAD.Pro Complete Course', provider: 'Udemy', course_url: 'https://udemy.test/1', external_id: 'ext-1', is_published: true },
+          { title: 'Quantity Surveying Masterclass', provider: 'Coursera', course_url: 'https://coursera.test/2?utm_source=x', is_published: true },
+          { title: 'Primavera P6 for Construction Projects', provider: 'Udemy', course_url: 'https://udemy.test/3', rating: 4.2 },
+          { title: '', provider: 'Udemy', course_url: 'https://udemy.test/4' }, /* rejected: no title */
         ],
       },
       adminUser: { id: 'admin' },
@@ -533,8 +549,14 @@ test('courses.html: accessibility + SEO + affiliate hygiene', () => {
   assert.ok(html.includes('<link rel="canonical" href="https://civilcareer-india-two.vercel.app/courses">'),
     'canonical must use the production domain');
   assert.ok(html.includes('"@type":"CollectionPage"'), 'JSON-LD CollectionPage required');
-  assert.ok(html.includes('Affiliate disclosure'), 'disclosure paragraph required');
-  assert.ok(html.includes('rel="noopener sponsored"'), 'affiliate links must be rel=sponsored');
+  /* Directory spec: the third-party notice is required, and a plain
+     provider link must never be labelled an affiliate link. `sponsored`
+     appears only in the branch that actually uses an affiliate_url. */
+  assert.ok(html.includes('Courses are provided by third-party platforms. CivilCareer does not sell these courses. Verify course details and pricing on the provider\'s website.'),
+    'the third-party notice must be present verbatim');
+  assert.ok(!/Affiliate disclosure/.test(html), 'the blanket affiliate claim must be gone');
+  assert.ok(/c\.affiliate_url\?'noopener sponsored':'noopener noreferrer'/.test(html),
+    'rel=sponsored must be conditional on a real affiliate link');
   assert.ok(html.includes('action=click'), 'click beacon must target /api/courses');
   assert.ok(html.includes('<title>'), 'title tag required');
   assert.ok(html.includes('og:url'), 'og:url required');

@@ -7,29 +7,27 @@
 <link rel="stylesheet" href="/styles.css">
 <script src="/translations.js" defer></script>
 <link rel="icon" href="/icons/icon-96.png">
-<title>Civil Engineering Courses — Software, GATE, Planning, Design &amp; Management | CivilCareer</title>
-<meta name="description" content="Every useful civil engineering learning resource in one place — AutoCAD, STAAD Pro, Primavera P6, BIM, quantity surveying, GATE and SSC JE preparation, curated by career stage and role for Indian civil engineers.">
-<meta property="og:title" content="All Civil Engineering Courses in One Place | CivilCareer">
-<meta property="og:description" content="Curated courses for fresher to senior civil engineers — software, exams, structural design, planning and construction management.">
+<title>Civil Engineering Courses — Udemy &amp; Coursera, Reviewed | CivilCareer</title>
+<meta name="description" content="Civil Engineering courses from Udemy and Coursera — AutoCAD &amp; Civil 3D, STAAD.Pro, ETABS, Revit/BIM, Primavera P6, quantity surveying, structural design, GATE and SSC JE preparation. Every course is reviewed before it is listed.">
+<meta property="og:title" content="Civil Engineering Courses | CivilCareer">
+<meta property="og:description" content="Discover Civil Engineering courses from Udemy and Coursera — software, design, planning and exam preparation. Reviewed before listing.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://civilcareer-india-two.vercel.app/courses">
 <meta property="og:image" content="https://civilcareer-india-two.vercel.app/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="All Civil Engineering Courses in One Place | CivilCareer">
-<meta name="twitter:description" content="Curated courses for fresher to senior civil engineers — software, exams, structural design and planning.">
+<meta name="twitter:title" content="Civil Engineering Courses | CivilCareer">
+<meta name="twitter:description" content="Civil Engineering courses from Udemy and Coursera — reviewed before listing.">
 <link rel="canonical" href="https://civilcareer-india-two.vercel.app/courses">
 <style>
 .co-main{max-width:1160px;margin:0 auto;padding:0 24px 90px}
 .co-hero{padding:56px 0 8px}
 .co-hero h1{font-size:42px;letter-spacing:-1.6px;margin:0 0 10px}
 .co-hero p{max-width:760px;margin:0;color:#516174;font-size:17px}
-.co-filters{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:12px;align-items:end;margin:26px 0 8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.co-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:12px;align-items:end;margin:26px 0 8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .co-filters label{display:block;color:#354459;font-size:12px;font-weight:750}
 .co-filters select,.co-filters input[type=search]{width:100%;margin-top:5px;border:1px solid #cfd8e1;border-radius:7px;background:#fff;padding:10px;color:var(--ink);outline:0}
 .co-filters select:focus,.co-filters input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #155ea812}
-.co-free{display:flex!important;align-items:center;gap:8px;white-space:nowrap;padding-bottom:10px}
-.co-free input{width:auto;margin:0}
-.co-reset{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:42px}
+.co-reset{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:42px;justify-self:start}
 .co-reset:hover{background:var(--soft)}
 .co-count{margin:14px 0;color:var(--muted);font-size:13.5px}
 .co-grid{display:grid;gap:15px;grid-template-columns:repeat(auto-fill,minmax(255px,1fr))}
@@ -44,16 +42,19 @@
 .co-body{display:flex;flex-direction:column;gap:8px;padding:16px;flex:1}
 .co-provider{color:var(--teal);font-size:11.5px;font-weight:820;text-transform:uppercase;letter-spacing:.06em}
 .co-card h2{font-size:15.5px;line-height:1.35;margin:0;color:var(--navy)}
+.co-desc{margin:0;color:#516174;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .co-meta{display:flex;gap:6px;flex-wrap:wrap;color:#687587;font-size:12px}
 .co-meta span{background:var(--soft);border:1px solid #e6ebef;border-radius:5px;padding:3px 7px}
 .co-roles{display:flex;gap:5px;flex-wrap:wrap}
 .co-roles span{font-size:10.5px;color:#4b6a8a;background:#eaf2fa;border-radius:99px;padding:2px 8px}
-.co-price{display:flex;align-items:baseline;gap:8px;margin-top:auto;padding-top:4px;color:var(--navy);font-weight:820}
+.co-roles span.spec{color:#15543f;background:#e6f4ef;font-weight:700}
+.co-price{display:flex;align-items:baseline;gap:8px;margin-top:auto;padding-top:4px;color:var(--navy);font-weight:820;font-size:15px}
 .co-price s{color:var(--muted);font-weight:600;font-size:12.5px}
 .co-price .free{color:#1d7a68}
+.co-price .unknown{color:#687587;font-weight:600;font-size:12.5px}
 .co-cta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;min-height:42px;padding:0 14px;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;font-size:14px}
 .co-cta:hover{background:#0f4f91}
-.co-leave{color:var(--muted);font-size:11px;margin-top:6px}
+.co-leave{color:var(--muted);font-size:11px;margin:6px 0 0}
 .co-state{grid-column:1/-1;padding:44px 20px;text-align:center;border:1px dashed #bfcad4;border-radius:12px;background:#fafbfc;color:#546274}
 .co-state button{margin-top:12px}
 .co-pager{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:26px}
@@ -61,6 +62,8 @@
 .co-pager button:disabled{opacity:.45;cursor:default}
 .co-pager span{color:var(--muted);font-size:13px}
 .co-disclosure{margin-top:38px;padding:16px 18px;border-left:3px solid var(--teal);background:#edf6f3;border-radius:0 10px 10px 0;color:#38564f;font-size:13.5px}
+.co-disclosure p{margin:0}
+.co-disclosure p+p{margin-top:8px}
 .co-keep{margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
 .co-keep h2{font-size:20px;margin:0 0 8px}
 .co-keep p{margin:0 0 12px;color:#687587;font-size:14px}
@@ -68,11 +71,7 @@
 .co-keep nav a{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;color:var(--navy)}
 .co-keep nav a:hover{border-color:var(--blue);color:var(--blue)}
 @media(max-width:860px){
-  .co-filters{grid-template-columns:1fr 1fr}
   .co-hero h1{font-size:32px;letter-spacing:-1px}
-}
-@media(max-width:540px){
-  .co-filters{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -97,25 +96,34 @@
 <main id="content" class="co-main">
 
   <section class="co-hero">
-    <p class="eyebrow">Learn the skills employers want</p>
-    <h1>All Civil Engineering Courses in One Place</h1>
-    <p>Curated learning for every stage of a civil engineering career — fresher software skills,
-       government exam preparation, structural design, planning, quantity surveying and construction
-       management. Free resources are labelled FREE.</p>
+    <p class="eyebrow">Civil Engineering only — every course reviewed before listing</p>
+    <h1>Civil Engineering Courses</h1>
+    <p>Discover Civil Engineering courses from Udemy and Coursera. Software (AutoCAD &amp; Civil 3D,
+       STAAD.Pro, ETABS, Revit/BIM, Primavera P6), design, surveying, quantity surveying and
+       GATE / SSC JE preparation. You enrol on the provider's own website.</p>
   </section>
 
   <form class="co-filters" id="coFilters" role="search" aria-label="Filter courses">
+    <label>Provider
+      <select id="coProvider" name="provider"><option value="">All providers</option></select>
+    </label>
+    <label>Civil Engineering specialization
+      <select id="coSpec" name="specialization"><option value="">All specializations</option></select>
+    </label>
     <label>Category
       <select id="coCategory" name="category"><option value="">All categories</option></select>
     </label>
     <label>Career stage
       <select id="coStage" name="stage"><option value="">All stages</option></select>
     </label>
-    <label>Provider
-      <select id="coProvider" name="provider"><option value="">All providers</option></select>
+    <label>Price
+      <select id="coPrice" name="price">
+        <option value="">Free &amp; paid</option>
+        <option value="free">Free only</option>
+        <option value="paid">Paid only</option>
+      </select>
     </label>
-    <label class="co-free"><input type="checkbox" id="coFree"> Free only</label>
-    <label style="grid-column:1/-2">Search
+    <label>Search
       <input type="search" id="coSearch" placeholder="e.g. Primavera P6, GATE, AutoCAD…" autocomplete="off">
     </label>
     <button type="button" class="co-reset" id="coReset">Reset</button>
@@ -133,12 +141,10 @@
     <button type="button" id="coNext">Next →</button>
   </nav>
 
-  <p class="co-disclosure">
-    <strong>Affiliate disclosure:</strong> Some course links may be affiliate links. If you purchase
-    through them, CivilCareer may earn a commission at no additional cost to you. Free resources
-    (NPTEL, YouTube and other open material) never carry affiliate links. Course pages open on the
-    provider's website — you are leaving CivilCareer.
-  </p>
+  <div class="co-disclosure" id="coNotice">
+    <p>Courses are provided by third-party platforms. CivilCareer does not sell these courses. Verify course details and pricing on the provider's website.</p>
+    <p id="coAffiliate" hidden></p>
+  </div>
 
   <section class="co-keep" aria-labelledby="coKeepHead">
     <h2 id="coKeepHead">Keep building your career</h2>
@@ -166,7 +172,7 @@
 </footer>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"CollectionPage","name":"All Civil Engineering Courses in One Place","url":"https://civilcareer-india-two.vercel.app/courses","description":"Curated civil engineering courses for every career stage — software, exam preparation, structural design, planning, quantity surveying and construction management.","isPartOf":{"@type":"WebSite","name":"CivilCareer","url":"https://civilcareer-india-two.vercel.app"}}
+{"@context":"https://schema.org","@type":"CollectionPage","name":"Civil Engineering Courses","url":"https://civilcareer-india-two.vercel.app/courses","description":"Civil Engineering courses from Udemy and Coursera — software, structural design, surveying, quantity surveying, project planning and GATE / SSC JE preparation, reviewed before listing.","isPartOf":{"@type":"WebSite","name":"CivilCareer","url":"https://civilcareer-india-two.vercel.app"}}
 </script>
 
 <script>
@@ -174,28 +180,32 @@
   'use strict';
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function fmtNum(n){n=Number(n)||0;if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,'')+'k';return String(n);}
+  function inr(n){return '₹'+fmtNum(n);}
 
-  var state={page:1,category:'',stage:'',provider:'',free:false,search:''};
+  var state={page:1,provider:'',specialization:'',category:'',stage:'',price:'',search:''};
   var filtersLoaded=false;
+  var usedAffiliate=false;
 
   function $(id){return document.getElementById(id);}
 
   /* Read the URL first so a filtered view is shareable. */
   function readUrl(){
     var p=new URLSearchParams(location.search);
+    state.provider=p.get('provider')||'';
+    state.specialization=p.get('specialization')||'';
     state.category=p.get('category')||'';
     state.stage=p.get('stage')||'';
-    state.provider=p.get('provider')||'';
-    state.free=p.get('free')==='true';
+    state.price=p.get('price')||'';
     state.search=p.get('search')||'';
     state.page=Math.max(parseInt(p.get('page')||'1',10)||1,1);
   }
   function writeUrl(){
     var p=new URLSearchParams();
+    if(state.provider)p.set('provider',state.provider);
+    if(state.specialization)p.set('specialization',state.specialization);
     if(state.category)p.set('category',state.category);
     if(state.stage)p.set('stage',state.stage);
-    if(state.provider)p.set('provider',state.provider);
-    if(state.free)p.set('free','true');
+    if(state.price)p.set('price',state.price);
     if(state.search)p.set('search',state.search);
     if(state.page>1)p.set('page',String(state.page));
     var qs=p.toString();
@@ -206,10 +216,12 @@
     var p=new URLSearchParams();
     p.set('page',String(state.page));
     p.set('limit','24');
+    if(state.provider)p.set('provider',state.provider);
+    if(state.specialization)p.set('specialization',state.specialization);
     if(state.category)p.set('category',state.category);
     if(state.stage)p.set('stage',state.stage);
-    if(state.provider)p.set('provider',state.provider);
-    if(state.free)p.set('free','true');
+    if(state.price==='free')p.set('free','true');
+    if(state.price==='paid')p.set('paid','true');
     if(state.search)p.set('search',state.search);
     return p.toString();
   }
@@ -224,43 +236,55 @@
     keep.addEventListener('change',function(){onFilter();});
   }
 
+  /* A course with no price from the provider is labelled "Not provided" —
+     never rendered as free, never given a number we do not have. */
+  function priceLine(c){
+    if(c.is_free||c.price_inr===0)return '<span class="free">FREE</span>';
+    if(c.price_inr==null)return '<span class="unknown">Price not provided — check on '+esc(c.provider||'the provider')+'</span>';
+    return inr(c.price_inr)+(c.original_price_inr&&c.original_price_inr>c.price_inr?' <s>'+inr(c.original_price_inr)+'</s>':'');
+  }
+
+  function badges(c){
+    var out='';
+    if(c.is_free||c.price_inr===0)out+='<span class="co-badge free">Free</span>';
+    else if(c.price_inr!=null)out+='<span class="co-badge">Paid</span>';
+    if(c.is_featured)out+='<span class="co-badge feat">Featured</span>';
+    return out;
+  }
+
   function card(c){
     var thumb=c.thumbnail_url
       ? '<div class="co-thumb"><img src="'+esc(c.thumbnail_url)+'" alt="" loading="lazy" onerror="this.remove()"><div class="co-badges">'+badges(c)+'</div></div>'
       : '<div class="co-thumb" aria-hidden="true">'+esc((c.provider||'?').charAt(0))+'<div class="co-badges">'+badges(c)+'</div></div>';
     var bits=[];
     if(c.rating!=null)bits.push('<span>★ '+Number(c.rating).toFixed(1)+'</span>');
-    if(c.enrollment_count!=null)bits.push('<span>'+fmtNum(c.enrollment_count)+' learners</span>');
     if(c.duration_hours!=null)bits.push('<span>'+Math.round(c.duration_hours)+'h</span>');
     if(c.language)bits.push('<span>'+esc(c.language)+'</span>');
     if(c.career_stage)bits.push('<span>'+esc(c.career_stage)+'</span>');
-    var price=c.is_free||c.price_inr===0
-      ? '<span class="free">FREE</span>'
-      : '₹'+fmtNum(c.price_inr)+(c.original_price_inr&&c.original_price_inr>c.price_inr?' <s>₹'+fmtNum(c.original_price_inr)+'</s>':'');
+    var chips=[];
+    if(c.specialization)chips.push('<span class="spec">'+esc(c.specialization)+'</span>');
+    (c.target_roles||[]).slice(0,3).forEach(function(r){chips.push('<span>'+esc(r)+'</span>');});
+    /* Affiliate links are optional and, when present, are the only links
+       labelled sponsored. A plain provider URL is never called one. */
     var href=c.affiliate_url||c.course_url;
-    var roles=(c.target_roles||[]).slice(0,3).map(function(r){return '<span>'+esc(r)+'</span>';}).join('');
+    var rel=c.affiliate_url?'noopener sponsored':'noopener noreferrer';
+    if(c.affiliate_url)usedAffiliate=true;
     return '<article class="co-card">'+thumb+
       '<div class="co-body">'+
-        '<span class="co-provider">'+esc(c.provider)+(c.instructor?' · '+esc(c.instructor):'')+'</span>'+
+        '<span class="co-provider">'+esc(c.provider||'Provider')+(c.instructor?' · '+esc(c.instructor):'')+'</span>'+
         '<h2>'+esc(c.title)+'</h2>'+
+        (c.description?'<p class="co-desc">'+esc(c.description)+'</p>':'')+
         (bits.length?'<div class="co-meta">'+bits.join('')+'</div>':'')+
-        (roles?'<div class="co-roles">'+roles+'</div>':'')+
-        '<div class="co-price">'+price+'</div>'+
-        '<a class="co-cta" data-id="'+esc(c.id)+'" data-provider="'+esc(c.provider)+'" href="'+esc(href)+'" target="_blank" rel="noopener sponsored" aria-label="View '+esc(c.title)+' on '+esc(c.provider)+' (opens the provider website in a new tab)" onclick="return window.coTrack(this)">View Course ↗</a>'+
-        '<p class="co-leave">Opens on '+esc(c.provider)+' — you are leaving CivilCareer.</p>'+
+        (chips.length?'<div class="co-roles">'+chips.join('')+'</div>':'')+
+        '<div class="co-price">'+priceLine(c)+'</div>'+
+        '<a class="co-cta" data-id="'+esc(c.id)+'" data-provider="'+esc(c.provider||'')+'" href="'+esc(href)+'" target="_blank" rel="'+rel+'" aria-label="View '+esc(c.title)+' on '+esc(c.provider||'the provider')+' (opens their website in a new tab)" onclick="return window.coTrack(this)">View Course →</a>'+
+        '<p class="co-leave">Opens on '+esc(c.provider||'the provider website')+' — you are leaving CivilCareer.</p>'+
       '</div>'+
     '</article>';
   }
-  function badges(c){
-    var out='';
-    if(c.is_free||c.price_inr===0)out+='<span class="co-badge free">Free</span>';
-    else out+='<span class="co-badge">Paid</span>';
-    if(c.is_featured)out+='<span class="co-badge feat">Featured</span>';
-    return out;
-  }
 
-  /* Click tracking is server-side and best-effort: the beacon fires and the
-     navigation still proceeds even if it never lands. */
+  /* Click counting is server-side, aggregate-only and best-effort: the
+     navigation still happens if the beacon never lands. */
   window.coTrack=function(a){
     try{
       var id=a.getAttribute('data-id');
@@ -274,22 +298,39 @@
 
   function render(data){
     var grid=$('coGrid');
+    var f=data.filters||{};
     if(!filtersLoaded){
       filtersLoaded=true;
-      fillSelect($('coCategory'),data.filters.categories,state.category);
-      fillSelect($('coStage'),data.filters.stages,state.stage);
-      fillSelect($('coProvider'),data.filters.providers,state.provider);
-      var freeBox=$('coFree');if(freeBox)freeBox.checked=state.free;
+      fillSelect($('coProvider'),f.providers,state.provider);
+      fillSelect($('coSpec'),f.specializations,state.specialization);
+      fillSelect($('coCategory'),f.categories,state.category);
+      fillSelect($('coStage'),f.stages,state.stage);
+      var priceBox=$('coPrice');if(priceBox)priceBox.value=state.price||'';
       var searchBox=$('coSearch');if(searchBox)searchBox.value=state.search;
     }
+    /* An empty result has two very different meanings: nothing is
+       published yet, or nothing matches what the visitor asked for. */
+    var filtered=!!(state.provider||state.specialization||state.category||state.stage||state.price||state.search);
     $('coCount').textContent=data.total===0
-      ? 'No published courses yet — new ones are added after review.'
+      ? (filtered
+        ? 'No courses match these filters.'
+        : 'No published courses yet — every course is reviewed before it is listed.')
       : data.total+' course'+(data.total===1?'':'s')+' · showing '+data.courses.length+' · page '+data.page+' of '+data.pages;
     if(!data.courses.length){
-      grid.innerHTML='<div class="co-state"><b>No courses match these filters.</b><br>Try clearing the search or category.'+
+      grid.innerHTML='<div class="co-state"><b>No Civil Engineering courses match these filters.</b><br>Try clearing the search, specialization or provider.'+
         '<br><button type="button" class="co-reset" onclick="document.getElementById(\'coReset\').click()">Clear all filters</button></div>';
     }else{
+      usedAffiliate=false;
       grid.innerHTML=data.courses.map(card).join('');
+    }
+    /* The affiliate sentence appears only when a link on the page actually
+       carries one. Normal Udemy/Coursera links are never called affiliate. */
+    var aff=$('coAffiliate');
+    if(aff){
+      aff.hidden=!usedAffiliate;
+      if(usedAffiliate){
+        aff.textContent='Some links on this page are affiliate links: if you buy through them, CivilCareer may earn a commission at no extra cost to you. The course price is set by the provider.';
+      }
     }
     var pager=$('coPager');
     if(data.pages>1){pager.hidden=false;$('coPageInfo').textContent='Page '+data.page+' of '+data.pages;
@@ -312,10 +353,11 @@
   }
 
   function onFilter(){
+    state.provider=$('coProvider')?$('coProvider').value:'';
+    state.specialization=$('coSpec')?$('coSpec').value:'';
     state.category=$('coCategory')?$('coCategory').value:'';
     state.stage=$('coStage')?$('coStage').value:'';
-    state.provider=$('coProvider')?$('coProvider').value:'';
-    state.free=$('coFree')?$('coFree').checked:false;
+    state.price=$('coPrice')?$('coPrice').value:'';
     state.search=$('coSearch')?$('coSearch').value.trim():'';
     state.page=1;
     writeUrl();load();
@@ -325,14 +367,14 @@
   document.addEventListener('DOMContentLoaded',function(){
     readUrl();
     $('coFilters').addEventListener('submit',function(e){e.preventDefault();onFilter();});
-    ['coCategory','coStage','coProvider','coFree'].forEach(function(id){
+    ['coProvider','coSpec','coCategory','coStage','coPrice'].forEach(function(id){
       var el=$(id);if(el)el.addEventListener('change',onFilter);
     });
     $('coSearch').addEventListener('input',function(){
       clearTimeout(searchTimer);searchTimer=setTimeout(onFilter,300);
     });
     $('coReset').addEventListener('click',function(){
-      state.category='';state.stage='';state.provider='';state.free=false;state.search='';state.page=1;
+      state.provider='';state.specialization='';state.category='';state.stage='';state.price='';state.search='';state.page=1;
       filtersLoaded=false;
       writeUrl();load();
     });
