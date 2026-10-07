@@ -356,7 +356,13 @@ function liveCounts(){
   /* "Active civil jobs" means every live listing the page itself shows — not
      just the private-sector slice of it, which is what made the tile read "1"
      above a list of forty cards. */
-  const total=Number.isFinite(Number(summary.total))?Number(summary.total):jobs.filter(j=>active(j)).length;
+  /* The server reports the cross-sector total. If the API is older than this
+     client it reports only the two sector counts, and adding those beats
+     dropping to a page-local number, which would read far too low. */
+  const serverTotal=Number.isFinite(Number(summary.total))?Number(summary.total)
+    :(Number.isFinite(Number(summary.private))&&Number.isFinite(Number(summary.government))
+      ?Number(summary.private)+Number(summary.government):null);
+  const total=serverTotal!==null?serverTotal:jobs.filter(j=>active(j)).length;
   return [priv,govt,total];
 }
 function updateNavCounts(){
