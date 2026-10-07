@@ -733,9 +733,9 @@ test('F4 in-process contract: unconfigured Supabase degrades gracefully, never t
 
 /* ═══ F5 — admin.html Social tab ═════════════════ */
 
-test('F5 admin.html: Social tab exists and wires every queue action', () => {
+test('F5 admin.html: the Social panel and every queue action stay wired', () => {
   const src = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
-  assert.match(src, /data-tab="social"/);
+  assert.doesNotMatch(src, /data-tab="social"/, 'the Social tab is hidden from the tab bar while the panel, its JS and every action stay wired, so restoring it is a one-line change');
   assert.match(src, /id="panel-social"/);
   assert.match(src, /loadSocial\(\)/);
   for (const fn of [

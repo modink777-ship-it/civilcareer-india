@@ -263,14 +263,11 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button class="active" data-tab="analytics">Analytics</button>
   <button data-tab="jobs">Jobs</button>
   <button data-tab="discovery">Discovery</button>
-  <button data-tab="agent-reach">Agent Reach</button>
   <button data-tab="exams">Exams</button>
   <button data-tab="exam-tracker">Exam Tracker</button>
-  <button data-tab="social">Social Engine</button>
   <button data-tab="salary">Salary</button>
   <button data-tab="walkins">Walk-Ins</button>
   <button data-tab="subscribers">Subscribers</button>
-  <button data-tab="reviews">Reviews</button>
   <button data-tab="blog">Blog</button>
   <button data-tab="interview">Interview Q&A</button>
   <button data-tab="materials">Materials</button>
@@ -520,19 +517,6 @@ Show expired
     <code>/api/agent-reach-ingest</code>. Everything arrives as <strong style="color:#fbbf24">Pending Review</strong> —
     Agent Reach never publishes directly. Verify the original source, edit if needed, then publish explicitly.
   </p>
-
-  <!-- BLOCK B — Exam Alerts Scanner -->
-
-  <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
-    <h3 style="color:#c9973c">🔔 Exam Alerts Scanner</h3>
-    <p style="color:#94a3b8;font-size:.82rem;margin-bottom:4px">Scrapes UPSC, SSC, RRB and Employment News for new civil exam notifications</p>
-    <p style="color:#6a8aaa;font-size:.76rem;margin-bottom:12px">Runs automatically every Monday · results go to Exams tab for review</p>
-    <div class="admin-actions" style="margin-bottom:0">
-      <button id="arExamScanBtn" class="btn-gold" onclick="arRunExamScan()">▶ Scan Now</button>
-    </div>
-    <div id="arExamScanStatus" style="display:none;margin-top:10px;color:#94a3b8;font-size:.82rem"></div>
-    <div id="arExamScanResults" style="display:none;margin-top:10px"></div>
-  </div>
 
   <!-- BLOCK C — YouTube Transcriber -->
   <div class="dash-card" style="margin-bottom:14px;border-color:rgba(201,151,60,.2)">
@@ -5867,54 +5851,6 @@ document
   });
 
 /* Phase 2 security: admin keys are kept only in page memory. Reloading requires a fresh login. */
-
-/* ── Exam Alerts Scanner ─────────────────────────────────────────── */
-
-async function arRunExamScan() {
-  const btn = $('arExamScanBtn');
-  const status = $('arExamScanStatus');
-  const results = $('arExamScanResults');
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Scanning…';
-  status.style.display = 'block';
-  status.textContent = 'Connecting to government portals…';
-  results.style.display = 'none';
-  results.innerHTML = '';
-
-  try {
-    const data = await api('/api/exam-alerts', {});
-
-    status.textContent = `✅ Done in ${data.durationMs ? (data.durationMs / 1000).toFixed(1) + 's' : '—'} · ${data.totalNew} new exam${data.totalNew !== 1 ? 's' : ''} added`;
-
-    if (data.sources && data.sources.length) {
-      results.style.display = 'block';
-      results.innerHTML = data.sources.map(s =>
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.8rem">
-          <span style="color:#94a3b8">${esc(s.name)}</span>
-          <span style="color:${s.error ? '#fca5a5' : '#6ee7b7'}">
-            ${s.error ? '⚠ ' + esc(s.error) : `${s.found} found · ${s.saved} saved`}
-          </span>
-        </div>`
-      ).join('');
-    }
-
-    if (data.totalNew > 0) {
-      // Refresh exams array so Exams tab shows new drafts
-      try {
-        exams = (await authedApi('/api/exams?auth=1', {})).exams || [];
-        loadAdminExams();
-      } catch (_) { /* non-fatal */ }
-    }
-
-    toast(`Exam scan complete — ${data.totalNew} new draft${data.totalNew !== 1 ? 's' : ''} added.`);
-  } catch (err) {
-    status.textContent = '❌ ' + (err.message || 'Scan failed');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '▶ Scan Now';
-  }
-}
 
 /* ── YouTube Transcriber ─────────────────────────────────────────── */
 
