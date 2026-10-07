@@ -419,9 +419,17 @@ function liveCounts(){
   /* The server reports the cross-sector total. If the API is older than this
      client it reports only the two sector counts, and adding those beats
      dropping to a page-local number, which would read far too low. */
+  /* A deploy can land this bundle before the function behind it, and Vercel can
+     serve both shapes at once. The current API reports the unscoped `total`;
+     the older one reported the government-sector count under `government`
+     beside `private`, and adding those two was exactly the same number then.
+     Read that legacy field only here, for the total — never for the government
+     count, which has one source and cannot be reconstructed from this table. */
   const serverTotal=Number.isFinite(Number(summary.total))?Number(summary.total)
     :(Number.isFinite(Number(summary.private))&&Number.isFinite(Number(summary.governmentSector))
-      ?Number(summary.private)+Number(summary.governmentSector):null);
+      ?Number(summary.private)+Number(summary.governmentSector)
+      :(Number.isFinite(Number(summary.private))&&Number.isFinite(Number(summary.government))
+        ?Number(summary.private)+Number(summary.government):null));
   const total=serverTotal!==null?serverTotal:jobs.filter(j=>active(j)).length;
   return [priv,govt,total];
 }

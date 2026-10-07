@@ -60,9 +60,19 @@ test('the homepage government section and tile come from the reviewed feed', () 
   assert.ok(!app.includes('jobs.filter(j=>isGovJob(j)&&live(j))'),
     'the homepage must not build a government section from the jobs page slice');
 
-  /* Government never comes from the jobs table again. */
-  assert.ok(!/summary\.government\b/.test(app),
+  /* Government never comes from the jobs table again. The one place the jobs
+     summary's old `government` field may still be read is the deploy-skew
+     total, where it is added to `private` exactly as it was before the rename. */
+  assert.ok(!/Number\.isFinite\(Number\(summary\.government\)\)\?Number\(summary\.government\)/.test(app),
     'the government count must not be read from the jobs summary');
+  assert.ok(!/const govt=[^;]*summary\.government/.test(app),
+    'liveCounts() must take the government count from the reviewed feed');
+  const totalExpr = app.slice(app.indexOf('const serverTotal='), app.indexOf('const total=serverTotal'));
+  assert.ok(totalExpr.length > 0, 'liveCounts() must keep a server total path this test can inspect');
+  assert.match(totalExpr, /\?Number\(summary\.private\)\+Number\(summary\.government\):null/,
+    'the legacy field is only the pre-rename total, added to private as it was then');
+  assert.ok(!/summary\.government/.test(app.replace(totalExpr, '')),
+    'no other line of the client may read the jobs summary\'s government field');
   assert.ok(!/liveCounts\(\)[\s\S]{0,400}isGovJob/.test(app),
     'liveCounts() must not fall back to counting sector-flagged jobs');
 
