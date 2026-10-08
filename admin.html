@@ -414,6 +414,9 @@ Show expired
       <span class="ar-badge">Manual publish</span>
     </div>
     <p style="font-size:.7rem;color:#6a8aaa;margin:10px 0 0">Optional free-provider credentials can increase coverage later, but they are not required for the built-in scan.</p>
+    <p style="font-size:.72rem;color:#c9973c;margin:12px 0 0;border-top:1px solid rgba(201,151,60,.2);padding-top:10px">
+      ⚡ Every discovered job also lands in <button class="btn-ghost" style="padding:3px 8px;font-size:.7rem;margin:0" onclick="govtLoad('review')">Government Jobs → Review Queue</button> — the staging table shows <b>every</b> fetched job (pending, needs-info, rejected, approved) for review, reject, or publish. Web discovery shows only the latest search; the Review Queue shows the full staging backlog.
+    </p>
   </div>
 
   <!-- Source Health Panel (populated after search) -->
@@ -3592,7 +3595,7 @@ function renderDiscoverySummary(data){
 function renderDiscoveryResults(results){
   const root=$('discoveryResults');
   if(!results||!results.length){
-    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No new drafts were created — all discovered jobs are already in CivilCareer, or no sources returned results. Check Source Status above.</p></div>';
+    root.innerHTML='<div class="dash-card"><p style="color:#fca5a5;font-size:.82rem">No new drafts from this search — all discovered jobs are already in CivilCareer, or no sources returned results. Check Source Status above.</p><p style="color:#c9973c;font-size:.78rem;margin:8px 0 0">Every fetched job is in <button class="btn-ghost" style="padding:3px 8px;font-size:.7rem;margin:0" onclick="govtLoad(\'review\')">Government Jobs → Review Queue</button> — the staging table shows ALL pending/needs-info/rejected/approved items for review, reject, or publish.</p></div>';
     return;
   }
   root.innerHTML=results.map((r,i)=>{
@@ -6738,7 +6741,17 @@ async function govtApprove(id,notice){
     let body={id};
     if(notice){ body.official_notice_url=notice; }
     const d=await govtPost('approve',body);
-    if(d.ok){
+    if(d.ok&&d.job){
+      const j=d.job;
+      const slug=j.slug||
+        (j.id?String(j.id).slice(0,8):'');
+      const verif=j.verification_status||
+        (j.official_notice_url&&/gov|nic|edu|\.(ntpc|bh|rite|ircon|aai|nhpc|nbcc|wapcos|coalindia|indianrailways|irc)\./i.test(String(j.official_notice_url))?'official':'unverified');
+      const verifLabel=verif==='official'?'🛡 official source — live on /government-jobs':
+        '⚠ unverified source — appears under "Unofficial sources" until the notice is official';
+      const url='/government-jobs/'+slug;
+      toast('Published ✓ — '+verifLabel+' ('+url+')');
+    } else if(d.ok){
       toast('Published ✓ (human-reviewed gate satisfied)');
     } else {
       const code=d.code||

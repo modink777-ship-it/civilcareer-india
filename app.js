@@ -173,6 +173,22 @@ if(route==='private'){
   const s=document.createElement('script');s.type='application/ld+json';s.id='cc-programmatic-jsonld';s.textContent=JSON.stringify(ld);document.head.appendChild(s);
 }}
 function date(v){if(!v)return'Check official notification';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}function isClosed(j){return j.status==='Expired'||(j.deadline&&new Date(j.deadline+'T23:59:59')<new Date())}function short(v,n=150){v=String(v||'');return v.length>n?v.slice(0,n).trim()+'…':v}
+
+/**
+ * Career-flow course module (courses feature).
+ * A small, honest bridge from career pages into the Civil Engineering
+ * course directory: it renders a single “keep building” card pointing at
+ * the directory filtered to a specialization, never inventing a specific
+ * course. Only the directory URL is assembled; no course data is fetched.
+ */
+function coDirUrl(specialization, provider){return '/courses'+(specialization?`?specialization=${encodeURIComponent(specialization)}`:'')+(provider?`&provider=${encodeURIComponent(provider)}`:'');}
+function coBuildCard({specialization, provider}){return `<div class="co-career-card">
+<p class="co-career-eyebrow">Keep building</p>
+<p class="co-career-title">${esc(specialization||'Civil Engineering')} courses</p>
+<p class="co-career-copy">If you are working in <strong>${esc(specialization||"this area")}</strong>, the course directory lists reviewed ${specialization?' '+esc(specialization):''} courses from Udemy and Coursera — pick the next one from what is actually published.</p>
+<a class="btn secondary" href="${esc(coDirUrl(specialization,provider))}">Browse ${esc(specialization||'Civil Engineering')} courses →</a>
+</div>`;}
+function coRenderCareerFlow(containerId, opts){const el=$(containerId);if(!el)return;el.innerHTML=coBuildCard(opts);}
 function companyInitials(name){
   const words=String(name||'Company').trim().split(/\s+/).filter(Boolean);
   return (words.length===1?words[0].slice(0,2):words.slice(0,2).map(x=>x[0]).join('')).toUpperCase().slice(0,2);
@@ -621,12 +637,50 @@ function renderForYou(){
     .sort((a,b)=>b._best.score-a._best.score)
     .slice(0,20);
 
-  if(!scored.length){
+  // Per-role course recommendations: published courses whose target_roles match the user's profile.
+  // After a course is published, users with matching target_roles see it here.
+  const profileRoles=Array.isArray(cp.target_roles)?cp.target_roles
+    .concat(Array.isArray(userPrefs.target_roles)?userPrefs.target_roles:[])
+    .filter(Boolean).map(r=>r.trim()).filter(Boolean):
+    (String(userProfile.job_title||'').trim()?[userProfile.job_title]:[]);
+  let courseHtml='';
+  if(profileRoles.length&&typeof api==='function'){
+    (async ()=>{
+      try{
+        const roleFilter=profileRoles.map(r=>encodeURIComponent(r)).join('&role=');
+        const coursesResp=await api(`/api/courses?role=${roleFilter}&limit=6`);
+        const courses=(coursesResp.courses||[]).filter(c=>c.is_published);
+        if(courses.length){
+          courseHtml=`<section class="foryou-courses"><div class="foryou-section-head"><h3 style="margin:0;font-size:1rem">📚 Courses for your role (${profileRoles.slice(0,3).join(', ')}${profileRoles.length>3?'…':''})</h3></div>`+
+            courses.map(c=>{
+              const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'Price not provided');
+              return `<article class="course-match-card">
+                <p class="course-match-eyebrow">Recommended course</p>
+                <h4>${esc(c.title)}</h4>
+                <p class="organization">${esc(c.provider)}${c.instructor?' · '+esc(c.instructor):''}</p>
+                <div class="card-meta">
+                  ${c.career_stage?`<span>⏱ ${esc(c.career_stage)}</span>`:''}
+                  ${price?'<span>💰 '+esc(price)+'</span>':''}
+                  ${c.rating?`<span>★ ${Number(c.rating).toFixed(1)}</span>`:''}
+                </div>
+                ${c.description?`<p style="font-size:.78rem;color:#6a8aaa;line-height:1.5;margin:6px 0">${esc(String(c.description).slice(0,120))}</p>`:''}
+                <a href="${esc(c.course_url)}" target="_blank" rel="noopener" class="btn secondary" style="margin-top:8px;font-size:.78rem;padding:6px 12px">View course →</a>
+              </article>`;
+            }).join('')+
+            '</section>';
+          // Re-render with courses included
+          if(container){container.innerHTML=`<div class="foryou-profile-summary"><span>Profile: <b>${esc(cp.role||userProfile.job_title||'Civil Engineer')}</b>${cp.stage?` · ${esc(cp.stage)}`:''}${cp.skills?.length?` · ${cp.skills.length} skills`:''}</span><button class="btn secondary" onclick="openProfileSetup()">⚙ Update</button></div>`+scored.map(j=>matchJobCard(j,j._best)).join('')+courseHtml;bindCards();}
+        }
+      }catch(e){/* course fetch is best-effort — never block the For You feed */}
+    })();
+  }
+
+  if(!scored.length&&!courseHtml){
     container.innerHTML=`<div class="foryou-empty"><p>No strong matches yet — try adding more skills to your profile, or check back as new jobs are published.</p><button class="btn primary" onclick="openProfileSetup()">Update Profile</button></div>`;
     return;
   }
 
-  container.innerHTML=`<div class="foryou-profile-summary"><span>Profile: <b>${esc(cp.role||userProfile.job_title||'Civil Engineer')}</b>${cp.stage?` · ${esc(cp.stage)}`:''}${cp.skills?.length?` · ${cp.skills.length} skills`:''}</span><button class="btn secondary" onclick="openProfileSetup()">⚙ Update</button></div>`+scored.map(j=>matchJobCard(j,j._best)).join('');
+  container.innerHTML=`<div class="foryou-profile-summary"><span>Profile: <b>${esc(cp.role||userProfile.job_title||'Civil Engineer')}</b>${cp.stage?` · ${esc(cp.stage)}`:''}${cp.skills?.length?` · ${cp.skills.length} skills`:''}</span><button class="btn secondary" onclick="openProfileSetup()">⚙ Update</button></div>`+scored.map(j=>matchJobCard(j,j._best)).join('')+courseHtml;
   bindCards();
 }
 

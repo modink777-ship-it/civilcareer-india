@@ -136,9 +136,7 @@
     <div class="co-state">Loading courses…</div>
   </div>
 
-  <!-- Not a <nav>: styles.css pins every <nav> as a fixed overlay at
-       <=1050px for the site's mobile menu, which would float this pager
-       over the grid on phones. Same reason the landing pages use a div. -->
+  <!-- Pagination lives inside <main>, not the header — it must keep normal flow. -->
   <div class="co-pager" id="coPager" role="navigation" aria-label="Course pages" hidden>
     <button type="button" id="coPrev">← Previous</button>
     <span id="coPageInfo"></span>

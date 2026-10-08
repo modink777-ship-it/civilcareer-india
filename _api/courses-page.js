@@ -230,11 +230,10 @@ function page({ label, slug, courses, counts, extended }) {
   const directoryUrl = (provider) => '/courses?specialization=' + encodeURIComponent(label)
     + (provider ? '&provider=' + encodeURIComponent(provider) : '');
   /* NOTE: these link lists are <div role="navigation">, NOT <nav>.
-     styles.css carries a global `nav{...}` rule (and, at ≤1050px,
-     `nav{position:fixed;top:112px;display:none}` for the site's mobile
-     menu), which would pin any second <nav> on this page over the
-     content. Verified in a browser at 872px wide: the related-links
-     block was being positioned as a fixed overlay. */
+     styles.css scoped the mobile-menu overlay to header.site-header nav
+     (≤1050px), so ordinary <nav> elements no longer get pinned over the
+     content. The link lists below keep <div role="navigation"> anyway,
+     which is the more correct element for in-page navigation. */
   const providerFilters = SUPPORTED_PROVIDERS.map((p) =>
     `<a href="${esc(directoryUrl(p))}">${esc(p)} courses in ${esc(label)}</a>`
   ).join(' · ');
@@ -279,6 +278,10 @@ function page({ label, slug, courses, counts, extended }) {
 .cp-faq p{color:var(--text);margin:0;line-height:1.6}
 .cp-links{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem;font-size:.9rem}
 .cp-links a{color:var(--blue);font-weight:600}
+.cp-build{margin-top:1rem;color:var(--text);font-size:.92rem;line-height:1.55}
+.cp-build strong{color:var(--navy)}
+.cp-cta-inline{display:inline-block;margin-top:.5rem;color:var(--blue);font-weight:700;text-decoration:none;border-bottom:1px solid var(--blue)}
+.cp-cta-inline:hover{color:var(--navy);border-color:var(--navy)}
 </style></head><body>
 <main class="cp-wrap">
 <p class="cp-eyebrow">CivilCareer · Civil Engineering course directory</p>
@@ -305,9 +308,13 @@ ${extended === false
 <h2>Frequently asked questions</h2>
 ${FAQ.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}
 </section>
-${others.length ? `<section><h2>Other Civil Engineering specializations</h2><div class="cp-links" role="navigation" aria-label="Other specializations">
+${others.length ? `<section><h2>Other Civil Engineering specializations</h2>
+<div class="cp-links" role="navigation" aria-label="Other specializations">
 ${others.map((l) => `<a href="/courses/${esc(specializationSlug(l))}">${esc(l)} (${counts.get(l)})</a>`).join('')}
-</div></section>` : ''}
+</div>
+<p class="cp-build">Building in <strong>${esc(label)}</strong>? Browse all ${esc(label)} courses in the directory — filter by provider, career stage and price — and pick the next course from what is actually published.
+<a href="${esc(directoryUrl())}" class="cp-cta-inline">Browse ${esc(label)} courses →</a></p>
+</section>` : ''}
 <div class="cp-links" role="navigation" aria-label="Related CivilCareer pages">
 <a href="/courses">All Civil Engineering courses</a>
 <a href="/private-jobs">Private jobs for civil engineers</a>
