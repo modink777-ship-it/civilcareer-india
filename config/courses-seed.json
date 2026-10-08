@@ -1,0 +1,1095 @@
+{
+  "_meta": {
+    "generated": "2026-10-08",
+    "purpose": "Curated seed for the CivilCareer course catalogue. Paste this whole file into admin → Courses → Bulk import; every row lands as a draft for review before anything is public.",
+    "how": {
+      "candidates": "found with Exa web search restricted to udemy.com and coursera.org (10 searches: AutoCAD/Civil 3D, STAAD, ETABS/SAP2000, Revit/BIM, quantity surveying, estimation, Primavera, geotechnical, highways, construction management, safety, exam preparation)",
+      "verification": "every URL fetched on 2026-10-08 — Coursera pages directly (HTTP 200; coursera.org/learn is allowed by robots.txt), Udemy pages through the r.jina.ai reader; two URLs whose first fetch served a soft redirect were re-verified through Exa. All 73 candidates resolved; none was invented.",
+      "fields": "title, description, rating, enrollment_count, instructor and language are the provider's own page text/figures as read on 2026-10-08. Price, duration, discounts and reviews were NOT read, so they stay empty — the cards say \"Price not provided\" rather than guessing.",
+      "classification": "60 rows carry no specialization on purpose: the import runs lib/course-civil.js classifyCourse() on them. 11 rows the classifier refused carry a specialization assigned after reading the provider page — the same override an admin has in the editor.",
+      "curation": "category, career_stage and target_roles are CivilCareer's own curation (the filter facets), not provider claims. source is 'seed'."
+    },
+    "excluded": [
+      {
+        "url": "https://www.coursera.org/learn/fe-exam",
+        "reason": "general FE exam review (all disciplines), not Civil Engineering specific"
+      },
+      {
+        "url": "https://www.coursera.org/learn/geospatial-information-technology-essentials",
+        "reason": "generic GIS overview — weak/indirect Civil Engineering connection"
+      }
+    ],
+    "counts": {
+      "total": 71,
+      "providers": {
+        "Udemy": 48,
+        "Coursera": 23
+      },
+      "specializations": {
+        "STAAD.Pro": 6,
+        "ETABS": 5,
+        "Structural Engineering": 7,
+        "RCC Design": 3,
+        "Steel Design": 4,
+        "Revit & BIM": 4,
+        "AutoCAD & Civil 3D": 8,
+        "Quantity Surveying": 6,
+        "Primavera P6 & MS Project": 5,
+        "Soil Mechanics": 1,
+        "Geotechnical Engineering": 3,
+        "Building Materials": 1,
+        "Construction Technology": 5,
+        "Civil Engineering (general)": 4,
+        "Foundation Engineering": 1,
+        "Highway Engineering": 2,
+        "Construction Management": 5,
+        "Surveying & GIS": 1
+      }
+    },
+    "providerAccess": "Automatic provider API access not configured; manual/bulk Civil Engineering course import remains available.",
+    "note": "Catalogue facts only (titles, links, ratings, figures). No course content is copied."
+  },
+  "items": [
+    {
+      "title": "The Complete Course of STAAD Pro From zero to hero!",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/staad-pro-course/",
+      "description": "Learn STAAD Pro V8i like a Professional. Start from the basis and finish mastering Structural Analysis and Design",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4,
+      "enrollment_count": 538,
+      "instructor": "The Tech Courses",
+      "source": "seed"
+    },
+    {
+      "title": "STAAD Pro Professional Course(Steel Large Span Structures)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/staadprocourse3/",
+      "description": "Over 8.5 hours of Course Content with Practical Case studies of Steel Structure including Pushover Analysis",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 1193,
+      "instructor": "MileHigh Structures Academy & Consulting",
+      "source": "seed"
+    },
+    {
+      "title": "STAAD Pro Connect Edition for Steel and Concrete design",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/a-beginners-guide-to-staad-pro-connect-edition/",
+      "description": "Learn STAAD Pro quickly: Fast-Track Your Structural Design Skills with tips tricks and short cuts. Get ready for job!",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.7,
+      "enrollment_count": 102,
+      "instructor": "H. Kabir",
+      "source": "seed"
+    },
+    {
+      "title": "StaadPro V8i Structural Analysis & Design of a RCC Building",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/staadpro-v8i-structural-analysis-design-of-a-rcc-building/",
+      "description": "Structural Analysis and design of a RCC building from Scratch in Staad Pro Software (Beginner to Advanced)",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 512,
+      "instructor": "Sathya Balasundaram",
+      "source": "seed"
+    },
+    {
+      "title": "STAAD Pro V8 Industrial Steel Warehouse Design from A to Z",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/staad-pro-v8-industrial-steel-warehouse-design-from-a-to-z/",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "STAAD Pro. - Structural Design of Steel Building (PEB)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/peb-training/",
+      "description": "Structural Analysis and Structural Design of Pre Engineered Building in Staad Pro with Real World Project",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.7,
+      "enrollment_count": 2427,
+      "source": "seed"
+    },
+    {
+      "title": "The Comprehensive ETABS Professional Course (RCC and Steel)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/etabscourse/",
+      "description": "21 Hours of Course Content with Practical Case studies",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 10635,
+      "instructor": "MileHigh Structures Academy & Consulting",
+      "source": "seed"
+    },
+    {
+      "title": "ETABS - STRUCTURAL DESIGN TO EUROCODE (RC + STEEL)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/the-ultimate-etabs-course/",
+      "description": "Learn Structural Modeling, Loading, Analysis, Design, Reports and Detailing, BIM Integration, Real Projects in ETABS",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "ETABS & SAFE : Advanced Course For RCC and Steel Structures",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/etabs-advanced-course-for-high-rise-and-residential-building/",
+      "description": "ETABS and SAFE with Structural Detailing + Structural Sheets",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 1668,
+      "instructor": "Civil Engineer's Destination",
+      "source": "seed"
+    },
+    {
+      "title": "ETABS Professional Course with 20 Story Building design",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/etabs-rcc/",
+      "description": "ETABS Course for Professionals and Students from Basics to Advanced with 20-Storey Building Structural Design Workshop",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.5,
+      "enrollment_count": 1375,
+      "instructor": "Engineering Learning Platform",
+      "source": "seed"
+    },
+    {
+      "title": "SAP2000 Professional Course for Structural Engineers",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/sapsoftware/",
+      "description": "SAP2000 for Professionals & Students from Basics to Advanced Structural Design Workshop",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 998,
+      "instructor": "Engineering Learning Platform",
+      "source": "seed"
+    },
+    {
+      "title": "SAP 2000 Structural Design of Concrete Frame Building.",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/sap-2000-structural-design-of-concrete-frame-buildings/",
+      "description": "Design of Concrete buildings (Step by Step) (according to European standard)",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 3.7,
+      "enrollment_count": 60,
+      "instructor": "Ilias Iliopoulos",
+      "source": "seed"
+    },
+    {
+      "title": "SAP2000: Master Structural Analysis & Design of RCC Building",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/sap2000-beginner-advance-level-autocad-basics/",
+      "description": "Using SAP2000 Perform Structural Analysis and Design of an Apartment Building from scratch.",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.2,
+      "enrollment_count": 150,
+      "instructor": "Shadab Khan",
+      "source": "seed"
+    },
+    {
+      "title": "Design of Steel Structures-Part 01",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/design-of-steel-structures-l/",
+      "description": "From Fundamentals to Practical Design (IS 800:2007)",
+      "category": "Structural",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 5,
+      "enrollment_count": 12,
+      "instructor": "Civil Abhyaas",
+      "source": "seed"
+    },
+    {
+      "title": "Advance Professional Course in Steel Commercial (Part-I)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/advance-professional-course-in-steel-commercial-g3-building/",
+      "description": "G+3 STORY MULTI-PURPOSE BUILDING IN ACCORDANCE To IS 800 INDIAN STANDARD",
+      "specialization": "Steel Design",
+      "category": "Structural",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 1303,
+      "instructor": "Devendra Man Palikhe",
+      "source": "seed"
+    },
+    {
+      "title": "Revit for Structural Engineers: From Beginner to Advanced",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/revit-for-structural-engineers-from-beginner-to-advanced/",
+      "description": "Revit Structure: Complete Modeling Course for Steel & Concrete Structures",
+      "category": "Design Software",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 5,
+      "enrollment_count": 11,
+      "instructor": "Naveen Suthar",
+      "source": "seed"
+    },
+    {
+      "title": "Revit Structure 2025 from Zero to Hero",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/revit-structure-2025-from-zero-to-hero/",
+      "description": "Covering essentials, intermediate, and advanced features of Revit Structure 2025",
+      "category": "Design Software",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 1186,
+      "instructor": "Munir Hamad",
+      "source": "seed"
+    },
+    {
+      "title": "BIM- Revit Concrete Structure- Full Course",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/advanced-revit-bim-lod-400-concrete-structure-modeling/",
+      "description": "LOD 400 Modeling: Reinforcement Detailing for Foundations, Columns, Beams, Slabs, Stairs & elevator shafts in Revit",
+      "category": "Design Software",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.8,
+      "enrollment_count": 4505,
+      "instructor": "Danial Bagherzadeh",
+      "source": "seed"
+    },
+    {
+      "title": "Exploring Autodesk Revit for Structure: BIM Tutorials",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/exploring-autodesk-revit-for-structure-bim-tutorials/",
+      "description": "Tutorials on Revit for Structure: Concrete and Steel Structure, Structural Analysis, Family Creation, and Documentation",
+      "category": "Design Software",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 7733,
+      "instructor": "CADCIM Technologies",
+      "source": "seed"
+    },
+    {
+      "title": "AutoCAD Site Plan & Land Survey Drafting",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/autocad-site-plan-land-survey-drafting/",
+      "description": "Learn Survey plan and Draft Professional Site Plans & Land Boundaries in AutoCAD",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 19,
+      "instructor": "Marwan Sufyan",
+      "source": "seed"
+    },
+    {
+      "title": "AutoCAD Civil 3D: Civil Works Specialization",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/civil-3d-civil-works-specialization/",
+      "description": "Master Civil 3D for surveying, design, grading, networks, and professional project workflows",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 1552,
+      "instructor": "Robin Alexis Olaya",
+      "source": "seed"
+    },
+    {
+      "title": "Exploring AutoCAD Civil 3D-Tutorials from Basics to Advanced",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/exploring-autocad-civil-3d-tutorials-from-basics-to-advanced/",
+      "description": "Master AutoCAD Civil 3D: From Basic Concepts to Advanced Techniques",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 3.9,
+      "enrollment_count": 10101,
+      "instructor": "CADCIM Technologies",
+      "source": "seed"
+    },
+    {
+      "title": "Autodesk Civil 3D Complete Course",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/autodesk-civil-3d-complete-course/",
+      "description": "Complete Roads & Highways Design with Autodesk Civil 3D",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 127,
+      "instructor": "Murad Farooq Jan",
+      "source": "seed"
+    },
+    {
+      "title": "AutoCAD Civil 3D Topographic and Boundary Survey",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/autocad-civil-3d-topographic-and-boundary-survey/",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 3822,
+      "source": "seed"
+    },
+    {
+      "title": "Create Real World Civil Design Projects Using Auto Cad 2025",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/real-world-auto-cad-projects-civil-engineering-construction-design/",
+      "description": "Learn to use AutoCAD quickly & professionally by creating real world floor plans and projects.",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.2,
+      "enrollment_count": 682,
+      "instructor": "Engineering Org In",
+      "source": "seed"
+    },
+    {
+      "title": "Quantity Surveying, Building Estimation with Project Billing",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/quantity-surveying-building-estimation-bbs-with-excel-cad/",
+      "description": "Quantity Surveying, Project Estimation/Billing, Bar Bending Schedules, Rate Analysis, Interim Payment, Software Training",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "rating": 4.5,
+      "enrollment_count": 443,
+      "instructor": "Datta Mahale",
+      "source": "seed"
+    },
+    {
+      "title": "Quantity Surveying, Estimation, Cost Control & CMS Software",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/construction-quantity-surveying-estimation-cost-control/",
+      "description": "Practical application of Quantity surveying, Estimation, Scheduling, Feasibility study; Cost Control + amazing Software",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "rating": 4.2,
+      "enrollment_count": 775,
+      "instructor": "Ismail ElSaid",
+      "source": "seed"
+    },
+    {
+      "title": "Estimating and Costing in Civil Engineering",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/estimating-and-costing-b/",
+      "description": "(with MCQ's and Practice Test) Quantity Surveying in Civil Engineering, Estimating & Costing of Civil Engineering items.",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "rating": 4,
+      "enrollment_count": 323,
+      "instructor": "Nikhil Agrawal",
+      "source": "seed"
+    },
+    {
+      "title": "Estimating & Costing for Civil Engineering Students.",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/estimating-and-costing/",
+      "description": "Learn to Estimate Building, Earthwork, Sewer Projects,Bar Bending Schedules, and Excel Skills.",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "rating": 4.5,
+      "enrollment_count": 1448,
+      "instructor": "Mudessar Afraz",
+      "source": "seed"
+    },
+    {
+      "title": "Civil Works Quantity Surveying and Estimation with PlanSwift",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/quantity-surveying-estimation-with-planswift-software/",
+      "description": "Essentials of Quantity Surveying, Complete Building Civil Structure Quantity Takeoff and Costing with PlanSwift Training",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "rating": 4.2,
+      "enrollment_count": 25,
+      "instructor": "Noble Quantity Surveyors",
+      "source": "seed"
+    },
+    {
+      "title": "Complete Residential Project Estimation and BOQ Preparetion",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/complete-estimation-and-boq-course/",
+      "description": "Learn Quantity Takeoff, BOQ Preparation, Cost Estimation, and Rate Analysis for Residential Projects",
+      "category": "Quantity Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Quantity Surveyor",
+        "Site Engineer"
+      ],
+      "enrollment_count": 5,
+      "instructor": "Wakil Ahmad Popal",
+      "source": "seed"
+    },
+    {
+      "title": "Quantity Surveying & Estimation Mastery: AutoCAD, Excel, BBS",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/diploma-in-advanced-quantity-surveying-cost-estimation/",
+      "description": "Learn Quantity Takeoff, BOQ, Rate Analysis, BBS, AutoCAD & Excel Estimation with Real Projects for Practical, Job-Ready",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 18715,
+      "instructor": "Akshay Kamath",
+      "source": "seed"
+    },
+    {
+      "title": "Primavera P6 Unveiled: Step-by-Step Beginner's Training",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/oracle-primavera-p6-project-planning-and-scheduling-training/",
+      "description": "Embark on Your Oracle Primavera P6 Project Planning and Schedule Management Journey and Master the Basics with Ease!",
+      "category": "Planning",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Planning Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.5,
+      "enrollment_count": 30907,
+      "instructor": "Basharat Bhatti",
+      "source": "seed"
+    },
+    {
+      "title": "Primavera P6 Project Planning and Scheduling Masterclass",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/primavera-p6-learning-foundations/",
+      "description": "Master Primavera P6 Project Management Skills using the Primavera P6 Training - Be an Expert at Primavera P6 Software!",
+      "category": "Planning",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Planning Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 51679,
+      "instructor": "Basharat Bhatti",
+      "source": "seed"
+    },
+    {
+      "title": "Primavera P6 Professional Masterclass: Project Planning.",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/primavera-p6-professional-beginner-to-expert/",
+      "description": "Master Primavera P6 with a live project — learn planning, scheduling, resource management, baselines, and S-Curves.",
+      "category": "Planning",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Planning Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 3748,
+      "instructor": "Mudessar Afraz",
+      "source": "seed"
+    },
+    {
+      "title": "Primavera P6 Masterclass: Plan, Schedule, Control",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/primaverap6/",
+      "description": "A step-by-step Primavera P6 course for engineers, planners, and project managers to manage time and budget.",
+      "category": "Planning",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Planning Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.6,
+      "enrollment_count": 1533,
+      "source": "seed"
+    },
+    {
+      "title": "Complete Primavera P6 training; Project Planning",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/crash-course-for-primavera-p6-basic-advance/",
+      "description": "Master project planning and scheduling with Primavera P6 (Basic & Advance)",
+      "category": "Planning",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Planning Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.5,
+      "enrollment_count": 2335,
+      "source": "seed"
+    },
+    {
+      "title": "Complete Course on Geotechnical Engineering/Soil Mechanics",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/geotechnical-engineeringsoil-mechanics-i/",
+      "description": "with MCQs, Practice Test and Case Studies — Soil Mechanics, Civil Engineering, Geotechnical Engineering",
+      "category": "Geotechnical",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Geotechnical Engineer",
+        "Site Engineer"
+      ],
+      "rating": 4,
+      "enrollment_count": 411,
+      "source": "seed"
+    },
+    {
+      "title": "Geotechnical Engineering Practice Sessions in Hinglish",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/geotechnical-engineering-practice-hi/",
+      "description": "Learn to solve questions of Geotechnical Engineering while understanding the concepts with IIT Roorkee alumni",
+      "category": "Geotechnical",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Geotechnical Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Building Materials and Construction",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/bmc-gits/",
+      "description": "Master Building Materials and Construction from Fundamentals to Practical Applications",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "instructor": "Civil Abhyaas",
+      "source": "seed"
+    },
+    {
+      "title": "PRACTICAL KNOWLADGE FOR CIVIL ENGINEERS-SITE ENGINEER",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/practical-for-civil-engineers/",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Project Manager"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Civil Engineering Job INTERVIEW Preparation",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/civil-engineering-job-interviews-questions/",
+      "description": "Crack Civil Engineering Interviews: 450+ Questions Answered",
+      "category": "Civil Engineering",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Site Engineer",
+        "Structural Engineer"
+      ],
+      "rating": 4.4,
+      "enrollment_count": 526,
+      "instructor": "Engr. Sajid Ahmed",
+      "source": "seed"
+    },
+    {
+      "title": "Construction Safety: Complete HSE Procedures On-Site Safety",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/construction-safety-complete-hse-procedures-on-site-safety/",
+      "description": "Professional Construction Safety Training Covering Risk Assessment, Site Hazards, PPE, and Safe Working Practices",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Project Manager"
+      ],
+      "enrollment_count": 203,
+      "source": "seed"
+    },
+    {
+      "title": "Health, Safety and Environment in Construction (CSCS)",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/health-safety-and-environment-in-construction/",
+      "description": "Learn general hazards to watch out for in construction sites and best practices for good health and welfare on site.",
+      "specialization": "Construction Technology",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Project Manager"
+      ],
+      "rating": 4.3,
+      "enrollment_count": 394,
+      "instructor": "Tarig Ahmed",
+      "language": "English",
+      "source": "seed"
+    },
+    {
+      "title": "FE CIVIL EXAM PREPARATION",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/fe-exam-preparation/",
+      "description": "Prepare for the FE Civil Exam with Practical Lessons, Problem-Solving Techniques & Practice Tests",
+      "category": "Civil Engineering",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Complete Civil Engineering MCQs & Test Prep Course",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/complete-civil-engineering-mcqs-test-prep-course/",
+      "category": "Civil Engineering",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Building Components: Complete Civil Engineering Course",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/building-components-complete-civil-engineering-course/",
+      "description": "Learn Building Components from Scratch — Foundations, Walls, Floors, Roofs, Doors, Windows, Stairs & Finishes.",
+      "category": "Geotechnical",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Geotechnical Engineer",
+        "Structural Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "PE Civil Engineering : 450+ Practice Questions",
+      "provider": "Udemy",
+      "course_url": "https://www.udemy.com/course/pe-civil-engineering-450-practice-questions/",
+      "description": "NCEES-aligned PE Civil mock exam — realistic problems, worked answers, and performance analytics",
+      "category": "Civil Engineering",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design Basics of RCC Buildings",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-basics-of-rcc-buildings",
+      "description": "Offered by L&T EduTech. This course offers a perspective on reinforced concrete building design, equipping learners with skills to interpret ...",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design and Detailing of RCC elements",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-and-detailing-of-rcc-elements",
+      "description": "Offered by L&T EduTech. This course module offers a holistic exploration of structural design, providing practical exercises in the detailed ...",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design Basics of Steel Buildings",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-basics-of-steel-buildings",
+      "description": "Offered by L&T EduTech. \"Design Basics of Steel Buildings\" is a comprehensive course that covers all fundamental aspects of designing steel ...",
+      "specialization": "Structural Engineering",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Modelling, Analysis and Design of Steel Buildings",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/modelling-analysis-and-design-of-steel-buildings",
+      "description": "Offered by L&T EduTech. \"Modelling, Analysis & Design of Steel Buildings\" is an intensive course that covers a wide range of topics ...",
+      "specialization": "Structural Engineering",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Structural scheme setting and ETABS Analysis of RCC Building",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/structural-scheme-setting-and-etabs-analysis-of-rcc-building",
+      "description": "Offered by L&T EduTech. This course is designed to familiarize learners with various aspects of reinforced concrete building design, ...",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design of Steel Members for Axial Loads",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-of-steel-members-for-axial-loads",
+      "description": "Offered by L&T EduTech. Design of Steel Members for Axial Loads is a practical engineering course focused on forces acting directly through ...",
+      "category": "Structural",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Construction aspects of Steel Buildings",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/construction-aspects-of-steel-buildings",
+      "description": "Offered by L&T EduTech. The Construction Aspects of Steel Buildings course offers comprehensive insights into key construction components. ...",
+      "specialization": "Structural Engineering",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design of Flexural Steel Member",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-of-flexural-steel-member",
+      "description": "Offered by L&T EduTech. Design of Steel Beams for Flexure is a practical engineering course focused on how structural steel elements resist ...",
+      "category": "Structural",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Design of Precast System",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/design-of-precast-system",
+      "description": "Offered by L&T EduTech. The course on \"Design of Precast Systems\" provides comprehensive training in the modeling, analysis, and design of ...",
+      "specialization": "Structural Engineering",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Pavement Construction Practices (IRC and MoRTH)",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/pavement-construction-practices-irc-and-morth",
+      "description": "Offered by L&T EduTech. The \"Pavement Construction Practices\" course provides a thorough understanding of highway construction according to ...",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Project Manager"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Highway Geometry and Pavement Design",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/highway-geometry-and-pavement-design",
+      "description": "Offered by L&T EduTech. In this course, you will receive an introduction to the development of Indian highways and their classification, ...",
+      "category": "Highway",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Site Engineer",
+        "Highway Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Geometric and Traffic Aspects of Highway",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/geometric-and-traffic-aspects-of-highway",
+      "description": "Offered by L&T EduTech. The \"Geometric and Traffic Aspects of Highway\" course introduces Indian highway development and classification, ...",
+      "category": "Highway",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Site Engineer",
+        "Highway Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Site Investigation",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/site-investigation",
+      "description": "Offered by L&T EduTech. Welcome to the comprehensive Site Investigation course, unfolding across four enlightening modules crafted to ...",
+      "specialization": "Geotechnical Engineering",
+      "category": "Geotechnical",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Geotechnical Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Conceptual Planning of Bridges",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/conceptual-planning-of-bridges",
+      "description": "Offered by L&T EduTech. This bridge engineering course equips you to transform bridge concepts into reality. It explores bridge types and ...",
+      "specialization": "Structural Engineering",
+      "category": "Structural",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Structural Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Tunnel Construction Practices",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/tunnel-construction-practices",
+      "description": "Offered by L&T EduTech. The course on \"Tunnel Construction Practices\" provides a comprehensive and interdisciplinary exploration of tunnel ...",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Project Manager"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Deep Excavations and Support Systems",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/deep-excavations-and-support-system",
+      "description": "Offered by L&T EduTech. The course on \"Deep Excavations and Support Systems\" offers a comprehensive journey through the intricacies of ...",
+      "specialization": "Geotechnical Engineering",
+      "category": "Geotechnical",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Geotechnical Engineer",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Autodesk Civil 3D 2025 Unleashed",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/packt-autodesk-civil-3d-2025-unleashed",
+      "description": "Offered by Packt. This course provides civil engineers and designers with advanced Autodesk Civil 3D skills, focusing on enhancing design ...",
+      "category": "Design Software",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Site Engineer",
+        "Graduate Engineer Trainee"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "The Construction Management Industry and Profession",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/construction-management",
+      "description": "Offered by University of Maryland, College Park. Gain the knowledge and leadership skills needed to succeed in one of the world's ...",
+      "category": "Construction",
+      "career_stage": "Fresher",
+      "target_roles": [
+        "Project Manager",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Construction Project Management",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/construction-project-management",
+      "description": "Offered by Columbia University. Construction Project Management introduces learners to Project Initiation and Planning. Columbia University ...",
+      "specialization": "Construction Management",
+      "category": "Construction",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Project Manager",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Construction Management Project Delivery Methods & Contracts",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/construction-management-project-delivery-methods--contracts",
+      "description": "Offered by University of Maryland, College Park. Gain the knowledge to select project delivery methods and contract strategies that align ...",
+      "category": "Construction",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Project Manager",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Sustainable Construction Management",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/sustainable-construction-management",
+      "description": "Offered by University of Maryland, College Park. Sustainable construction is transforming how buildings are planned, designed, built, and ...",
+      "category": "Construction",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Project Manager",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Construction Management Field Operations and Admin Tools",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/construction-management-field-operations--admin-tools",
+      "description": "Offered by University of Maryland, College Park. Gain practical knowledge of the field operations, administrative processes, and management ...",
+      "category": "Construction",
+      "career_stage": "3-5 years",
+      "target_roles": [
+        "Project Manager",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    },
+    {
+      "title": "Geospatial Technology for Construction",
+      "provider": "Coursera",
+      "course_url": "https://www.coursera.org/learn/geospatial-technology-for-construction",
+      "description": "Offered by L&T EduTech. The \"Geospatial Technology for Construction\" course adopts a multi-disciplinary approach, integrating key aspects of ...",
+      "specialization": "Surveying & GIS",
+      "category": "Surveying",
+      "career_stage": "0-2 years",
+      "target_roles": [
+        "Surveyor",
+        "Site Engineer"
+      ],
+      "source": "seed"
+    }
+  ]
+}

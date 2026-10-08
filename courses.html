@@ -58,6 +58,7 @@
 .co-state{grid-column:1/-1;padding:44px 20px;text-align:center;border:1px dashed #bfcad4;border-radius:12px;background:#fafbfc;color:#546274}
 .co-state button{margin-top:12px}
 .co-pager{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:26px}
+.co-pager[hidden]{display:none}
 .co-pager button{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:8px;padding:10px 18px;font-weight:750;cursor:pointer}
 .co-pager button:disabled{opacity:.45;cursor:default}
 .co-pager span{color:var(--muted);font-size:13px}
@@ -67,9 +68,9 @@
 .co-keep{margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
 .co-keep h2{font-size:20px;margin:0 0 8px}
 .co-keep p{margin:0 0 12px;color:#687587;font-size:14px}
-.co-keep nav{display:flex;gap:8px;flex-wrap:wrap}
-.co-keep nav a{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;color:var(--navy)}
-.co-keep nav a:hover{border-color:var(--blue);color:var(--blue)}
+.co-keep .co-links{display:flex;gap:8px;flex-wrap:wrap}
+.co-keep .co-links a{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;color:var(--navy)}
+.co-keep .co-links a:hover{border-color:var(--blue);color:var(--blue)}
 @media(max-width:860px){
   .co-hero h1{font-size:32px;letter-spacing:-1px}
 }
@@ -135,11 +136,14 @@
     <div class="co-state">Loading courses…</div>
   </div>
 
-  <nav class="co-pager" id="coPager" aria-label="Course pages" hidden>
+  <!-- Not a <nav>: styles.css pins every <nav> as a fixed overlay at
+       <=1050px for the site's mobile menu, which would float this pager
+       over the grid on phones. Same reason the landing pages use a div. -->
+  <div class="co-pager" id="coPager" role="navigation" aria-label="Course pages" hidden>
     <button type="button" id="coPrev">← Previous</button>
     <span id="coPageInfo"></span>
     <button type="button" id="coNext">Next →</button>
-  </nav>
+  </div>
 
   <div class="co-disclosure" id="coNotice">
     <p>Courses are provided by third-party platforms. CivilCareer does not sell these courses. Verify course details and pricing on the provider's website.</p>
@@ -149,7 +153,7 @@
   <section class="co-keep" aria-labelledby="coKeepHead">
     <h2 id="coKeepHead">Keep building your career</h2>
     <p>Courses work best next to real opportunities and exam plans — pair your learning with:</p>
-    <nav aria-label="Related CivilCareer sections">
+    <div class="co-links" role="navigation" aria-label="Related CivilCareer sections">
       <a href="/private-jobs">Private jobs for civil engineers</a>
       <a href="/government-jobs">Government civil jobs</a>
       <a href="/exams">Civil engineering exams</a>
@@ -157,7 +161,7 @@
       <a href="/study-materials">Free study materials</a>
       <a href="/salary">Salary guide</a>
       <a href="/interview">Interview questions</a>
-    </nav>
+    </div>
   </section>
 
 </main>

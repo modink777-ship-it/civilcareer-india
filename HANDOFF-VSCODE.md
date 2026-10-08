@@ -92,8 +92,8 @@ dispatcher; every feature is a module in `_api/`. Adding a `_api/foo.js` handler
 | `_api/*.js` | 49 serverless handlers (`courses.js`, `jobs.js`, `govt-review.js`, `social.js`, …) |
 | `lib/*.js` | 20 shared modules (`security.js`, `supabase.js`, `rate-limit.js`, `govt-title.js`, `civil-classifier.js`, `course-civil.js`, pipelines) |
 | `api/[[...path]].js` | dispatcher: `handlers` map + `ADMIN_RULES` + `CRON_ROUTES` |
-| `scripts/*.js` | 11 build/audit/pipeline scripts incl. `build-admin-bundle.js`, `launch-check.js`, `crawl-govt-pipeline.js`, and two owner-run proofs: `verify-govt-publish.js` (government publish → public → delete) and `smoke-admin-endpoints.js` (which admin tab has real data, and which credential each route wants) |
-| `tests/*.test.js` | 43 files, **302 tests**, `node --test` |
+| `scripts/*.js` | 12 build/audit/pipeline scripts incl. `validate-course-import.js` (checks a course seed file against the API's real import rules — `npm run check:seed`), `build-admin-bundle.js`, `launch-check.js`, `crawl-govt-pipeline.js`, and two owner-run proofs: `verify-govt-publish.js` (government publish → public → delete) and `smoke-admin-endpoints.js` (which admin tab has real data, and which credential each route wants) |
+| `tests/*.test.js` | 45 files, **321 tests**, `node --test` |
 | `*.sql` | 37 migrations (`v28`…`v34`, `phase27`…`phase29`) + `run-all-migrations-in-order.sql` |
 | `.github/workflows/*.yml` | 7 workflows (scrapers, govt pipeline, morning brief, social drain, gitleaks, smoke) |
 | `vercel.json` | rewrites, redirects, security headers/CSP, **crons** |
@@ -227,6 +227,33 @@ for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tab
   per-row classification badges (*Needs classification*, *Civil verified*, the specialization), and editor fields for
   specialization, description, course URL and category. Discovered/imported rows land in **Pending review**.
 
+### 5.1c Per-specialization landing pages + a verified 71-course seed (2026-10-08, commits `aac75d6` + this one)
+
+- **SEO landing pages — commit `aac75d6`.** `/courses/<slug>` serves one server-rendered page per Civil
+  Engineering specialization (slug helpers in `lib/course-civil.js`, handler in `_api/courses-page.js`), following
+  the repo's existing programmatic-SEO pattern. Built from **published rows only**, with `Course`/`ItemList`
+  JSON-LD carrying only provider-published fields; an empty specialization is served honestly and `noindex`ed and
+  is kept out of the sitemap; unknown slugs 302 to the directory. `vercel.json` rewrites `/courses/:slug` before
+  the `/:seoSlug` catch-all. 15 tests in `tests/course-pages.test.js`.
+- **Seed catalogue — `config/courses-seed.json` (this commit).** 71 real Udemy/Coursera Civil Engineering courses.
+  Every URL was fetched on 2026-10-08 and confirmed live: Coursera directly (`coursera.org/learn` is allowed by
+  its robots.txt), Udemy through the skill's r.jina.ai reader, and two URLs whose first fetch served a soft
+  redirect were re-verified through Exa. Titles, descriptions, ratings, enrolment and instructors are the
+  providers' own figures read that day; **no prices were read**, so price stays NULL and cards say "Price not
+  provided". 60 rows deliberately carry no specialization — the import runs `classifyCourse()` live — while 11
+  rows the classifier refused (L&T steel/bridge/ground courses, an HSE course) carry a specialization assigned
+  after reading the provider page, the same override an admin has. The file's `_meta` records method, exclusions
+  and counts.
+- **Validator — `scripts/validate-course-import.js` (`npm run check:seed`).** Runs a seed file through the API's
+  own `importItem()` + `directoryScope()` (no database, no network), plus URL-host/provider matching and in-file
+  duplicate detection, and refuses rows with the API's exact reasons. It also warns about honesty overrides
+  (`is_published`, `civil_verified`, unknown fields) instead of letting them pass silently. Exit 0/1, 4 tests in
+  `tests/course-seed.test.js`; the committed seed validates **71/71 clean**.
+- **Mobile fix found while driving the page:** `styles.css` pins every `<nav>` at ≤1050px for the site menu, which
+  floated `/courses`' related-links box over the filters and would have mangled the pager once the catalogue grew
+  past 24 rows. Both are now `div role="navigation"` (the same fix the landing pages use), and a new
+  `.co-pager[hidden]` rule makes the pager genuinely hide on single-page results.
+
 ### 5.2 Admin session hardening (commit `ce6d2a1`) — the owner password had leaked into a chat
 
 - Server-enforced **session TTL** in `verifyAdminToken` (`lib/security.js`) — stale tokens are refused even if the
@@ -268,8 +295,8 @@ for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tab
 
 | Item | Status |
 |---|---|
-| Branch / HEAD | `main` @ **`f870690`**, equal to `origin/main`, working tree clean except the intentionally-uncommitted `.env.example` |
-| Tests | **302 / 302 pass, 0 fail, exit 0** (`npm test`) |
+| Branch / HEAD | `main`, equal to `origin/main`, working tree clean except the intentionally-uncommitted `.env.example` |
+| Tests | **321 / 321 pass, 0 fail, exit 0** (`npm test`) |
 | `git diff --check` | clean, exit 0 |
 | `npm run check:launch` | **0 errors**, exit 0 (1 pre-existing `SITE_URL` warning) |
 | Live: `/courses` | 200, canonical + OG/Twitter + skip link + JSON-LD all correct |
@@ -309,11 +336,13 @@ for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tab
    answers with the exact sentence: *"Automatic provider API access not configured; manual/bulk Civil Engineering
    course import remains available."* The working path is **Bulk import** (paste JSON → drafts → review → publish) or
    per-course entry. The staging pipeline behind a future adapter already exists and is tested.
-7. **The catalog is empty.** Start with 50–200 high-quality courses, then measure views/clicks/CTR before scaling.
-   Priority order per the curation strategy: freshers (AutoCAD, STAAD Pro, MS Project, BOQ, rate analysis, IS codes) →
-   govt exams (GATE Civil, SSC JE, RRB JE, UPSC ESE, state AE/JE) → site engineers (Primavera P6, construction
-   management, quantity surveying, contracts/FIDIC, safety) → structural (ETABS, SAP2000, STAAD.Pro, RCC, steel,
-   foundation, seismic) → Gulf/international (Civil 3D, BIM, MicroStation, PMP).
+7. **The catalog is still empty in production — a verified seed is ready to import.** `config/courses-seed.json`
+   holds 71 real, URL-verified Udemy/Coursera Civil Engineering courses (method, field provenance and the two
+   reviewed-and-excluded courses are in the file's `_meta`). To load it: run `v34-courses-civil.sql` in Supabase
+   **first** (the seed uses the v34 `description`/`specialization` columns — the import refuses rather than
+   half-writes without them), then `npm run check:seed` (must print `Result: OK`), then paste the file into
+   admin → Courses → Bulk import. Every row lands as a **draft** for your review; nothing is public until you
+   publish it. Measure views/clicks/CTR before adding more.
 8. **Affiliate links are optional and currently unused** — `affiliate_url` may stay NULL on every row; the
    directory needs no affiliate revenue. When one is set, only that link is marked sponsored (`rel="noopener
    sponsored"` + the conditional notice); a plain provider URL never is.
@@ -327,14 +356,15 @@ for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tab
 
 ## 8. Suggested next work
 
-1. **Seed the catalog** (50 curated courses) and measure clicks — the feature does nothing until it has inventory.
+1. **Import the seed and measure.** `config/courses-seed.json` (71 URL-verified courses) → `npm run check:seed`
+   → admin → Courses → Bulk import → review each draft → publish, then read views/clicks/CTR to guide curation.
 2. **Wire courses into the career flow:** recommend courses on job/career pages from `target_roles` + `career_stage` of
    *published* courses only, so the platform answers "what should I learn next?".
 3. **When a provider grants authorized access, wire its adapter to `stageDiscovery()`** — the
    normalize → civil filter → dedupe → pending-review chain already exists and is tested, so only the fetch is
    missing. Do not scrape: Udemy's terms and Coursera's `robots.txt` both forbid it.
-4. **SEO surface for the catalog:** per-category/provider landing pages (`/courses/structural-engineering`) with
-   `ItemList`/`Course` structured data, generated from published rows only.
+4. ~~SEO surface for the catalog~~ — **done in `aac75d6`**: `/courses/<slug>` per-specialization landing pages
+   with `ItemList`/`Course` structured data from published rows only (see 5.1c).
 5. **Referral-driven `course_clicks` analytics** on the admin tab (popular categories/roles, CTR) to guide curation.
 
 ---
@@ -343,9 +373,10 @@ for Udemy and Coursera**, with **no affiliate/commission requirement**. Same tab
 
 ```bash
 npm install                 # only dependency: @supabase/supabase-js (dev: none — tests use node:test)
-npm test                    # 254 tests, stub fetch, no credentials needed
+npm test                    # 321 tests, stub fetch, no credentials needed
 npm run check:syntax        # parse every JS/JSON file
 npm run check:launch        # launch-readiness audit
+npm run check:seed          # validate config/courses-seed.json against the real import rules
 node scripts/build-admin-bundle.js   # MANDATORY after any admin.html edit
 git diff --check            # line-ending/whitespace hygiene
 ```
@@ -365,6 +396,8 @@ click tracking, bulk import and the admin Courses tab were verified end-to-end b
 
 | Commit | Summary |
 |---|---|
+| `aac75d6` | Give every Civil Engineering specialization an indexable landing page |
+| `a63e114` | Scope the course directory to Civil Engineering, and say plainly that no provider API is configured |
 | `f870690` | Also serve the generated sitemap at `/sitemap` |
 | `399b3e6` | Serve the generated sitemap at `/sitemap.xml` instead of 404ing |
 | `ce6d2a1` | Bound and audit the admin session after the owner credential was exposed in chat |
