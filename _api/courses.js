@@ -391,6 +391,22 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    /* ── PUBLIC GET — single published course by id ────────────── */
+    if (req.method === 'GET' && q.has('id') && !q.has('admin')) {
+      const id = cleanText(q.get('id'), 120);
+      if (!id) return j(res, 400, { ok: false, error: 'id required.' });
+      const path = `courses?id=eq.${encodeURIComponent(id)}&select=${PUBLIC_SELECT}&is_published=eq.true&limit=1`;
+      try {
+        const rows = await readJson(await supa(path));
+        if (!rows.length) return j(res, 404, { ok: false, error: 'Published course not found.' });
+        return j(res, 200, { ok: true, course: publicCourse(rows[0]) });
+      } catch (e) {
+        const detail = String((e && e.message) || e);
+        if (isMissingColumn(detail)) return j(res, 503, { ok: false, error: MISSING_COLUMN_MESSAGE });
+        throw e;
+      }
+    }
+
     /* ── ADMIN GET — every course + stats ────────────────────── */
     if (req.method === 'GET' && q.has('admin')) {
       if (!requireAdmin(req, res)) return;

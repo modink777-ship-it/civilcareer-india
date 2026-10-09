@@ -242,15 +242,62 @@ function renderJobDetailPanel(jobId){
     </div>
     ${apply?`<a class="btn primary cc-panel-apply" href="${esc(apply)}" target="_blank" rel="noopener" data-apply-job="${esc(j.id)}">APPLY NOW ↗</a>`:`<p class="cc-panel-apply-note">No application link was published with this listing — check the original source.</p>`}<button class="btn secondary cc-panel-apply" type="button" data-mark-applied="${esc(j.id)}">I applied</button>${renderTrackerBar(j)}
     <div class="cc-panel-save"><button class="btn-save ${getSaved().has(j.id)?'saved':''}" data-save-job="${esc(j.id)}">${getSaved().has(j.id)?'★ Saved':'☆ Save'}</button></div>
+    <div class="cc-panel-courses" data-cc-panel-courses="${esc(j.id)}"></div>
   `;
   panel.hidden=false;
   bindCards();
+  /* Courses that match this job's role — best-effort, never blocks the panel */
+  if(typeof renderJobCourseRecs==='function')renderJobCourseRecs(j);
   $$('[data-apply-job]').forEach(a=>a.onclick=()=>{saveInteractionLocal(a.dataset.applyJob,'applied');track('job_apply',a.dataset.applyJob);window.ccAccount?.markApplied(a.dataset.applyJob).catch(()=>{})});$$('[data-mark-applied]').forEach(b=>b.onclick=async()=>{saveInteractionLocal(b.dataset.markApplied,'applied');try{if(window.ccAccount?.markApplied){await window.ccAccount.markApplied(b.dataset.markApplied);b.textContent='✓ Applied';b.disabled=true;}}catch{}});
   /* In-panel route links must go through the SPA router */
   panel.querySelectorAll('a[data-route]').forEach(a=>a.onclick=e2=>{e2.preventDefault();navigate(a.dataset.route)});
   window.__ccPanelJobId=jobId;
 }
 function closedOf(j){return typeof jobExpired==='function'?jobExpired(j):isClosed(j)}
+/* Courses whose target_roles overlap a job's role — shown on the job detail panel
+   and the dedicated job page as "Build the skills for this role". Best-effort: if
+   the courses API is unreachable or the catalogue is empty, the job page still
+   renders fully. */
+async function renderJobCourseRecs(j){
+  if(typeof api!=='function')return;
+  const role=j.role||j.role_normalized||'';
+  if(!role)return;
+  try{
+    const resp=await api(`/api/courses?role=${encodeURIComponent(role)}&limit=3`);
+    const courses=(resp.courses||[]).filter(c=>c.is_published);
+    if(!courses.length)return;
+    const panelEl=document.querySelector('[data-cc-panel-courses]');
+    if(panelEl)panelEl.innerHTML=courseRecCards(courses,j.id);
+    /* Also inject into the dedicated job page if it is open */
+    const dedicated=$('jobDetailPage');
+    if(dedicated&&!panelEl){dedicated.insertAdjacentHTML('beforeend',courseRecSection(courses));}
+  }catch(e){/* best-effort */}
+}
+function courseRecCards(courses,jobId){
+  return `<div class="cc-panel-courses-head"><b>Build the skills for this role</b><span>${courses.length} reviewed course${courses.length===1?'':'s'}</span></div>`+courses.map(c=>{
+    const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'—');
+    return `<a class="cc-course-card" href="/api/courses?id=${esc(c.id)}" data-course-open="${esc(c.id)}">
+      <div class="cc-course-thumb">${esc(c.provider[0])}</div>
+      <div class="cc-course-body">
+        <div class="cc-course-eyebrow">${esc(c.provider)}</div>
+        <h5>${esc(c.title)}</h5>
+        <div class="cc-course-meta">${c.career_stage?`<span>${esc(c.career_stage)}</span>`:''}${price!=='—'?`<span>${esc(price)}</span>`:''}${c.rating?`<span>★ ${Number(c.rating).toFixed(1)}</span>`:''}</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+function courseRecSection(courses){
+  return `<section class="job-courses"><div class="job-courses-head"><h3>📚 Build the skills for this role</h3><p>Reviewed Civil Engineering courses that match this opportunity's role.</p></div>`+courses.map(c=>{
+    const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'Price not provided');
+    return `<article class="job-course-card">
+      <div class="job-course-eyebrow">${esc(c.provider)}</div>
+      <h4>${esc(c.title)}</h4>
+      <div class="job-course-meta">${c.career_stage?`<span>⏱ ${esc(c.career_stage)}</span>`:''}${c.rating?`<span>★ ${Number(c.rating).toFixed(1)}</span>`:''}${c.price_inr!=null?`<span>${esc(price)}</span>`:''}</div>
+      ${c.description?`<p class="job-course-desc">${esc(String(c.description).slice(0,180))}</p>`:''}
+      <a href="/api/courses?id=${esc(c.id)}" class="btn secondary" style="font-size:.78rem;padding:6px 12px;margin-top:8px">View course details →</a>
+    </article>`;
+  }).join('')+`</section>`;
+}
 /* ── SERVER-SIDE PAGINATED EXPLORERS (Phase I/J) ──────────────────────
    Filters, search and paging run against /api/jobs; the browser holds one
    bounded page (40). window.__ccPrivateJobs / window.__ccGovernmentJobs are
@@ -374,6 +421,8 @@ function openMaterialDedicated(m,push=true){
   activateDynamic('materialDetail',materialPath(m),push);document.title=`${title} | CivilCareer`;
 }
 openJob=function(j,push=true){if(!j)return;if(typeof markViewed==='function')markViewed(j.id);window.__ccCurrentJob=j;const closed=!active(j),email=!j.application_email_private&&j.application_email,loc=jobLocs(j).join(' · ')||j.location_display||j.location;$('jobDetailPage').innerHTML=`<article class="dedicated-card"><div class="detail-kicker">${closed?'Expired opportunity':'Verified opportunity'} · ${ago(pubDate(j))}</div><h1>${esc(j.role)}</h1><p class="detail-lead">${esc(j.company||'Organization')} · ${esc(loc||'Location in source')}</p>${closed?'<div class="expired-banner">This opportunity has expired and is retained for transparency. Do not treat it as open.</div>':''}<div class="card-actions job-apply-top"><a href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a><a href="${esc(j.source_url)}" target="_blank" rel="noopener">View original source ↗</a></div><div class="detail-grid"><div class="detail"><b>Qualifications</b>${esc(jobQuals(j).join(' · ')||'Not specified by the employer/source.')}</div><div class="detail"><b>Experience</b>${esc(jobExps(j).join(' · ')||'Not specified by the employer/source.')}</div><div class="detail"><b>Employment</b>${esc(jobTypes(j).join(' · ')||'Not specified by the employer/source.')}</div><div class="detail"><b>Published</b>${date(String(pubDate(j)).slice(0,10))}</div>${j.salary||j.salary_min||j.salary_max?`<div class="detail"><b>Salary / Pay</b>${esc(j.salary||[j.salary_min,j.salary_max].filter(Boolean).join(' – '))}</div>`:''}${j.deadline?`<div class="detail"><b>Apply By</b>${esc(date(j.deadline))}</div>`:''}${(j.vacancy_count||j.vacancies)?`<div class="detail"><b>Vacancies</b>${esc(String(j.vacancy_count||j.vacancies))}</div>`:''}${j.application_fee?`<div class="detail"><b>Application Fee</b>${esc(j.application_fee)}</div>`:''}${j.age_limit?`<div class="detail"><b>Age Limit</b>${esc(j.age_limit)}</div>`:''}${(j.state||j.country)?`<div class="detail"><b>Region</b>${esc([j.state,j.country].filter(Boolean).join(', '))}</div>`:''}<div class="detail full"><b>Description</b>${richText(j.description)}</div>${j.responsibilities?`<div class="detail full"><b>Responsibilities</b>${richText(j.responsibilities)}</div>`:''}${j.skills?`<div class="detail full"><b>Skills</b>${richText(j.skills)}</div>`:''}</div>${email?`<div class="email-apply"><b>Apply via Email</b><span>${esc(email)}</span><button data-copy-email="${esc(email)}">Copy email</button><a href="mailto:${esc(email)}">Email Application</a></div>`:''}<div class="card-actions"><a href="${esc(j.application_url || j.source_url)}" target="_blank" rel="noopener">APPLY NOW ↗</a><a href="${esc(j.source_url)}" target="_blank" rel="noopener">View original source ↗</a></div><div class="card-actions"><span class="card-share"><a href="https://wa.me/?text=${encodeURIComponent((j.role||'Civil engineering job')+' — CivilCareer '+location.origin+(typeof jobPath==='function'?jobPath(j):''))}" target="_blank" rel="noopener">Share on WhatsApp</a> · <a class="route" href="/report">Report this listing</a></span></div><div class="callout">Always verify the job, deadline and application instructions at the original source. Never pay for a job.</div></article>${renderTrackerBar(j)}`;activateDynamic('jobDetail',jobPath(j),push);document.title=`${j.role} — ${j.company||'CivilCareer'}`;$$('[data-copy-email]').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copyEmail).then(()=>toast('Email copied.')))}
+/* Courses matching this job's role — best-effort, injected after the dedicated page renders */
+if(typeof renderJobCourseRecs==='function'&&window.__ccCurrentJob)renderJobCourseRecs(window.__ccCurrentJob);
 openExam=function(x,push=true){if(!x)return;const title=x.title_en,closed=x.application_end&&new Date(x.application_end+'T23:59:59')<new Date();$('examDetailPage').innerHTML=`<article class="dedicated-card exam-detail-page"><div class="detail-kicker">${closed?'Application Closed':esc(x.status||'Active')} · Last verified ${date(x.last_verified)}</div><h1>${esc(title)}</h1><p class="detail-lead">${esc(x.authority||'Authority in notification')}</p>${x.overview?`<p class="exam-intro">${richText(x.overview)}</p>`:''}<section class="exam-detail-section"><h3>Quick Information</h3><div class="exam-overview"><div><b>Authority</b>${esc(x.authority||'Check source')}</div><div><b>Vacancies</b>${esc(x.vacancy_count||x.vacancies||'Not specified in the notification.')}</div><div><b>Qualification</b>${richText(x.eligibility_en)}</div><div><b>Application fee</b>${richText(x.application_fee)}</div></div></section>${examSection('Important Dates',x.important_dates_details)}${examSection('Eligibility',x.eligibility_en)}${examSection('Vacancies',x.vacancy_breakdown)}${examSection('Exam Pattern',x.exam_pattern)}${examSection('Syllabus',x.syllabus)}${examSection('Application Process',x.how_to_apply)}<section class="exam-detail-section"><h3>Official Links</h3><div class="card-actions">${x.official_website_url?`<a href="${esc(x.official_website_url)}" target="_blank">Official Website ↗</a>`:''}${x.official_notification_url?`<a href="${esc(x.official_notification_url)}" target="_blank">Official Notification ↗</a>`:''}${x.apply_url?`<a href="${esc(x.apply_url)}" target="_blank">Apply Online ↗</a>`:''}</div></section><div class="callout">Always verify dates, eligibility and application instructions in the official notification before applying.</div></article>`;const p=`/exams/${x.slug||String(x.code||title).toLowerCase().replace(/[^a-z0-9]+/g,'-')}`;activateDynamic('examDetail',p,push);document.title=`${title} | CivilCareer`}
 function updateFilterUrl() {
   if (route !== 'private') return;
@@ -682,6 +731,25 @@ document.addEventListener('click',e=>{
   e.preventDefault();
   history.pushState({},'',href);
   routeV8();
+});
+
+/* Wire the in-panel / on-page "View course details" links to open the full
+   course detail screen. Screen-first, EXACTLY like the dynamic-route handler:
+   the screen is checked before the default navigation is cancelled, so a
+   document that cannot render a course detail (courses.html has no #examDetailPage)
+   lets the browser handle the link instead of blanking the page. */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-course-open]');
+  if(!a || e.defaultPrevented || e.button!==0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target==='_blank')return;
+  if(!document.getElementById('examDetailPage'))return; /* not renderable here */
+  e.preventDefault();
+  (async ()=>{
+    try{
+      const resp=await api(`/api/courses?id=${encodeURIComponent(a.dataset.courseOpen)}`);
+      if(resp.ok&&resp.course)openCourse(resp.course);
+      else toast('Course not found.');
+    }catch(e){toast('Could not load course.');}
+  })();
 });
 
 onpopstate = routeV8;
