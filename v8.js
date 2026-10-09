@@ -276,28 +276,61 @@ async function renderJobCourseRecs(j){
 function courseRecCards(courses,jobId){
   return `<div class="cc-panel-courses-head"><b>Build the skills for this role</b><span>${courses.length} reviewed course${courses.length===1?'':'s'}</span></div>`+courses.map(c=>{
     const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'—');
-    return `<a class="cc-course-card" href="/api/courses?id=${esc(c.id)}" data-course-open="${esc(c.id)}">
+    const on=courseSavedSet().has(String(c.id));
+    return `<div class="cc-course-card-wrap" style="display:flex;align-items:stretch;gap:6px">
+    <a class="cc-course-card" style="flex:1" href="/api/courses?id=${esc(c.id)}" data-course-open="${esc(c.id)}">
       <div class="cc-course-thumb">${esc(c.provider[0])}</div>
       <div class="cc-course-body">
         <div class="cc-course-eyebrow">${esc(c.provider)}</div>
         <h5>${esc(c.title)}</h5>
         <div class="cc-course-meta">${c.career_stage?`<span>${esc(c.career_stage)}</span>`:''}${price!=='—'?`<span>${esc(price)}</span>`:''}${c.rating?`<span>★ ${Number(c.rating).toFixed(1)}</span>`:''}</div>
       </div>
-    </a>`;
+    </a>
+    <button class="btn-save ${on?'saved':''}" data-save-course="${esc(c.id)}" title="${on?'Remove bookmark':'Save course'}" aria-label="${on?'Remove bookmark':'Save course'}">${on?'★':'☆'}</button>
+    </div>`;
   }).join('');
 }
 function courseRecSection(courses){
   return `<section class="job-courses"><div class="job-courses-head"><h3>📚 Build the skills for this role</h3><p>Reviewed Civil Engineering courses that match this opportunity's role.</p></div>`+courses.map(c=>{
     const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'Price not provided');
+    const on=courseSavedSet().has(String(c.id));
     return `<article class="job-course-card">
-      <div class="job-course-eyebrow">${esc(c.provider)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="job-course-eyebrow">${esc(c.provider)}</div>
+        <button class="btn-save ${on?'saved':''}" data-save-course="${esc(c.id)}" title="${on?'Remove bookmark':'Save course'}" aria-label="${on?'Remove bookmark':'Save course'}">${on?'★':'☆'}</button>
+      </div>
       <h4>${esc(c.title)}</h4>
       <div class="job-course-meta">${c.career_stage?`<span>⏱ ${esc(c.career_stage)}</span>`:''}${c.rating?`<span>★ ${Number(c.rating).toFixed(1)}</span>`:''}${c.price_inr!=null?`<span>${esc(price)}</span>`:''}</div>
       ${c.description?`<p class="job-course-desc">${esc(String(c.description).slice(0,180))}</p>`:''}
-      <a href="/api/courses?id=${esc(c.id)}" class="btn secondary" style="font-size:.78rem;padding:6px 12px;margin-top:8px">View course details →</a>
+      <a href="/api/courses?id=${esc(c.id)}" data-course-open="${esc(c.id)}" class="btn secondary" style="font-size:.78rem;padding:6px 12px;margin-top:8px">View course details →</a>
     </article>`;
   }).join('')+`</section>`;
 }
+
+/* ── Saved courses (bookmarks, v35) ─────────────────────────────
+   localStorage is the source of truth for INSTANT UI feedback; the
+   server adds/syncs when signed in. Never blocks the page: a failed
+   sync degrades to device-only. */
+function courseSavedSet(){
+  try{return new Set(JSON.parse(localStorage.getItem('cc_saved_courses')||'[]'))}catch(_){return new Set()}
+}
+function courseSavedPersist(set){
+  try{localStorage.setItem('cc_saved_courses',JSON.stringify([...set]))}catch(_){}
+}
+async function toggleSavedCourse(id){
+  const set=courseSavedSet();
+  const on=set.has(String(id));
+  if(on)set.delete(String(id));else set.add(String(id));
+  courseSavedPersist(set);
+  $$(`[data-save-course="${id}"]`).forEach(b=>{b.classList.toggle('saved',!on);b.textContent=!on?'★':'☆';b.title=!on?'Remove bookmark':'Save course';b.setAttribute('aria-label',!on?'Remove bookmark':'Save course');});
+  try{
+    const resp=await api(`/api/courses?action=${on?'unsave':'save'}`,{method:'POST',body:JSON.stringify({id})});
+    if(resp&&resp.ok){toast(!on?'Course saved to your account':'Bookmark removed')}
+    else if(resp&&resp.error&&/sign in/i.test(resp.error)){toast('Saved on this device. Sign in to sync it to your account.')}
+  }catch(e){toast('Saved on this device. Sign in to sync it to your account.')}
+}
+
+
 /* ── SERVER-SIDE PAGINATED EXPLORERS (Phase I/J) ──────────────────────
    Filters, search and paging run against /api/jobs; the browser holds one
    bounded page (40). window.__ccPrivateJobs / window.__ccGovernmentJobs are
@@ -750,6 +783,17 @@ document.addEventListener('click',e=>{
       else toast('Course not found.');
     }catch(e){toast('Could not load course.');}
   })();
+});
+
+/* Bookmark buttons stop the browser only after this handler has proven
+   it is a save button (a <button type=button> has no default navigation,
+   so preventDefault ordering against the dynamic-route guarantee is not
+   disturbed — but the guard stays explicit). */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-save-course]');
+  if(!b)return;
+  e.preventDefault();
+  toggleSavedCourse(b.dataset.saveCourse);
 });
 
 onpopstate = routeV8;

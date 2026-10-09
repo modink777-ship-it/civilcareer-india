@@ -94,6 +94,10 @@
       "destination": "/courses.html"
     },
     {
+      "source": "/courses/detail/:id",
+      "destination": "/api/courses-page?id=:id"
+    },
+    {
       "source": "/courses/:slug",
       "destination": "/api/courses-page?slug=:slug"
     },

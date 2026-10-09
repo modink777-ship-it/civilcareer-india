@@ -11,6 +11,14 @@
  *   POST /api/courses?action=click   { id, source?, referrer? }
  *        Aggregate click tracking, recorded server-side in course_clicks.
  *        Rate-limited per IP. Stores NO personal data.
+ *   POST /api/courses?action=save     { id }  (Bearer token required)
+ *   POST /api/courses?action=unsave   { id }  (Bearer token required)
+ *        Bookmarks into candidate_saved_courses (v35). The token is
+ *        verified against Supabase Auth; writes are always scoped to
+ *        the VERIFIED user id, never a client-sent id.
+ *   GET  /api/courses?saved=1         (Bearer token required)
+ *        The signed-in visitor's saved, still-published courses.
+ *   GET  /api/courses?id=<id>          → { ok, course } (single published)
  *
  * ADMIN (req.adminUser — the dispatcher's ADMIN_RULES elevates the
  *        dashboard's Supabase session through verifyAdminToken before
@@ -23,6 +31,7 @@
  *   DELETE ?id=      → delete (course_clicks cascade)
  *
  * Table: courses + course_clicks (v32-courses.sql, v34-courses-civil.sql)
+ *        + candidate_saved_courses (v35-courses-saved.sql)
  * Affiliate discipline: affiliate_url lives ONLY in the database, is
  * written only by admin mutations, and is read publicly only so the
  * CTA can use it. admin_notes never leaves this endpoint's admin path.
@@ -57,6 +66,33 @@ const {
   classifyCourse,
   normalizeSpecialization,
 } = require('../lib/course-civil');
+
+/* ── Saved courses (bookmarks) — v35 ───────────────────────────────
+   Signed-in visitors only. The bearer token is verified against
+   Supabase Auth (the account.js pattern); every subsequent read/write
+   is forced through the verified user_id — never a client-supplied id.
+   Table: candidate_saved_courses (v35-courses-saved.sql). */
+const ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+async function userFromBearer(req) {
+  const h = String((req.headers && req.headers.authorization) || '');
+  if (!/^Bearer\s+\S+$/i.test(h)) return null;
+  const token = h.replace(/^Bearer\s+/i, '').trim();
+  try {
+    const r = await fetch(`${SUPA}/auth/v1/user`, {
+      headers: { apikey: ANON_KEY, authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return (u && u.id) ? { id: String(u.id), email: u.email || '' } : null;
+  } catch (_) { return null; }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function savedCoursesEnabled() {
+  return Boolean(ANON_KEY);
+}
 
 /* The public card needs exactly these fields — nothing else. admin_notes,
    url_status, external_id and civil_verified stay admin-side by
@@ -391,6 +427,28 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    /* ── PUBLIC GET with saves overlay — published courses + my ★ ── */
+    if (req.method === 'GET' && q.has('saved') && savedCoursesEnabled()) {
+      const u = await userFromBearer(req);
+      if (!u) return j(res, 401, { ok: false, error: 'Sign in required.' });
+      const ids = await readJson(await supa(
+        `candidate_saved_courses?select=course_id,saved_at&user_id=eq.${encodeURIComponent(u.id)}&order=saved_at.desc&limit=200`
+      ));
+      const savedIds = Array.isArray(ids) ? ids.map((r) => String(r.course_id)) : [];
+      if (!savedIds.length) return j(res, 200, { ok: true, courses: [], saved_ids: [] });
+      /* Published rows only — an unpublished course can never be
+         served because it was saved while public and later unpublishd. */
+      const inList = savedIds.map((x) => `"${x.replace(/"/g, '')}"`).join(',');
+      const rows = await readJson(await supa(
+        `courses?select=${PUBLIC_SELECT}&id=in.(${encodeURIComponent(inList)})&is_published=eq.true&limit=${savedIds.length}`
+      ));
+      return j(res, 200, {
+        ok: true,
+        courses: Array.isArray(rows) ? rows.map(publicCourse) : [],
+        saved_ids: savedIds,
+      });
+    }
+
     /* ── PUBLIC GET — single published course by id ────────────── */
     if (req.method === 'GET' && q.has('id') && !q.has('admin')) {
       const id = cleanText(q.get('id'), 120);
@@ -449,6 +507,45 @@ module.exports = async function handler(req, res) {
           clicks,
         },
       });
+    }
+
+    /* ── POST ?action=save / unsave — bookmark a published course ── */
+    if (req.method === 'POST' && q.get('action') && ['save', 'unsave'].includes(q.get('action')) && savedCoursesEnabled()) {
+      if (!rateLimit(req, { key: 'course-save', max: 30 })) {
+        return j(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
+      }
+      const u = await userFromBearer(req);
+      if (!u) return j(res, 401, { ok: false, error: 'Sign in required.' });
+      const cid = cleanText(body.id, 64);
+      if (!UUID_RE.test(cid)) return j(res, 400, { ok: false, error: 'A valid course id is required.' });
+      /* scope to the VERIFIED owner id — the client-sent value is only
+         which course, never whose. */
+      if (q.get('action') === 'save') {
+        try {
+          await supa('candidate_saved_courses', {
+            method: 'POST',
+            headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+            body: JSON.stringify({ user_id: u.id, course_id: cid }),
+          });
+          return j(res, 200, { ok: true, saved: true });
+        } catch (e) {
+          const d = String((e && e.message) || e);
+          if (isSetupError(d)) return j(res, 503, { ok: false, error: 'Saved courses not set up yet. Run v35-courses-saved.sql.' });
+          throw e;
+        }
+      } else {
+        try {
+          await supa(
+            `candidate_saved_courses?user_id=eq.${encodeURIComponent(u.id)}&course_id=eq.${encodeURIComponent(cid)}`,
+            { method: 'DELETE', headers: { Prefer: 'return=minimal' } }
+          );
+          return j(res, 200, { ok: true, saved: false });
+        } catch (e) {
+          const d = String((e && e.message) || e);
+          if (isSetupError(d)) return j(res, 503, { ok: false, error: 'Saved courses not set up yet. Run v35-courses-saved.sql.' });
+          throw e;
+        }
+      }
     }
 
     /* ── PUBLIC POST ?action=click — aggregate tracking ──────── */

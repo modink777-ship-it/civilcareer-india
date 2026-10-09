@@ -290,9 +290,23 @@ module.exports = async function handler(req, res) {
        captured here. */
     if (!handlers[pathName]) {
       const courseSlug = pathName.match(/^\/courses\/([a-z0-9][a-z0-9-]*)$/i);
-      if (courseSlug) {
+      if (courseSlug && courseSlug[1].toLowerCase() !== 'detail') {
         pathName = '/api/courses-page';
         req.query = Object.assign({}, req.query, { slug: courseSlug[1] });
+      } else if (courseSlug && courseSlug[1].toLowerCase() === 'detail') {
+        /* /courses/detail/… is handled below with its id segment. */
+      }
+    }
+
+    /* Course DETAIL pages (/courses/detail/<id>): server-rendered,
+       canonical SEO page for ONE published course. Checked BEFORE the
+       specialization rule so "detail" can never be swallowed as a
+       specialization slug. */
+    if (!handlers[pathName] && !(req.query && req.query.id)) {
+      const cd = pathName.match(/^\/courses\/detail\/([a-z0-9-]+)/i);
+      if (cd) {
+        pathName = '/api/courses-page';
+        req.query = Object.assign({}, req.query || {}, { id: cd[1] });
       }
     }
 

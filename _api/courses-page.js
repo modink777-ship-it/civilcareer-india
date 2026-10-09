@@ -47,6 +47,101 @@ const { publicCourse, PUBLIC_SELECT, PUBLIC_SELECT_BASE } = require('./courses')
 const MAX_ROWS = 1000;
 const CARDS_PER_PAGE = 48;
 
+/* ══ course DETAIL page (/courses/detail/<id>) ═══════════════════════
+   A server-rendered, indexable page for ONE published course — same
+   discipline as the specialization pages: published rows only (the id
+   can never serve a draft), no invented fields, third-party notice,
+   robots noindex when the row is missing. A published course keeps a
+   stable URL; a slug change on the provider side is what the title and
+   structured data reflect, never a CivilCareer guess. */
+
+function courseDetailLd(c) {
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: c.title,
+    url: c.course_url,
+    /* The course is offered BY the platform — the markup says so rather
+       than implying CivilCareer sells it. */
+    provider: { '@type': 'Organization', name: c.provider || 'Provider' },
+  };
+  if (c.description) ld.description = c.description;
+  if (c.instructor) ld.hasCourseInstance = { '@type': 'CourseInstance', instructor: { '@type': 'Person', name: c.instructor } };
+  if (c.duration_hours != null) ld.timeRequired = isoDuration(c.duration_hours);
+  if (c.language) ld.inLanguage = c.language;
+  if (c.is_free) ld.isAccessibleForFree = true;
+  /* Rating markup only when the provider published one — never invented. */
+  if (c.rating != null && c.enrollment_count != null && c.enrollment_count >= 10) {
+    ld.aggregateRating = { '@type': 'AggregateRating', ratingValue: c.rating.toFixed(1), ratingCount: c.enrollment_count };
+  }
+  return ld;
+}
+
+function detailPage({ c, canonical }) {
+  const title = `${c.title} — ${c.provider} course for Civil Engineers | CivilCareer`;
+  const description = (c.description
+    ? c.description.slice(0, 155)
+    : `${c.title} is a ${c.provider} Civil Engineering course reviewed and listed on CivilCareer${c.career_stage ? ' for ' + c.career_stage.toLowerCase() + 's' : ''}. Enrol on the provider's own website.`);
+  const href = c.affiliate_url || c.course_url;
+  const rel = c.affiliate_url ? 'noopener sponsored' : 'noopener noreferrer';
+
+  const facts = [];
+  facts.push(['Provider', c.provider]);
+  if (c.instructor) facts.push(['Instructor', c.instructor]);
+  if (c.specialization) facts.push(['Civil Engineering specialization', c.specialization]);
+  if (c.category) facts.push(['Category', c.category]);
+  if (c.career_stage) facts.push(['Career stage', c.career_stage]);
+  if (c.language) facts.push(['Language', c.language]);
+  const dur = durationText(c.duration_hours); if (dur) facts.push(['Duration', dur]);
+  if (c.enrollment_count != null) facts.push(['Learners', Number(c.enrollment_count).toLocaleString('en-IN')]);
+  if (c.rating != null) facts.push(['Rating', `★ ${Number(c.rating).toFixed(1)}`]);
+
+  return `<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="${esc(canonical)}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${esc(canonical)}">
+<link rel="icon" href="/icons/icon-96.png">
+<link rel="stylesheet" href="/styles.css">
+<script type="application/ld+json">${jsonLd(courseDetailLd(c))}</script>
+<style>
+.cd-wrap{max-width:880px;margin:0 auto;padding:2rem 1rem 4rem}
+.cd-eyebrow{color:var(--muted);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0;}
+.cd-wrap h1{font-size:1.9rem;line-height:1.25;margin:.4rem 0 .4rem}
+.cd-provider{color:var(--teal);font-size:1rem;font-weight:700}
+.cd-cta{display:inline-block;margin-top:.8rem;padding:.65rem 1.4rem;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800}
+.cd-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem;margin:1.4rem 0;border:1px solid var(--line);border-radius:12px;padding:1rem;background:var(--white)}
+.cd-facts>div{font-size:.88rem;color:var(--text)}
+.cd-facts b{display:block;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.cd-desc{line-height:1.7;color:var(--text)}
+.cd-roles{display:flex;flex-wrap:wrap;gap:.4rem;margin:.6rem 0 0}
+.cd-roles span{font-size:.78rem;color:#15543f;background:#e6f4ef;border-radius:999px;padding:3px 10px}
+.cd-notice{border-left:3px solid var(--teal);background:#edf6f3;border-radius:0 10px 10px 0;padding:.9rem 1rem;color:#38564f;font-size:.85rem;margin-top:1.6rem}
+</style></head><body>
+<main class="cd-wrap">
+<p class="cd-eyebrow">CivilCareer · reviewed Civil Engineering courses</p>
+<h1>${esc(c.title)}</h1>
+<p class="cd-provider">${esc(c.provider)}${c.instructor ? ` · taught by ${esc(c.instructor)}` : ''}</p>
+<a class="cd-cta" href="${esc(href)}" target="_blank" rel="${rel}">View course on ${esc(c.provider)} →</a>
+<p style="color:var(--muted);font-size:.78rem;margin:.4rem 0 0">Opens on ${esc(c.provider)}’s website — you are leaving CivilCareer.</p>
+<div class="cd-facts">${facts.map(([k, v]) => `<div><b>${esc(k)}</b>${esc(v)}</div>`).join('')}</div>
+${c.description ? `<h2>About this course</h2><p class="cd-desc">${esc(c.description)}</p>` : ''}
+${(c.target_roles || []).length ? `<h2>Good for these roles</h2><div class="cd-roles">${c.target_roles.map((r) => `<span>${esc(r)}</span>`).join('')}</div>` : ''}
+<div class="cd-notice">${esc(THIRD_PARTY_NOTICE)}</div>
+<div class="cp-links" role="navigation" aria-label="Related CivilCareer pages" style="margin-top:2rem">
+<a href="/courses">All Civil Engineering courses</a>
+${c.specialization && specializationSlug(c.specialization) ? `<a href="/courses/${esc(specializationSlug(c.specialization))}">More ${esc(c.specialization)} courses</a>` : ''}
+<a href="/private-jobs">Private jobs for civil engineers</a>
+</div>
+</main>
+</body></html>`;
+}
+
 function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -330,8 +425,67 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Method not allowed');
   if (!SUPA || !KEY) return res.status(500).send('Course pages need Supabase configuration.');
 
+  /* ══ DETAIL branch: /courses/detail/<id> (or ?id= from the rewrite) ══
+     Serves ONE published course, server-rendered. A draft id 404s with
+     an honest message and noindex robots — a draft can never leak here
+     even if someone guesses the URL; and a truly unknown id is a
+     redirect to the directory rather than a dead end. */
+  {
+    let rawId = '';
+    if (req.query && req.query.id) rawId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
+    if (!rawId) {
+      const mid = String(req.url || '').match(/\/courses\/detail\/([a-z0-9-]+)/i);
+      if (mid) rawId = mid[1];
+    }
+    if (rawId) {
+      const canonical = `${SITE}/courses/detail/${encodeURIComponent(rawId)}`;
+      let row = null;
+      let missingFiles = false;
+      try {
+        const path = `courses?select=${PUBLIC_SELECT_BASE}&id=eq.${encodeURIComponent(rawId)}&is_published=eq.true&limit=1`;
+        const rows = await supa(path);
+        row = Array.isArray(rows) && rows.length ? rows[0] : null;
+        /* v34 applied: re-read with the extended projection so description
+           and specialization reach the page too. A failure here is not
+           fatal — the v32 columns already rendered. */
+        if (row) {
+          try {
+            const xrows = await supa(`courses?select=${PUBLIC_SELECT}&id=eq.${encodeURIComponent(rawId)}&is_published=eq.true&limit=1`);
+            if (Array.isArray(xrows) && xrows.length) row = xrows[0];
+          } catch (_) { /* keep the v32 row */ }
+        } else {
+          /* No row on the base projection can still mean v34 is absent
+           AND the column filter (is_published) exists in both — so try
+           the v32 filter once more before saying “not found”. */
+        }
+      } catch (err) {
+        /* A missing v34 column falls back to the v32 projection so the
+           page still renders; anything else is logged and treated as
+           "not found" with an honest message. */
+        if (isMissingColumn(String((err && err.message) || err))) missingFiles = true;
+        else console.warn('course detail unavailable:', String((err && err.message) || err).slice(0, 300));
+      }
+      if (!row) {
+        const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`
+          + `<title>Course not found | CivilCareer</title>`
+          + `<meta name="robots" content="noindex,follow">`
+          + `<link rel="icon" href="/icons/icon-96.png"><link rel="stylesheet" href="/styles.css"></head>`
+          + `<body><main class="cd-wrap"><h1>Course not found</h1>`
+          + `<p style="color:var(--text)">This course is not published ${missingFiles ? '(or the specialization columns are not set up yet) ' : ''}— every listing is reviewed before it appears on CivilCareer.</p>`
+          + `<div class="cp-links" role="navigation" aria-label="Related"><a href="/courses">Browse all Civil Engineering courses</a></div></main></body></html>`;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        return res.status(404).send(html);
+      }
+      const html = detailPage({ c: publicCourse(row), canonical });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
+      return res.status(200).send(html);
+    }
+  }
+
   /* The slug arrives from the vercel rewrite (?slug=) or straight from
-     the path when the catch-all sees the original URL. */
+     the path when the catch-all sees the original URL. */ 
   let raw = '';
   if (req.query && req.query.slug) {
     raw = Array.isArray(req.query.slug) ? req.query.slug[0] : req.query.slug;
@@ -371,4 +525,4 @@ module.exports = async function handler(req, res) {
   return res.status(200).send(html);
 };
 
-module.exports._internal = { page, courseCard, itemListLd, isoDuration, priceText, loadCourses, specializationFromSlug };
+module.exports._internal = { page, courseCard, itemListLd, isoDuration, priceText, loadCourses, specializationFromSlug, detailPage, courseDetailLd };
