@@ -56,11 +56,17 @@ const CARDS_PER_PAGE = 48;
    structured data reflect, never a CivilCareer guess. */
 
 function courseDetailLd(c) {
+  const detailUrl = `${SITE}/courses/detail/${encodeURIComponent(String(c.id || ''))}`;
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'Course',
     name: c.title,
     url: c.course_url,
+    /* Bind the Course entity to THIS canonical URL — without it Google
+       consolidates the markup with the provider's own page instead of
+       the CivilCareer detail page that serves it. */
+    '@id': detailUrl,
+    isPartOf: { '@type': 'WebPage', '@id': detailUrl, url: detailUrl, name: `${c.title} course details on CivilCareer` },
     /* The course is offered BY the platform — the markup says so rather
        than implying CivilCareer sells it. */
     provider: { '@type': 'Organization', name: c.provider || 'Provider' },

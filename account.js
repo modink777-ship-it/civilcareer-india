@@ -89,7 +89,7 @@
     $('ccForgotForm').onsubmit=forgotPassword; $('ccBackLogin').onclick=renderAccount;
   }
   async function signIn(e){
-    e.preventDefault(); const id=$('ccLoginId').value.trim(), password=$('ccLoginPassword').value; try { const body=isPhone(id)?{phone:normalizePhone(id),password}:{email:id,password}; const x=await authRequest('token?grant_type=password',body); saveSession(x); setStatus('Signed in successfully.','success'); renderAccount(); } catch(err){setStatus(err.message);}}
+    e.preventDefault(); const id=$('ccLoginId').value.trim(), password=$('ccLoginPassword').value; try { const body=isPhone(id)?{phone:normalizePhone(id),password}:{email:id,password}; const x=await authRequest('token?grant_type=password',body); saveSession(x); setStatus('Signed in successfully.','success'); renderAccount(); if(typeof window.ccSavedMergeOnSignIn==='function')window.ccSavedMergeOnSignIn(); } catch(err){setStatus(err.message);}}
   async function signup(e){
     e.preventDefault(); const id=$('ccSignupId').value.trim(), p=$('ccSignupPassword').value, c=$('ccSignupConfirm').value; if(p!==c)return setStatus('Passwords do not match.'); try { const body=isPhone(id)?{phone:normalizePhone(id),password:p}:{email:id,password:p}; const x=await authRequest('signup',body); if(x.access_token) {saveSession(x); renderAccount();} else setStatus('Account created. If email confirmation is enabled, confirm your email and then sign in.','success'); } catch(err){setStatus(err.message);}}
   async function forgotPassword(e){e.preventDefault(); try {const c=await getConfig(); const email=$('ccForgotEmail').value.trim(); const r=await fetch(`${c.url.replace(/\/$/,'')}/auth/v1/recover`,{method:'POST',headers:{apikey:c.anonKey,'Content-Type':'application/json'},body:JSON.stringify({email,redirect_to:location.origin+location.pathname})}); if(!r.ok)throw Error((await r.json().catch(()=>({}))).msg||'Could not send reset link.'); setStatus('Password reset link sent.','success');}catch(err){setStatus(err.message);}}
@@ -100,5 +100,5 @@
   async function openAccount(){const d=modal();d.showModal();if(!session)loadSession();d.querySelector('#ccAccountBody').innerHTML='<p>Loading secure sign-in…</p>';try{await getConfig();renderAccount();}catch(err){d.querySelector('#ccAccountBody').innerHTML=`<div class="form-status error show">${esc(err.message)}</div>`;}}
   async function markApplied(jobId){if(!session)return false;await accountApi('application',{job_id:jobId,status:'Applied'});return true;}
 window.openAccount=openAccount; window.ccAccount={open:openAccount,sync:syncAccount,markApplied};
-  document.addEventListener('DOMContentLoaded',()=>{loadSession();refreshSession().finally(()=>{ensureButton();renderAccountButton();});});
+  document.addEventListener('DOMContentLoaded',()=>{loadSession();refreshSession().finally(()=>{ensureButton();renderAccountButton();/* An existing session restored on load counts as a sign-in — bring device-only stars up. */if(session&&typeof window.ccSavedMergeOnSignIn==='function')window.ccSavedMergeOnSignIn();});});
 })();

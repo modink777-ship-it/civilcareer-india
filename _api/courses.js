@@ -59,6 +59,7 @@ const KEY =
   process.env.SUPABASE_SERVICE_KEY;
 
 const { allowPublicCors } = require('../lib/security');
+const { pingPublished } = require('../lib/publish-ping');
 const { rateLimit } = require('../lib/rate-limit');
 const {
   SUPPORTED_PROVIDERS,
@@ -594,11 +595,19 @@ module.exports = async function handler(req, res) {
       if (body.id) {
         const id = cleanText(body.id, 64);
         if (!id) return j(res, 400, { ok: false, error: 'id is required for an update.' });
+        /* Previous published state, for the ping-on-first-publish check below. */
+        const before = await readJson(await supa(`courses?select=is_published&id=eq.${encodeURIComponent(id)}`));
+        const wasPublishedBefore = Boolean(before[0] && before[0].is_published);
         const saved = await readJson(await supa(`courses?id=eq.${encodeURIComponent(id)}`, {
           method: 'PATCH',
           body: JSON.stringify(payload),
         }));
         if (!saved.length) return j(res, 404, { ok: false, error: 'Course not found.' });
+        /* Publish-turned-on: ping the detail page so it gets crawled fast. */
+        if (payload.is_published === true && saved[0] && saved[0].is_published === true && !wasPublishedBefore) {
+          const ping = await pingPublished(`/courses/detail/${encodeURIComponent(id)}`, 'course-publish');
+          if (ping.sent) console.log(`[courses] indexnow pinged /courses/detail/${id}`);
+        }
         return j(res, 200, { ok: true, course: saved[0] });
       }
 
@@ -608,7 +617,12 @@ module.exports = async function handler(req, res) {
         method: 'POST',
         body: JSON.stringify(payload),
       }));
-      return j(res, 201, { ok: true, course: saved[0] || payload });
+      const row = saved[0] || payload;
+      if (row && row.is_published === true && row.id) {
+        const ping = await pingPublished(`/courses/detail/${encodeURIComponent(row.id)}`, 'course-create-publish');
+        if (ping.sent) console.log(`[courses] indexnow pinged /courses/detail/${row.id}`);
+      }
+      return j(res, 201, { ok: true, course: row });
     }
 
     /* ── ADMIN DELETE ────────────────────────────────────────── */

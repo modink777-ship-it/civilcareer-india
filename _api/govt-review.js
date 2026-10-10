@@ -27,6 +27,7 @@ const {
 const { providerStatus, chatJSON } = require('../lib/ai-models');
 const { titleVerdict, cleanTitle, deriveTitle } = require('../lib/govt-title');
 const { sendPublishSummary } = require('../lib/govt-alert');
+const { pingPublished } = require('../lib/publish-ping');
 
 const SUPA = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '');
@@ -412,6 +413,13 @@ async function approve(id, user, payloadOverride = null) {
   /* Social Content Engine: best-effort suggestion (unchanged behaviour). */
   const social = await queueSocialSuggestion(saved.id);
   if (!social.ok) console.error('Social suggestion create failed for govt job', saved.id, ':', social.error);
+
+  /* IndexNow: single publishes (the common Approve click) go out immediately.
+     Best-effort — a network hiccup here is logged, never a failed publish. */
+  if (saved && saved.slug) {
+    const ping = await pingPublished(`/government-jobs/job/${encodeURIComponent(saved.slug)}`, 'approve');
+    if (ping.sent) console.log(`[approve] indexnow pinged /government-jobs/job/${saved.slug}`);
+  }
   return Object.assign({}, saved, { social });
 }
 
@@ -492,6 +500,14 @@ async function publishReady(user, limit = READY_DEFAULT_LIMIT) {
     } catch (e) {
       out.failed.push({ id: row.id, title, error: String((e && e.message) || e).slice(0, 160) });
     }
+  }
+
+  /* IndexNow: tell the engines this batch exists. One batched POST, never
+     a per-row call, and never a blocker — a ping failure must not fail a
+     human-approved publish. */
+  if (out.jobs.length) {
+    const ping = await pingPublished(out.jobs.filter(j => j.slug).map(j => `/government-jobs/job/${encodeURIComponent(j.slug)}`), 'publish_ready');
+    if (ping.sent) console.log(`[publish_ready] indexnow pinged ${ping.count} newly published URL(s)`);
   }
 
   /* Tell the owner what the click just did — count, live titles, and the reasons the

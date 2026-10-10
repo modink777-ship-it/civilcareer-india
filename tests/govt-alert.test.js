@@ -54,6 +54,14 @@ assert.ok(/&quot;/.test(nasty), 'quotes must be escaped');
   let calls = 0;
   const callsList = [];
 
+  /* The "new postings" digest is opt-in: the owner reviews /admin directly
+     and asked for the per-run Telegram alerts to stop, so the default is
+     OFF and the pipeline-warning/publish/title-guard alerts stay on. */
+  if (!Object.prototype.hasOwnProperty.call(alert, 'digestEnabled')) {
+    throw new Error('goivt-alert must export digestEnabled()');
+  }
+  assert.strictEqual(alert.digestEnabled(), false, 'the digest must be disabled by default');
+
   try {
     /* Unconfigured: no network call at all. */
     delete process.env.TELEGRAM_BOT_TOKEN;
@@ -65,7 +73,18 @@ assert.ok(/&quot;/.test(nasty), 'quotes must be escaped');
     assert.strictEqual(r.skipped, 'telegram-not-configured');
     assert.strictEqual(alert.alertConfigured(), false);
 
-    /* Configured: posts to the admin chat with the escaped body. */
+    /* Configured but digest NOT opted in: still no network call. */
+    process.env.TELEGRAM_BOT_TOKEN = 'test-token';
+    process.env.TELEGRAM_ADMIN_CHAT_ID = '12345';
+    global.fetch = async () => { calls += 1; throw new Error('must not be called'); };
+    const beforeDigest = calls;
+    r = await alert.sendCivilDigest([{ title: 'X' }]);
+    assert.strictEqual(r.sent, false);
+    assert.strictEqual(r.skipped, 'digest-disabled', 'the staged digest must stay quiet unless GOVT_TELEGRAM_DIGEST=1');
+    assert.strictEqual(calls, beforeDigest);
+
+    /* Configured AND opted in: posts to the admin chat with the escaped body. */
+    process.env.GOVT_TELEGRAM_DIGEST = '1';
     process.env.TELEGRAM_BOT_TOKEN = 'test-token';
     process.env.TELEGRAM_ADMIN_CHAT_ID = '12345';
     assert.strictEqual(alert.alertConfigured(), true);

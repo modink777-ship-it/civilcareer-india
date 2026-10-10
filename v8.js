@@ -311,6 +311,38 @@ function courseRecSection(courses){
    localStorage is the source of truth for INSTANT UI feedback; the
    server adds/syncs when signed in. Never blocks the page: a failed
    sync degrades to device-only. */
+/* ── Merge device bookmarks into the account on sign-in ──────────
+   A visitor who bookmarks signed-out keeps them on this device; the
+   moment they sign in, those device-only stars would otherwise be
+   invisible on other devices. This one-shot merge runs once per page
+   load after a successful sign-in/restore:
+     • fetch the account's server list (saved_ids from GET ?saved=1)
+     • every localStorage id NOT on the server is pushed (action=save)
+     • the union is persisted locally as the new device state so the
+       For You panel renders one combined list
+   Server rows are never deleted — an un-bookmark after this merge drops
+   it on both sides, the normal path. Failures degrade to device-only. */
+let ccSavedMergeToken=0;
+async function mergeSavedCoursesOnSignIn(){
+  const runId=++ccSavedMergeToken;
+  try{
+    const local=courseSavedSet();
+    const resp=await api('/api/courses?saved=1');
+    if(!resp||!resp.ok||runId!==ccSavedMergeToken)return;
+    const remote=new Set(resp.saved_ids||[]);
+    const pending=[...local].filter(id=>!remote.has(id));
+    for(const id of pending.slice(0,50)){
+      try{const r=await api('/api/courses?action=save',{method:'POST',body:JSON.stringify({id})});
+        if(r&&r.ok)remote.add(id);else break;}
+      catch(_){break;}
+    }
+    if(runId!==ccSavedMergeToken)return;
+    const merged=new Set([...remote,...local]);
+    if(merged.size!==local.size)courseSavedPersist(merged);
+    if(pending.length&&typeof toast==='function')toast(pending.length+' device bookmark'+(pending.length>1?'s':'')+' synced to your account');
+  }catch(_){/* offline or 503 — device state untouched, retried next sign-in */}
+}
+window.ccSavedMergeOnSignIn=mergeSavedCoursesOnSignIn;
 function courseSavedSet(){
   try{return new Set(JSON.parse(localStorage.getItem('cc_saved_courses')||'[]'))}catch(_){return new Set()}
 }

@@ -68,6 +68,8 @@ const handlers = {
   '/api/courses-page':         () => require('../_api/courses-page'),
   /* Admin session policy + global revoke (hardening). Admin-only. */
   '/api/admin-session':        () => require('../_api/admin-session'),
+  /* IndexNow ownership proof: the key file the engines fetch after we ping. */
+  '/api/indexnow-key.txt':     () => require('../_api/indexnow-key'),
 };
 
 
