@@ -795,6 +795,38 @@ module.exports = async function handler(req, res) {
          reviewer which ones still carry a junk or weak title, and fixes the low-risk ones
          in one pass. reject=true means "keep the row, but give it a reason to stay parked". */
 
+/* Published-slug audit: exports the active (published) rows as a CSV
+       (or JSON) for a broken-link spot-check. Has no workable id-argument —
+       therefore never depends on the stash-based bastion of the review queue. */
+      if (action === 'slug_export') {
+        if (b.format !== undefined && b.format !== 'csv' && b.format !== 'json') {
+          return res.status(400).json({ ok: false, error: 'format must be "csv" or "json".' });
+        }
+        const limit = Math.min(5000, Math.max(1, Number(b.limit) || 2000));
+        const r = await db(`govt_jobs?status=eq.active&select=id,slug,title,organization,state,verification_status,published_at&order=published_at.desc&limit=${limit}`);
+        if (!r.ok) throw new Error('Could not read published jobs: ' + (await r.text()).slice(0, 300));
+        const rows = (await r.json()) || [];
+        const site = (process.env.SITE_URL || 'https://civilcareer-india-two.vercel.app').replace(/\/+$/, '');
+        const items = rows.map((x) => ({
+          id: x.id,
+          slug: x.slug,
+          url: `${site}/government-jobs/job/${encodeURIComponent(x.slug)}`,
+          title: x.title || '',
+          organization: x.organization || '',
+          state: x.state || '',
+          verification_status: x.verification_status || '',
+          published_at: x.published_at || '',
+        }));
+        if (b.format === 'json') return res.status(200).json({ ok: true, count: items.length, items });
+        /* CSV — spreadsheet-ready for a broken-link audit. Quoting per RFC 4180. */
+        const esc = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+        const head = 'id,slug,public_url,title,organization,state,source_status,published_at';
+        const body = items.map((x) => [x.id, x.slug, x.url, x.title, x.organization, x.state, x.verification_status, x.published_at].map(esc).join(',')).join('\r\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="govt-jobs-slugs.csv"');
+        return res.status(200).send(head + '\r\n' + body + '\r\n');
+      }
+
       if (action === 'title_audit') {
         const limit = Math.min(200, Math.max(1, Number(b.limit) || 200));
         const rows = await db('govt_jobs?status=eq.active&select=id,title,slug,post_name,organization,published_at&order=published_at.desc&limit=' + limit);
@@ -1171,7 +1203,7 @@ async function savedJobAction(action, id, req, res, b) {
     return res.status(201).json({ ok: true, job: saved });
   }
 
-  if (action === 'schedule') {
+if (action === 'schedule') {
     const when = b.when ? new Date(b.when) : null;
     if (!when || Number.isNaN(when.getTime())) return res.status(400).json({ ok: false, error: 'A valid future date/time is required.' });
     await db(`govt_jobs?id=eq.${encodeURIComponent(id)}`, {

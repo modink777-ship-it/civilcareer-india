@@ -683,6 +683,63 @@ function renderForYou(){
 
   container.innerHTML=`<div class="foryou-profile-summary"><span>Profile: <b>${esc(cp.role||userProfile.job_title||'Civil Engineer')}</b>${cp.stage?` · ${esc(cp.stage)}`:''}${cp.skills?.length?` · ${cp.skills.length} skills`:''}</span><button class="btn secondary" onclick="openProfileSetup()">⚙ Update</button></div>`+scored.map(j=>matchJobCard(j,j._best)).join('')+courseHtml;
   bindCards();
+  renderSavedCoursesPanel();
+}
+
+/* ── Saved Courses panel (For You) ───────────────────────────────
+   Bookmarked courses from ★ buttons on job pages and cards. The panel
+   is best-effort: signed-out visitors see their device-saved list from
+   localStorage; signed-in visitors get the account's list from
+   /api/courses?saved=1 (published rows only, server-scoped). Removing
+   a bookmark works in both modes; it never blocks the feed. */
+async function renderSavedCoursesPanel(){
+  let target=$('savedCoursesPanel');
+  if(!target){
+    const host=$('forYouJobs');
+    if(!host||!host.parentElement)return;
+    target=document.createElement('div');target.id='savedCoursesPanel';
+    host.parentElement.appendChild(target);
+  }
+  /* Same session convention account.js already uses: cc_auth_session
+     in localStorage carries the Supabase access token (refreshed there). */
+  function savedCoursesToken(){
+    try{return (JSON.parse(localStorage.getItem('cc_auth_session')||'null')||{}).access_token||''}catch(_){return ''}
+  }
+  const localIds=courseSavedSet();
+  let courses=[];let note='';
+  const token=savedCoursesToken();
+  if(typeof api==='function'&&token){
+    try{
+      const resp=await api('/api/courses?saved=1',{headers:{authorization:'Bearer '+token}});
+      if(resp.ok)courses=resp.courses||[];
+      if(!courses.length&&localIds.size)note='device-only';
+    }catch(e){note=localIds.size?'device-only':'unavailable';}
+  }else note=localIds.size?'device-only':'sign-in';
+  /* Signed-out mode: show what the card set can resolve from loaded catalogue. */
+  if(!courses.length&&localIds.size){
+    try{const resp=await api('/api/courses?limit=50');courses=(resp.courses||[]).filter(c=>localIds.has(String(c.id)));}catch(_){}
+  }
+  if(!courses.length){target.innerHTML='';return;}
+  target.innerHTML=`<section class="foryou-courses"><div class="foryou-section-head"><h3 style="margin:0;font-size:1rem">🔖 Saved courses (${courses.length})${note==='device-only'?' · saved on this device':''}${note==='sign-in'?' · sign in to sync':''}</h3></div>`+
+    courses.map(c=>{
+      const price=c.is_free?'Free':(c.price_inr!=null?'₹'+Number(c.price_inr).toLocaleString('en-IN'):'Price not provided');
+      return `<article class="course-match-card">
+        <p class="course-match-eyebrow">Bookmarked</p>
+        <h4>${esc(c.title)}</h4>
+        <p class="organization">${esc(c.provider)}${c.instructor?' · '+esc(c.instructor):''}</p>
+        <div class="card-meta"><span>💰 ${esc(price)}</span>${c.specialization?`<span>${esc(c.specialization)}</span>`:''}</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <a href="/courses/detail/${esc(c.id)}" class="btn secondary" style="font-size:.78rem;padding:6px 12px" data-detail-link="${esc(c.id)}">Course page →</a>
+          <button class="btn-save saved" data-save-course="${esc(c.id)}" title="Remove bookmark" aria-label="Remove bookmark">★</button>
+        </div>
+      </article>`;
+    }).join('')+'</section>';
+  /* The in-SPA detail link opens the course screen instead of navigating. */
+  target.querySelectorAll('a[data-detail-link]').forEach(a=>a.onclick=e=>{
+    if(!document.getElementById('examDetailPage'))return;
+    e.preventDefault();
+    api('/api/courses?id='+encodeURIComponent(a.dataset.detailLink)).then(r=>{if(r.ok&&r.course)openCourse(r.course)}).catch(()=>{});
+  });
 }
 
 function matchJobCard(j,match){

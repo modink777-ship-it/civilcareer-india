@@ -255,7 +255,7 @@ function courseCard(c) {
   ${roles ? `<div class="cp-meta">${roles}</div>` : ''}
   <p class="cp-price">${esc(priceText(c))}</p>
   <a class="cp-cta" href="${esc(href)}" target="_blank" rel="${rel}">View Course →</a>
-  <p class="cp-leave">Opens on ${esc(c.provider || 'the provider')} — you are leaving CivilCareer.</p>
+  <p class="cp-leave">Opens on ${esc(c.provider || 'the provider')} — you are leaving CivilCareer. · <a href="/courses/detail/${esc(c.id)}" style="color:var(--blue);font-weight:600">Course details on CivilCareer →</a></p>
 </article>`;
 }
 

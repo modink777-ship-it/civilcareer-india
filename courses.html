@@ -280,7 +280,7 @@
         (chips.length?'<div class="co-roles">'+chips.join('')+'</div>':'')+
         '<div class="co-price">'+priceLine(c)+'</div>'+
         '<a class="co-cta" data-id="'+esc(c.id)+'" data-provider="'+esc(c.provider||'')+'" href="'+esc(href)+'" target="_blank" rel="'+rel+'" aria-label="View '+esc(c.title)+' on '+esc(c.provider||'the provider')+' (opens their website in a new tab)" onclick="return window.coTrack(this)">View Course →</a>'+
-        '<p class="co-leave">Opens on '+esc(c.provider||'the provider website')+' — you are leaving CivilCareer.</p>'+
+        '<p class="co-leave">Opens on '+esc(c.provider||'the provider website')+' — you are leaving CivilCareer. · <a href="/courses/detail/'+esc(c.id)+'">Course details on CivilCareer →</a></p>'+
       '</div>'+
     '</article>';
   }

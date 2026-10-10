@@ -144,3 +144,62 @@ test('publish survives a column the live schema lacks and keeps the review gate'
     assert.strictEqual(saved.closes_at, '2026-10-31T23:59:59.000Z');
   } finally { stub.restore(); }
 });
+
+/* ── slug_export: the published-slug audit ──────────────────────────────
+   Exports active rows (id, slug, public URL…) as CSV or JSON so a broken-link
+   audit can crawl every published path. Admin-only caller; no id argument,
+   so it works even when the review cache is empty. */
+
+test('slug_export returns a CSV with a header and one quoted row per active job', async () => {
+  const realFetch = global.fetch;
+  try {
+    global.fetch = async (url) => {
+      const target = String(url);
+      if (target.includes('/rest/v1/govt_jobs')) {
+        return reply(200, [
+          { id: 'job-a', slug: 'rrb-je-civil-2026', title: 'JE (Civil), "Shift" 2', organization: 'RRB', state: 'All India', verification_status: 'official', published_at: '2026-09-01T00:00:00Z' },
+          { id: 'job-b', slug: 'nhai-deputy-manager', title: 'Deputy Manager', organization: 'NHAI', state: 'Delhi', verification_status: 'unverified', published_at: '2026-09-02T00:00:00Z' },
+        ]);
+      }
+      return reply(200, []);
+    };
+    const res = await run(govtReview, {
+      url: '/api/govt-review?action=slug_export', method: 'POST', body: { format: 'csv' },
+      adminUser: { id: 'admin-1', email: 'admin@example.com' },
+    });
+    assert.strictEqual(res.statusCode, 200);
+    const ctype = Object.entries(res.headers).find(([k]) => k.toLowerCase() === 'content-type');
+    assert.ok(ctype && /text\/csv/.test(ctype[1]), 'CSV content type');
+    const lines = res.bodyText.trim().split(/\r\n/);
+    assert.strictEqual(lines[0], 'id,slug,public_url,title,organization,state,source_status,published_at');
+    assert.strictEqual(lines.length, 3, 'header + 2 rows');
+    assert.match(lines[1], /^"job-a","rrb-je-civil-2026","https:\/\/civilcareer-india-two\.vercel\.app\/government-jobs\/job\/rrb-je-civil-2026"/);
+    assert.ok(lines[1].includes('""Shift""'), 'embedded quotes must be doubled (RFC 4180)');
+    assert.match(lines[2], /"job-b","nhai-deputy-manager"/);
+  } finally { global.fetch = realFetch; }
+});
+
+test('slug_export JSON mode works and the format guard rejects unknown formats', async () => {
+  const realFetch = global.fetch;
+  try {
+    global.fetch = async (url) => (String(url).includes('/rest/v1/govt_jobs')
+      ? reply(200, [{ id: 'job-a', slug: 'rrb-je-civil-2026', title: 'JE', organization: 'RRB', state: 'All India', verification_status: 'official', published_at: '2026-09-01T00:00:00Z' }])
+      : reply(200, []));
+    const res = await run(govtReview, {
+      url: '/api/govt-review?action=slug_export', method: 'POST', body: { format: 'json' },
+      adminUser: { id: 'admin-1', email: 'admin@example.com' },
+    });
+    const body = JSON.parse(res.bodyText);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(body.ok, true);
+    assert.strictEqual(body.count, 1);
+    assert.match(body.items[0].url, /\/government-jobs\/job\/rrb-je-civil-2026$/);
+
+    const bad = await run(govtReview, {
+      url: '/api/govt-review?action=slug_export', method: 'POST', body: { format: 'xlsx' },
+      adminUser: { id: 'admin-1', email: 'admin@example.com' },
+    });
+    assert.strictEqual(bad.statusCode, 400);
+    assert.match(bad.bodyText, /format must be/);
+  } finally { global.fetch = realFetch; }
+});

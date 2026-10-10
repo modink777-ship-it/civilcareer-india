@@ -109,13 +109,14 @@ module.exports = async function handler(req, res) {
       addUrl(`${SITE_URL}${path}`, priority, changefreq)
     );
 
-    /* Civil Engineering course landing pages (/courses/<slug>). Only a
-       specialization with at least one PUBLISHED course is listed: an
-       empty one is served with robots noindex, so offering it to a
-       crawler here would contradict the page itself. */
+    /* Civil Engineering course landing pages (/courses/<slug>) and the
+       per-course detail pages (/courses/detail/<id>). Only PUBLISHED
+       rows are ever listed: a draft or empty specialization is served
+       with robots noindex, so offering either to a crawler here would
+       contradict the page itself. One bounded scan covers both. */
     try {
       const courseRes = await supa(
-        'courses?select=specialization&is_published=eq.true&limit=1000'
+        'courses?select=id,specialization,created_at&is_published=eq.true&limit=1000'
       );
       if (courseRes.ok) {
         const rows = await courseRes.json();
@@ -124,15 +125,24 @@ module.exports = async function handler(req, res) {
           specializationFromSlug,
         } = require('../lib/course-civil');
         const seen = new Set();
-        for (const row of rows) {
+        for (const row of rows || []) {
           const label = row && row.specialization
             ? specializationFromSlug(specializationSlug(row.specialization))
             : null;
-          if (!label) continue;
-          const slug = specializationSlug(label);
-          if (!slug || seen.has(slug)) continue;
-          seen.add(slug);
-          urls.push(addUrl(`${SITE_URL}/courses/${slug}`, '0.7', 'weekly'));
+          if (label) {
+            const slug = specializationSlug(label);
+            if (slug && !seen.has(slug)) {
+              seen.add(slug);
+              urls.push(addUrl(`${SITE_URL}/courses/${slug}`, '0.7', 'weekly'));
+            }
+          }
+          /* per-course detail page — stable canonical URL of ONE course */
+          if (row && row.id) {
+            urls.push(addUrl(
+              `${SITE_URL}/courses/detail/${encodeURIComponent(row.id)}`,
+              '0.6', 'weekly', row.created_at || ''
+            ));
+          }
         }
       }
     } catch (err) {

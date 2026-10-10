@@ -337,11 +337,11 @@ test('a database failure renders the honest empty page, never a stack trace', as
 
 test('the sitemap lists only specializations that have a published course', async () => {
   const stub = stubSupabase((url) => {
-    if (url.includes('select=specialization')) return reply(200, [
-      { specialization: 'STAAD.Pro' },
-      { specialization: 'STAAD.Pro' },
-      { specialization: 'Structural Engineering' },
-      { specialization: null },
+    if (url.includes('specialization') && url.includes('courses?')) return reply(200, [
+      { id: 'c1', specialization: 'STAAD.Pro' },
+      { id: 'c2', specialization: 'STAAD.Pro' },
+      { id: 'c3', specialization: 'Structural Engineering' },
+      { id: 'c4', specialization: null },
     ]);
     if (url.includes('/rest/v1/jobs')) return reply(200, []);
     return undefined;
@@ -360,7 +360,7 @@ test('the sitemap lists only specializations that have a published course', asyn
 
 test('a failing course query keeps the sitemap alive', async () => {
   const stub = stubSupabase((url) => {
-    if (url.includes('select=specialization')) return reply(400, { code: 'PGRST204', message: 'no specialization column' });
+    if (url.includes('specialization') && url.includes('courses?')) return reply(400, { code: 'PGRST204', message: 'no specialization column' });
     if (url.includes('/rest/v1/jobs')) return reply(200, []);
     return undefined;
   });
